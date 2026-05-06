@@ -65,9 +65,8 @@
   .live-info:first-child .live-date,
   .live-info:first-child .live-time,
   .live-info:first-child .live-weather { font-weight: 500; }
-  .live-info:last-child .live-week,
   .live-info:last-child .live-weather  { font-weight: 400; }
-  .live-week    { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
+  .live-week  { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
   .live-date    { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
   .live-time    { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
   .live-weather { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
@@ -661,8 +660,49 @@
   .newday-dismiss:hover { background: var(--bg2); color: var(--text2); }
   /* ── Export ── */
   .export-section { margin-top: 18px; border-top: 0.5px solid var(--border); padding-top: 14px; }
-  .export-header { display: flex; align-items: center; justify-content: space-between; }
+  .export-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .export-title { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
+  .eod-btn {
+    font-size: 12px; padding: 4px 14px; border-radius: var(--radius);
+    border: 0.5px solid #D4537E; cursor: pointer;
+    background: var(--bg); color: #D4537E; font-family: var(--font);
+  }
+  .eod-btn:hover { background: #2a0a10; }
+  /* End of day modal */
+  .eod-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .eod-overlay.show { display: flex; }
+  .eod-modal {
+    background: var(--bg); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 24px 28px;
+    max-width: 560px; width: 90%; max-height: 80vh; overflow-y: auto;
+  }
+  .eod-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .eod-subtitle { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+  .eod-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin: 16px 0 8px; }
+  .eod-exported { font-size: 12px; color: #1D9E75; padding: 6px 10px; background: #0a3d1f; border-radius: var(--radius); margin-bottom: 4px; }
+  .eod-change { display: flex; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .eod-change:last-child { border-bottom: none; }
+  .eod-change-desc { flex: 1; color: var(--text2); }
+  .eod-change-areas { font-size: 11px; color: var(--text3); flex-shrink: 0; text-align: right; }
+  .eod-test-area { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12px; }
+  .eod-test-num { font-family: var(--mono); font-size: 11px; color: var(--text3); width: 20px; flex-shrink: 0; }
+  .eod-empty { font-size: 12px; color: var(--text3); font-style: italic; padding: 4px 0; }
+  .eod-copy-btn {
+    font-size: 11px; padding: 3px 10px; border-radius: var(--radius);
+    border: 0.5px solid var(--border2); cursor: pointer;
+    background: var(--bg); color: var(--text3); font-family: var(--font); margin-top: 10px;
+  }
+  .eod-copy-btn:hover { background: var(--bg2); color: var(--text2); }
+  .eod-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+  .eod-close {
+    font-size: 13px; padding: 6px 20px; border-radius: var(--radius);
+    border: 0.5px solid var(--border2); cursor: pointer;
+    background: var(--bg2); color: var(--text2); font-family: var(--font);
+  }
+  .eod-close:hover { background: var(--bg3); }
   .export-btn {
     font-size: 12px; padding: 4px 14px; border-radius: var(--radius);
     border: 0.5px solid var(--border2); cursor: pointer;
@@ -729,6 +769,7 @@
       <div class="live-week" id="liveWeek"></div>
       <div class="live-weather" id="liveSunrise"></div>
       <div class="live-weather" id="liveMoon"></div>
+      <div class="live-weather" id="liveFlagDay"></div>
       <div class="live-weather" id="liveNameday"></div>
     </div>
   </div>
@@ -803,7 +844,27 @@
 <div class="export-section">
   <div class="export-header">
     <span class="export-title">export</span>
-    <button class="export-btn" id="exportBtn">download .txt</button>
+    <div style="display:flex;gap:8px">
+      <button class="export-btn" id="exportBtn">download .txt</button>
+      <button class="eod-btn" id="eodBtn">🌙 end the day</button>
+    </div>
+  </div>
+</div>
+
+<!-- End of day modal -->
+<div class="eod-overlay" id="eodOverlay">
+  <div class="eod-modal">
+    <div class="eod-title">🌙 End of Day</div>
+    <div class="eod-subtitle" id="eodSubtitle"></div>
+    <div id="eodExportStatus"></div>
+    <div class="eod-section-title">Changes implemented today</div>
+    <div id="eodChanges"></div>
+    <div class="eod-section-title">Test areas to review</div>
+    <div id="eodTestAreas"></div>
+    <button class="eod-copy-btn" id="eodCopyBtn">📋 copy to clipboard</button>
+    <div class="eod-footer">
+      <button class="eod-close" id="eodClose">Done — close</button>
+    </div>
   </div>
 </div>
 
@@ -1179,13 +1240,14 @@
     const tbStartMins = TB_START * 60, tbEndMins = TB_END * 60;
     const startMins = new Date(entry.ts).getHours() * 60 + new Date(entry.ts).getMinutes();
     const cStart = Math.max(startMins, tbStartMins);
-    const elapsedMins = Math.round(getElapsedMs() / 60000);
-    const endMins = Math.min(startMins + Math.max(elapsedMins, 1), tbEndMins);
+    const nowMins   = new Date().getHours() * 60 + new Date().getMinutes();
+    const endMins   = Math.min(Math.max(nowMins, cStart + 1), tbEndMins);
     const hPx = Math.max(TB_SLOT_H * 0.5, (endMins - cStart) / 30 * TB_SLOT_H);
     el.style.height = hPx + 'px';
     const sub = document.getElementById('tb-live-sub');
     if (sub) {
       const cat = getCat(entry.tag || 'other');
+      const elapsedMins = Math.round(getElapsedMs() / 60000);
       const h = Math.floor(elapsedMins/60), m = elapsedMins%60;
       sub.textContent = cat.label + ' · ' + (h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`);
     }
@@ -2095,6 +2157,90 @@
     el.textContent = `${emoji} ${illum}% ${phase} — ${sign[1]} ${sign[0]}`;
   }
 
+  // Finnish flag days
+  const FLAG_DAYS_FIXED = {
+    "01-01": "New Year's Day",
+    "02-05": "J.L. Runeberg Day",
+    "02-28": "Kalevala Day",
+    "03-19": "Minna Canth Day",
+    "04-09": "Mikael Agricola Day",
+    "04-27": "National Veterans' Day",
+    "05-01": "May Day",
+    "05-09": "Europe Day",
+    "05-12": "J.V. Snellman Day",
+    "06-04": "Flag Day of the Finnish Defence Forces",
+    "10-10": "Aleksis Kivi Day",
+    "10-24": "United Nations Day",
+    "12-06": "Finnish Independence Day",
+    "12-08": "Jean Sibelius Day",
+  };
+
+  function getFlagDays(year) {
+    const days = { ...FLAG_DAYS_FIXED };
+    // Mother's Day — 2nd Sunday of May
+    const motherDay = nthWeekday(year, 5, 0, 2);
+    days[fmtMD(motherDay)] = "Mother's Day";
+    // Midsummer Saturday — Saturday between Jun 20–26
+    const midsummer = nearestWeekday(new Date(year, 5, 20), 6);
+    days[fmtMD(midsummer)] = "Midsummer / Finnish Flag Day";
+    // Father's Day — 2nd Sunday of November
+    const fatherDay = nthWeekday(year, 11, 0, 2);
+    days[fmtMD(fatherDay)] = "Father's Day";
+    return days;
+  }
+
+  function nthWeekday(year, month, weekday, n) {
+    // weekday: 0=Sun..6=Sat, month: 1-12, n: 1-based
+    const d = new Date(year, month - 1, 1);
+    let count = 0;
+    while (true) {
+      if (d.getDay() === weekday) { count++; if (count === n) return new Date(d); }
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  function nearestWeekday(from, weekday) {
+    const d = new Date(from);
+    while (d.getDay() !== weekday) d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  function fmtMD(d) {
+    return String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function renderFlagDay() {
+    const el = document.getElementById('liveFlagDay');
+    if (!el) return;
+    const now   = new Date();
+    const year  = now.getFullYear();
+    const today = fmtMD(now);
+    const FLAG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:5px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
+
+    // Build sorted list of this year's flag days + next year's for wraparound
+    const thisYear = getFlagDays(year);
+    const nextYear = getFlagDays(year + 1);
+
+    if (thisYear[today]) {
+      el.innerHTML = `${FLAG}<span style="font-weight:500">${escHtml(thisYear[today])}</span>`;
+      return;
+    }
+
+    // Find next flag day
+    const allDays = Object.entries(thisYear)
+      .map(([k, v]) => ({ key: `${year}-${k}`, name: v }))
+      .concat(Object.entries(nextYear).map(([k, v]) => ({ key: `${year+1}-${k}`, name: v })))
+      .sort((a, b) => a.key.localeCompare(b.key));
+
+    const todayFull = `${year}-${today}`;
+    const next = allDays.find(d => d.key > todayFull);
+    if (next) {
+      const d = new Date(next.key + 'T12:00:00');
+      const dateStr = d.toLocaleDateString('en', { month: 'long', day: 'numeric' });
+      el.innerHTML = `${FLAG}Next flag day: ${dateStr} — <span style="font-weight:500">${escHtml(next.name)}</span>`;
+    }
+  }
+
   function fetchNameday() {
     const now  = new Date();
     const day  = now.getDate();
@@ -2104,7 +2250,7 @@
     if (!el) return;
 
     const fallback = () => {
-      if (FI_NAMEDAYS[key]) el.textContent = `🎂 ${FI_NAMEDAYS[key]}`;
+      if (FI_NAMEDAYS[key]) el.innerHTML = `🎂 Today\'s name day: <strong>${escHtml(FI_NAMEDAYS[key])}</strong>`;
     };
 
     // Try nimipaivat.fi — parse title "Nimipäivä D.M. Name"
@@ -2113,7 +2259,7 @@
       .then(html => {
         const m = html.match(/<title>Nimip[äa]iv[äa]\s+[\d.]+\s+(.+?)<\/title>/i);
         if (m && m[1].trim()) {
-          el.textContent = `🎂 ${m[1].trim()}`;
+          el.innerHTML = `🎂 Today\'s name day: <strong>${escHtml(m[1].trim())}</strong>`;
         } else { fallback(); }
       })
       .catch(fallback);
@@ -2187,6 +2333,7 @@
   fetchWeather();
   fetchNameday();
   renderMoon();
+  renderFlagDay();
   setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
 
   /* ── Today's tasks ── */
@@ -2674,22 +2821,33 @@
       return el;
     }
 
+    const meetingNames = new Set(
+      blocks.filter(b => b.date === dateKey && b.type === 'meeting')
+            .map(b => b.text.toLowerCase())
+    );
+
     entries.filter(e => e.date === dateKey).forEach(e => {
       if (e.id === liveId) return;
+      // Skip if this entry matches a meeting block (with or without 📅 prefix)
+      const cleanText = e.text.replace(/^📅\s*/, '').toLowerCase();
+      if (meetingNames.has(cleanText) || meetingNames.has(e.text.toLowerCase())) return;
       const endTs = e.tsEnd && e.tsEnd > e.ts
         ? e.tsEnd
-        : (isToday(viewDate) ? Date.now() : null);  // no tsEnd: extend to now on today's view
+        : (isToday(viewDate) ? Date.now() : null);
       if (!endTs) return;
       const el = autoBlockEl(e.text, e.tag, e.ts, endTs, false);
       if (el) grid.appendChild(el);
     });
 
-    // Live timer block
+    // Live timer block — skip if the active timer is a meeting block (it will pulse instead)
     if (liveId) {
       const le = entries.find(e => e.id === liveId);
-      if (le && le.date === dateKey) {
-        const elapsedMs = getElapsedMs();
-        const fakeEnd   = le.ts + Math.max(elapsedMs, 60000);
+      const isMeetingBlock = le && blocks.some(b =>
+        b.date === dateKey && b.type === 'meeting' &&
+        b.text.toLowerCase() === le.text.toLowerCase()
+      );
+      if (le && le.date === dateKey && !isMeetingBlock) {
+        const fakeEnd = Math.max(Date.now(), le.ts + 60000);
         const el = autoBlockEl(le.text, le.tag, le.ts, fakeEnd, true);
         if (el) grid.appendChild(el);
       }
@@ -2697,13 +2855,18 @@
 
     // ── Manual planned blocks (render last = on top, dashed border) ──
     const dayBlocks = blocks.filter(b => b.date === dateKey);
+    const tbLiveEntry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
     dayBlocks.forEach(b => {
       const cat = getCat(b.tag || 'other');
       const el  = document.createElement('div');
       const isDone = planTasks.some(t =>
         t.date === dateKey && t.text.toLowerCase() === b.text.toLowerCase() && t.status === 'done'
       );
-      el.className = 'tb-block plan' + (isDone ? ' task-done' : '');
+      const cleanLiveText = tbLiveEntry ? tbLiveEntry.text.replace(/^📅\s*/, '').toLowerCase() : '';
+      const isMeetingBlock = tbLiveEntry &&
+        b.type === 'meeting' &&
+        (b.text.toLowerCase() === cleanLiveText || b.text.toLowerCase() === tbLiveEntry.text.toLowerCase());
+      el.className = 'tb-block plan' + (isDone ? ' task-done' : '') + (isMeetingBlock ? ' live' : '');
       el.dataset.bid = b.id;
       el.draggable = true;
       el.style.top    = (b.slot * TB_SLOT_H + 1) + 'px';
@@ -2843,9 +3006,10 @@
     if (hits && !confirm(`This meeting overlaps with ${hits}.\n\nAdd anyway?`)) return;
     blocks.push({ id: Date.now()+'', date: dk(viewDate), slot: s, duration: Math.min(dur, TB_SLOTS - s),
       text: name, tag, type: 'meeting' });
+
     document.getElementById('tbMfName').value = '';
     document.getElementById('tbMeetingForm').classList.remove('show');
-    saveBlocks(); renderTimeblock();
+    saveBlocks(); render(); renderTimeblock();
   });
   document.getElementById('tbMfName').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('tbMfOk').click();
@@ -2860,37 +3024,51 @@
 
     const pending = blocks.filter(b =>
       b.date === todayKey &&
-      b.type !== 'meeting' &&
       !notifiedBlocks.has(b.id)
     );
 
     for (const b of pending) {
       const startMins = TB_START * 60 + b.slot * 30;
-      // Trigger within a 3-minute window after start
-      if (nowMins < startMins || nowMins >= startMins + 3) continue;
+      const endMins   = startMins + b.duration * 30;
 
-      notifiedBlocks.add(b.id);
-
-      if (activeTimer) {
-        const cur = entries.find(e => e.id === activeTimer.entryId);
-        const curName = cur ? cur.text : 'current task';
-        const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
-        if (sw) {
-          tbStartBlock(b.id);
-        } else {
-          blocks = blocks.filter(bl => bl.id !== b.id);
-          saveBlocks(); renderTimeblock();
+      if (b.type === 'meeting') {
+        // Auto-start if currently in progress (started but not ended yet)
+        if (nowMins >= startMins && nowMins < endMins) {
+          notifiedBlocks.add(b.id);
+          // Skip if already logged or timer already running for this meeting
+          const alreadyLogged = entries.some(e =>
+            e.date === todayKey &&
+            e.text.toLowerCase() === b.text.toLowerCase() &&
+            !e.tsEnd  // only count open entries — not pre-created completed ones
+          );
+          const curEntry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+          const alreadyActive = curEntry && curEntry.text.toLowerCase() === b.text.toLowerCase();
+          if (!alreadyLogged && !alreadyActive) {
+            // Use the meeting's scheduled start time, not now
+            const d = new Date();
+            const scheduledTs = new Date(d.getFullYear(), d.getMonth(), d.getDate(),
+              Math.floor((TB_START * 60 + b.slot * 30) / 60),
+              (TB_START * 60 + b.slot * 30) % 60, 0).getTime();
+            tbStartBlock(b.id, scheduledTs);
+          }
         }
       } else {
-        const go = confirm(`⏰ Time for: "${b.text}"\n\nStart timer?`);
-        if (go) {
-          tbStartBlock(b.id);
+        // Task blocks — prompt within 3-minute window after start
+        if (nowMins < startMins || nowMins >= startMins + 3) continue;
+        notifiedBlocks.add(b.id);
+        if (activeTimer) {
+          const cur = entries.find(e => e.id === activeTimer.entryId);
+          const curName = cur ? cur.text : 'current task';
+          const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
+          if (sw) { tbStartBlock(b.id); }
+          else { blocks = blocks.filter(bl => bl.id !== b.id); saveBlocks(); renderTimeblock(); }
         } else {
-          blocks = blocks.filter(bl => bl.id !== b.id);
-          saveBlocks(); renderTimeblock();
+          const go = confirm(`⏰ Time for: "${b.text}"\n\nStart timer?`);
+          if (go) { tbStartBlock(b.id); }
+          else { blocks = blocks.filter(bl => bl.id !== b.id); saveBlocks(); renderTimeblock(); }
         }
+        break;
       }
-      break; // one prompt at a time
     }
   }
 
@@ -2905,11 +3083,10 @@
     el.style.top = ((mins - tbStartMins) / 30 * TB_SLOT_H) + 'px';
   }
 
-  function tbStartBlock(blockId) {
+  function tbStartBlock(blockId, overrideTs) {
     const b = blocks.find(bl => bl.id === blockId);
     if (!b) return;
     const todayKey = dk(new Date());
-    // Sync with today's tasks — create or update
     let task = planTasks.find(t => t.date === todayKey && t.text.toLowerCase() === b.text.toLowerCase());
     if (!task) {
       task = { id: Date.now()+'', text: b.text, status: 'inprogress', tag: b.tag || 'other', date: todayKey };
@@ -2918,12 +3095,18 @@
       task.status = 'inprogress';
     }
     savePlan();
-    // Start timer
     if (activeTimer) stopTimer();
-    const entry = { id: (Date.now()+1)+'', text: b.text, tag: b.tag || 'other', ts: roundToNearest30(Date.now()), date: todayKey };
+    const ts = overrideTs || roundToNearest30(Date.now());
+    const entry = { id: (Date.now()+1)+'', text: b.text, tag: b.tag || 'other', ts, date: todayKey };
     entries.push(entry);
+    // Set timer startTs so elapsed = time since scheduled start, not since now
     viewDate = new Date();
-    save(); startTimer(entry.id); render();
+    save();
+    activeTimer = { entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false };
+    save(); tickTimer();
+    timerInterval = setInterval(tickTimer, 1000);
+    updateTimerBar(); updateTimerBtn(true);
+    render();
   }
 
   function patchCarriedTasks() {
@@ -3054,7 +3237,122 @@
   document.getElementById('completedHeader').addEventListener('click', () => {
     completedCollapsed = !completedCollapsed; renderCompleted();
   });
+  /* ── Dev changelog ── */
+  const STORE_DEV_LOG = 'wl_dev_log';
+  const TEST_AREA_NAMES = {
+    1:'Page load', 2:'roundToNearest30', 3:'localStorage round-trip',
+    4:'Timer display', 5:'Timer persistence', 6:'completedAt',
+    7:'Auto-carry', 8:'Sort order', 9:'Plan count header', 10:'Week number'
+  };
+
+  // Updated each session by Claude — id format: YYYYMMDD-NNN
+  const DEV_CHANGES = [
+    { id:'20260506-001', date:'2026-05-06', desc:'Two-box header layout with week/moon/nameday', areas:[1] },
+    { id:'20260506-002', date:'2026-05-06', desc:'Week number (ISO) in header', areas:[10] },
+    { id:'20260506-003', date:'2026-05-06', desc:'Sunrise/sunset/day length from Open-Meteo', areas:[1,3] },
+    { id:'20260506-004', date:'2026-05-06', desc:'Moon phase calculation and zodiac sign', areas:[1] },
+    { id:'20260506-005', date:'2026-05-06', desc:'Finnish nameday from nimipaivat.fi', areas:[1] },
+    { id:'20260506-006', date:'2026-05-06', desc:'Completed tasks section with 14-day rolling window', areas:[6,9] },
+    { id:'20260506-007', date:'2026-05-06', desc:'Child task auto-promotes parent to In Progress', areas:[7,8] },
+    { id:'20260506-008', date:'2026-05-06', desc:'Plan count header format: X to do · X in progress · X done', areas:[9] },
+    { id:'20260506-009', date:'2026-05-06', desc:'Critical fix: load() restored to startup sequence', areas:[1,3,4,5,7] },
+    { id:'20260506-010', date:'2026-05-06', desc:'save() guard against overwriting data with empty arrays', areas:[3] },
+    { id:'20260506-011', date:'2026-05-06', desc:'Timer restoration protected against load failures', areas:[5] },
+    { id:'20260506-012', date:'2026-05-06', desc:'completedAt uses roundToNearest30; 23:59 shown as date-only', areas:[6] },
+    { id:'20260506-013', date:'2026-05-06', desc:'Rain forecast starts from next hour (no past times)', areas:[1] },
+    { id:'20260506-014', date:'2026-05-06', desc:'Pomodoro ring empties clockwise', areas:[1] },
+    { id:'20260506-015', date:'2026-05-06', desc:'Pomodoro session log added', areas:[1] },
+    { id:'20260506-016', date:'2026-05-06', desc:'Smoke test suite (38 tests) added', areas:[] },
+    { id:'20260506-017', date:'2026-05-06', desc:'End-of-day modal with dev changelog', areas:[] },
+  ];
+
+  function mergeDevLog() {
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
+      const storedIds = new Set(stored.map(e => e.id));
+      const newEntries = DEV_CHANGES.filter(e => !storedIds.has(e.id));
+      if (newEntries.length) {
+        const merged = [...stored, ...newEntries].sort((a,b) => a.id.localeCompare(b.id));
+        localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
+      }
+    } catch(e) {}
+  }
+
+  function openEodModal() {
+    const todayKey = dk(new Date());
+    const d = new Date();
+    const dateStr = d.toLocaleDateString('en', { weekday:'long', month:'long', day:'numeric' });
+
+    // Auto-export
+    exportTxt();
+    localStorage.setItem('wl_last_export', todayKey);
+    document.getElementById('eodExportStatus').innerHTML =
+      `<div class="eod-exported">✅ Time log exported automatically</div>`;
+
+    document.getElementById('eodSubtitle').textContent = dateStr;
+
+    // Today's dev changes
+    let allLog = [];
+    try { allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]'); } catch(e) {}
+    const todayChanges = allLog.filter(e => e.date === todayKey);
+    const changesEl = document.getElementById('eodChanges');
+    if (todayChanges.length) {
+      changesEl.innerHTML = todayChanges.map(e =>
+        `<div class="eod-change">
+          <span class="eod-change-desc">${escHtml(e.desc)}</span>
+          <span class="eod-change-areas">${e.areas.length ? 'Test ' + e.areas.join(', ') : '—'}</span>
+        </div>`
+      ).join('');
+    } else {
+      changesEl.innerHTML = `<div class="eod-empty">No code changes logged today</div>`;
+    }
+
+    // Affected test areas (deduplicated)
+    const affectedAreas = [...new Set(todayChanges.flatMap(e => e.areas))].sort((a,b) => a-b);
+    const areasEl = document.getElementById('eodTestAreas');
+    if (affectedAreas.length) {
+      areasEl.innerHTML = affectedAreas.map(n =>
+        `<div class="eod-test-area">
+          <span class="eod-test-num">#${n}</span>
+          <span>${escHtml(TEST_AREA_NAMES[n] || 'Unknown')}</span>
+        </div>`
+      ).join('');
+    } else {
+      areasEl.innerHTML = `<div class="eod-empty">No test areas flagged for review</div>`;
+    }
+
+    // Copy to clipboard
+    document.getElementById('eodCopyBtn').onclick = () => {
+      const lines = [
+        `End of day: ${dateStr}`,
+        '',
+        'Changes implemented:',
+        ...todayChanges.map(e => `  - ${e.desc}${e.areas.length ? ' (Test '+e.areas.join(', ')+')' : ''}`),
+        '',
+        'Test areas to review:',
+        ...affectedAreas.map(n => `  - Test ${n}: ${TEST_AREA_NAMES[n]}`),
+      ];
+      navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        const btn = document.getElementById('eodCopyBtn');
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = '📋 copy to clipboard', 2000);
+      });
+    };
+
+    document.getElementById('eodOverlay').classList.add('show');
+  }
+
+  document.getElementById('eodBtn').addEventListener('click', openEodModal);
+  document.getElementById('eodClose').addEventListener('click', () => {
+    document.getElementById('eodOverlay').classList.remove('show');
+  });
+  document.getElementById('eodOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('eodOverlay'))
+      document.getElementById('eodOverlay').classList.remove('show');
+  });
+
   load();
+  mergeDevLog();
   loadBlocks();
   loadPlan();
   const carried = autoCarryTasks();
