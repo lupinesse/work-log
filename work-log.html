@@ -52,15 +52,26 @@
   /* Header */
   .header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 10px;
     margin-bottom: 16px;
   }
-  .live-info { display: flex; flex-direction: column; gap: 1px; }
-  .live-date  { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
-  .live-time  { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
+  .header-boxes { display: flex; gap: 52px; flex-shrink: 0; }
+  .live-info {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 0; width: fit-content;
+  }
+  .live-info:first-child .live-date,
+  .live-info:first-child .live-time,
+  .live-info:first-child .live-weather { font-weight: 500; }
+  .live-info:last-child .live-week,
+  .live-info:last-child .live-weather  { font-weight: 400; }
+  .live-week    { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
+  .live-date    { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .live-time    { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
   .live-weather { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
-  .date-nav { display: flex; align-items: center; gap: 6px; }
+  .date-nav { display: flex; align-items: center; gap: 6px; margin-left: 32px; align-self: center; }
   .nav-btn {
     background: var(--bg);
     border: 0.5px solid var(--border2);
@@ -707,11 +718,19 @@
 <body>
 
 <div class="header">
-  <div class="live-info">
-    <div class="live-date" id="liveDate"></div>
-    <div class="live-time" id="liveTime"></div>
-    <div class="live-weather" id="liveWeather">locating…</div>
-    <div class="live-weather" id="liveRain"></div>
+  <div class="header-boxes">
+    <div class="live-info">
+      <div class="live-date" id="liveDate"></div>
+      <div class="live-time" id="liveTime"></div>
+      <div class="live-weather" id="liveWeather">locating…</div>
+      <div class="live-weather" id="liveRain"></div>
+    </div>
+    <div class="live-info">
+      <div class="live-week" id="liveWeek"></div>
+      <div class="live-weather" id="liveSunrise"></div>
+      <div class="live-weather" id="liveMoon"></div>
+      <div class="live-weather" id="liveNameday"></div>
+    </div>
   </div>
   <div class="date-nav">
     <button class="nav-btn" id="prevDay">&#8592;</button>
@@ -1541,7 +1560,15 @@
       // Auto In progress on matching plan task
       const todayKey=dk(new Date());
       const task=planTasks.find(t=>t.date===todayKey&&t.text.toLowerCase()===text.toLowerCase());
-      if(task&&task.status==='todo'){task.status='inprogress';savePlan();}
+      if(task&&task.status==='todo'){
+        task.status='inprogress';
+        // Promote parent if child
+        if(task.parentId){
+          const parent=planTasks.find(p=>p.id===task.parentId);
+          if(parent&&parent.status==='todo') parent.status='inprogress';
+        }
+        savePlan();
+      }
       startTimer(entry.id);
     }
     render(); inp.focus();
@@ -1892,6 +1919,16 @@
   }
 
   /* ── Live clock + weather ── */
+  function getISOWeek(d) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  }
+  function totalISOWeeks(year) {
+    return getISOWeek(new Date(year, 11, 28)); // Dec 28 is always in last ISO week
+  }
+
   tickClock();
   setInterval(tickClock, 10000);
 
@@ -1904,6 +1941,9 @@
     const mm = String(now.getMinutes()).padStart(2,'0');
     document.getElementById('liveDate').textContent = `${weekday}, ${month} ${day}`;
     document.getElementById('liveTime').textContent = `${hh}:${mm}`;
+    const w = getISOWeek(now);
+    const total = totalISOWeeks(now.getFullYear());
+    document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
     positionNowLine();
     checkBlockNotifications();
   }
@@ -1927,12 +1967,164 @@
     return '⛈️';
   }
 
+  // Finnish nameday (nimipäivä) — hardcoded official list (University of Helsinki 2020)
+  const FI_NAMEDAYS = {
+    "01-01":"Uusivuosi","01-02":"Aaro, Aarne, Aarno","01-03":"Anni, Annikki, Sanni","01-04":"Ruut, Ruuth","01-05":"Lea, Leea",
+    "01-06":"Nuutti","01-07":"Merttu","01-08":"Hilppa","01-09":"Valtteri","01-10":"Henna",
+    "01-11":"Kari","01-12":"Tauno","01-13":"Lotta, Loviisa","01-14":"Sakari, Saku","01-15":"Soile, Soili",
+    "01-16":"Ilmari","01-17":"Toni","01-18":"Riikka","01-19":"Heikki, Henrik","01-20":"Havu",
+    "01-21":"Aino","01-22":"Visa","01-23":"Eine, Einari","01-24":"Eero, Eerik","01-25":"Paavo, Pauli",
+    "01-26":"Joonas, Joona","01-27":"Vilhelm, Vili","01-28":"Kaarlo, Karl","01-29":"Vihtori","01-30":"Eeva, Eva","01-31":"Tiina, Tina",
+    "02-01":"Elmeri","02-02":"Kaisu, Kaisa","02-03":"Auli, Aulikki","02-04":"Veijo, Veikko","02-05":"Orvokki",
+    "02-06":"Lasse, Lassi","02-07":"Roope, Rolf","02-08":"Taito, Into","02-09":"Aslak","02-10":"Liisa, Elisa",
+    "02-11":"Talvikki","02-12":"Ruusu","02-13":"Vappu, Valpuri","02-14":"Ystävänpäivä","02-15":"Kristiina, Tiina",
+    "02-16":"Kai","02-17":"Väinö, Veini","02-18":"Kaisa, Kaisla","02-19":"Eija","02-20":"Heli, Hely",
+    "02-21":"Taru, Tarika","02-22":"Tuulikki, Tuuli","02-23":"Aino","02-24":"Matthias, Matti","02-25":"Tuija",
+    "02-26":"Nestori","02-27":"Torsten, Torsti","02-28":"Onni","02-29":"Siiri",
+    "03-01":"Alvar, Aslak","03-02":"Virpi, Virva","03-03":"Kaija, Merja","03-04":"Adrian, Risto","03-05":"Lauri",
+    "03-06":"Vesa","03-07":"Topi, Topias","03-08":"Vilhelmina, Minna","03-09":"Valto","03-10":"Väinö",
+    "03-11":"Kerttu","03-12":"Keijo, Keijo","03-13":"Aku, Akuliina","03-14":"Matilda, Tilda","03-15":"Risto",
+    "03-16":"Ilkka, Ilari","03-17":"Kaapo, Kaapro","03-18":"Edvard, Eetu","03-19":"Juho, Juhani","03-20":"Aki",
+    "03-21":"Pentti, Benedict","03-22":"Vihtori","03-23":"Pepe, Petteri","03-24":"Gabriel, Kaapri","03-25":"Maria",
+    "03-26":"Manuel","03-27":"Nestori","03-28":"Armas","03-29":"Jonas, Joonas","03-30":"Ritva","03-31":"Unto",
+    "04-01":"Hugo, Uко","04-02":"Paavo, Paula","04-03":"Sampo","04-04":"Arvo","04-05":"Irja, Irina",
+    "04-06":"Ville, Viljami","04-07":"Harri, Harald","04-08":"Kaarlo, Kai","04-09":"Veikko, Veijo","04-10":"Marjo, Marja",
+    "04-11":"Kauko","04-12":"Julius, Jyri","04-13":"Tero, Tarmo","04-14":"Tiina","04-15":"Tellervo",
+    "04-16":"Hillevi, Hillervi","04-17":"Riikka, Rikhard","04-18":"Valeria, Valeria","04-19":"Pilvi","04-20":"Petro",
+    "04-21":"Anssi, Anselmi","04-22":"Sari, Saara","04-23":"Yrjö, Jyri","04-24":"Albinus, Albert","04-25":"Markus, Marko",
+    "04-26":"Terttu, Teresia","04-27":"Aleksanteri","04-28":"Jalo","04-29":"Tyyne, Tiina","04-30":"Mirjam, Mirja",
+    "05-01":"Vappu, Valpuri","05-02":"Verna","05-03":"Jolanda","05-04":"Elina, Eliina","05-05":"Eino",
+    "05-06":"Ylermi","05-07":"Viivi, Vivian","05-08":"Heikki","05-09":"Tuomas, Tomi","05-10":"Kai",
+    "05-11":"Eveliina","05-12":"Roosa, Ruusa","05-13":"Pirjo, Petra","05-14":"Eero, Eerik","05-15":"Sofia, Sohvi",
+    "05-16":"Hely, Heli","05-17":"Erika, Eerika","05-18":"Heidi","05-19":"Konsta, Konstantinus","05-20":"Lilja, Liljana",
+    "05-21":"Konrad, Kunto","05-22":"Riitta, Rikhard","05-23":"Lyydia, Lyyli","05-24":"Silja, Siiri","05-25":"Urpo",
+    "05-26":"Hannu, Johannes","05-27":"Ritva, Rittta","05-28":"Tessa, Teresia","05-29":"Heluna, Helena","05-30":"Tekla",
+    "05-31":"Petteri, Pirkko",
+    "06-01":"Pirkko","06-02":"Antti, Anto","06-03":"Arvo","06-04":"Siiri","06-05":"Ulla, Ulrike",
+    "06-06":"Niilo, Nikolaus","06-07":"Pirkko, Pirjo","06-08":"Mikko","06-09":"Taito","06-10":"Sulo",
+    "06-11":"Barnabas, Panu","06-12":"Jonatan, Joonas","06-13":"Ritva, Riitta","06-14":"Helge","06-15":"Tuomo",
+    "06-16":"Unto","06-17":"Urho","06-18":"Taisto, Taistelu","06-19":"Siiri, Sirpa","06-20":"Into",
+    "06-21":"Juhannus/Aino","06-22":"Johannes, Juhana","06-23":"Juhannusaatto (Aino)","06-24":"Juhannus","06-25":"Uuno",
+    "06-26":"Sulo, Sulho","06-27":"Lauri","06-28":"Leo","06-29":"Pekka, Pietari","06-30":"Pauli",
+    "07-01":"Arvo, Aaro","07-02":"Tuulia, Tuula","07-03":"Tommi, Tomas","07-04":"Ulpu, Ulpukka","07-05":"Ulla",
+    "07-06":"Soile, Soili","07-07":"Eino","07-08":"Esko","07-09":"Veli","07-10":"Lilli, Lila",
+    "07-11":"Elina, Eliina","07-12":"Hermanni, Herman","07-13":"Veli, Veikko","07-14":"Miki","07-15":"Rauni",
+    "07-16":"Martti, Marto","07-17":"Osmo","07-18":"Riikka","07-19":"Sanna, Susanna","07-20":"Vihtori",
+    "07-21":"Johanna, Hanna","07-22":"Maria Magdaleena","07-23":"Olga","07-24":"Cristina","07-25":"Jaakko",
+    "07-26":"Oili, Oilikki","07-27":"Marstna, Marta","07-28":"Sulo","07-29":"Olavi","07-30":"Aino",
+    "07-31":"Eino",
+    "08-01":"Pirkko","08-02":"Lertta","08-03":"Kerttu, Oltta","08-04":"Mauno, Magnuus","08-05":"Oskar, Oskari",
+    "08-06":"Hirviläinen","08-07":"Hilkka, Hilttu","08-08":"Hilkka","08-09":"Veijo","08-10":"Lauri",
+    "08-11":"Timo, Timoteus","08-12":"Klaara","08-13":"Jarmo, Jeremia","08-14":"Arvo","08-15":"Marianpäivä",
+    "08-16":"Aulis","08-17":"Verneri, Verner","08-18":"Helena, Helinä","08-19":"Magnus, Mauno","08-20":"Sami, Samuel",
+    "08-21":"Soini, Pirjo","08-22":"Sigrid, Sirpa","08-23":"Eija","08-24":"Perttu, Vartolomeus","08-25":"Loviisa",
+    "08-26":"Tero, Iiro","08-27":"Justus","08-28":"Aku","08-29":"Iida","08-30":"Reino",
+    "08-31":"Ilkka",
+    "09-01":"Viivi","09-02":"Ansa, Anssa","09-03":"Ase","09-04":"Tauno","09-05":"Terho",
+    "09-06":"Siiri, Sinikka","09-07":"Kaisu","09-08":"Adrian, Risto","09-09":"Ilmari","09-10":"Oiva",
+    "09-11":"Eetu, Edvard","09-12":"Sulevi","09-13":"Meri, Neea","09-14":"Pyhä Risti","09-15":"Risto",
+    "09-16":"Aino","09-17":"Aikku","09-18":"Tytti","09-19":"Aino","09-20":"Kirsi, Kristiina",
+    "09-21":"Matteus, Matti","09-22":"Mauri","09-23":"Sulo","09-24":"Karri","09-25":"Siiri",
+    "09-26":"Kaarle","09-27":"Arto, Artturi","09-28":"Venla","09-29":"Mikael, Mikko","09-30":"Marko",
+    "10-01":"Raakel, Rakel","10-02":"Toivo","10-03":"Toivo","10-04":"Urho, Francis","10-05":"Raili, Raila",
+    "10-06":"Niilo","10-07":"Aaro","10-08":"Heta, Henrietta","10-09":"Ilmari","10-10":"Aleksi",
+    "10-11":"Torsten","10-12":"Väinö","10-13":"Lauri","10-14":"Kaarlo","10-15":"Hertta, Hedvig",
+    "10-16":"Brita","10-17":"Saija, Satu","10-18":"Lotta","10-19":"Uljas","10-20":"Ulla, Ulrika",
+    "10-21":"Ursula","10-22":"Salme","10-23":"Tuulikki","10-24":"Siiri","10-25":"Rasmus",
+    "10-26":"Amanda, Mandi","10-27":"Viivi","10-28":"Simon, Simeri","10-29":"Onerva","10-30":"Jaana, Hanna",
+    "10-31":"Armas",
+    "11-01":"Pyhäinpäivä","11-02":"Toivo","11-03":"Erkki, Erkka","11-04":"Marraskuu","11-05":"Sylvi",
+    "11-06":"Ruut, Ruutu","11-07":"Kerttu","11-08":"Paavo","11-09":"Tauno","11-10":"Martin, Martti",
+    "11-11":"Martti","11-12":"Yrjö, Jyri","11-13":"Kristian, Kristo","11-14":"Heli, Hely","11-15":"Leo",
+    "11-16":"Eino","11-17":"Veikko","11-18":"Tenho","11-19":"Tarmo","11-20":"Marsalkka",
+    "11-21":"Hilma, Vilma","11-22":"Cecilia, Silja","11-23":"Klemetti","11-24":"Heikki","11-25":"Katariina, Kaisa",
+    "11-26":"Arvo","11-27":"Virpi, Virva","11-28":"Liisamaria","11-29":"Aino","11-30":"Andrei, Antero",
+    "12-01":"Joulukuu, Oskari","12-02":"Pirkko","12-03":"Arvo","12-04":"Barbara, Pariisi","12-05":"Satu",
+    "12-06":"Itsenäisyyspäivä","12-07":"Pellervo, Pertti","12-08":"Aino","12-09":"Anna","12-10":"Juho",
+    "12-11":"Tatu, Taneli","12-12":"Tuovi","12-13":"Lucia, Lussi","12-14":"Aino","12-15":"Terttu",
+    "12-16":"Aino","12-17":"Rautalanka","12-18":"Henna","12-19":"Iiris","12-20":"Uri",
+    "12-21":"Tuomas","12-22":"Rasmus","12-23":"Vihtori","12-24":"Aatami, Eeva (Jouluaatto)","12-25":"Joulupäivä",
+    "12-26":"Tapani, Tapana","12-27":"Johannes","12-28":"Lauri","12-29":"Rauli","12-30":"Daavid",
+    "12-31":"Sylvester, Silvo"
+  };
+
+  function getMoonData(date) {
+    const JD  = date.getTime() / 86400000 + 2440587.5;
+    const D   = JD - 2451545.0; // days from J2000
+    const toR = x => x * Math.PI / 180;
+
+    // Moon's ecliptic longitude (simplified Meeus)
+    const L = ((218.316 + 13.176396 * D) % 360 + 360) % 360;
+    const M = toR(((134.963 + 13.064993 * D) % 360 + 360) % 360);
+    const E = toR(((297.850 + 12.190749 * D) % 360 + 360) % 360);
+    const lon = ((L + 6.289 * Math.sin(M) - 1.274 * Math.sin(2*E - M)
+                    + 0.658 * Math.sin(2*E) - 0.214 * Math.sin(2*M)
+                    - 0.110 * Math.sin(E)) % 360 + 360) % 360;
+
+    // Zodiac sign
+    const SIGNS = [
+      ['♈','Aries'],['♉','Taurus'],['♊','Gemini'],['♋','Cancer'],
+      ['♌','Leo'],['♍','Virgo'],['♎','Libra'],['♏','Scorpio'],
+      ['♐','Sagittarius'],['♑','Capricorn'],['♒','Aquarius'],['♓','Pisces']
+    ];
+    const sign = SIGNS[Math.floor(lon / 30)];
+
+    // Synodic age → phase emoji + illumination
+    const synodicPeriod = 29.530588853;
+    const age = ((((JD - 2451550.26) % synodicPeriod) + synodicPeriod) % synodicPeriod);
+    const illum = Math.round((1 - Math.cos(2 * Math.PI * age / synodicPeriod)) / 2 * 100);
+    const p = age / synodicPeriod;
+    const PHASES = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+    const PHASE_NAMES = ['New Moon','Waxing Crescent','First Quarter','Waxing Gibbous',
+                         'Full Moon','Waning Gibbous','Last Quarter','Waning Crescent'];
+    const pIdx = p < 0.025 || p >= 0.975 ? 0
+               : p < 0.25  ? 1
+               : p < 0.275 ? 2
+               : p < 0.50  ? 3
+               : p < 0.525 ? 4
+               : p < 0.75  ? 5
+               : p < 0.775 ? 6 : 7;
+
+    return { emoji: PHASES[pIdx], phase: PHASE_NAMES[pIdx], illum, sign };
+  }
+
+  function renderMoon() {
+    const el = document.getElementById('liveMoon');
+    if (!el) return;
+    const { emoji, phase, illum, sign } = getMoonData(new Date());
+    el.textContent = `${emoji} ${illum}% ${phase} — ${sign[1]} ${sign[0]}`;
+  }
+
+  function fetchNameday() {
+    const now  = new Date();
+    const day  = now.getDate();
+    const mon  = now.getMonth() + 1;
+    const key  = String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    const el   = document.getElementById('liveNameday');
+    if (!el) return;
+
+    const fallback = () => {
+      if (FI_NAMEDAYS[key]) el.textContent = `🎂 ${FI_NAMEDAYS[key]}`;
+    };
+
+    // Try nimipaivat.fi — parse title "Nimipäivä D.M. Name"
+    fetch(`https://www.nimipaivat.fi/${day}.${mon}.`)
+      .then(r => r.text())
+      .then(html => {
+        const m = html.match(/<title>Nimip[äa]iv[äa]\s+[\d.]+\s+(.+?)<\/title>/i);
+        if (m && m[1].trim()) {
+          el.textContent = `🎂 ${m[1].trim()}`;
+        } else { fallback(); }
+      })
+      .catch(fallback);
+  }
+
   function fetchWeather() {
     if (location.protocol === 'file:') {
       document.getElementById('liveWeather').textContent = `${WEATHER_NAME} — open via localhost for weather`;
       return;
     }
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,weather_code&hourly=precipitation_probability&forecast_days=1`)
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=sunrise,sunset,daylight_duration&timezone=Europe%2FHelsinki&past_days=1&forecast_days=2`)
       .then(r => r.json())
       .then(d => {
         const temp  = Math.round(d.current.temperature_2m);
@@ -1949,21 +2141,52 @@
         const nowIdx = times.findIndex(t => t.slice(0, 13) === nowLocalStr);
         if (nowIdx === -1) return;
 
-        const window = probs.slice(nowIdx, nowIdx + 9);
+        const windowStart = nowIdx + 1; // start from next hour — current hour may already be past
+        const window = probs.slice(windowStart, windowStart + 9);
         const peak   = Math.max(...window);
         const peakOff= window.indexOf(peak);
-        const peakTime = new Date(times[nowIdx + peakOff]);
+        const peakTime = new Date(times[windowStart + peakOff]);
         const hh = String(peakTime.getHours()).padStart(2, '0');
         const mm = String(peakTime.getMinutes()).padStart(2, '0');
 
         document.getElementById('liveRain').textContent =
           peak > 0 ? `${peak}% chance of rain at ${hh}:${mm}` : 'No rain expected';
+
+        // Sunrise / sunset / day length
+        if (d.daily && d.daily.time && d.daily.sunrise) {
+          const todayStr = dk(new Date()); // "YYYY-MM-DD"
+          const todayIdx = d.daily.time.indexOf(todayStr);
+          const yesterdayIdx = todayIdx > 0 ? todayIdx - 1 : -1;
+          if (todayIdx !== -1) {
+            const parse = str => {
+              const t = new Date(str);
+              return String(t.getHours()).padStart(2,'0') + ':' + String(t.getMinutes()).padStart(2,'0');
+            };
+            const rise   = parse(d.daily.sunrise[todayIdx]);
+            const set_   = parse(d.daily.sunset[todayIdx]);
+            const durSec = d.daily.daylight_duration[todayIdx];
+            const h = Math.floor(durSec / 3600);
+            const m = Math.floor((durSec % 3600) / 60);
+            let diffHtml = '';
+            if (yesterdayIdx !== -1) {
+              const diffMin = Math.round((durSec - d.daily.daylight_duration[yesterdayIdx]) / 60);
+              if (diffMin > 0)
+                diffHtml = ` <strong style="color:#1D9E75">+${diffMin} min</strong>`;
+              else if (diffMin < 0)
+                diffHtml = ` <strong style="color:#E74C3C">${diffMin} min</strong>`;
+            }
+            document.getElementById('liveSunrise').innerHTML =
+              `🌅 ${rise} | 🌇 ${set_} | ☀️ ${h}h ${m}min${diffHtml}`;
+          }
+        }
       })
       .catch(() => {
         document.getElementById('liveWeather').textContent = WEATHER_NAME;
       });
   }
   fetchWeather();
+  fetchNameday();
+  renderMoon();
   setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
 
   /* ── Today's tasks ── */
@@ -2268,6 +2491,13 @@
           t.status = sel.value;
           if (sel.value === 'done' && !t.completedAt) t.completedAt = roundToNearest30(Date.now());
           if (sel.value !== 'done') delete t.completedAt;
+          // If child goes inprogress, promote parent too (unless already done)
+          if (sel.value === 'inprogress' && t.parentId) {
+            const parent = planTasks.find(p => p.id === t.parentId);
+            if (parent && parent.status === 'todo') {
+              parent.status = 'inprogress';
+            }
+          }
           savePlan(); renderPlan(); renderCompleted();
         }
       });
@@ -2314,8 +2544,12 @@
         entries.push(entry);
         if (t && t.status === 'todo') {
           t.status = 'inprogress';
+          if (t.parentId) {
+            const parent = planTasks.find(p => p.id === t.parentId);
+            if (parent && parent.status === 'todo') parent.status = 'inprogress';
+          }
           savePlan();
-          renderPlan(); // immediate visual update before full render
+          renderPlan();
         }
         viewDate = new Date();
         save(); startTimer(entry.id); render();
@@ -2800,8 +3034,8 @@
         const d  = new Date(t.completedAt);
         const mo = d.toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
         const hh = d.getHours(), mm = d.getMinutes();
-        const isMidnight = hh === 0 && mm === 0; // sentinel = time unknown
-        whenStr = isMidnight
+        const isSentinel = (hh === 0 && mm === 0) || (hh === 23 && mm === 59);
+        whenStr = isSentinel
           ? `completed ${mo}`
           : `completed ${mo} at ${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
       } else if (t.date) {
