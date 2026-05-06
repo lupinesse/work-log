@@ -679,6 +679,90 @@
   }
   .newday-dismiss:hover { background: var(--bg2); color: var(--text2); }
   /* ── Export ── */
+  /* ── Emergency Mode ── */
+  body.emergency .stats,
+  body.emergency .header,
+  body.emergency #planSection,
+  body.emergency #completedSection,
+  body.emergency #distractionSection,
+  body.emergency #captureRow,
+  body.emergency .time-log,
+  body.emergency #chart,
+  body.emergency #tbSection,
+  body.emergency .pomo-section,
+  body.emergency .export-section,
+  body.emergency #newdayBanner { display: none !important; }
+
+  body.emergency { background: var(--bg); }
+
+  .emergency-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 24px;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  body.emergency .emergency-screen { display: flex; }
+
+  .emergency-task {
+    font-size: 22px; font-weight: 600; color: var(--text);
+    max-width: 600px; line-height: 1.4;
+  }
+  .emergency-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text3); margin-bottom: 6px;
+  }
+  .emergency-next-wrap { width: 100%; max-width: 480px; }
+  .emergency-next {
+    width: 100%; font-size: 15px; padding: 10px 14px;
+    border-radius: var(--radius); border: 0.5px solid var(--border2);
+    background: var(--bg2); color: var(--text); font-family: var(--font);
+    outline: none; box-sizing: border-box; text-align: center;
+  }
+  .emergency-next:focus { border-color: #1D9E75; }
+  .emergency-next::placeholder { color: var(--text3); }
+  .emergency-exit {
+    font-size: 12px; color: var(--text3); background: none; border: none;
+    cursor: pointer; font-family: var(--font); padding: 4px 8px;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
+  .emergency-exit:hover { color: var(--text2); }
+  .emergency-btn {
+    font-size: 13px; padding: 5px 16px; border-radius: var(--radius);
+    border: 0.5px solid #1D9E75; background: none; color: #5DCAA5;
+    cursor: pointer; font-family: var(--font);
+  }
+  .emergency-btn:hover { background: rgba(29,158,117,0.12); }
+
+  /* Handoff note in timer bar */
+  .timer-handoff {
+    display: none; flex: 1; font-size: 12px; padding: 3px 10px;
+    border-radius: var(--radius); border: 0.5px solid var(--border2);
+    background: rgba(255,255,255,0.06); color: var(--text);
+    font-family: var(--font); outline: none;
+  }
+  .timer-handoff::placeholder { color: var(--text3); }
+  .timer-handoff.show { display: block; }
+  .timer-handoff-lbl {
+    display: none; font-size: 11px; color: #EF9F27; white-space: nowrap; flex-shrink: 0;
+  }
+  .timer-handoff-lbl.show { display: block; }
+
+  /* Handoff note shown on quick-pick items */
+  .qp-handoff { font-size: 10px; color: var(--text3); font-style: italic;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 200px; display: block; margin-top: 1px; }
+
+  .emergency-btn-trigger {
+    font-size: 11px; padding: 2px 10px; border-radius: var(--radius);
+    border: 0.5px solid #7B61FF; background: none; color: #7B61FF;
+    cursor: pointer; font-family: var(--font); flex-shrink: 0;
+  }
+  .emergency-btn-trigger:hover { background: rgba(123,97,255,0.12); }
+
   .export-section { margin-top: 18px; border-top: 0.5px solid var(--border); padding-top: 14px; }
   .export-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .export-title { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -814,9 +898,25 @@
   <span class="timer-task" id="timerTask"></span>
   <span class="timer-paused-lbl">paused</span>
   <span class="timer-elapsed" id="timerElapsed">00:00</span>
+  <span class="timer-handoff-lbl" id="timerHandoffLbl">handoff:</span>
+  <input class="timer-handoff" id="timerHandoff" placeholder="what should future you know?" />
   <button class="timer-distract" id="timerDistract">😵 distracted</button>
+  <button class="emergency-btn-trigger" id="emergencyBtn">🚨 focus</button>
   <button class="timer-pause" id="timerPause">pause</button>
   <button class="timer-stop" id="timerStop">stop</button>
+</div>
+
+<!-- Emergency Mode Screen -->
+<div class="emergency-screen" id="emergencyScreen">
+  <div>
+    <div class="emergency-label">currently working on</div>
+    <div class="emergency-task" id="emergencyTask">—</div>
+  </div>
+  <div class="emergency-next-wrap">
+    <div class="emergency-label">smallest next action</div>
+    <input class="emergency-next" id="emergencyNext" placeholder="what's the one thing to do right now?" />
+  </div>
+  <button class="emergency-exit" id="emergencyExit">exit focus mode</button>
 </div>
 
 <div class="stats">
@@ -1445,6 +1545,11 @@
     updateTabAndFavicon();
     updateTimerBarColor();
     checkChime(elapsed);
+    // Keep emergency screen in sync
+    if (emergencyMode) {
+      const emergEl = document.getElementById('emergencyTask');
+      if (emergEl) emergEl.textContent = entry ? entry.text : '—';
+    }
   }
   function updateTimerBar() {
     const bar = document.getElementById('timerBar');
@@ -1709,7 +1814,12 @@
       .slice(0,16);
     if (!recent.length) { qp.innerHTML=''; return; }
     qp.innerHTML = `<div class="qp-wrap"><div class="qp-label">recent tasks</div><div class="qp-list">${
-      recent.map(e=>`<button class="qp-item" data-text="${escHtml(e.text)}" data-tag="${e.tag}">${escHtml(e.text)}</button>`).join('')
+      recent.map(e => {
+        const note = getHandoffNote(e.text);
+        return `<button class="qp-item" data-text="${escHtml(e.text)}" data-tag="${e.tag}">
+          ${escHtml(e.text)}${note ? `<span class="qp-handoff">↩ ${escHtml(note)}</span>` : ''}
+        </button>`;
+      }).join('')
     }</div></div>`;
     qp.querySelectorAll('.qp-item').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1877,6 +1987,96 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ── Emergency Mode ── */
+  let emergencyMode = false;
+
+  function enterEmergency() {
+    emergencyMode = true;
+    document.body.classList.add('emergency');
+    const entry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+    document.getElementById('emergencyTask').textContent = entry ? entry.text : 'No active task — start one first';
+    // Restore any saved next action
+    const saved = entry ? (localStorage.getItem('wl_emergency_next_' + entry.id) || '') : '';
+    document.getElementById('emergencyNext').value = saved;
+    document.getElementById('emergencyNext').focus();
+  }
+
+  function exitEmergency() {
+    emergencyMode = false;
+    document.body.classList.remove('emergency');
+    // Save the next action note
+    const entry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+    const note  = document.getElementById('emergencyNext').value.trim();
+    if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
+    else if (entry)    localStorage.removeItem('wl_emergency_next_' + entry.id);
+  }
+
+  document.getElementById('emergencyBtn').addEventListener('click', () => {
+    emergencyMode ? exitEmergency() : enterEmergency();
+  });
+  document.getElementById('emergencyExit').addEventListener('click', exitEmergency);
+  // Escape key exits emergency mode
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && emergencyMode) exitEmergency();
+  });
+
+  /* ── Transition handoff note ── */
+  function showHandoffInput() {
+    document.getElementById('timerHandoff').classList.add('show');
+    document.getElementById('timerHandoffLbl').classList.add('show');
+    document.getElementById('timerHandoff').focus();
+  }
+
+  function hideHandoffInput() {
+    document.getElementById('timerHandoff').classList.remove('show');
+    document.getElementById('timerHandoffLbl').classList.remove('show');
+    document.getElementById('timerHandoff').value = '';
+  }
+
+  function getHandoffNote(entryText) {
+    try {
+      const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+      return notes[entryText.toLowerCase().trim()] || null;
+    } catch(e) { return null; }
+  }
+
+  function saveHandoffNote(entryText, note) {
+    try {
+      const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+      if (note) notes[entryText.toLowerCase().trim()] = note;
+      else delete notes[entryText.toLowerCase().trim()];
+      localStorage.setItem('wl_handoff', JSON.stringify(notes));
+    } catch(e) {}
+  }
+
+  // When stop is clicked: show handoff input, save note on confirm
+  document.getElementById('timerStop').removeEventListener('click', stopTimer);
+  document.getElementById('timerStop').addEventListener('click', () => {
+    const handoffEl = document.getElementById('timerHandoff');
+    if (!handoffEl.classList.contains('show')) {
+      // First click — show handoff input
+      showHandoffInput();
+      document.getElementById('timerStop').textContent = 'done ✓';
+    } else {
+      // Second click — save note and stop
+      const entry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+      const note  = handoffEl.value.trim();
+      if (entry) saveHandoffNote(entry.text, note);
+      hideHandoffInput();
+      document.getElementById('timerStop').textContent = 'stop';
+      if (emergencyMode) exitEmergency();
+      stopTimer();
+    }
+  });
+  // Enter key on handoff input also confirms
+  document.getElementById('timerHandoff').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('timerStop').click();
+    if (e.key === 'Escape') {
+      hideHandoffInput();
+      document.getElementById('timerStop').textContent = 'stop';
+    }
+  });
+
   document.getElementById('exportBtn').addEventListener('click', exportTxt);
   document.getElementById('backupBtn').addEventListener('click', exportBackup);
 
@@ -1884,7 +2084,6 @@
   document.getElementById('addBtn').addEventListener('click',()=>addEntry(false));
   document.getElementById('timerBtn').addEventListener('click',()=>addEntry(true));
   document.getElementById('captureInput').addEventListener('keydown',e=>{if(e.key==='Enter')addEntry(false);});
-  document.getElementById('timerStop').addEventListener('click',stopTimer);
   document.getElementById('timerPause').addEventListener('click',()=>{
     if(activeTimer&&activeTimer.paused) resumeTimer(); else pauseTimer();
   });

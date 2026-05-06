@@ -361,6 +361,120 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 15. Emergency Mode ────────────────────────────────────────────────────
+  console.log('\n15. Emergency Mode');
+  {
+    const today   = dk(new Date());
+    const entries = [{ id: 'em1', text: 'Emergency task', tag: 'work', ts: Date.now() - 30000, date: today }];
+    const page    = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.evaluate(() => window.__wl.startTimer('em1'));
+    await page.waitForTimeout(400);
+
+    // Enter emergency mode
+    await page.evaluate(() => document.getElementById('emergencyBtn').click());
+    await page.waitForTimeout(200);
+
+    assert('Body has emergency class',      await page.evaluate(() => document.body.classList.contains('emergency')));
+    assert('Emergency screen visible',      await page.evaluate(() => document.getElementById('emergencyScreen').style.display !== 'none' || document.body.classList.contains('emergency')));
+    assert('Emergency shows task name',     await page.evaluate(() => document.getElementById('emergencyTask').textContent === 'Emergency task'));
+    assert('Stats hidden in emergency',     await page.evaluate(() => {
+      const stats = document.querySelector('.stats');
+      return getComputedStyle(stats).display === 'none';
+    }));
+    assert('Plan section hidden',           await page.evaluate(() => {
+      const plan = document.getElementById('planSection');
+      return !plan || getComputedStyle(plan).display === 'none';
+    }));
+    assert('Emergency next input exists',   await page.evaluate(() => !!document.getElementById('emergencyNext')));
+
+    // Type a next action
+    await page.evaluate(() => { document.getElementById('emergencyNext').value = 'Check the token expiry'; });
+
+    // Exit emergency mode
+    await page.evaluate(() => document.getElementById('emergencyExit').click());
+    await page.waitForTimeout(200);
+
+    assert('Body loses emergency class on exit', await page.evaluate(() => !document.body.classList.contains('emergency')));
+    assert('Stats visible again after exit',     await page.evaluate(() => {
+      const stats = document.querySelector('.stats');
+      return getComputedStyle(stats).display !== 'none';
+    }));
+
+    // Re-enter — next action should be restored from localStorage
+    await page.evaluate(() => document.getElementById('emergencyBtn').click());
+    await page.waitForTimeout(200);
+    const restored = await page.evaluate(() => document.getElementById('emergencyNext').value);
+    assert('Next action restored on re-entry', restored === 'Check the token expiry');
+
+    // Escape key exits
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    assert('Escape exits emergency mode', await page.evaluate(() => !document.body.classList.contains('emergency')));
+
+    await page.close();
+  }
+
+  // ── 16. Transition handoff note ───────────────────────────────────────────
+  console.log('\n16. Transition handoff note');
+  {
+    const today   = dk(new Date());
+    const entries = [{ id: 'hn1', text: 'Handoff task', tag: 'work', ts: Date.now() - 30000, date: today }];
+    const page    = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.evaluate(() => window.__wl.startTimer('hn1'));
+    await page.waitForTimeout(400);
+
+    // First stop click — should show handoff input
+    await page.evaluate(() => document.getElementById('timerStop').click());
+    await page.waitForTimeout(200);
+
+    assert('Handoff input appears on first stop click', await page.evaluate(() =>
+      document.getElementById('timerHandoff').classList.contains('show')
+    ));
+    assert('Stop button changes to done ✓', await page.evaluate(() =>
+      document.getElementById('timerStop').textContent.includes('done')
+    ));
+    assert('Timer still running during handoff', await page.evaluate(() =>
+      !!window.__wl.activeTimer()
+    ));
+
+    // Type handoff note
+    await page.evaluate(() => { document.getElementById('timerHandoff').value = 'Continue from line 42'; });
+
+    // Second click — saves note and stops
+    await page.evaluate(() => document.getElementById('timerStop').click());
+    await page.waitForTimeout(300);
+
+    assert('Timer stopped after handoff confirm',   !await page.evaluate(() => !!window.__wl.activeTimer()));
+    assert('Handoff input hidden after stop',       !await page.evaluate(() =>
+      document.getElementById('timerHandoff').classList.contains('show')
+    ));
+    assert('Stop button restored to "stop"',        await page.evaluate(() =>
+      document.getElementById('timerStop').textContent === 'stop'
+    ));
+
+    // Check note was saved
+    const saved = await page.evaluate(() => {
+      try {
+        const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+        return notes['handoff task'] || null;
+      } catch(e) { return null; }
+    });
+    assert('Handoff note saved to localStorage',    saved === 'Continue from line 42');
+
+    // Check note appears in quick pick
+    await page.evaluate(() => window.__wl.startTimer('hn1'));
+    await page.waitForTimeout(300);
+    await page.evaluate(() => window.__wl.stopTimer());
+    await page.waitForTimeout(300);
+    // Need another entry to trigger quick pick render with at least one recent task
+    await page.evaluate(() => window.__wl.render());
+    await page.waitForTimeout(300);
+    const qpHtml = await page.evaluate(() => document.getElementById('quickPick')?.innerHTML || '');
+    assert('Handoff note shown in quick pick', qpHtml.includes('Continue from line 42'));
+
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   console.log('\n' + '─'.repeat(48));
