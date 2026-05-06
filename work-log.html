@@ -3074,6 +3074,21 @@
   renderPomoLog();
   renderCompleted();
   resumeTimerIfActive();
+
+  // Test harness — only active when ?test=1 in URL
+  if (new URLSearchParams(window.location.search).get('test') === '1') {
+    window.__wl = {
+      roundToNearest30, dk, getISOWeek, totalISOWeeks,
+      entries, categories, planTasks, blocks,
+      activeTimer: () => activeTimer,
+      load, save, savePlan, loadPlan,
+      autoCarryTasks, patchCarriedTasks,
+      render, renderPlan, renderCompleted,
+      startTimer, stopTimer, pauseTimer,
+      getCat, escHtml,
+      getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
+    };
+  }
 })();
 </script>
 </body>
