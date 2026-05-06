@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.open-meteo.com https://www.nimipaivat.fi; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -140,6 +141,12 @@
   .timer-stop:hover { background: rgba(29,158,117,0.15); }
   .timer-bar.paused .timer-stop { border-color: #BA7517; color: #EF9F27; }
   .timer-bar.paused .timer-stop:hover { background: rgba(186,117,23,0.15); }
+  .timer-distract {
+    font-size: 11px; padding: 2px 10px; border-radius: var(--radius);
+    border: 0.5px solid #7B61FF; background: none; color: #7B61FF;
+    cursor: pointer; font-family: var(--font); white-space: nowrap;
+  }
+  .timer-distract:hover { background: rgba(123,97,255,0.12); }
 
   /* Timer start button */
   .timer-btn {
@@ -431,10 +438,16 @@
   .plan-item.done .plan-text { text-decoration: line-through; color: var(--text3); }
   .plan-item.done .plan-cat-line { opacity: 0.5; }
   @keyframes plan-active-pulse {
-    0%,100% { background: transparent; }
-    50%      { background: rgba(186,117,23,0.12); }
+    0%,100% { background: rgba(186,117,23,0.08); }
+    50%      { background: rgba(186,117,23,0.20); }
   }
-  .plan-item.active-timer { animation: plan-active-pulse 2s ease-in-out infinite; }
+  .plan-item.active-timer {
+    animation: plan-active-pulse 2s ease-in-out infinite;
+    border-left: 3px solid #EF9F27;
+    padding-left: 6px;
+    border-radius: var(--radius);
+  }
+  .plan-item.active-timer .plan-text { color: #FAC775; }
   .plan-item.active-timer:hover { animation: none; background: var(--bg2); }
   /* Child indentation lives inside plan-left, not on the item — keeps columns aligned */
   .plan-item.plan-child { }
@@ -609,6 +622,13 @@
   .tb-block-start:hover { opacity: 1 !important; }
   .tb-block.plan.task-done { opacity: 0.35; }
   .tb-block.plan.task-done .tb-block-name { text-decoration: line-through; }
+  .tb-untracked {
+    position: absolute; left: 0; right: 0; pointer-events: none;
+    display: flex; align-items: center; padding-left: 8px;
+    font-size: 10px; color: var(--text3); opacity: 0.45;
+    font-style: italic; letter-spacing: 0.03em;
+    border-top: 0.5px dashed var(--border);
+  }
   .tb-now-line {
     position: absolute; left: 0; right: 0; z-index: 20; pointer-events: none;
   }
@@ -794,6 +814,7 @@
   <span class="timer-task" id="timerTask"></span>
   <span class="timer-paused-lbl">paused</span>
   <span class="timer-elapsed" id="timerElapsed">00:00</span>
+  <button class="timer-distract" id="timerDistract">😵 distracted</button>
   <button class="timer-pause" id="timerPause">pause</button>
   <button class="timer-stop" id="timerStop">stop</button>
 </div>
@@ -840,12 +861,14 @@
 
 <div id="timeline"></div>
 <div id="chart"></div>
+<div id="distractionSection" style="margin-top:10px"></div>
 
 <div class="export-section">
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px">
       <button class="export-btn" id="exportBtn">download .txt</button>
+      <button class="export-btn" id="backupBtn">⬇ backup .json</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
   </div>
@@ -965,20 +988,54 @@
   let planDragId   = null;
 
   /* ── Load / Save ── */
+  // Schema validators — strip malformed records rather than rejecting the whole array
+  function validEntry(e) {
+    return e && typeof e.id === 'string' && typeof e.text === 'string' &&
+           typeof e.ts === 'number' && typeof e.date === 'string' &&
+           /^\d{4}-\d{2}-\d{2}$/.test(e.date);
+  }
+  function validCategory(c) {
+    return c && typeof c.id === 'string' && typeof c.label === 'string' &&
+           typeof c.color === 'string';
+  }
+  function validPlanTask(t) {
+    return t && typeof t.id === 'string' && typeof t.text === 'string' &&
+           typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
+           ['todo','inprogress','done'].includes(t.status);
+  }
+  function validBlock(b) {
+    return b && typeof b.id === 'string' && typeof b.date === 'string' &&
+           typeof b.slot === 'number' && typeof b.duration === 'number' &&
+           typeof b.text === 'string';
+  }
+  function validTimer(t) {
+    return t && typeof t.entryId === 'string' && typeof t.startTs === 'number';
+  }
+  function validPomoEntry(e) {
+    return e && typeof e.ts === 'number' && typeof e.mins === 'number';
+  }
+
   function load() {
-    try { entries     = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]'); } catch(e) { entries = []; }
-    try { activeTimer = JSON.parse(localStorage.getItem(STORE_TIMER)   || 'null'); } catch(e) { activeTimer = null; }
     try {
-      const saved = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
-      if (saved && saved.length) categories = saved;
+      const raw = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
+      entries = Array.isArray(raw) ? raw.filter(validEntry) : [];
+    } catch(e) { entries = []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
+      activeTimer = raw && validTimer(raw) ? raw : null;
+    } catch(e) { activeTimer = null; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
+      if (Array.isArray(raw) && raw.length) categories = raw.filter(validCategory);
     } catch(e) {}
     // Auto-restore from snapshot if entries are unexpectedly empty
     if (!entries.length) {
       try {
         const snap = JSON.parse(localStorage.getItem('wl_snapshot') || 'null');
-        if (snap && snap.entries && snap.entries.length) {
-          entries = snap.entries;
-          if (snap.categories && snap.categories.length) categories = snap.categories;
+        if (snap && Array.isArray(snap.entries) && snap.entries.length) {
+          entries = snap.entries.filter(validEntry);
+          if (Array.isArray(snap.categories) && snap.categories.length)
+            categories = snap.categories.filter(validCategory);
           console.warn('Restored from snapshot — entries were missing from primary storage');
         }
       } catch(e) {}
@@ -997,7 +1054,17 @@
   }
 
   /* ── Epic helpers ── */
-  function getCat(id)      { return categories.find(c => c.id === id) || categories.find(c => c.id === 'other'); }
+  function safeCssColor(c) {
+    // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
+    return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
+      ? c : '#888780';
+  }
+
+  function getCat(id) {
+    const cat = categories.find(c => c.id === id) || categories.find(c => c.id === 'other');
+    if (!cat) return { id: 'other', label: 'other', color: '#888780' };
+    return { ...cat, color: safeCssColor(cat.color) };
+  }
   function getCatColor(id) { return getCat(id).color; }
   function getCatLabel(id) { return getCat(id).label; }
 
@@ -1206,6 +1273,7 @@
   }
   function startTimer(entryId) {
     if (timerInterval) clearInterval(timerInterval);
+    _lastChimeMinute = null;
     activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
     save(); tickTimer();
     timerInterval = setInterval(tickTimer, 1000);
@@ -1216,7 +1284,7 @@
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     activeTimer.accumulatedMs = getElapsedMs();
     activeTimer.paused = true; activeTimer.startTs = null;
-    save(); updateTimerBar();
+    save(); updateTimerBar(); updateTabAndFavicon();
   }
   function resumeTimer() {
     if (!activeTimer || !activeTimer.paused) return;
@@ -1230,7 +1298,12 @@
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     const entry = entries.find(e => e.id === activeTimer.entryId);
     if (entry) entry.tsEnd = roundToNearest30(entry.ts + getElapsedMs());
-    activeTimer = null; save(); render();
+    activeTimer = null; _lastChimeMinute = null; save(); render();
+    const bar = document.getElementById('timerBar');
+    if (bar) { bar.style.background = ''; bar.style.borderColor = ''; }
+    const pulse = document.querySelector('.timer-pulse');
+    if (pulse) pulse.style.background = '';
+    updateTabAndFavicon();
   }
   function updateLiveBlock() {
     const el = document.getElementById('tb-live-block');
@@ -1253,13 +1326,125 @@
     }
   }
 
+  // Favicon — drawn on a 32×32 canvas as a colored dot
+  const HYPERFOCUS_MINS = 90;
+  let   _faviconState   = null; // track last state to avoid redundant redraws
+
+  function setFavicon(state) {
+    if (state === _faviconState) return;
+    _faviconState = state;
+    const colors = { active: '#1D9E75', paused: '#EF9F27', hyperfocus: '#E74C3C', idle: null };
+    const color  = colors[state];
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    if (!color) { link.href = ''; return; }
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    link.href = c.toDataURL();
+  }
+
+  function updateTabAndFavicon() {
+    if (!activeTimer) {
+      document.title = 'Work Log';
+      setFavicon('idle');
+      return;
+    }
+    const entry      = entries.find(e => e.id === activeTimer.entryId);
+    const taskText   = entry ? entry.text : '…';
+    const elapsedMs  = getElapsedMs();
+    const elapsed    = fmtElapsed(elapsedMs);
+    const isMeeting  = entry && entry.text.startsWith('📅');
+    const isHyperfocus = !isMeeting && elapsedMs > HYPERFOCUS_MINS * 60 * 1000;
+
+    if (activeTimer.paused) {
+      document.title = `⏸ ${elapsed} — ${taskText}`;
+      setFavicon('paused');
+    } else if (isHyperfocus) {
+      document.title = `🔴 ${elapsed} — ${taskText}`;
+      setFavicon('hyperfocus');
+    } else {
+      document.title = `▶ ${elapsed} — ${taskText}`;
+      setFavicon('active');
+    }
+  }
+
+  // Colour shift: green (#1D9E75 = hsl 158,69,51) → red (#E74C3C = hsl 5,72,57) over HYPERFOCUS_MINS
+  function timerBarColor(elapsedMs, paused) {
+    if (paused) return null; // let CSS paused class handle it
+    const t = Math.min(elapsedMs / (HYPERFOCUS_MINS * 60 * 1000), 1); // 0→1
+    const hue  = Math.round(158 - 153 * t);   // 158 (green) → 5 (red)
+    const sat  = Math.round(69  +   3 * t);    // 69% → 72%
+    const lit  = Math.round(51  +   6 * t);    // 51% → 57%
+    return `hsl(${hue}, ${sat}%, ${lit}%)`;
+  }
+
+  // Chime system
+  const CHIME_INTERVALS_MINS = [15, 30]; // user can change these
+  let   _lastChimeMinute = null;
+
+  function checkChime(elapsedMs) {
+    if (!activeTimer || activeTimer.paused) return;
+    const elapsedMins = Math.floor(elapsedMs / 60000);
+    if (elapsedMins === _lastChimeMinute) return;
+    if (CHIME_INTERVALS_MINS.some(n => elapsedMins > 0 && elapsedMins % n === 0)) {
+      _lastChimeMinute = elapsedMins;
+      playChime();
+    }
+  }
+
+  function playChime() {
+    try {
+      const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+      const freq = [528, 660]; // two soft tones
+      freq.forEach((f, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = f;
+        const start = ctx.currentTime + i * 0.18;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.18, start + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
+        osc.start(start); osc.stop(start + 0.5);
+      });
+    } catch(e) {}
+  }
+
+  function updateTimerBarColor() {
+    const bar = document.getElementById('timerBar');
+    if (!bar || !activeTimer) return;
+    if (activeTimer.paused) {
+      // Let CSS handle paused state — remove inline styles
+      bar.style.background = '';
+      bar.style.borderColor = '';
+      const pulse = bar.querySelector('.timer-pulse');
+      if (pulse) pulse.style.background = '';
+      return;
+    }
+    const color = timerBarColor(getElapsedMs(), false);
+    // Derive a darker background from the same hue
+    const t     = Math.min(getElapsedMs() / (HYPERFOCUS_MINS * 60 * 1000), 1);
+    const hue   = Math.round(158 - 153 * t);
+    bar.style.background  = `hsl(${hue}, 60%, 8%)`;
+    bar.style.borderColor = color;
+    const pulse = bar.querySelector('.timer-pulse');
+    if (pulse) pulse.style.background = color;
+  }
+
   function tickTimer() {
     if (!activeTimer) return;
-    const entry = entries.find(e => e.id === activeTimer.entryId);
+    const entry   = entries.find(e => e.id === activeTimer.entryId);
+    const elapsed = getElapsedMs();
     document.getElementById('timerBar').style.display = 'flex';
-    document.getElementById('timerTask').textContent = entry ? entry.text : '…';
-    document.getElementById('timerElapsed').textContent = fmtElapsed(getElapsedMs());
+    document.getElementById('timerTask').textContent    = entry ? entry.text : '…';
+    document.getElementById('timerElapsed').textContent = fmtElapsed(elapsed);
     updateLiveBlock();
+    updateTabAndFavicon();
+    updateTimerBarColor();
+    checkChime(elapsed);
   }
   function updateTimerBar() {
     const bar = document.getElementById('timerBar');
@@ -1672,7 +1857,28 @@
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
+  function exportBackup() {
+    const backup = {
+      version: '1',
+      exported: new Date().toISOString(),
+      entries,
+      categories,
+      planTasks,
+      blocks,
+      pomoLog: (() => { try { return JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]'); } catch(e) { return []; } })(),
+      devLog:        (() => { try { return JSON.parse(localStorage.getItem(STORE_DEV_LOG)        || '[]'); } catch(e) { return []; } })(),
+      distractions:  (() => { try { return JSON.parse(localStorage.getItem(STORE_DISTRACTIONS)  || '[]'); } catch(e) { return []; } })(),
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const a    = document.createElement('a');
+    a.href     = URL.createObjectURL(blob);
+    a.download = `work-log-backup-${dk(new Date())}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   document.getElementById('exportBtn').addEventListener('click', exportTxt);
+  document.getElementById('backupBtn').addEventListener('click', exportBackup);
 
   /* ── Event listeners ── */
   document.getElementById('addBtn').addEventListener('click',()=>addEntry(false));
@@ -1862,7 +2068,10 @@
   }
 
   function pomoGetLog() {
-    try { return JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]'); } catch(e) { return []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
+      return Array.isArray(raw) ? raw.filter(validPomoEntry) : [];
+    } catch(e) { return []; }
   }
 
   function renderPomoLog() {
@@ -2250,7 +2459,7 @@
     if (!el) return;
 
     const fallback = () => {
-      if (FI_NAMEDAYS[key]) el.innerHTML = `🎂 Today\'s name day: <strong>${escHtml(FI_NAMEDAYS[key])}</strong>`;
+      if (FI_NAMEDAYS[key]) el.innerHTML = `🎂 Today\'s name day: <span style="font-weight:500">${escHtml(FI_NAMEDAYS[key])}</span>`;
     };
 
     // Try nimipaivat.fi — parse title "Nimipäivä D.M. Name"
@@ -2259,7 +2468,12 @@
       .then(html => {
         const m = html.match(/<title>Nimip[äa]iv[äa]\s+[\d.]+\s+(.+?)<\/title>/i);
         if (m && m[1].trim()) {
-          el.innerHTML = `🎂 Today\'s name day: <strong>${escHtml(m[1].trim())}</strong>`;
+          const name = m[1].trim();
+          // Validate: max 60 chars, Unicode letters/spaces/hyphens/commas only
+          const safe = name.length <= 60 && /^[\p{L}\s,\-\.]+$/u.test(name);
+          if (safe) {
+            el.innerHTML = `🎂 Today\'s name day: <span style="font-weight:500">${escHtml(name)}</span>`;
+          } else { fallback(); }
         } else { fallback(); }
       })
       .catch(fallback);
@@ -2334,6 +2548,7 @@
   fetchNameday();
   renderMoon();
   renderFlagDay();
+  renderDistractionCount();
   setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
 
   /* ── Today's tasks ── */
@@ -2343,7 +2558,10 @@
   let editingPlanId = null;
 
   function loadPlan() {
-    try { planTasks = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]'); } catch(e) { planTasks = []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]');
+      planTasks = Array.isArray(raw) ? raw.filter(validPlanTask) : [];
+    } catch(e) { planTasks = []; }
   }
   function savePlan() { localStorage.setItem(STORE_PLAN, JSON.stringify(planTasks)); }
 
@@ -2744,7 +2962,10 @@
   const notifiedBlocks = new Set();
 
   function loadBlocks() {
-    try { blocks = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]'); } catch(e) { blocks = []; }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
+      blocks = Array.isArray(raw) ? raw.filter(validBlock) : [];
+    } catch(e) { blocks = []; }
   }
   function saveBlocks() { localStorage.setItem(STORE_BLOCKS, JSON.stringify(blocks)); }
 
@@ -2752,8 +2973,10 @@
     const total = TB_START * 60 + slot * 30;
     return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
   }
-  function timeToSlot(hhmm) {
-    const [h,m] = hhmm.split(':').map(Number);
+  function timeToSlot(hhmm, m2) {
+    // Accept either "HH:MM" string or (hours, minutes) numbers
+    const h = m2 !== undefined ? hhmm : parseInt(hhmm.split(':')[0]);
+    const m = m2 !== undefined ? m2   : parseInt(hhmm.split(':')[1]);
     return (h - TB_START) * 2 + Math.round(m / 30);
   }
 
@@ -2900,6 +3123,40 @@
       });
       grid.appendChild(el);
     });
+
+    // Untracked time — show faint label on past slots with no coverage
+    if (isToday(viewDate) || !isToday(viewDate)) { // show on any viewed date
+      const nowMins = isToday(viewDate)
+        ? new Date().getHours() * 60 + new Date().getMinutes()
+        : TB_END * 60; // for past days, all slots are "past"
+
+      // Build a set of 30-min slots that have coverage (from entries or planned blocks)
+      const coveredSlots = new Set();
+      entries.filter(e => e.date === dateKey && e.tsEnd).forEach(e => {
+        const startSlot = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
+        const endSlot   = timeToSlot(new Date(e.tsEnd).getHours(), new Date(e.tsEnd).getMinutes());
+        for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) coveredSlots.add(s);
+      });
+      if (activeTimer && liveEntry && liveEntry.date === dateKey) {
+        const startSlot = timeToSlot(new Date(liveEntry.ts).getHours(), new Date(liveEntry.ts).getMinutes());
+        for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
+      }
+      blocks.filter(b => b.date === dateKey).forEach(b => {
+        for (let s = b.slot; s < Math.min(TB_SLOTS, b.slot + b.duration); s++) coveredSlots.add(s);
+      });
+
+      for (let slot = 0; slot < TB_SLOTS; slot++) {
+        const slotStartMins = TB_START * 60 + slot * 30;
+        const isPast = slotStartMins + 30 <= nowMins; // slot fully elapsed
+        if (!isPast || coveredSlots.has(slot)) continue;
+        const untracked = document.createElement('div');
+        untracked.className = 'tb-untracked';
+        untracked.style.top    = (slot * TB_SLOT_H + 1) + 'px';
+        untracked.style.height = (TB_SLOT_H - 2) + 'px';
+        untracked.textContent  = 'untracked';
+        grid.appendChild(untracked);
+      }
+    }
 
     // Current time indicator (today only)
     if (isToday(viewDate)) {
@@ -3237,8 +3494,68 @@
   document.getElementById('completedHeader').addEventListener('click', () => {
     completedCollapsed = !completedCollapsed; renderCompleted();
   });
+  /* ── Distraction tracking ── */
+  function loadDistractions() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_DISTRACTIONS) || '[]');
+      return Array.isArray(raw) ? raw.filter(d => d && typeof d.ts === 'number') : [];
+    } catch(e) { return []; }
+  }
+  function saveDistraction(note) {
+    const entry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+    const d = {
+      ts:   Date.now(),
+      date: dk(new Date()),
+      task: entry ? entry.text : null,
+      note: note || null,
+    };
+    const all = loadDistractions();
+    all.push(d);
+    localStorage.setItem(STORE_DISTRACTIONS, JSON.stringify(all));
+    renderDistractionCount();
+  }
+  function renderDistractionCount() {
+    const el = document.getElementById('distractionSection');
+    if (!el) return;
+    const today = dk(new Date());
+    const all   = loadDistractions().filter(d => d.date === today);
+    if (!all.length) {
+      el.innerHTML = '';
+      return;
+    }
+    const rows = all.map(d => {
+      const t  = new Date(d.ts);
+      const hh = String(t.getHours()).padStart(2,'0');
+      const mm = String(t.getMinutes()).padStart(2,'0');
+      const task = d.task ? `<span style="color:var(--text3);font-size:11px"> — ${escHtml(d.task)}</span>` : '';
+      const note = d.note ? `<span style="color:var(--text2)"> "${escHtml(d.note)}"</span>` : '';
+      return `<div style="font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border)">${hh}:${mm}${task}${note}</div>`;
+    }).join('');
+    el.innerHTML = `
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:6px">
+        😵 ${all.length} distraction${all.length === 1 ? '' : 's'} today
+      </div>
+      ${rows}`;
+  }
+
+  document.getElementById('timerDistract').addEventListener('click', () => {
+    // Pause the timer if running
+    if (activeTimer && !activeTimer.paused) pauseTimer();
+    // Optional note — short prompt, easily dismissable
+    const note = prompt('What pulled you away? (optional — press Enter to skip)');
+    if (note === null) {
+      // Cancelled — resume timer without logging
+      if (activeTimer && activeTimer.paused) pauseTimer();
+      return;
+    }
+    saveDistraction(note.trim() || null);
+    // Timer stays paused — user resumes manually
+    renderDistractionCount();
+  });
+
   /* ── Dev changelog ── */
   const STORE_DEV_LOG = 'wl_dev_log';
+  const STORE_DISTRACTIONS = 'wl_distractions_v1';
   const TEST_AREA_NAMES = {
     1:'Page load', 2:'roundToNearest30', 3:'localStorage round-trip',
     4:'Timer display', 5:'Timer persistence', 6:'completedAt',
@@ -3285,9 +3602,10 @@
 
     // Auto-export
     exportTxt();
+    exportBackup();
     localStorage.setItem('wl_last_export', todayKey);
     document.getElementById('eodExportStatus').innerHTML =
-      `<div class="eod-exported">✅ Time log exported automatically</div>`;
+      `<div class="eod-exported">✅ Time log (.txt) and backup (.json) exported automatically</div>`;
 
     document.getElementById('eodSubtitle').textContent = dateStr;
 
@@ -3383,7 +3701,7 @@
       autoCarryTasks, patchCarriedTasks,
       render, renderPlan, renderCompleted,
       startTimer, stopTimer, pauseTimer,
-      getCat, escHtml,
+      getCat, escHtml, renderDistractionCount,
       getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
     };
   }
