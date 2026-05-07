@@ -245,7 +245,45 @@
   .cat-manage-btn.danger:hover { color: #C62828; border-color: #C62828; }
   .cat-manage-btn.add { margin-left: auto; border-style: dashed; }
   .cat-manage-btn.add:hover { border-style: solid; }
-  .cat-inline-edit { display: flex; align-items: center; gap: 5px; flex: 1; }
+  .plan-emoji-btn {
+    font-size: 14px; cursor: pointer; line-height: 1; flex-shrink: 0;
+    opacity: 0.5; padding: 0 2px; border-radius: 3px; user-select: none;
+    background: none; border: none; font-family: var(--font);
+  }
+  .plan-emoji-btn:hover { opacity: 1; background: var(--bg3); }
+  .plan-emoji-btn.has-emoji { opacity: 1; }
+
+  .emoji-picker {
+    position: absolute; z-index: 200;
+    background: var(--bg2); border: 0.5px solid var(--border2);
+    border-radius: var(--radius); padding: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    width: 240px;
+  }
+  .emoji-picker-input {
+    width: 100%; box-sizing: border-box; margin-bottom: 8px;
+    font-size: 13px; padding: 4px 8px; background: var(--bg3);
+    border: 0.5px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: var(--font); outline: none;
+  }
+  .emoji-picker-grid {
+    display: flex; flex-wrap: wrap; gap: 2px; max-height: 140px; overflow-y: auto;
+  }
+  .emoji-picker-grid button {
+    font-size: 18px; padding: 3px 4px; background: none; border: none;
+    cursor: pointer; border-radius: 4px; line-height: 1;
+  }
+  .emoji-picker-grid button:hover { background: var(--bg3); }
+  .emoji-picker-clear {
+    margin-top: 8px; font-size: 11px; color: var(--text3); background: none;
+    border: none; cursor: pointer; font-family: var(--font); padding: 2px 0;
+  }
+  .emoji-picker-clear:hover { color: var(--text2); }
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    flex-shrink: 0; cursor: pointer; position: relative;
+    border: 1.5px solid rgba(255,255,255,0.25); box-sizing: border-box;
+    transition: transform 0.1s;
+  }
+  .cat-color-swatch:hover { transform: scale(1.25); } display: flex; align-items: center; gap: 5px; flex: 1; }
   .cat-inline-input {
     flex: 1; font-size: 13px; font-family: var(--font);
     border: 0.5px solid var(--info-text); border-radius: var(--radius);
@@ -334,7 +372,7 @@
 
   .edot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
   .dot-work     { background: #378ADD; }
-  .dot-meeting  { background: #D4537E; }
+  .dot-meeting  { background: #7EC8E3; }
   .dot-focus    { background: #1D9E75; }
   .dot-break    { background: #BA7517; }
   .dot-other    { background: #888780; }
@@ -404,7 +442,7 @@
   .chart-bar { height: 100%; border-radius: 3px; transition: width 0.4s cubic-bezier(.4,0,.2,1); min-width: 2px; }
   .chart-dur { font-size: 11px; color: var(--text2); font-family: var(--mono); min-width: 38px; flex-shrink: 0; }
   .bar-work     { background: #378ADD; }
-  .bar-meeting  { background: #D4537E; }
+  .bar-meeting  { background: #7EC8E3; }
   .bar-focus    { background: #1D9E75; }
   .bar-break    { background: #BA7517; }
   .bar-other    { background: #888780; }
@@ -743,11 +781,11 @@
   /* Handoff note in timer bar */
   .timer-handoff {
     display: none; flex: 1; font-size: 12px; padding: 3px 10px;
-    border-radius: var(--radius); border: 0.5px solid var(--border2);
-    background: rgba(255,255,255,0.06); color: var(--text);
+    border-radius: var(--radius); border: 0.5px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
     font-family: var(--font); outline: none;
   }
-  .timer-handoff::placeholder { color: var(--text3); }
+  .timer-handoff::placeholder { color: rgba(255,255,255,0.35); }
   .timer-handoff.show { display: block; }
   .timer-handoff-lbl {
     display: none; font-size: 11px; color: #EF9F27; white-space: nowrap; flex-shrink: 0;
@@ -1062,7 +1100,7 @@
 
   const DEFAULT_CATS = [
     { id: 'work',    label: 'work',       color: '#378ADD' },
-    { id: 'meeting', label: 'meeting',    color: '#D4537E' },
+    { id: 'meeting', label: 'meeting',    color: '#7EC8E3' },
     { id: 'focus',   label: 'deep focus', color: '#1D9E75' },
     { id: 'break',   label: 'break',      color: '#BA7517' },
     { id: 'other',   label: 'other',      color: '#888780' },
@@ -1204,7 +1242,9 @@
     if (editingCatId) {
       const c = getCat(editingCatId);
       manageHtml = `<div class="cat-inline-edit">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0"></span>
+        <label class="cat-color-swatch" title="change colour" style="background:${c.color}">
+          <input type="color" id="catColorPick" value="${c.color}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
+        </label>
         <input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
         <button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&#10003;</button>
         <button class="cat-inline-cancel" id="catEditCancel">&#10005;</button>
@@ -1243,6 +1283,16 @@
     const renBtn = document.getElementById('catRenBtn');
     if (renBtn) renBtn.addEventListener('click', () => { editingCatId = selectedTag; addingNewCat = false; renderTagRow(); });
 
+    // Colour picker: live preview
+    const colorPick = document.getElementById('catColorPick');
+    const colorSwatch = document.querySelector('.cat-color-swatch');
+    if (colorPick && colorSwatch) {
+      colorSwatch.addEventListener('click', () => colorPick.click());
+      colorPick.addEventListener('input', () => {
+        colorSwatch.style.background = colorPick.value;
+      });
+    }
+
     // Rename: save
     const editOk = document.getElementById('catEditOk');
     if (editOk) {
@@ -1254,7 +1304,10 @@
         if (categories.find(c => c.id !== id && c.label.toLowerCase() === label.toLowerCase())) {
           input.style.borderColor = '#C62828'; input.focus(); return;
         }
-        getCat(id).label = label;
+        const cat = getCat(id);
+        cat.label = label;
+        const cp = document.getElementById('catColorPick');
+        if (cp) cat.color = cp.value;
         editingCatId = null; save(); renderTagRow(); render();
       };
       editOk.addEventListener('click', saveEdit);
@@ -1842,10 +1895,7 @@
     if (!recent.length) { qp.innerHTML=''; return; }
     qp.innerHTML = `<div class="qp-wrap"><div class="qp-label">recent tasks</div><div class="qp-list">${
       recent.map(e => {
-        const note = getHandoffNote(e.text);
-        return `<button class="qp-item" data-text="${escHtml(e.text)}" data-tag="${e.tag}">
-          ${escHtml(e.text)}${note ? `<span class="qp-handoff">↩ ${escHtml(note)}</span>` : ''}
-        </button>`;
+        return `<button class="qp-item" data-text="${escHtml(e.text)}" data-tag="${e.tag}">${escHtml(e.text)}</button>`;
       }).join('')
     }</div></div>`;
     qp.querySelectorAll('.qp-item').forEach(btn => {
@@ -2786,7 +2836,23 @@
   }
   function savePlan() { localStorage.setItem(STORE_PLAN, JSON.stringify(planTasks)); }
 
+  // Enforce invariant: if any child is inprogress, its parent must also be inprogress
+  function promoteParents() {
+    let changed = false;
+    planTasks.forEach(t => {
+      if (t.parentId && t.status === 'inprogress') {
+        const parent = planTasks.find(p => p.id === t.parentId);
+        if (parent && parent.status === 'todo') {
+          parent.status = 'inprogress';
+          changed = true;
+        }
+      }
+    });
+    if (changed) savePlan();
+  }
+
   function renderPlan() {
+    promoteParents();
     const viewKey  = dk(viewDate);
     const todayKey     = dk(new Date());
     const allViewTasks  = planTasks.filter(t => t.date === viewKey);
@@ -2915,7 +2981,8 @@
         <select class="plan-status ${status==='done'?'done-st':status}" data-pid="${t.id}">${statusOpts(status)}</select>
         <div class="plan-left" ${isChild?`style="border-left: 2px solid ${parentCat.color}; padding-left: 22px;"`:''}>
           <div class="plan-top">
-            <span class="plan-text">${isLive ? `▶ <strong>${escHtml(t.text)}</strong>` : escHtml(t.text)}</span>
+            <button class="plan-emoji-btn${t.emoji?' has-emoji':''}" data-pid="${t.id}" title="add emoji">${t.emoji ? escHtml(t.emoji) : '＋'}</button>
+            <span class="plan-text">${isLive ? `▶ <strong>${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}</strong>` : `${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}`}</span>
           </div>
           ${parentLabel}
           ${!isChild ? `<div class="plan-cat-line" data-pid="${t.id}">
@@ -2987,6 +3054,10 @@
         if (!childTask || !parentTask || parentTask.parentId === planDragId) return;
         childTask.parentId = parentTask.id;
         childTask.tag      = parentTask.tag;
+        // If child is already inprogress, promote parent too
+        if (childTask.status === 'inprogress' && parentTask.status === 'todo') {
+          parentTask.status = 'inprogress';
+        }
         planDragId = null;
         savePlan(); renderPlan();
       });
@@ -3155,6 +3226,90 @@
         savePlan(); renderPlan();
       });
     });
+
+    // Emoji picker
+    list.querySelectorAll('.plan-emoji-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openEmojiPicker(btn.dataset.pid, btn);
+      });
+    });
+  }
+
+  const EMOJI_COMMON = [
+    '⭐','🔥','✅','❌','⚠️','💡','🚀','🐛','🔧','🔍','📝','📋','💬','📞','🎯',
+    '🏃','⏳','🔒','🔑','💻','📊','📈','🌐','🗂️','📌','🧪','🎨','💰','🤔','😅',
+    '🙏','👀','✍️','🤝','🚧','⚡','🧩','🛠️','📣','🎉','🌱','🔔','🗒️','⚙️','🏆',
+  ];
+
+  let _emojiPickerPid = null;
+
+  function openEmojiPicker(pid, anchor) {
+    // Remove any existing picker
+    const existing = document.getElementById('__emojiPicker');
+    if (existing) { existing.remove(); if (_emojiPickerPid === pid) { _emojiPickerPid = null; return; } }
+    _emojiPickerPid = pid;
+    const task = planTasks.find(t => t.id === pid);
+    if (!task) return;
+
+    const picker = document.createElement('div');
+    picker.id = '__emojiPicker';
+    picker.className = 'emoji-picker';
+
+    const input = document.createElement('input');
+    input.className = 'emoji-picker-input';
+    input.placeholder = 'type or paste any emoji…';
+    input.value = task.emoji || '';
+    picker.appendChild(input);
+
+    const grid = document.createElement('div');
+    grid.className = 'emoji-picker-grid';
+    EMOJI_COMMON.forEach(em => {
+      const b = document.createElement('button');
+      b.textContent = em; b.type = 'button';
+      b.addEventListener('click', () => setTaskEmoji(pid, em));
+      grid.appendChild(b);
+    });
+    picker.appendChild(grid);
+
+    const clear = document.createElement('button');
+    clear.className = 'emoji-picker-clear';
+    clear.textContent = '✕ remove emoji';
+    clear.addEventListener('click', () => setTaskEmoji(pid, null));
+    picker.appendChild(clear);
+
+    // Position below anchor
+    document.body.appendChild(picker);
+    const rect = anchor.getBoundingClientRect();
+    const scrollY = window.scrollY || document.documentElement.scrollTop;
+    picker.style.top  = (rect.bottom + scrollY + 4) + 'px';
+    picker.style.left = Math.min(rect.left, window.innerWidth - 250) + 'px';
+
+    input.focus(); input.select();
+    // Confirm typed emoji on Enter
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const val = input.value.trim();
+        setTaskEmoji(pid, val || null);
+      }
+      if (e.key === 'Escape') { picker.remove(); _emojiPickerPid = null; }
+    });
+
+    // Close on outside click
+    setTimeout(() => {
+      document.addEventListener('click', function close(ev) {
+        if (!picker.contains(ev.target)) { picker.remove(); _emojiPickerPid = null; document.removeEventListener('click', close); }
+      });
+    }, 50);
+  }
+
+  function setTaskEmoji(pid, emoji) {
+    const task = planTasks.find(t => t.id === pid);
+    if (!task) return;
+    if (emoji) task.emoji = emoji; else delete task.emoji;
+    const p = document.getElementById('__emojiPicker');
+    if (p) { p.remove(); _emojiPickerPid = null; }
+    savePlan(); renderPlan();
   }
 
   function addPlanTask() {
@@ -3298,7 +3453,9 @@
         b.text.toLowerCase() === le.text.toLowerCase()
       );
       if (le && le.date === dateKey && !isMeetingBlock) {
-        const fakeEnd = Math.max(Date.now(), le.ts + 60000);
+        const fakeEnd = activeTimer.paused
+          ? le.ts + (activeTimer.accumulatedMs || 0)  // paused: stop at pause point
+          : Math.max(Date.now(), le.ts + 60000);       // running: extend to now
         const el = autoBlockEl(le.text, le.tag, le.ts, fakeEnd, true);
         if (el) grid.appendChild(el);
       }
@@ -3368,12 +3525,28 @@
       const coveredSlots = new Set();
       entries.filter(e => e.date === dateKey && e.tsEnd).forEach(e => {
         const startSlot = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
-        const endSlot   = timeToSlot(new Date(e.tsEnd).getHours(), new Date(e.tsEnd).getMinutes());
+        // If tsEnd is exactly on a 30-min boundary (e.g. 09:30:00), back off 1 minute
+        // so we don't accidentally mark the NEXT slot as covered
+        const endD      = new Date(e.tsEnd);
+        const onBoundary = endD.getMinutes() % 30 === 0 && endD.getSeconds() === 0;
+        // timeToSlot uses Math.round(m/30), so backing off 1 min (→29) still rounds to slot+1.
+        // Instead compute endSlot directly: if on a boundary, the entry ends AT that boundary,
+        // meaning the boundary's slot is NOT covered — use the slot before it.
+        const endSlot   = onBoundary
+          ? timeToSlot(endD.getHours(), endD.getMinutes()) - 1
+          : timeToSlot(endD.getHours(), endD.getMinutes());
         for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) coveredSlots.add(s);
       });
       if (activeTimer && liveEntry && liveEntry.date === dateKey) {
         const startSlot = timeToSlot(new Date(liveEntry.ts).getHours(), new Date(liveEntry.ts).getMinutes());
-        for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
+        if (activeTimer.paused) {
+          // Paused: only cover slots up to the pause point
+          const pauseEnd  = new Date(liveEntry.ts + (activeTimer.accumulatedMs || 0));
+          const endSlot   = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
+          for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) coveredSlots.add(s);
+        } else {
+          for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
+        }
       }
       blocks.filter(b => b.date === dateKey).forEach(b => {
         for (let s = b.slot; s < Math.min(TB_SLOTS, b.slot + b.duration); s++) coveredSlots.add(s);
@@ -3382,7 +3555,7 @@
       for (let slot = 0; slot < TB_SLOTS; slot++) {
         const slotStartMins = TB_START * 60 + slot * 30;
         if (slotStartMins < sodMins) continue; // before work started — not untracked
-        const isPast = slotStartMins + 30 <= nowMins;
+        const isPast = slotStartMins < nowMins; // slot has started (not necessarily fully elapsed)
         if (!isPast || coveredSlots.has(slot)) continue;
         const untracked = document.createElement('div');
         untracked.className = 'tb-untracked';
@@ -3735,7 +3908,7 @@
       return `<div class="completed-item">
         <span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done</span>
         <span class="completed-dot" style="background:${cat.color}"></span>
-        <span class="completed-text">${escHtml(t.text)}</span>
+        <span class="completed-text">${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}</span>
         <span class="completed-when">${whenStr}</span>
       </div>`;
     }).join('');

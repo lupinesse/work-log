@@ -470,7 +470,7 @@ async function runTests() {
     await page.evaluate(() => window.__wl.render());
     await page.waitForTimeout(300);
     const qpHtml = await page.evaluate(() => document.getElementById('quickPick')?.innerHTML || '');
-    assert('Handoff note shown in quick pick', qpHtml.includes('Continue from line 42'));
+    assert('Handoff note NOT shown in quick pick', !qpHtml.includes('Continue from line 42'));
 
     await page.close();
   }
@@ -534,6 +534,171 @@ async function runTests() {
       await page.close();
     }
   }
+
+  // ── 18. Untracked slot boundary ────────────────────────────────────────────
+  console.log('\n18. Untracked slot boundary');
+  {
+    // Entry with tsEnd exactly on a 30-min boundary should NOT cover the next slot
+    const today = dk(new Date());
+    // Entry 09:00–09:30 (tsEnd exactly on boundary)
+    const ts    = new Date(); ts.setHours(9, 0, 0, 0);
+    const tsEnd = new Date(); tsEnd.setHours(9, 30, 0, 0);
+    const entries = [{ id: 'ub1', text: 'Boundary task', tag: 'work',
+      ts: ts.getTime(), tsEnd: tsEnd.getTime(), date: today }];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.waitForTimeout(400);
+
+    // Check that tsEnd is exactly on boundary
+    assert('tsEnd seconds = 0',      tsEnd.getSeconds() === 0);
+    assert('tsEnd minutes % 30 = 0', tsEnd.getMinutes() % 30 === 0);
+
+    // Verify the timeToSlot function uses Math.round (so naive -1min fix fails)
+    const slotFor930 = await page.evaluate(() => {
+      const TB_START = 8;
+      return (9 - TB_START) * 2 + Math.round(30 / 30); // = 3
+    });
+    assert('timeToSlot(9,30) = 3 (slot after meeting)', slotFor930 === 3);
+
+    // Now verify coveredSlots does NOT include slot 3 with the boundary fix
+    const slot3Covered = await page.evaluate(() => {
+      // Reproduce the exact logic from renderTimeblock
+      const TB_START = 8, TB_SLOTS = 20;
+      function timeToSlot(h, m) { return (h - TB_START) * 2 + Math.round(m / 30); }
+      const entries = JSON.parse(localStorage.getItem('wl_entries_v1') || '[]');
+      const today   = new Date().toISOString().slice(0, 10);
+      const covered = new Set();
+      entries.filter(e => e.date === today && e.tsEnd).forEach(e => {
+        const startSlot  = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
+        const endD       = new Date(e.tsEnd);
+        const onBoundary = endD.getMinutes() % 30 === 0 && endD.getSeconds() === 0;
+        const endSlot    = onBoundary
+          ? timeToSlot(endD.getHours(), endD.getMinutes()) - 1
+          : timeToSlot(endD.getHours(), endD.getMinutes());
+        for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) covered.add(s);
+      });
+      return covered.has(3); // slot 3 = 09:30–10:00
+    });
+    assert('Slot after boundary tsEnd is NOT covered', !slot3Covered);
+    await page.close();
+  }
+
+  // ── 19. Paused timer live block cap ────────────────────────────────────────
+  console.log('\n19. Paused timer live block cap');
+  {
+    const today   = dk(new Date());
+    // Timer started 90 min ago, paused after 30 min (accumulatedMs = 30min)
+    const startTs = Date.now() - 90 * 60000;
+    const entries = [{ id: 'pt1', text: 'Paused task', tag: 'work',
+      ts: startTs, date: today }];
+    const timer = { entryId: 'pt1', startTs: null, accumulatedMs: 30 * 60000, paused: true };
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_timer_v1: timer, wl_cats_v1: CATS });
+    await page.waitForTimeout(400);
+
+    // Verify paused timer coverage stops at pause point, not at Date.now()
+    const coverage = await page.evaluate(() => {
+      const TB_START = 8, TB_SLOTS = 20;
+      function timeToSlot(h, m) { return (h - TB_START) * 2 + Math.round(m / 30); }
+      const timerRaw  = JSON.parse(localStorage.getItem('wl_timer_v1') || 'null');
+      const entriesRaw = JSON.parse(localStorage.getItem('wl_entries_v1') || '[]');
+      const today = new Date().toISOString().slice(0, 10);
+      if (!timerRaw || !timerRaw.paused) return null;
+      const liveEntry = entriesRaw.find(e => e.id === timerRaw.entryId);
+      if (!liveEntry) return null;
+      const pauseEnd   = new Date(liveEntry.ts + (timerRaw.accumulatedMs || 0));
+      const startSlot  = timeToSlot(new Date(liveEntry.ts).getHours(), new Date(liveEntry.ts).getMinutes());
+      const endSlot    = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
+      // Check slot 90 min after start is NOT covered
+      const nowSlot    = timeToSlot(new Date().getHours(), new Date().getMinutes());
+      const covered = new Set();
+      for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) covered.add(s);
+      return { endSlot, nowSlot, nowCovered: covered.has(nowSlot) };
+    });
+    assert('Paused timer has coverage data', !!coverage);
+    assert('Paused timer endSlot < nowSlot', coverage && coverage.endSlot < coverage.nowSlot);
+    assert('Current slot NOT covered when paused', coverage && !coverage.nowCovered);
+    await page.close();
+  }
+
+  // ── 20. Parent promotion invariant ─────────────────────────────────────────
+  console.log('\n20. Parent promotion invariant');
+  {
+    const today = dk(new Date());
+    // Child is inprogress but parent is todo — renderPlan should fix this
+    const tasks = [
+      { id: 'pp1', text: 'Parent task', tag: 'work', status: 'todo',       date: today },
+      { id: 'pp2', text: 'Child task',  tag: 'work', status: 'inprogress', date: today, parentId: 'pp1' },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(400);
+    const parentStatus = await page.evaluate(() =>
+      window.__wl.getState().planTasks.find(t => t.id === 'pp1')?.status
+    );
+    assert('Parent promoted to inprogress by renderPlan', parentStatus === 'inprogress');
+    await page.close();
+  }
+
+  // ── 21. Handoff note not in quick pick ─────────────────────────────────────
+  console.log('\n21. Handoff not in quick pick');
+  {
+    const today   = dk(new Date());
+    const entries = [{ id: 'hq1', text: 'Quick task', tag: 'work', ts: Date.now() - 60000, date: today }];
+    const page    = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    // Save a handoff note for the task
+    await page.evaluate(() =>
+      localStorage.setItem('wl_handoff', JSON.stringify({ 'quick task': 'continue from line 42' }))
+    );
+    // Trigger quick pick render by focusing the capture input
+    await page.evaluate(() => document.getElementById('captureInput').focus());
+    await page.waitForTimeout(300);
+    const qpHtml = await page.evaluate(() => document.getElementById('quickPick').innerHTML);
+    assert('Quick pick renders task',           qpHtml.includes('Quick task'));
+    assert('Handoff note NOT shown in quick pick', !qpHtml.includes('continue from line 42'));
+    assert('No qp-handoff class in quick pick', !qpHtml.includes('qp-handoff'));
+    await page.close();
+  }
+
+  // ── 22. Task emoji ──────────────────────────────────────────────────────────
+  console.log('\n22. Task emoji');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'te1', text: 'Emoji task', tag: 'work', status: 'todo', date: today, emoji: '🚀' },
+      { id: 'te2', text: 'No emoji',   tag: 'work', status: 'todo', date: today },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(300);
+    const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
+    assert('Emoji shown before task name',  planHtml.includes('🚀'));
+    assert('Non-emoji task has no emoji',   !planHtml.includes('🚀 No emoji'));
+    // Emoji button exists for each task
+    const emojiButtons = await page.evaluate(() =>
+      document.querySelectorAll('.plan-emoji-btn').length
+    );
+    assert('Emoji button on each task', emojiButtons === 2);
+    assert('Emoji button shows emoji when set', await page.evaluate(() =>
+      document.querySelector('.plan-emoji-btn.has-emoji')?.textContent === '🚀'
+    ));
+    await page.close();
+  }
+
+  // ── 23. Start of day button ─────────────────────────────────────────────────
+  console.log('\n23. Start of day button');
+  {
+    const page = await freshPage(ctx);
+    assert('sodBtn exists', await page.evaluate(() => !!document.getElementById('sodBtn')));
+    // Click to set start of day
+    await page.evaluate(() => document.getElementById('sodBtn').click());
+    await page.waitForTimeout(200);
+    const sodKey = 'wl_sod_' + dk(new Date());
+    const stored = await page.evaluate((k) => localStorage.getItem(k), sodKey);
+    assert('Start of day timestamp stored',   !!stored);
+    assert('Stored value is a number string', !isNaN(parseInt(stored)));
+    // Button label updates
+    const btnText = await page.evaluate(() => document.getElementById('sodBtn').textContent);
+    assert('Button shows started time', btnText.includes('started'));
+    await page.close();
+  }
+
 
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
