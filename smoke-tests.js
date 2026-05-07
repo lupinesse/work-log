@@ -475,6 +475,66 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 17. Day-change fixes & task retirement ────────────────────────────────
+  console.log('\n17. Day-change fixes & task retirement');
+  {
+    // 17a — page loads clean (catches _lastTickDate TDZ bug and banner null crash)
+    {
+      const errors = [];
+      const page = await ctx.newPage();
+      page.on('pageerror', e => errors.push(e.message));
+      await page.addInitScript(() => localStorage.clear());
+      await page.goto(FILE);
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(800);
+      assert('No ReferenceError on load', !errors.some(e => e.includes('_lastTickDate')));
+      assert('No banner null crash',      !errors.some(e => e.includes('newdayBanner') || e.includes('Cannot read')));
+      assert('Render completes cleanly',   await page.evaluate(() => !!document.getElementById('statToday')));
+      await page.close();
+    }
+
+    // 17b — marking a task done retires older inprogress versions of same task
+    {
+      const today     = dk(new Date());
+      const yesterday = dk(new Date(Date.now() - 86400000));
+      const tasks = [
+        { id: 'rt1', text: 'Carry test task', tag: 'work', status: 'inprogress', date: yesterday },
+        { id: 'rt2', text: 'Carry test task', tag: 'work', status: 'inprogress', date: today },
+      ];
+      const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+
+      // Mark today's version done
+      await page.evaluate(() => {
+        const sel = document.querySelector('.plan-status[data-pid="rt2"]');
+        if (sel) { sel.value = 'done'; sel.dispatchEvent(new Event('change')); }
+      });
+      await page.waitForTimeout(300);
+
+      const allTasks = await page.evaluate(() => window.__wl.getState().planTasks);
+      const yesterday_task = allTasks.find(t => t.id === 'rt1');
+      const today_task     = allTasks.find(t => t.id === 'rt2');
+      assert('Today task marked done',            today_task?.status === 'done');
+      assert('Yesterday version also retired',    yesterday_task?.status === 'done');
+      assert('Yesterday version gets completedAt', !!yesterday_task?.completedAt);
+      await page.close();
+    }
+
+    // 17c — completed section deduplicates same-text tasks
+    {
+      const today = dk(new Date());
+      const yesterday = dk(new Date(Date.now() - 86400000));
+      const tasks = [
+        { id: 'dd1', text: 'Duplicate task', tag: 'work', status: 'done', date: yesterday, completedAt: Date.now() - 86400000 },
+        { id: 'dd2', text: 'Duplicate task', tag: 'work', status: 'done', date: today,     completedAt: Date.now() - 1000 },
+      ];
+      const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+      await page.waitForTimeout(300);
+      const items = await page.evaluate(() => document.querySelectorAll('.completed-item').length);
+      assert('Duplicate tasks deduplicated in completed section', items === 1);
+      await page.close();
+    }
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   console.log('\n' + '─'.repeat(48));

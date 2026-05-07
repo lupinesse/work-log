@@ -625,9 +625,10 @@
   .tb-untracked {
     position: absolute; left: 0; right: 0; pointer-events: none;
     display: flex; align-items: center; padding-left: 8px;
-    font-size: 10px; color: var(--text3); opacity: 0.45;
+    font-size: 10px; color: var(--text3); opacity: 0.5;
     font-style: italic; letter-spacing: 0.03em;
     border-top: 0.5px dashed var(--border);
+    background: rgba(128,128,128,0.06);
   }
   .tb-now-line {
     position: absolute; left: 0; right: 0; z-index: 20; pointer-events: none;
@@ -884,14 +885,6 @@
   </div>
 </div>
 
-<div id="newdayBanner" class="newday-banner">
-  <span class="newday-icon">📋</span>
-  <span class="newday-msg">New day! You have entries from <strong id="newdayDate"></strong> that haven't been exported yet.</span>
-  <div class="newday-actions">
-    <button class="newday-export" id="newdayExport">export &amp; continue</button>
-    <button class="newday-dismiss" id="newdayDismiss">skip</button>
-  </div>
-</div>
 
 <div id="timerBar" style="display:none" class="timer-bar">
   <span class="timer-pulse"></span>
@@ -2102,14 +2095,6 @@
     return entries.some(e => e.date === todayKey) && lastExport !== todayKey;
   }
 
-  // Warn before closing if today has entries that haven't been exported
-  window.addEventListener('beforeunload', e => {
-    if (todayHasUnexportedEntries()) {
-      e.preventDefault();
-      e.returnValue = '';  // triggers browser's "Leave site?" dialog
-    }
-  });
-
   // Every 30 min, silently write a recoverable plaintext snapshot to localStorage
   function saveSnapshot() {
     const todayKey = dk(new Date());
@@ -2138,35 +2123,7 @@
 
   // On load, offer to download yesterday's snapshot if it exists and wasn't exported
   function checkSnapshot() {
-    try {
-      const snap = JSON.parse(localStorage.getItem('wl_snapshot') || 'null');
-      if (!snap) return;
-      const todayKey = dk(new Date());
-      const lastExport = localStorage.getItem('wl_last_export');
-      if (snap.date === todayKey || snap.date === lastExport) return;
-      // There's a snapshot from a previous session — offer download via banner
-      const banner = document.getElementById('newdayBanner');
-      document.getElementById('newdayDate').textContent = snap.date;
-      banner.classList.add('show');
-      document.getElementById('newdayExport').addEventListener('click', () => {
-        const blob = new Blob([snap.text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = `work-log-${snap.date}.txt`;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a); URL.revokeObjectURL(url);
-        localStorage.setItem('wl_last_export', snap.date);
-        localStorage.removeItem('wl_snapshot');
-        banner.classList.remove('show');
-        viewDate = new Date(); render();
-      });
-      document.getElementById('newdayDismiss').addEventListener('click', () => {
-        localStorage.setItem('wl_last_export', snap.date);
-        localStorage.removeItem('wl_snapshot');
-        banner.classList.remove('show');
-        viewDate = new Date(); render();
-      });
-    } catch(e) {}
+    // Banner removed — end-of-day modal handles exports now
   }
 
   saveSnapshot();
@@ -2361,31 +2318,7 @@
   }
 
   function checkNewDay() {
-    const todayKey = dk(new Date());
-    // Find the most recent day that has entries and isn't today
-    const pastDays = [...new Set(entries.map(e => e.date))].filter(d => d < todayKey).sort().reverse();
-    if (!pastDays.length) return;
-    const lastDay = pastDays[0];
-    const lastExported = localStorage.getItem('wl_last_export');
-    if (lastExported === lastDay) return; // already exported
-    // Show banner
-    const banner = document.getElementById('newdayBanner');
-    document.getElementById('newdayDate').textContent = lastDay;
-    banner.classList.add('show');
-    viewDate = new Date(lastDay + 'T12:00:00'); // show previous day's entries
-    document.getElementById('newdayExport').addEventListener('click', () => {
-      exportForDate(lastDay);
-      localStorage.setItem('wl_last_export', lastDay);
-      banner.classList.remove('show');
-      viewDate = new Date();
-      render();
-    });
-    document.getElementById('newdayDismiss').addEventListener('click', () => {
-      localStorage.setItem('wl_last_export', lastDay);
-      banner.classList.remove('show');
-      viewDate = new Date();
-      render();
-    });
+    // Banner removed — end-of-day modal handles exports now
   }
 
   /* ── Live clock + weather ── */
@@ -2398,6 +2331,8 @@
   function totalISOWeeks(year) {
     return getISOWeek(new Date(year, 11, 28)); // Dec 28 is always in last ISO week
   }
+
+  let _lastTickDate = dk(new Date());
 
   tickClock();
   setInterval(tickClock, 10000);
@@ -2416,6 +2351,15 @@
     document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
     positionNowLine();
     checkBlockNotifications();
+    // Detect midnight rollover — carry tasks and re-render
+    const todayKey = dk(now);
+    if (todayKey !== _lastTickDate) {
+      _lastTickDate = todayKey;
+      autoCarryTasks();
+      patchCarriedTasks();
+      viewDate = new Date();
+      render();
+    }
   }
 
   // Static location: Uusi Lastensairaala, Helsinki
@@ -3062,6 +3006,12 @@
               parent.status = 'inprogress';
             }
           }
+          // When marking done, retire all older versions of the same task so they don't get re-carried
+          if (sel.value === 'done') {
+            planTasks
+              .filter(p => p.id !== t.id && p.text.toLowerCase() === t.text.toLowerCase() && p.status !== 'done')
+              .forEach(p => { p.status = 'done'; if (!p.completedAt) p.completedAt = t.completedAt; });
+          }
           savePlan(); renderPlan(); renderCompleted();
         }
       });
@@ -3648,25 +3598,40 @@
   function renderCompleted() {
     const viewKey  = dk(viewDate);
     const viewTs   = new Date(viewKey + 'T12:00:00').getTime();
+    // Tasks that are actively inprogress/todo on the current view date
+    const activeTodayTexts = new Set(
+      planTasks
+        .filter(t => t.date === viewKey && t.status !== 'done')
+        .map(t => t.text.toLowerCase())
+    );
     const done = planTasks
       .filter(t => {
         if (t.status !== 'done') return false;
+        // Don't show completed tasks that have a live version on this date
+        if (activeTodayTexts.has(t.text.toLowerCase())) return false;
         const completedTs  = t.completedAt || new Date((t.date||viewKey)+'T23:59:00').getTime();
         const completedDay = dk(new Date(completedTs));
         const cutoffTs     = completedTs + 14 * 24 * 60 * 60 * 1000;
-        // Show from completion day onward, drop off after 14 days
         return viewKey >= completedDay && viewTs <= cutoffTs;
       })
       .sort((a,b) => (b.completedAt||0) - (a.completedAt||0));
 
+    // Deduplicate by text — keep only the most recently completed version of each task
+    const seen = new Set();
+    const deduped = done.filter(t => {
+      const key = t.text.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const sec = document.getElementById('completedSection');
-    sec.style.display = done.length ? '' : 'none';
-    if (!done.length) return;
+    sec.style.display = deduped.length ? '' : 'none';
+    if (!deduped.length) return;
 
-    document.getElementById('completedCount').textContent = done.length;
+    document.getElementById('completedCount').textContent = deduped.length;
     sec.classList.toggle('collapsed', completedCollapsed);
 
-    document.getElementById('completedBody').innerHTML = done.map(t => {
+    document.getElementById('completedBody').innerHTML = deduped.map(t => {
       const cat = getCat(t.tag || 'other');
       let whenStr = 'date unknown';
       if (t.completedAt) {
@@ -3877,7 +3842,6 @@
   // Default to alphabetically first epic
   selectedTag = [...categories].sort((a,b)=>a.label.localeCompare(b.label))[0]?.id || 'work';
   renderTagRow();
-  checkSnapshot();
   checkNewDay();
   render();
   renderPlan();
