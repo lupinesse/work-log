@@ -71,7 +71,9 @@
   .live-date    { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
   .live-time    { font-size: 22px; font-weight: 500; font-family: var(--mono); color: var(--text); line-height: 1.2; letter-spacing: 0.02em; }
   .live-weather { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; }
-  .date-nav { display: flex; align-items: center; gap: 6px; margin-left: 32px; align-self: center; }
+  .date-nav { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: space-between; }
+  .date-nav-wrap { display: flex; flex-direction: column; align-items: center; justify-content: space-between; margin-left: 32px; align-self: stretch; }
+  .date-nav-wrap .export-btn { width: 100%; text-align: center; box-sizing: border-box; }
   .nav-btn {
     background: var(--bg);
     border: 0.5px solid var(--border2);
@@ -143,10 +145,10 @@
   .timer-bar.paused .timer-stop:hover { background: rgba(186,117,23,0.15); }
   .timer-distract {
     font-size: 11px; padding: 2px 10px; border-radius: var(--radius);
-    border: 0.5px solid #7B61FF; background: none; color: #7B61FF;
+    border: 0.5px solid #C4B5FD; background: none; color: #C4B5FD;
     cursor: pointer; font-family: var(--font); white-space: nowrap;
   }
-  .timer-distract:hover { background: rgba(123,97,255,0.12); }
+  .timer-distract:hover { background: rgba(196,181,253,0.12); }
 
   /* Timer start button */
   .timer-btn {
@@ -878,10 +880,13 @@
       <div class="live-weather" id="liveNameday"></div>
     </div>
   </div>
-  <div class="date-nav">
-    <button class="nav-btn" id="prevDay">&#8592;</button>
-    <div class="date-label" id="dateLabel"></div>
-    <button class="nav-btn" id="nextDay">&#8594;</button>
+  <div class="date-nav-wrap">
+    <div class="date-nav">
+      <button class="nav-btn" id="prevDay">&#8592;</button>
+      <div class="date-label" id="dateLabel"></div>
+      <button class="nav-btn" id="nextDay">&#8594;</button>
+    </div>
+    <button class="export-btn" id="sodBtn" style="font-size:11px">🌅 start the day</button>
   </div>
 </div>
 
@@ -959,7 +964,7 @@
 <div class="export-section">
   <div class="export-header">
     <span class="export-title">export</span>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
       <button class="export-btn" id="exportBtn">download .txt</button>
       <button class="export-btn" id="backupBtn">⬇ backup .json</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
@@ -1031,6 +1036,16 @@
   <div class="pomo-controls">
     <button class="pomo-btn pomo-start" id="pomoStart">start</button>
     <button class="pomo-btn" id="pomoReset">reset</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
+    🔔 time chime every
+    <select id="chimeIntervalSel" style="font-size:11px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);border-radius:var(--radius);padding:2px 6px;font-family:var(--font)">
+      <option value="0">off</option>
+      <option value="15">15 min</option>
+      <option value="30" selected>30 min</option>
+      <option value="45">45 min</option>
+      <option value="60">60 min</option>
+    </select>
   </div>
   <div class="pomo-log">
     <div class="pomo-log-title">session log</div>
@@ -1368,8 +1383,9 @@
     if (timerInterval) clearInterval(timerInterval);
     _lastChimeMinute = null;
     activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
-    save(); tickTimer();
-    timerInterval = setInterval(tickTimer, 1000);
+    save();
+    timerInterval = setInterval(tickTimer, 1000); // set up BEFORE first tick so it always runs
+    tickTimer();
     updateTimerBar(); updateTimerBtn(true);
   }
   function pauseTimer() {
@@ -1382,8 +1398,9 @@
   function resumeTimer() {
     if (!activeTimer || !activeTimer.paused) return;
     activeTimer.paused = false; activeTimer.startTs = Date.now();
-    save(); tickTimer();
+    save();
     timerInterval = setInterval(tickTimer, 1000);
+    tickTimer();
     updateTimerBar();
   }
   function stopTimer() {
@@ -1431,11 +1448,14 @@
     let link = document.querySelector("link[rel~='icon']");
     if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
     if (!color) { link.href = ''; return; }
-    const c = document.createElement('canvas'); c.width = c.height = 32;
-    const ctx = c.getContext('2d');
-    ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2);
-    ctx.fillStyle = color; ctx.fill();
-    link.href = c.toDataURL();
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 32;
+      const ctx = c.getContext('2d');
+      if (!ctx) return; // canvas blocked (e.g. privacy settings)
+      ctx.beginPath(); ctx.arc(16, 16, 13, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+      link.href = c.toDataURL();
+    } catch(e) {} // silently skip favicon if canvas unavailable
   }
 
   function updateTabAndFavicon() {
@@ -1474,8 +1494,22 @@
   }
 
   // Chime system
-  const CHIME_INTERVALS_MINS = [15, 30]; // user can change these
+  let CHIME_INTERVALS_MINS = [30]; // default, overridden by selector
   let   _lastChimeMinute = null;
+
+  function loadChimeSetting() {
+    const saved = parseInt(localStorage.getItem('wl_chime_mins') || '30');
+    CHIME_INTERVALS_MINS = saved > 0 ? [saved] : [];
+    const sel = document.getElementById('chimeIntervalSel');
+    if (sel) sel.value = String(saved);
+  }
+
+  document.getElementById('chimeIntervalSel').addEventListener('change', function() {
+    const val = parseInt(this.value);
+    CHIME_INTERVALS_MINS = val > 0 ? [val] : [];
+    localStorage.setItem('wl_chime_mins', String(val));
+    _lastChimeMinute = null; // reset so next interval fires fresh
+  });
 
   function checkChime(elapsedMs) {
     if (!activeTimer || activeTimer.paused) return;
@@ -1528,21 +1562,22 @@
   }
 
   function tickTimer() {
-    if (!activeTimer) return;
-    const entry   = entries.find(e => e.id === activeTimer.entryId);
-    const elapsed = getElapsedMs();
-    document.getElementById('timerBar').style.display = 'flex';
-    document.getElementById('timerTask').textContent    = entry ? entry.text : '…';
-    document.getElementById('timerElapsed').textContent = fmtElapsed(elapsed);
-    updateLiveBlock();
-    updateTabAndFavicon();
-    updateTimerBarColor();
-    checkChime(elapsed);
-    // Keep emergency screen in sync
-    if (emergencyMode) {
-      const emergEl = document.getElementById('emergencyTask');
-      if (emergEl) emergEl.textContent = entry ? entry.text : '—';
-    }
+    try {
+      if (!activeTimer) return;
+      const entry   = entries.find(e => e.id === activeTimer.entryId);
+      const elapsed = getElapsedMs();
+      document.getElementById('timerBar').style.display = 'flex';
+      document.getElementById('timerTask').textContent    = entry ? entry.text : '…';
+      document.getElementById('timerElapsed').textContent = fmtElapsed(elapsed);
+      updateLiveBlock();
+      updateTabAndFavicon();
+      updateTimerBarColor();
+      checkChime(elapsed);
+      if (emergencyMode) {
+        const emergEl = document.getElementById('emergencyTask');
+        if (emergEl) emergEl.textContent = entry ? entry.text : '—';
+      }
+    } catch(e) { console.error('[wl] tickTimer error:', e); }
   }
   function updateTimerBar() {
     const bar = document.getElementById('timerBar');
@@ -1560,14 +1595,13 @@
   function resumeTimerIfActive() {
     if (!activeTimer) return;
     if (!entries.find(e => e.id === activeTimer.entryId)) {
-      // Only clear if entries are genuinely loaded — don't wipe timer on a load failure
       if (entries.length > 0 || !localStorage.getItem(STORE_ENTRIES) || localStorage.getItem(STORE_ENTRIES) === '[]') {
         activeTimer = null; save();
       }
       return;
     }
-    tickTimer(); updateTimerBar(); updateTimerBtn(true);
     if (!activeTimer.paused) timerInterval = setInterval(tickTimer, 1000);
+    tickTimer(); updateTimerBar(); updateTimerBtn(true);
   }
 
   /* ── Render ── */
@@ -2068,6 +2102,48 @@
       hideHandoffInput();
       document.getElementById('timerStop').textContent = 'stop';
     }
+  });
+
+  /* ── Start of day ── */
+  function sodKey()      { return 'wl_sod_' + dk(new Date()); }
+  function getDayStart() { return parseInt(localStorage.getItem(sodKey()) || '0') || null; }
+
+  function renderSodBtn() {
+    const btn  = document.getElementById('sodBtn');
+    if (!btn) return;
+    const sod  = getDayStart();
+    if (sod) {
+      const d  = new Date(sod);
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      btn.textContent = `🌅 started ${hh}:${mm}`;
+      btn.style.color = '#1D9E75';
+      btn.style.borderColor = '#1D9E75';
+    } else {
+      btn.textContent = '🌅 start the day';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }
+  }
+
+  document.getElementById('sodBtn').addEventListener('click', () => {
+    const existing = getDayStart();
+    if (existing) {
+      // Allow re-setting — ask for time
+      const d   = new Date(existing);
+      const cur = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+      const val = prompt(`Started at (HH:MM):`, cur);
+      if (!val) return;
+      const [h, m] = val.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return;
+      const ts = new Date();
+      ts.setHours(h, m, 0, 0);
+      localStorage.setItem(sodKey(), String(ts.getTime()));
+    } else {
+      localStorage.setItem(sodKey(), String(Date.now()));
+    }
+    renderSodBtn();
+    renderTimeblock();
   });
 
   document.getElementById('exportBtn').addEventListener('click', exportTxt);
@@ -2692,6 +2768,8 @@
   renderMoon();
   renderFlagDay();
   renderDistractionCount();
+  renderSodBtn();
+  loadChimeSetting();
   setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
 
   /* ── Today's tasks ── */
@@ -3130,7 +3208,8 @@
   }
 
   function renderTimeblock() {
-    const dateKey = dk(viewDate);
+    const dateKey  = dk(viewDate);
+    const liveEntry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
     document.getElementById('tbSection').classList.toggle('collapsed', tbCollapsed);
 
     // Time labels
@@ -3279,6 +3358,12 @@
         ? new Date().getHours() * 60 + new Date().getMinutes()
         : TB_END * 60; // for past days, all slots are "past"
 
+      // Use start-of-day as floor — slots before work started aren't "untracked"
+      const sodTs   = isToday(viewDate) ? getDayStart() : null;
+      const sodMins = sodTs
+        ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
+        : TB_START * 60; // no start set — use grid start as default
+
       // Build a set of 30-min slots that have coverage (from entries or planned blocks)
       const coveredSlots = new Set();
       entries.filter(e => e.date === dateKey && e.tsEnd).forEach(e => {
@@ -3296,7 +3381,8 @@
 
       for (let slot = 0; slot < TB_SLOTS; slot++) {
         const slotStartMins = TB_START * 60 + slot * 30;
-        const isPast = slotStartMins + 30 <= nowMins; // slot fully elapsed
+        if (slotStartMins < sodMins) continue; // before work started — not untracked
+        const isPast = slotStartMins + 30 <= nowMins;
         if (!isPast || coveredSlots.has(slot)) continue;
         const untracked = document.createElement('div');
         untracked.className = 'tb-untracked';
