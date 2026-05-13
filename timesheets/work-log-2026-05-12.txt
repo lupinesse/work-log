@@ -1,0 +1,11 @@
+Work Log — 2026-05-12
+Started: 09:07  |  Ended: 17:00
+Workday: 7h 52min
+Billable: 8h
+---
+2h 30min - break
+    2h 30min - Break
+30min - Meeting
+    30min - UAT testiryhmien valmistelu
+5h - AITO-188700: FUAT planning for Diha (Additions part 2)
+    5h - AITO-188704: Write test cases

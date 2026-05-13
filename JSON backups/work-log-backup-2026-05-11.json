@@ -1,0 +1,842 @@
+{
+  "version": "1",
+  "exported": "2026-05-11T13:47:39.029Z",
+  "entries": [
+    {
+      "id": "1777962738405",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "tag": "cat_1777962713309",
+      "ts": 1777957200000,
+      "date": "2026-05-05",
+      "tsEnd": 1777968000000
+    },
+    {
+      "id": "1777969409266",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "tag": "cat_1777962713309",
+      "ts": 1777968000000,
+      "date": "2026-05-05",
+      "tsEnd": 1777973400000
+    },
+    {
+      "id": "1777972960735",
+      "text": "Lunch",
+      "tag": "break",
+      "ts": 1777973400000,
+      "date": "2026-05-05",
+      "tsEnd": 1777975200000
+    },
+    {
+      "id": "1777975863274",
+      "text": "Toukokuun pääversion 23.5.2026 Versio info",
+      "tag": "meeting",
+      "ts": 1777975200000,
+      "date": "2026-05-05",
+      "tsEnd": 1777978800000
+    },
+    {
+      "id": "1777978788845",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "tag": "cat_1777976258844",
+      "ts": 1777978800000,
+      "date": "2026-05-05",
+      "tsEnd": 1777980600000
+    },
+    {
+      "id": "1777981171661",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1777980600000,
+      "date": "2026-05-05",
+      "tsEnd": 1777984200000
+    },
+    {
+      "id": "1778044202818",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778043600000,
+      "date": "2026-05-06",
+      "tsEnd": 1778047200000
+    },
+    {
+      "id": "1778047312314",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "ts": 1778047200000,
+      "date": "2026-05-06",
+      "tsEnd": 1778056200000
+    },
+    {
+      "id": "1778056097256",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778056200000,
+      "date": "2026-05-06",
+      "tsEnd": 1778058000000
+    },
+    {
+      "id": "1778058749298",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "ts": 1778058000000,
+      "date": "2026-05-06",
+      "tsEnd": 1778065200000
+    },
+    {
+      "id": "1778067584833",
+      "text": "How to test CoreSuite from UI?",
+      "tag": "meeting",
+      "ts": 1778065200000,
+      "date": "2026-05-06",
+      "tsEnd": 1778067000000
+    },
+    {
+      "id": "1778067635992",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "ts": 1778067000000,
+      "date": "2026-05-06",
+      "tsEnd": 1778067000000
+    },
+    {
+      "id": "1778134431984",
+      "text": "FUAT Diha Check-in",
+      "tag": "meeting",
+      "ts": 1778133600000,
+      "date": "2026-05-07",
+      "tsEnd": 1778135400000
+    },
+    {
+      "id": "1778139681603",
+      "text": "Add summer holidays to testing holiday calendar",
+      "tag": "work",
+      "ts": 1778139000000,
+      "date": "2026-05-07",
+      "tsEnd": 1778140800000
+    },
+    {
+      "id": "1778143224751",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778142600000,
+      "date": "2026-05-07",
+      "tsEnd": 1778146200000
+    },
+    {
+      "id": "1778146692287",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778146200000,
+      "date": "2026-05-07",
+      "tsEnd": 1778148000000
+    },
+    {
+      "id": "1778148639887",
+      "text": "AITO Knowledge sharing / demo",
+      "tag": "meeting",
+      "ts": 1778148000000,
+      "date": "2026-05-07",
+      "tsEnd": 1778149800000
+    },
+    {
+      "id": "1778151323589",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778151600000,
+      "date": "2026-05-07",
+      "tsEnd": 1778157000000
+    },
+    {
+      "id": "1778156598843",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778157000000,
+      "date": "2026-05-07",
+      "tsEnd": 1778157000000
+    },
+    {
+      "id": "1778217585203",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778218200000,
+      "date": "2026-05-08",
+      "tsEnd": 1778221800000
+    },
+    {
+      "id": "1778220716251",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778220000000,
+      "date": "2026-05-08",
+      "tsEnd": 1778230800000
+    },
+    {
+      "id": "1778231679973",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778230800000,
+      "date": "2026-05-08",
+      "tsEnd": 1778234400000
+    },
+    {
+      "id": "1778234516901",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778234400000,
+      "date": "2026-05-08",
+      "tsEnd": 1778239800000
+    },
+    {
+      "id": "1778239827003",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778239800000,
+      "date": "2026-05-08",
+      "tsEnd": 1778241600000
+    },
+    {
+      "id": "1778240956904",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778241600000,
+      "date": "2026-05-08",
+      "tsEnd": 1778245200000
+    },
+    {
+      "id": "1778244727978",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778245200000,
+      "date": "2026-05-08",
+      "tsEnd": 1778245200000
+    },
+    {
+      "id": "1778245471782",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "ts": 1778245200000,
+      "date": "2026-05-08",
+      "tsEnd": 1778248800000
+    },
+    {
+      "id": "1778249652414",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "tag": "cat_1777976258844",
+      "ts": 1778248800000,
+      "date": "2026-05-08",
+      "tsEnd": 1778254200000
+    },
+    {
+      "id": "1778480082696",
+      "text": "Break",
+      "tag": "break",
+      "ts": 1778479200000,
+      "date": "2026-05-11",
+      "tsEnd": 1778490000000
+    },
+    {
+      "id": "1778490632635",
+      "text": "AITO-188704: Write test cases",
+      "tag": "cat_1777962713309",
+      "ts": 1778490000000,
+      "date": "2026-05-11",
+      "tsEnd": 1778497200000
+    },
+    {
+      "id": "1778497854995",
+      "text": "AITO Testing team - Iteration planning",
+      "tag": "meeting",
+      "ts": 1778497200000,
+      "date": "2026-05-11",
+      "tsEnd": 1778500800000
+    },
+    {
+      "id": "1778500255797",
+      "text": "AITO-188704: Write test cases",
+      "tag": "cat_1777962713309",
+      "ts": 1778500800000,
+      "date": "2026-05-11",
+      "tsEnd": 1778508000000
+    }
+  ],
+  "categories": [
+    {
+      "id": "work",
+      "label": "work",
+      "color": "#378ADD"
+    },
+    {
+      "id": "meeting",
+      "label": "meeting",
+      "color": "#D4537E"
+    },
+    {
+      "id": "focus",
+      "label": "deep focus",
+      "color": "#1D9E75"
+    },
+    {
+      "id": "break",
+      "label": "break",
+      "color": "#BA7517"
+    },
+    {
+      "id": "other",
+      "label": "other",
+      "color": "#888780"
+    },
+    {
+      "id": "cat_1777962713309",
+      "label": "AITO-188700: FUAT planning for Diha (Additions part 2)",
+      "color": "#7F77DD"
+    },
+    {
+      "id": "cat_1777975961583",
+      "label": "AITO-157981: Clarify & improve FUAT process and practicalities",
+      "color": "#D85A30"
+    },
+    {
+      "id": "cat_1777976258844",
+      "label": "AITO-196363: Onboarding to AITO FUAT testing process/practicalities",
+      "color": "#639922"
+    },
+    {
+      "id": "cat_1777976424043",
+      "label": "AITO-188746: Pre-UAT execution for DIHA (CoreSuite integration)",
+      "color": "#E24B4A"
+    }
+  ],
+  "planTasks": [
+    {
+      "id": "1777968066206",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "done": false,
+      "date": "2026-05-05",
+      "tag": "cat_1777976258844",
+      "deadline": "2026-05-08",
+      "status": "done",
+      "completedAt": 1778256000000
+    },
+    {
+      "id": "1777968082363",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "done": false,
+      "date": "2026-05-05",
+      "status": "done",
+      "tag": "cat_1777962713309",
+      "deadline": "2026-05-08",
+      "completedAt": 1778218200000
+    },
+    {
+      "id": "c1778043520827xbb04vwxbd",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-06",
+      "parentId": "c1778043520827acgxhy14sw9",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c1778043520827ds3tg4iqwam",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "status": "inprogress",
+      "date": "2026-05-06"
+    },
+    {
+      "id": "c1778043520827xhre6vln5t",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "tag": "cat_1777976258844",
+      "status": "done",
+      "date": "2026-05-06",
+      "completedAt": 1778256000000
+    },
+    {
+      "id": "c1778043520827acgxhy14sw9",
+      "text": "AITO-188703: Fill in details to requirement matrix and create TLC page",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-06",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c177804352082723gjqmbo689",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-06",
+      "completedAt": 1778101140000
+    },
+    {
+      "id": "1778049828471",
+      "text": "Add summer holidays to testing holiday calendar",
+      "status": "done",
+      "tag": "work",
+      "date": "2026-05-06",
+      "completedAt": 1778140800000
+    },
+    {
+      "id": "1778066378301",
+      "text": "How to test CoreSuite from UI?",
+      "status": "done",
+      "tag": "meeting",
+      "date": "2026-05-06",
+      "completedAt": 1778070600000
+    },
+    {
+      "id": "c1778131794631hsu3f5nwqx6",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "tag": "cat_1777976258844",
+      "status": "done",
+      "date": "2026-05-07",
+      "completedAt": 1778256000000
+    },
+    {
+      "id": "c1778131794631k4ipjopd4lb",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-07",
+      "completedAt": 1778131800000
+    },
+    {
+      "id": "c1778131794631qkt0bo4oa3b",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-07",
+      "parentId": "c17781317946311y8whdkpdwr",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c1778131794631w3tugjct8wf",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "status": "inprogress",
+      "date": "2026-05-07"
+    },
+    {
+      "id": "c17781317946311y8whdkpdwr",
+      "text": "AITO-188703: Fill in details to requirement matrix and create TLC page",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-07",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c1778131794631shluhdscd9d",
+      "text": "Add summer holidays to testing holiday calendar",
+      "tag": "work",
+      "status": "done",
+      "date": "2026-05-07",
+      "completedAt": 1778140800000
+    },
+    {
+      "id": "c1778198450575mmd74g6dmwc",
+      "text": "AITO-196369: Prepare onboarding/knowledge transfer to XX",
+      "tag": "cat_1777976258844",
+      "status": "done",
+      "date": "2026-05-08",
+      "completedAt": 1778256000000
+    },
+    {
+      "id": "c1778198450576nzfj3hlo23c",
+      "text": "AITO-188702: Feature walkthrough preparations + meeting",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-08",
+      "completedAt": 1778218200000
+    },
+    {
+      "id": "c17781984505761l8vvo7b8bs",
+      "text": "AITO-196491: Fill the requirement matrix",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-08",
+      "parentId": "c17781984505762sqtmam7sr1",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c1778198450576yzxni280mi",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "status": "inprogress",
+      "date": "2026-05-08"
+    },
+    {
+      "id": "c17781984505762sqtmam7sr1",
+      "text": "AITO-188703: Fill in details to requirement matrix and create TLC page",
+      "tag": "cat_1777962713309",
+      "status": "done",
+      "date": "2026-05-08",
+      "completedAt": 1778247000000
+    },
+    {
+      "id": "c1778303175992t90d4628s4m",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "status": "inprogress",
+      "date": "2026-05-09"
+    },
+    {
+      "id": "c1778479432060eq8pue27rh",
+      "text": "AITO-196370: Execute tests 2",
+      "tag": "cat_1777976424043",
+      "status": "pending",
+      "date": "2026-05-11",
+      "statusComments": [
+        {
+          "status": "blocked",
+          "comment": "",
+          "ts": 1778479508064
+        },
+        {
+          "status": "pending",
+          "comment": "The rules for counter offer have changed, and we're waiting for updated rules so we can resume testing",
+          "ts": 1778479562273
+        }
+      ]
+    },
+    {
+      "id": "1778482118183",
+      "text": "AITO Testing team - Iteration planning",
+      "status": "done",
+      "tag": "meeting",
+      "date": "2026-05-11",
+      "completedAt": 1778500800000
+    },
+    {
+      "id": "1778489389995",
+      "text": "AITO-188704: Write test cases",
+      "status": "inprogress",
+      "tag": "cat_1777962713309",
+      "date": "2026-05-11"
+    }
+  ],
+  "blocks": [
+    {
+      "id": "1777969226673",
+      "date": "2026-05-05",
+      "slot": 6,
+      "duration": 2,
+      "text": "Feature walkthrough: DIHA (Additions part 2)",
+      "tag": "cat_1777962713309",
+      "type": "meeting"
+    },
+    {
+      "id": "1778058065867",
+      "date": "2026-05-06",
+      "slot": 14,
+      "duration": 2,
+      "text": "How to test CoreSuite from UI?",
+      "tag": "meeting",
+      "type": "meeting"
+    }
+  ],
+  "pomoLog": [
+    {
+      "ts": 1778253671838,
+      "mins": 10,
+      "task": "AITO-196369: Prepare onboarding/knowledge transfer to XX"
+    },
+    {
+      "ts": 1778247593733,
+      "mins": 10,
+      "task": "AITO-196491: Fill the requirement matrix"
+    },
+    {
+      "ts": 1778246987567,
+      "mins": 10,
+      "task": "AITO-196491: Fill the requirement matrix"
+    },
+    {
+      "ts": 1778246111077,
+      "mins": 10,
+      "task": "AITO-196491: Fill the requirement matrix"
+    },
+    {
+      "ts": 1778222265674,
+      "mins": 10,
+      "task": "AITO-196491: Fill the requirement matrix"
+    },
+    {
+      "ts": 1778060842141,
+      "mins": 10,
+      "task": "AITO-196370: Execute tests 2"
+    },
+    {
+      "ts": 1778059976764,
+      "mins": 10,
+      "task": "AITO-196370: Execute tests 2"
+    }
+  ],
+  "devLog": [
+    {
+      "id": "20260506-001",
+      "date": "2026-05-06",
+      "desc": "Two-box header layout with week/moon/nameday",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-002",
+      "date": "2026-05-06",
+      "desc": "Week number (ISO) in header",
+      "areas": [
+        10
+      ]
+    },
+    {
+      "id": "20260506-003",
+      "date": "2026-05-06",
+      "desc": "Sunrise/sunset/day length from Open-Meteo",
+      "areas": [
+        1,
+        3
+      ]
+    },
+    {
+      "id": "20260506-004",
+      "date": "2026-05-06",
+      "desc": "Moon phase calculation and zodiac sign",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-005",
+      "date": "2026-05-06",
+      "desc": "Finnish nameday from nimipaivat.fi",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-006",
+      "date": "2026-05-06",
+      "desc": "Completed tasks section with 14-day rolling window",
+      "areas": [
+        6,
+        9
+      ]
+    },
+    {
+      "id": "20260506-007",
+      "date": "2026-05-06",
+      "desc": "Child task auto-promotes parent to In Progress",
+      "areas": [
+        7,
+        8
+      ]
+    },
+    {
+      "id": "20260506-008",
+      "date": "2026-05-06",
+      "desc": "Plan count header format: X to do · X in progress · X done",
+      "areas": [
+        9
+      ]
+    },
+    {
+      "id": "20260506-009",
+      "date": "2026-05-06",
+      "desc": "Critical fix: load() restored to startup sequence",
+      "areas": [
+        1,
+        3,
+        4,
+        5,
+        7
+      ]
+    },
+    {
+      "id": "20260506-010",
+      "date": "2026-05-06",
+      "desc": "save() guard against overwriting data with empty arrays",
+      "areas": [
+        3
+      ]
+    },
+    {
+      "id": "20260506-011",
+      "date": "2026-05-06",
+      "desc": "Timer restoration protected against load failures",
+      "areas": [
+        5
+      ]
+    },
+    {
+      "id": "20260506-012",
+      "date": "2026-05-06",
+      "desc": "completedAt uses roundToNearest30; 23:59 shown as date-only",
+      "areas": [
+        6
+      ]
+    },
+    {
+      "id": "20260506-013",
+      "date": "2026-05-06",
+      "desc": "Rain forecast starts from next hour (no past times)",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-014",
+      "date": "2026-05-06",
+      "desc": "Pomodoro ring empties clockwise",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-015",
+      "date": "2026-05-06",
+      "desc": "Pomodoro session log added",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260506-016",
+      "date": "2026-05-06",
+      "desc": "Smoke test suite (38 tests) added",
+      "areas": []
+    },
+    {
+      "id": "20260506-017",
+      "date": "2026-05-06",
+      "desc": "End-of-day modal with dev changelog",
+      "areas": []
+    },
+    {
+      "id": "20260508-001",
+      "date": "2026-05-08",
+      "desc": "Focus mode: Pomodoro now visible alongside emergency task",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260508-002",
+      "date": "2026-05-08",
+      "desc": "safeRoundedStart() prevents rounded entry times overlapping previous tsEnd",
+      "areas": [
+        2,
+        3,
+        4,
+        5
+      ]
+    },
+    {
+      "id": "20260508-003",
+      "date": "2026-05-08",
+      "desc": "statToday counts unique task names, not raw entry count",
+      "areas": [
+        9
+      ]
+    },
+    {
+      "id": "20260508-004",
+      "date": "2026-05-08",
+      "desc": "Timeblock expanded to 07:00–21:00 with one-time slot migration",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260508-005",
+      "date": "2026-05-08",
+      "desc": "Plan task statuses: Pending and Blocked added",
+      "areas": [
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "id": "20260508-006",
+      "date": "2026-05-08",
+      "desc": "Pending/Blocked tasks show editable comment with timestamp history",
+      "areas": [
+        7,
+        8
+      ]
+    },
+    {
+      "id": "20260508-007",
+      "date": "2026-05-08",
+      "desc": "Auto-complete parent task when all children marked done",
+      "areas": [
+        7,
+        8
+      ]
+    },
+    {
+      "id": "20260508-008",
+      "date": "2026-05-08",
+      "desc": "Auto-stop timer when active task is marked done in task list",
+      "areas": [
+        4,
+        5,
+        7
+      ]
+    },
+    {
+      "id": "20260508-009",
+      "date": "2026-05-08",
+      "desc": "Export .txt includes day started, ended, and total workday length",
+      "areas": [
+        1
+      ]
+    },
+    {
+      "id": "20260508-010",
+      "date": "2026-05-08",
+      "desc": "File System Access API: exports saved to timesheets/ and JSON backups/ subfolders",
+      "areas": [
+        1
+      ]
+    }
+  ],
+  "distractions": [
+    {
+      "ts": 1778140976566,
+      "date": "2026-05-07",
+      "task": "Add summer holidays to testing holiday calendar",
+      "note": "I forgot to mark the task as done and I didn't have next task lined up. Also, my blood is down, it seems."
+    },
+    {
+      "ts": 1778146631004,
+      "date": "2026-05-07",
+      "task": "Break",
+      "note": "Hunger, boreddom?"
+    },
+    {
+      "ts": 1778147431000,
+      "date": "2026-05-07",
+      "task": "AITO-196491: Fill the requirement matrix",
+      "note": "I didn't have clear idea what I should do first"
+    },
+    {
+      "ts": 1778157444946,
+      "date": "2026-05-07",
+      "task": "AITO-196491: Fill the requirement matrix",
+      "note": "I started updating Threads"
+    },
+    {
+      "ts": 1778159415798,
+      "date": "2026-05-07",
+      "task": "AITO-196491: Fill the requirement matrix",
+      "note": "Browsing Threads"
+    }
+  ],
+  "qpHidden": [
+    "add summer holidays to testing holiday calendar",
+    "aito-188702: feature walkthrough preparations + meeting",
+    "toukokuun pääversion 23.5.2026 versio info",
+    "aito-196369: prepare onboarding/knowledge transfer to xx",
+    "aito-196491: fill the requirement matrix"
+  ]
+}
