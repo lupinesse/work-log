@@ -687,6 +687,34 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 24. Streak counter (checks from yesterday, not today) ────────────────────
+  console.log('\n24. Streak counter');
+  {
+    const today     = dk(new Date());
+    const yesterday = dk(new Date(Date.now() - 86400000));
+    const dayBefore = dk(new Date(Date.now() - 172800000));
+    // Entries for 3 consecutive days (yesterday and day before have entries)
+    // but NO entry for today yet (simulating start of day)
+    const entries = [
+      { id: 'sk1', text: 'Task day1', tag: 'work', ts: Date.now() - 172800000, date: dayBefore },
+      { id: 'sk2', text: 'Task day2', tag: 'work', ts: Date.now() - 86400000, date: yesterday },
+      // No entry for today — simulating early morning before logging anything
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    const streakVal = await page.evaluate(() => document.getElementById('statStreak').textContent);
+    assert('Streak shows 2 (yesterday + day before)', streakVal === '2');
+    
+    // Now add an entry for today and verify streak updates
+    await page.evaluate(() => {
+      const state = window.__wl.getState();
+      state.entries.push({ id: 'sk3', text: 'Task today', tag: 'work', ts: Date.now(), date: dk(new Date()) });
+      window.__wl.render();
+    });
+    await page.waitForTimeout(200);
+    const streakValAfter = await page.evaluate(() => document.getElementById('statStreak').textContent);
+    assert('Streak updates to 3 after logging today', streakValAfter === '3');
+    await page.close();
+  }
 
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();

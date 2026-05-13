@@ -108,3 +108,9 @@ in the task list (emoji buttons live only in the timeblock since this feature mo
 ## 23. Start of day button (3 tests)
 Validates clicking sodBtn stores a timestamp under wl_sod_YYYY-MM-DD and updates button text
 to include "started". **Update if:** sodKey format, renderSodBtn label, or SOD click handler changes.
+
+## 24. Streak counter (2 tests)
+Validates calcStreak() counts consecutive days correctly from yesterday backwards (not today).
+Tests that: (1) streak shows correct count at start of day before logging anything, 
+(2) streak updates when a new entry is logged today.
+**Update if:** calcStreak() logic, dk() date formatting, or the backwards iteration changes.
