@@ -1150,6 +1150,7 @@
     <div class="eod-title">🌙 End of Day</div>
     <div class="eod-subtitle" id="eodSubtitle"></div>
     <div id="eodExportStatus"></div>
+    <div id="eodPushStatus"></div>
     <div class="eod-section-title">Changes implemented today</div>
     <div id="eodChanges"></div>
     <div class="eod-section-title">Test areas to review</div>
@@ -4658,10 +4659,32 @@
       });
     };
 
+    // Auto-push to GitHub
+    const pushStatus = document.getElementById('eodPushStatus');
+    pushStatus.innerHTML = '<div class="eod-exported" style="color:var(--text3)">⏳ Pushing to GitHub…</div>';
+    fetch('/api/eod-push', { method: 'POST' })
+      .then(r => r.json())
+      .then(d => {
+        pushStatus.innerHTML = d.ok
+          ? `<div class="eod-exported">✅ ${d.message}</div>`
+          : `<div class="eod-exported" style="color:#f17070">❌ ${d.message}</div>`;
+      })
+      .catch(() => {
+        pushStatus.innerHTML = '<div class="eod-exported" style="color:#f17070">❌ Could not reach server — push manually</div>';
+      });
+
     document.getElementById('eodOverlay').classList.add('show');
   }
 
-  document.getElementById('eodBtn').addEventListener('click', openEodModal);
+  document.getElementById('eodBtn').addEventListener('click', () => {
+    const ready = confirm(
+      '📎 Before closing the day:\n\n' +
+      'Have you shared work-log.html with Claude to log today\'s changes?\n\n' +
+      'OK — yes, changes are logged, continue\n' +
+      'Cancel — not yet, go back'
+    );
+    if (ready) openEodModal();
+  });
   document.getElementById('eodClose').addEventListener('click', () => {
     document.getElementById('eodOverlay').classList.remove('show');
   });
