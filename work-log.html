@@ -1567,6 +1567,7 @@
   function calcStreak() {
     const days = new Set(entries.map(e => e.date));
     let streak = 0, d = new Date();
+    d.setDate(d.getDate()-1); // Start from yesterday, not today
     while (days.has(dk(d))) { streak++; d.setDate(d.getDate()-1); }
     return streak;
   }
