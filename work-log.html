@@ -1051,6 +1051,8 @@
       <button class="nav-btn" id="nextDay">&#8594;</button>
     </div>
     <button class="export-btn" id="sodBtn" style="font-size:11px">🌅 start the day</button>
+    <button class="export-btn" id="githubBackupBtn" style="font-size:11px;background:#1f6feb;color:white">☁️ backup to GitHub</button>
+    <button class="export-btn" id="githubRestoreBtn" style="font-size:11px;background:#238636;color:white">⬇️ restore from GitHub</button>
   </div>
 </div>
 
@@ -3129,6 +3131,155 @@
   const NAMEDAY_API_TOKEN = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01';
   const NAMEDAY_API_BASE  = 'https://nimipaivarajapinta.fi/api';
 
+  // GitHub API for private repo backups
+  const GITHUB_TOKEN = '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';
+  const GITHUB_OWNER = 'lupinesse';
+  const GITHUB_REPO = 'work-log';
+  const GITHUB_API = 'https://api.github.com';
+  const GITHUB_BACKUP_PATH = 'backups/work-log'; // will be work-log-YYYY-MM-DD.json
+
+  async function saveBackupToGitHub() {
+    const now = new Date();
+    const dateStr = dk(now); // YYYY-MM-DD format
+    const fileName = `work-log-${dateStr}.json`;
+    const filePath = `${GITHUB_BACKUP_PATH}/${fileName}`;
+    
+    // Create backup object
+    const backup = {
+      version: '1',
+      exported: now.toISOString(),
+      entries,
+      categories,
+      planTasks,
+      blocks,
+      pomoLog: (() => { try { return JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]'); } catch(e) { return []; } })(),
+      devLog: (() => { try { return JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]'); } catch(e) { return []; } })(),
+      distractions: (() => { try { return JSON.parse(localStorage.getItem(STORE_DISTRACTIONS) || '[]'); } catch(e) { return []; } })(),
+      qpHidden: [...qpHidden],
+    };
+    
+    const content = JSON.stringify(backup, null, 2);
+    const encodedContent = btoa(content); // Base64 encode
+    
+    try {
+      // Get existing file SHA if it exists (needed for updates)
+      let sha = null;
+      try {
+        const getResponse = await fetch(
+          `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${GITHUB_TOKEN}`,
+              'Accept': 'application/vnd.github.v3+json'
+            }
+          }
+        );
+        if (getResponse.ok) {
+          const fileData = await getResponse.json();
+          sha = fileData.sha;
+        }
+      } catch(e) {}
+      
+      // Save/update file
+      const response = await fetch(
+        `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            message: `Daily backup: ${dateStr}`,
+            content: encodedContent,
+            sha: sha
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || `GitHub API error: ${response.status}`);
+      }
+      
+      console.log('[wl] ✅ Backup saved to GitHub:', filePath);
+      alert('✅ Backup saved to GitHub');
+      return true;
+    } catch(err) {
+      console.error('[wl] ❌ GitHub backup failed:', err.message);
+      alert('❌ GitHub backup failed: ' + err.message);
+      return false;
+    }
+  }
+
+  async function loadBackupsFromGitHub() {
+    try {
+      const response = await fetch(
+        `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_BACKUP_PATH}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to list backups: ${response.status}`);
+      }
+      
+      const files = await response.json();
+      if (!Array.isArray(files)) throw new Error('No backups found');
+      
+      return files
+        .filter(f => f.type === 'file' && f.name.endsWith('.json'))
+        .map(f => ({ name: f.name, path: f.path, date: f.name.match(/(\d{4}-\d{2}-\d{2})/)?.[1] || 'unknown' }))
+        .sort((a, b) => b.date.localeCompare(a.date)); // Newest first
+    } catch(err) {
+      console.error('[wl] Failed to load backups:', err.message);
+      return [];
+    }
+  }
+
+  async function restoreBackupFromGitHub(filePath) {
+    try {
+      const response = await fetch(
+        `${GITHUB_API}/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${filePath}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3.raw'
+          }
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch backup: ${response.status}`);
+      }
+      
+      const backupText = await response.text();
+      const backup = JSON.parse(backupText);
+      
+      // Restore data
+      if (backup.entries) entries = backup.entries;
+      if (backup.categories) categories = backup.categories;
+      if (backup.planTasks) planTasks = backup.planTasks;
+      if (backup.blocks) blocks = backup.blocks;
+      if (backup.qpHidden) qpHidden = new Set(backup.qpHidden);
+      
+      // Save to localStorage
+      save();
+      
+      console.log('[wl] ✅ Backup restored from GitHub');
+      alert('✅ Backup restored from GitHub');
+      return true;
+    } catch(err) {
+      console.error('[wl] Failed to restore backup:', err.message);
+      alert('❌ Failed to restore backup: ' + err.message);
+      return false;
+    }
+  }
+
   function fetchNameday() {
     const el = document.getElementById('liveNameday');
     if (!el) return;
@@ -4859,18 +5010,20 @@
       });
     };
 
-    // Auto-push to GitHub
+    // Auto-push to GitHub (backup)
     const pushStatus = document.getElementById('eodPushStatus');
-    pushStatus.innerHTML = '<div class="eod-exported" style="color:var(--text3)">⏳ Pushing to GitHub…</div>';
-    fetch('/api/eod-push', { method: 'POST' })
-      .then(r => r.json())
-      .then(d => {
-        pushStatus.innerHTML = d.ok
-          ? `<div class="eod-exported">✅ ${d.message}</div>`
-          : `<div class="eod-exported" style="color:#f17070">❌ ${d.message}</div>`;
+    pushStatus.innerHTML = '<div class="eod-exported" style="color:var(--text3)">⏳ Saving backup to GitHub…</div>';
+    
+    saveBackupToGitHub()
+      .then(success => {
+        if (success) {
+          pushStatus.innerHTML = `<div class="eod-exported">✅ Backup saved to GitHub</div>`;
+        } else {
+          pushStatus.innerHTML = '<div class="eod-exported" style="color:#f17070">❌ Failed to save backup to GitHub</div>';
+        }
       })
       .catch(() => {
-        pushStatus.innerHTML = '<div class="eod-exported" style="color:#f17070">❌ Could not reach server — push manually</div>';
+        pushStatus.innerHTML = '<div class="eod-exported" style="color:#f17070">❌ Could not reach GitHub — backup to file instead</div>';
       });
 
     document.getElementById('eodOverlay').classList.add('show');
@@ -4891,6 +5044,36 @@
   document.getElementById('eodOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('eodOverlay'))
       document.getElementById('eodOverlay').classList.remove('show');
+  });
+
+  // GitHub backup buttons
+  document.getElementById('githubBackupBtn').addEventListener('click', () => {
+    const confirmed = confirm('☁️ Save today\'s work-log backup to GitHub?\n\nThis will create/update the backup file in the private repo.');
+    if (confirmed) {
+      saveBackupToGitHub();
+    }
+  });
+
+  document.getElementById('githubRestoreBtn').addEventListener('click', async () => {
+    const backups = await loadBackupsFromGitHub();
+    if (!backups || backups.length === 0) {
+      alert('No backups found on GitHub');
+      return;
+    }
+    
+    const backupList = backups.map((b, i) => `${i+1}. ${b.date} - ${b.name}`).join('\n');
+    const choice = prompt(`⬇️ Select backup to restore:\n\n${backupList}\n\nEnter number (or cancel):`, '1');
+    
+    if (choice && !isNaN(choice)) {
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < backups.length) {
+        const confirmed = confirm(`Restore backup from ${backups[idx].date}?\n\nThis will replace your current data.`);
+        if (confirmed) {
+          await restoreBackupFromGitHub(backups[idx].path);
+          location.reload(); // Reload to show restored data
+        }
+      }
+    }
   });
 
   load();
