@@ -1001,6 +1001,29 @@
   .pomo-start.running:hover { background: #2a2206; }
   @keyframes pomo-done { 0%,100%{color:var(--text)} 50%{color:#1D9E75} }
   #pomoTime.done { animation: pomo-done 0.45s ease-in-out 5; }
+  /* ── Park capture ── */
+  .timer-park-btn { font-size:15px; background:none; border:none; cursor:pointer; padding:0 3px; flex-shrink:0; opacity:0.6; transition:opacity 0.15s,transform 0.15s; line-height:1; }
+  .timer-park-btn:hover { opacity:1; transform:scale(1.15); }
+  .timer-park-btn.active { opacity:1; }
+  .park-capture { display:none; width:0; opacity:0; background:rgba(255,255,255,0.07); border:0.5px solid #378ADD; border-radius:var(--radius); color:var(--text); font-family:var(--font); font-size:12px; padding:3px 8px; outline:none; flex-shrink:0; transition:width 0.2s,opacity 0.15s; }
+  .park-capture.show { display:block; width:180px; opacity:1; }
+  .park-capture::placeholder { color:var(--text3); font-style:italic; }
+  /* ── Parked thoughts section ── */
+  .park-section { background:var(--bg2); border:0.5px solid #378ADD44; border-left:2px solid #378ADD; border-radius:var(--radius-lg); margin-bottom:10px; overflow:hidden; }
+  .park-header { display:flex; align-items:center; gap:7px; padding:7px 12px; font-size:11px; color:#378ADD; font-weight:500; }
+  .park-badge { background:#378ADD; color:#fff; font-size:10px; font-weight:600; padding:0 5px; border-radius:99px; min-width:16px; text-align:center; }
+  .parked-item { display:flex; align-items:center; gap:8px; padding:5px 12px; border-top:0.5px solid var(--border); font-size:12px; }
+  .parked-item-text { flex:1; color:var(--text); }
+  .parked-from { font-size:10px; color:var(--text3); display:block; margin-top:1px; }
+  .parked-promote { background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text2); font-size:11px; padding:2px 7px; cursor:pointer; }
+  .parked-promote:hover { background:var(--bg3); }
+  .parked-dismiss { background:none; border:none; color:var(--text3); font-size:14px; cursor:pointer; padding:0 2px; line-height:1; }
+  .parked-dismiss:hover { color:var(--text); }
+  /* ── IDKW button ── */
+  .idkw-btn { font-size:14px; background:none; border:none; cursor:pointer; padding:0 3px; opacity:0.5; line-height:1; transition:opacity 0.15s,transform 0.15s; }
+  .idkw-btn:hover { opacity:1; transform:rotate(20deg) scale(1.1); }
+  @keyframes idkw-pulse { 0%,100%{box-shadow:0 0 0 0 #378ADD33;border-color:#378ADD66} 50%{box-shadow:0 0 0 6px #378ADD11;border-color:#378ADD} }
+  .idkw-highlight { animation:idkw-pulse 1.5s ease-in-out 4; border-color:#378ADD !important; background:#131a24 !important; }
 </style>
 </head>
 <body>
@@ -1040,6 +1063,8 @@
   <span class="timer-handoff-lbl" id="timerHandoffLbl">handoff:</span>
   <input class="timer-handoff" id="timerHandoff" placeholder="what should future you know?" />
   <button class="timer-distract" id="timerDistract">😵 distracted</button>
+  <button class="timer-park-btn" id="timerParkBtn" title="park a thought">💭</button>
+  <input class="park-capture" id="parkCapture" placeholder="park this thought… ↵" />
   <button class="emergency-btn-trigger" id="emergencyBtn">🚨 focus</button>
   <button class="timer-pause" id="timerPause">pause</button>
   <button class="timer-stop" id="timerStop">stop</button>
@@ -1056,6 +1081,11 @@
     <input class="emergency-next" id="emergencyNext" placeholder="what's the one thing to do right now?" />
   </div>
   <button class="emergency-exit" id="emergencyExit">exit focus mode</button>
+</div>
+
+<div id="parkSection" style="display:none" class="park-section">
+  <div class="park-header">💭 parked thoughts <span class="park-badge" id="parkBadge">0</span></div>
+  <div id="parkList"></div>
 </div>
 
 <div class="stats">
@@ -1090,6 +1120,7 @@
   <div class="plan-header" id="planHeader">
     <span class="plan-header-title">today's tasks</span>
     <span class="plan-count" id="planCount"></span>
+    <button class="idkw-btn" id="idkwBtn" title="I don't know what to do — pick one for me">🎲</button>
     <span class="plan-toggle">&#9660;</span>
   </div>
   <div class="plan-body">
@@ -3295,7 +3326,7 @@
                 const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
                 const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
                 const icon = nextEvent.type === 'flag' ? FLAG_SVG : '📅 ';
-                el.innerHTML = `${icon}${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
+                el.innerHTML = `${icon}Upcoming: ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
               }
             });
         }
@@ -4735,6 +4766,9 @@
     { id:'20260515-005', date:'2026-05-15', desc:'Add nimipaivarajapinta.fi to CSP connect-src', areas:[1] },
     { id:'20260515-006', date:'2026-05-15', desc:'Calendar events: SVG Finnish flag for flag days, 📅 for holidays/notable days, no text prefix', areas:[1] },
     { id:'20260515-007', date:'2026-05-15', desc:'Nameday: Finnish names plain, Swedish names smaller/dimmed with sv: label', areas:[1] },
+    { id:'20260515-008', date:'2026-05-15', desc:'Calendar events: add "Upcoming:" prefix for non-today events', areas:[1] },
+    { id:'20260515-009', date:'2026-05-15', desc:'Re-add parked thoughts feature (💭 in timer bar, park section, → task / ✓ dismiss)', areas:[] },
+    { id:'20260515-010', date:'2026-05-15', desc:'Re-add IDKW 🎲 button in plan header — picks random todo task', areas:[] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
@@ -4882,6 +4916,113 @@
   renderPomoLog();
   renderCompleted();
   resumeTimerIfActive();
+
+  /* ── Parked thoughts ── */
+  const STORE_PARKED = 'wl_parked_v1';
+  let parkedThoughts = [];
+
+  function saveParked() {
+    localStorage.setItem(STORE_PARKED, JSON.stringify(parkedThoughts));
+  }
+  function loadParked() {
+    try { parkedThoughts = JSON.parse(localStorage.getItem(STORE_PARKED) || '[]'); } catch(e) { parkedThoughts = []; }
+  }
+  function renderParked() {
+    const open = parkedThoughts.filter(p => !p.done);
+    const section = document.getElementById('parkSection');
+    const list    = document.getElementById('parkList');
+    const badge   = document.getElementById('parkBadge');
+    if (!section || !list) return;
+    if (open.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    if (badge) badge.textContent = open.length;
+    list.innerHTML = open.map(p => `
+      <div class="parked-item" data-id="${p.id}">
+        <div class="parked-item-text">
+          ${escHtml(p.text)}
+          ${p.fromTask ? `<span class="parked-from">while working on: ${escHtml(p.fromTask)}</span>` : ''}
+        </div>
+        <button class="parked-promote" data-id="${p.id}">→ task</button>
+        <button class="parked-dismiss" data-id="${p.id}" title="dismiss">✓</button>
+      </div>`).join('');
+    list.querySelectorAll('.parked-promote').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const p = parkedThoughts.find(x => x.id === btn.dataset.id);
+        if (!p) return;
+        const todayKey = dk(new Date());
+        planTasks.push({ id: Date.now()+'', text: p.text, status:'todo', date: todayKey, tag: selectedTag });
+        savePlan();
+        p.done = true;
+        saveParked();
+        renderParked();
+        renderPlan();
+      });
+    });
+    list.querySelectorAll('.parked-dismiss').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const p = parkedThoughts.find(x => x.id === btn.dataset.id);
+        if (p) { p.done = true; saveParked(); renderParked(); }
+      });
+    });
+  }
+
+  // Park button in timer bar
+  (() => {
+    const btn = document.getElementById('timerParkBtn');
+    const inp = document.getElementById('parkCapture');
+    if (!btn || !inp) return;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const showing = inp.classList.contains('show');
+      inp.classList.toggle('show', !showing);
+      btn.classList.toggle('active', !showing);
+      if (!showing) { inp.focus(); } else { inp.value = ''; }
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const text = inp.value.trim();
+        if (!text) { inp.classList.remove('show'); btn.classList.remove('active'); return; }
+        const liveEntry = activeTimer ? entries.find(en => en.id === activeTimer.entryId) : null;
+        parkedThoughts.push({ id: Date.now()+'', text, ts: Date.now(), fromTask: liveEntry ? liveEntry.text : null, done: false });
+        saveParked();
+        renderParked();
+        inp.value = '';
+        inp.classList.remove('show');
+        btn.classList.remove('active');
+      } else if (e.key === 'Escape') {
+        inp.value = '';
+        inp.classList.remove('show');
+        btn.classList.remove('active');
+      }
+    });
+  })();
+
+  /* ── IDKW (I don't know what to do) ── */
+  (() => {
+    const btn = document.getElementById('idkwBtn');
+    if (!btn) return;
+    let idkwTimer = null;
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const todayKey = dk(new Date());
+      const candidates = planTasks.filter(t => t.date === todayKey && t.status === 'todo' && !t.parentId);
+      if (!candidates.length) return;
+      document.querySelectorAll('.idkw-highlight').forEach(el => el.classList.remove('idkw-highlight'));
+      clearTimeout(idkwTimer);
+      const pick = candidates[Math.floor(Math.random() * candidates.length)];
+      const row = document.querySelector(`.plan-row[data-id="${pick.id}"]`);
+      if (row) {
+        row.classList.add('idkw-highlight');
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        idkwTimer = setTimeout(() => row.classList.remove('idkw-highlight'), 8000);
+      }
+    });
+  })();
+
+  loadParked();
+  renderParked();
 
   // Test harness — only active when ?test=1 in URL
   if (new URLSearchParams(window.location.search).get('test') === '1') {
