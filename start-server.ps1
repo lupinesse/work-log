@@ -41,27 +41,33 @@ function Get-TodayMeetings {
                 # Skip public folders
                 try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
 
+                # Determine friendly account label
+                $storeDisplay = try { $store.DisplayName } catch { '' }
+                $accountLabel = if     ($storeDisplay -match 'lahitapiola') { 'LähiTapiola' }
+                                elseif ($storeDisplay -match 'gofore')      { 'Gofore' }
+                                else                                         { $null }
+
                 # Method 1: GetDefaultFolder
-                try { $calFolders += $store.GetDefaultFolder(9) } catch {}
+                try { $calFolders += @{ folder = $store.GetDefaultFolder(9); label = $accountLabel } } catch {}
 
                 # Method 2: Walk root folders looking for IPF.Appointment (calendar class)
                 try {
                     $root = $store.GetRootFolder()
                     foreach ($folder in $root.Folders) {
                         try {
-                            if ($folder.DefaultItemType -eq 1) {  # 1 = olAppointmentItem
-                                # Only add if not already found via GetDefaultFolder
-                                $alreadyAdded = $calFolders | Where-Object { $_.EntryID -eq $folder.EntryID }
-                                if (-not $alreadyAdded) { $calFolders += $folder }
+                            if ($folder.DefaultItemType -eq 1) {
+                                $alreadyAdded = $calFolders | Where-Object { $_.folder.EntryID -eq $folder.EntryID }
+                                if (-not $alreadyAdded) { $calFolders += @{ folder = $folder; label = $accountLabel } }
                             }
                         } catch {}
                     }
                 } catch {}
-
             }
 
             # Read meetings from every calendar folder found
-            foreach ($calFolder in $calFolders) {
+            foreach ($entry in $calFolders) {
+                $calFolder   = $entry.folder
+                $accountLabel = $entry.label
                 foreach ($useRecurring in @($true, $false)) {
                     try {
                         $items = $calFolder.Items
@@ -70,7 +76,6 @@ function Get-TodayMeetings {
                         $filtered = $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
 
                         foreach ($item in $filtered) {
-                            # Verify date using .Date comparison (avoids type quirks)
                             try {
                                 $startDate = ([DateTime]$item.Start).Date
                                 if ($startDate -ne $today) { continue }
@@ -93,6 +98,7 @@ function Get-TodayMeetings {
                                 end      = ([DateTime]$item.End).ToString('o')
                                 location = $loc
                                 joinUrl  = $joinUrl
+                                account  = $accountLabel
                             }
                         }
                     } catch { continue }
