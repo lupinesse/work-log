@@ -1022,7 +1022,12 @@
   /* ── IDKW button ── */
   .idkw-btn { font-size:14px; background:none; border:none; cursor:pointer; padding:0 3px; opacity:0.5; line-height:1; transition:opacity 0.15s,transform 0.15s; }
   .idkw-btn:hover { opacity:1; transform:rotate(20deg) scale(1.1); }
-  /* ── Split / child tasks ── */
+  /* ── Jira ticket links ── */
+  .jira-key-link { color: #378ADD; text-decoration: none; font-weight: 600; font-size: 11px; letter-spacing: 0.02em; }
+  .jira-key-link:hover { text-decoration: underline; }
+  .jira-key-sep { color: var(--text3); margin: 0 1px; }
+  .plan-item.done .jira-key-link { color: #6699bb; }
+</style>
   .plan-split-btn { background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text3); font-size:13px; padding:1px 5px; cursor:pointer; line-height:1; transition:color 0.12s,border-color 0.12s; }
   .plan-split-btn:hover { color:var(--text); border-color:var(--text3); }
   .plan-child-badge { background:#1D9E75; color:#fff; font-size:10px; font-weight:600; padding:0 5px; border-radius:99px; min-width:16px; text-align:center; }
@@ -1875,11 +1880,14 @@
       return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
     }
     function taskSubHtml(label, ms) {
-      const ticketMatch = label.match(/^([A-Z]+-\d+)[\s:_\-]*/);
-      const ticket = ticketMatch ? ticketMatch[1] : null;
-      const name   = ticket ? label.slice(ticketMatch[0].length).trim() : label;
-      return ticket
-        ? `<strong>${escHtml(ticket)}</strong><br>${escHtml(name)}<br><strong>${fmtMs(ms)}</strong>`
+      const m = label.match(/^([A-Z]+-\d+)([\s:_\-]+(.*))?$/s);
+      const ticket = m ? m[1] : null;
+      const name   = m ? (m[3] || '').trim() : label;
+      const keyHtml = ticket
+        ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
+        : null;
+      return keyHtml
+        ? `${keyHtml}${name ? `<br>${escHtml(name)}` : ''}<br><strong>${fmtMs(ms)}</strong>`
         : `${escHtml(label)}<br><strong>${fmtMs(ms)}</strong>`;
     }
 
@@ -1983,7 +1991,7 @@
           </div>
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${e.id}">${escHtml(e.text)}</div>
+            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
@@ -2940,6 +2948,20 @@
   const WEATHER_LON  = 24.9270;
   const WEATHER_NAME = 'Helsinki';
 
+  // Jira base URL — used to linkify AITO-XXXXX ticket keys
+  const JIRA_BASE = 'https://lahitapiola.atlassian.net/browse';
+
+  // Returns HTML with any leading ticket key (e.g. AITO-1234) turned into a clickable link.
+  // The rest of the task name is escaped and displayed after it.
+  function jiraTicketHtml(text) {
+    const m = text.match(/^([A-Z]+-\d+)([\s:_\-]+(.*))?$/s);
+    if (!m) return escHtml(text);
+    const key  = m[1];
+    const rest = (m[3] || '').trim();
+    const link = `<a class="jira-key-link" href="${JIRA_BASE}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}</a>`;
+    return rest ? `${link}<span class="jira-key-sep">:</span> ${escHtml(rest)}` : link;
+  }
+
   function weatherEmoji(code) {
     if (code === 0)   return '☀️';
     if (code <= 1)    return '🌤️';
@@ -3547,8 +3569,8 @@
       }
 
       const taskNameHtml = isLive
-        ? `▶ <strong>${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}</strong>`
-        : `${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}`;
+        ? `▶ <strong>${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${jiraTicketHtml(t.text)}</strong>`
+        : `${tag==='meeting'?'📅 ':''}${t.emoji?escHtml(t.emoji)+' ':''}${jiraTicketHtml(t.text)}`;
 
       const catLineHtml = `<div class="plan-cat-line" data-pid="${t.id}">
             <span class="plan-cat-dot" style="background:${cat.color}"></span>
@@ -4662,7 +4684,7 @@
       return `<div class="completed-item">
         <span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done</span>
         <span class="completed-dot" style="background:${cat.color}"></span>
-        <span class="completed-text">${t.emoji?escHtml(t.emoji)+' ':''}${escHtml(t.text)}</span>
+        <span class="completed-text">${t.emoji?escHtml(t.emoji)+' ':''}${jiraTicketHtml(t.text)}</span>
         <span class="completed-when">${whenStr}</span>
       </div>`;
     }).join('');
@@ -4786,6 +4808,7 @@
     { id:'20260515-011', date:'2026-05-15', desc:'Add ⊕ split button on tasks — creates child subtasks with parentId', areas:[] },
     { id:'20260515-012', date:'2026-05-15', desc:'Child tasks render indented under parent, sorted grouped', areas:[] },
     { id:'20260515-013', date:'2026-05-15', desc:'Park capture auto-closes when timer stops', areas:[] },
+    { id:'20260515-014', date:'2026-05-15', desc:'Jira ticket links: AITO-XXXXX prefix becomes clickable link to lahitapiola.atlassian.net', areas:[] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
