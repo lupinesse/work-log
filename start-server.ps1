@@ -51,6 +51,9 @@ function Get-TodayMeetings {
             $seen    = @{}
             $results = @()
             foreach ($item in ($recurring + $single)) {
+                # Hard guard — only items that actually start today
+                try { if ($item.Start -lt $today -or $item.Start -ge $tomorrow) { continue } } catch { continue }
+
                 $key = "$($item.Subject)|$($item.Start)"
                 if ($seen.ContainsKey($key)) { continue }
                 $seen[$key] = $true
