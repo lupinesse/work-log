@@ -10,93 +10,110 @@ Start-Process "$($url)work-log.html"
 Write-Host "Work log running at $($url)work-log.html"
 Write-Host "Close this window to stop the server."
 
-while ($listener.IsListening) {
-    $ctx  = $listener.GetContext()
-    $req  = $ctx.Request
-    $res  = $ctx.Response
+function Send-Json($res, $body, $status = 200) {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+    $res.StatusCode      = $status
+    $res.ContentType     = 'application/json; charset=utf-8'
+    $res.ContentLength64 = $bytes.Length
+    try { $res.OutputStream.Write($bytes, 0, $bytes.Length) } catch {}
+}
 
-    $res.Headers.Add('Access-Control-Allow-Origin', '*')
-
-    # Calendar endpoint — reads today's meetings from local Outlook via COM
-    if ($req.Url.LocalPath -eq '/api/calendar') {
+function Get-TodayMeetings {
+    # Run in a dedicated STA thread — required for Outlook COM
+    $sta = [powershell]::Create()
+    $null = $sta.AddScript({
         try {
-            # Connect to the already-running Outlook instead of launching a new one
-            try {
-                $outlook = [System.Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
-            } catch {
-                $outlook = New-Object -ComObject Outlook.Application
-            }
+            $ol = $null
+            try   { $ol = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application') }
+            catch { $ol = New-Object -ComObject Outlook.Application }
 
-            $ns        = $outlook.GetNamespace('MAPI')
-            $calFolder = $ns.GetDefaultFolder(9)  # 9 = olFolderCalendar
-
-            $today    = [DateTime]::Today
-            $tomorrow = $today.AddDays(1)
-
-            $items = $calFolder.Items
+            $ns     = $ol.GetNamespace('MAPI')
+            $cal    = $ns.GetDefaultFolder(9)
+            $items  = $cal.Items
             $items.IncludeRecurrences = $true
             $items.Sort('[Start]')
 
-            # Use invariant date format to avoid locale issues
-            $start_str = $today.ToString('MM/dd/yyyy HH:mm', [System.Globalization.CultureInfo]::InvariantCulture)
-            $end_str   = $tomorrow.ToString('MM/dd/yyyy HH:mm', [System.Globalization.CultureInfo]::InvariantCulture)
-            $filter    = "[Start] >= '$start_str' AND [Start] < '$end_str'"
-            $filtered  = $items.Restrict($filter)
+            $today    = [DateTime]::Today
+            $tomorrow = $today.AddDays(1)
+            $fmt      = [Globalization.CultureInfo]::InvariantCulture
+            $filter   = "[Start] >= '{0}' AND [Start] < '{1}'" -f `
+                        $today.ToString('MM/dd/yyyy HH:mm', $fmt), `
+                        $tomorrow.ToString('MM/dd/yyyy HH:mm', $fmt)
 
-            $meetings = @()
-            foreach ($item in $filtered) {
-                $joinUrl  = $null
-                $loc      = try { $item.Location } catch { '' }
-                $body     = try { $item.Body     } catch { '' }
-                $subject  = try { $item.Subject  } catch { '(no title)' }
-                $startStr = $item.Start.ToString('o')
-                $endStr   = $item.End.ToString('o')
-
+            $results = @()
+            foreach ($item in $items.Restrict($filter)) {
+                $loc     = try { $item.Location } catch { '' }
+                $body    = try { $item.Body     } catch { '' }
+                $subject = try { $item.Subject  } catch { '(no title)' }
+                $joinUrl = $null
                 if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
                     $joinUrl = $matches[0] -replace '&amp;','&'
                 }
-
-                $meetings += [ordered]@{
+                $results += @{
                     subject  = $subject
-                    start    = $startStr
-                    end      = $endStr
+                    start    = $item.Start.ToString('o')
+                    end      = $item.End.ToString('o')
                     location = $loc
                     joinUrl  = $joinUrl
                 }
             }
-
-            $json  = ConvertTo-Json -InputObject $meetings -Compress -Depth 3
-            if (-not $json) { $json = '[]' }
-            $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-            $res.ContentType     = 'application/json; charset=utf-8'
-            $res.ContentLength64 = $bytes.Length
-            $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            return $results
         } catch {
-            $msg   = $_.Exception.Message -replace '"',"'"
-            $err   = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$msg`"}")
-            $res.StatusCode      = 500
-            $res.ContentType     = 'application/json'
-            $res.ContentLength64 = $err.Length
-            $res.OutputStream.Write($err, 0, $err.Length)
+            return @{ error = $_.Exception.Message }
         }
-        $res.Close()
-        continue
-    }
+    })
 
-    # Static file serving
-    $file = Join-Path $root ($req.Url.LocalPath.TrimStart('/') -replace '/', '\')
+    $apt  = [System.Threading.ApartmentState]::STA
+    $sta.Runspace.ApartmentState = $apt
+    $out  = $sta.Invoke()
+    $sta.Dispose()
+    return $out
+}
 
-    if (Test-Path $file -PathType Leaf) {
-        $bytes = [IO.File]::ReadAllBytes($file)
-        $ext   = [IO.Path]::GetExtension($file).ToLower()
-        $res.ContentType = if ($ext -eq '.html') { 'text/html; charset=utf-8' }
-                           elseif ($ext -eq '.js') { 'application/javascript' }
-                           elseif ($ext -eq '.css') { 'text/css' }
-                           else { 'application/octet-stream' }
-        $res.ContentLength64 = $bytes.Length
-        $res.OutputStream.Write($bytes, 0, $bytes.Length)
-    } else {
-        $res.StatusCode = 404
+while ($listener.IsListening) {
+    $ctx = $listener.GetContext()
+    $req = $ctx.Request
+    $res = $ctx.Response
+    $res.Headers.Add('Access-Control-Allow-Origin', '*')
+
+    try {
+        if ($req.Url.LocalPath -eq '/api/calendar') {
+            try {
+                $meetings = Get-TodayMeetings
+                # Check if first result is an error object
+                if ($meetings.Count -eq 1 -and $meetings[0].ContainsKey('error')) {
+                    Send-Json $res "{`"error`":`"$($meetings[0].error -replace '"',"'")`"}" 500
+                } else {
+                    $json = if ($meetings.Count -gt 0) {
+                        ConvertTo-Json -InputObject @($meetings) -Compress -Depth 3
+                    } else { '[]' }
+                    Send-Json $res $json
+                }
+            } catch {
+                $msg = $_.Exception.Message -replace '"',"'"
+                Send-Json $res "{`"error`":`"$msg`"}" 500
+            }
+        } else {
+            # Static file serving
+            $file = Join-Path $root ($req.Url.LocalPath.TrimStart('/') -replace '/', '\')
+            if (Test-Path $file -PathType Leaf) {
+                $bytes = [IO.File]::ReadAllBytes($file)
+                $ext   = [IO.Path]::GetExtension($file).ToLower()
+                $res.ContentType = switch ($ext) {
+                    '.html' { 'text/html; charset=utf-8' }
+                    '.js'   { 'application/javascript' }
+                    '.css'  { 'text/css' }
+                    default { 'application/octet-stream' }
+                }
+                $res.ContentLength64 = $bytes.Length
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            } else {
+                $res.StatusCode = 404
+            }
+        }
+    } catch {
+        try { $res.StatusCode = 500 } catch {}
+    } finally {
+        try { $res.Close() } catch {}
     }
-    $res.Close()
 }
