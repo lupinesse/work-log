@@ -3124,24 +3124,21 @@
         if (data.success && data.name_days_by_type) {
           const finnishNames = (data.name_days_by_type.suomi || []).map(n => n.name);
           const swedishNames = (data.name_days_by_type.ruotsi || []).map(n => n.name);
-          
+
           let display = '🎂 Today\'s name day: ';
-          
+
           if (finnishNames.length > 0 && swedishNames.length > 0) {
-            // Both Finnish and Swedish with explicit labels
-            display += `<span style="font-weight:bold">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
-            display += ` <span style="font-size:80%;color:#999999;opacity:0.7">sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
+            display += ` <span style="font-size:85%;color:var(--text3)">/ sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (finnishNames.length > 0) {
-            // Finnish only
-            display += `<span style="font-weight:bold">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
           } else if (swedishNames.length > 0) {
-            // Swedish only
-            display += `<span style="font-weight:bold">${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `<span style="font-size:85%;color:var(--text3)">sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
             fallback();
             return;
           }
-          
+
           el.innerHTML = display;
         } else {
           fallback();
@@ -3207,12 +3204,13 @@
       }).then(r => r.ok ? r.json() : Promise.reject())
     ])
       .then(([flagResult, holidayResult, notableResult]) => {
+        const FLAG_SVG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:5px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
         let found = false;
 
         // Priority 1: Flag day
         if (flagResult.hits && flagResult.hits.length > 0) {
           const flag = flagResult.hits[0].document;
-          el.innerHTML = `🇫🇮 <span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
+          el.innerHTML = `${FLAG_SVG}<span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
           found = true;
         }
         // Priority 2: Holiday
@@ -3224,7 +3222,7 @@
         // Priority 3: Notable day
         else if (notableResult.hits && notableResult.hits.length > 0) {
           const notable = notableResult.hits[0].document;
-          el.innerHTML = `✨ <span style="font-weight:500">${escHtml(notable.name_fi)}</span>`;
+          el.innerHTML = `📅 <span style="font-weight:500">${escHtml(notable.name_fi)}</span>`;
           found = true;
         }
 
@@ -3283,22 +3281,21 @@
               const events = [];
               
               if (flagNext.hits && flagNext.hits.length > 0) {
-                events.push({ date: flagNext.hits[0].document.date, emoji: '🇫🇮', name: flagNext.hits[0].document.name_fi });
+                events.push({ date: flagNext.hits[0].document.date, type: 'flag', name: flagNext.hits[0].document.name_fi });
               }
               if (holidayNext.hits && holidayNext.hits.length > 0) {
-                events.push({ date: holidayNext.hits[0].document.date, emoji: '📅', name: holidayNext.hits[0].document.name_fi });
+                events.push({ date: holidayNext.hits[0].document.date, type: 'calendar', name: holidayNext.hits[0].document.name_fi });
               }
               if (notableNext.hits && notableNext.hits.length > 0) {
-                events.push({ date: notableNext.hits[0].document.date, emoji: '✨', name: notableNext.hits[0].document.name_fi });
+                events.push({ date: notableNext.hits[0].document.date, type: 'calendar', name: notableNext.hits[0].document.name_fi });
               }
-              
+
               // Show the earliest one
               if (events.length > 0) {
                 const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
                 const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
-                const FLAG_SVG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:4px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
-                const prefix = nextEvent.emoji === '🇫🇮' ? `${FLAG_SVG}Next flag day: ` : `${nextEvent.emoji} `;
-                el.innerHTML = `${prefix}${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
+                const icon = nextEvent.type === 'flag' ? FLAG_SVG : '📅 ';
+                el.innerHTML = `${icon}${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
               }
             });
         }
@@ -4736,6 +4733,8 @@
     { id:'20260515-003', date:'2026-05-15', desc:'Use full month name (e.g. June 4) in next flag day display', areas:[1] },
     { id:'20260515-004', date:'2026-05-15', desc:'Fix streakDays sub-stat to start from yesterday (consistent with calcStreak)', areas:[] },
     { id:'20260515-005', date:'2026-05-15', desc:'Add nimipaivarajapinta.fi to CSP connect-src', areas:[1] },
+    { id:'20260515-006', date:'2026-05-15', desc:'Calendar events: SVG Finnish flag for flag days, 📅 for holidays/notable days, no text prefix', areas:[1] },
+    { id:'20260515-007', date:'2026-05-15', desc:'Nameday: Finnish names plain, Swedish names smaller/dimmed with sv: label', areas:[1] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
