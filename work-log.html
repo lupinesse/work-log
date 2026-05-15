@@ -3112,7 +3112,7 @@
       }
     };
 
-    // Fetch both Finnish and Swedish names, show separately
+    // Fetch both Finnish and Swedish names, show with explicit language labels
     fetch(`${NAMEDAY_API_BASE}/namedays/today`, {
       headers: { 'Authorization': `Bearer ${NAMEDAY_API_TOKEN}` }
     })
@@ -3127,12 +3127,15 @@
           
           let display = '🎂 ';
           
-          if (finnishNames.length > 0) {
+          if (finnishNames.length > 0 && swedishNames.length > 0) {
+            // Both Finnish and Swedish — Finnish bold, Swedish smaller/grayed with separator
             display += `<span style="font-weight:500">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
-            if (swedishNames.length > 0) {
-              display += ` · <span style="font-size:90%;color:var(--text3)">${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
-            }
+            display += ` <span style="font-size:85%;color:var(--text3)">· ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+          } else if (finnishNames.length > 0) {
+            // Finnish only
+            display += `<span style="font-weight:500">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (swedishNames.length > 0) {
+            // Swedish only
             display += `<span style="font-weight:500">${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
             fallback();
