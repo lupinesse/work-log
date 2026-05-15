@@ -26,53 +26,58 @@ function Get-TodayMeetings {
             catch { $ol = New-Object -ComObject Outlook.Application }
 
             $ns    = $ol.GetNamespace('MAPI')
-            $cal   = $ns.GetDefaultFolder(9)
-
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-
-            # Use short date pattern (no time, no locale separator issues)
             $cult = [Globalization.CultureInfo]::CurrentCulture
             $d1   = $today.ToString($cult.DateTimeFormat.ShortDatePattern)
             $d2   = $tomorrow.ToString($cult.DateTimeFormat.ShortDatePattern)
 
-            # Pass 1: recurring items (requires IncludeRecurrences + Restrict)
-            $items1 = $cal.Items
-            $items1.Sort('[Start]')
-            $items1.IncludeRecurrences = $true
-            $recurring = try { @($items1.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")) } catch { @() }
-
-            # Pass 2: single-occurrence items (no IncludeRecurrences needed)
-            $items2 = $cal.Items
-            $items2.Sort('[Start]')
-            $single = try { @($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")) } catch { @() }
-
-            # Merge, deduplicate by subject+start
             $seen    = @{}
             $results = @()
-            foreach ($item in ($recurring + $single)) {
-                # Hard guard — only items that actually start today
-                try { if ($item.Start -lt $today -or $item.Start -ge $tomorrow) { continue } } catch { continue }
 
-                $key = "$($item.Subject)|$($item.Start)"
-                if ($seen.ContainsKey($key)) { continue }
-                $seen[$key] = $true
+            # Iterate all stores (accounts) to get all calendars
+            foreach ($store in $ns.Stores) {
+                try {
+                    $calFolder = $store.GetDefaultFolder(9)
+                } catch { continue }
 
-                $loc     = try { $item.Location } catch { '' }
-                $body    = try { $item.Body     } catch { '' }
-                $subject = try { $item.Subject  } catch { '(no title)' }
-                $joinUrl = $null
-                if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
-                    $joinUrl = $matches[0] -replace '&amp;','&'
-                }
-                $results += @{
-                    subject  = $subject
-                    start    = $item.Start.ToString('o')
-                    end      = $item.End.ToString('o')
-                    location = $loc
-                    joinUrl  = $joinUrl
+                foreach ($useRecurring in @($true, $false)) {
+                    try {
+                        $items = $calFolder.Items
+                        $items.Sort('[Start]')
+                        $items.IncludeRecurrences = $useRecurring
+                        $filtered = $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
+
+                        foreach ($item in $filtered) {
+                            # Verify date using .Date comparison (avoids type quirks)
+                            try {
+                                $startDate = ([DateTime]$item.Start).Date
+                                if ($startDate -ne $today) { continue }
+                            } catch { continue }
+
+                            $subject = try { $item.Subject  } catch { '(no title)' }
+                            $key     = "$subject|$($item.Start)"
+                            if ($seen.ContainsKey($key)) { continue }
+                            $seen[$key] = $true
+
+                            $loc     = try { $item.Location } catch { '' }
+                            $body    = try { $item.Body     } catch { '' }
+                            $joinUrl = $null
+                            if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                                $joinUrl = $matches[0] -replace '&amp;','&'
+                            }
+                            $results += @{
+                                subject  = $subject
+                                start    = ([DateTime]$item.Start).ToString('o')
+                                end      = ([DateTime]$item.End).ToString('o')
+                                location = $loc
+                                joinUrl  = $joinUrl
+                            }
+                        }
+                    } catch { continue }
                 }
             }
+
             return $results
         } catch {
             return @{ error = $_.Exception.Message }
