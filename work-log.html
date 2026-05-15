@@ -3293,7 +3293,7 @@
               if (events.length > 0) {
                 const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
                 const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
-                el.innerHTML = `${nextEvent.emoji} Next: ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
+                el.innerHTML = `${nextEvent.emoji} ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
               }
             });
         }
