@@ -3089,65 +3089,174 @@
     return String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
 
-  function renderFlagDay() {
+  function fetchFlagDay() {
     const el = document.getElementById('liveFlagDay');
     if (!el) return;
-    const now   = new Date();
-    const year  = now.getFullYear();
-    const today = fmtMD(now);
+
+    const now = new Date();
+    const day = now.getDate();
+    const mon = now.getMonth() + 1;
+    const year = now.getFullYear();
+
     const FLAG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:5px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
 
-    // Build sorted list of this year's flag days + next year's for wraparound
-    const thisYear = getFlagDays(year);
-    const nextYear = getFlagDays(year + 1);
-
-    if (thisYear[today]) {
-      el.innerHTML = `${FLAG}<span style="font-weight:500">${escHtml(thisYear[today])}</span>`;
-      return;
-    }
-
-    // Find next flag day
-    const allDays = Object.entries(thisYear)
-      .map(([k, v]) => ({ key: `${year}-${k}`, name: v }))
-      .concat(Object.entries(nextYear).map(([k, v]) => ({ key: `${year+1}-${k}`, name: v })))
-      .sort((a, b) => a.key.localeCompare(b.key));
-
-    const todayFull = `${year}-${today}`;
-    const next = allDays.find(d => d.key > todayFull);
-    if (next) {
-      const d = new Date(next.key + 'T12:00:00');
-      const dateStr = d.toLocaleDateString('en', { month: 'long', day: 'numeric' });
-      el.innerHTML = `${FLAG}Next flag day: ${dateStr} — <span style="font-weight:500">${escHtml(next.name)}</span>`;
-    }
+    fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        q: '*',
+        filter_by: `day:=${day} && month:=${mon}`,
+        per_page: 1
+      })
+    })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        if (data.hits && data.hits.length > 0) {
+          // Today is a flag day
+          const flag = data.hits[0].document;
+          el.innerHTML = `${FLAG}<span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
+        } else {
+          // Find next flag day this year or next year
+          return fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              q: '*',
+              filter_by: `date:>${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
+              sort_by: 'date:asc',
+              per_page: 1
+            })
+          })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+              if (data.hits && data.hits.length > 0) {
+                const flag = data.hits[0].document;
+                const dateStr = new Date(flag.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
+                el.innerHTML = `${FLAG}Next flag day: ${dateStr} — <span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
+              }
+            });
+        }
+      })
+      .catch(err => {
+        console.warn('[wl] Flag day API failed:', err.message);
+      });
   }
 
+  function renderFlagDay() {
+    // No longer needed — fetchFlagDay handles everything
+    // Kept as stub for compatibility
+  }
+
+  // Nimipäivärajapinta API token
+  const NAMEDAY_API_TOKEN = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01';
+  const NAMEDAY_API_BASE  = 'https://nimipaivarajapinta.fi/api';
+
   function fetchNameday() {
-    const now  = new Date();
-    const day  = now.getDate();
-    const mon  = now.getMonth() + 1;
-    const key  = String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-    const el   = document.getElementById('liveNameday');
+    const el = document.getElementById('liveNameday');
     if (!el) return;
 
     const fallback = () => {
-      if (FI_NAMEDAYS[key]) el.innerHTML = `🎂 Today\'s name day: <span style="font-weight:500">${escHtml(FI_NAMEDAYS[key])}</span>`;
+      const now  = new Date();
+      const day  = now.getDate();
+      const mon  = now.getMonth() + 1;
+      const key  = String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+      if (FI_NAMEDAYS[key]) {
+        el.innerHTML = `🎂 Today's name day: <span style="font-weight:500">${escHtml(FI_NAMEDAYS[key])}</span>`;
+      }
     };
 
-    // Try nimipaivat.fi — parse title "Nimipäivä D.M. Name"
-    fetch(`https://www.nimipaivat.fi/${day}.${mon}.`)
-      .then(r => r.text())
-      .then(html => {
-        const m = html.match(/<title>Nimip[äa]iv[äa]\s+[\d.]+\s+(.+?)<\/title>/i);
-        if (m && m[1].trim()) {
-          const name = m[1].trim();
-          // Validate: max 60 chars, Unicode letters/spaces/hyphens/commas only
-          const safe = name.length <= 60 && /^[\p{L}\s,\-\.]+$/u.test(name);
-          if (safe) {
-            el.innerHTML = `🎂 Today\'s name day: <span style="font-weight:500">${escHtml(name)}</span>`;
-          } else { fallback(); }
-        } else { fallback(); }
+    // Use official API instead of HTML scraping
+    fetch(`${NAMEDAY_API_BASE}/namedays/today`, {
+      headers: { 'Authorization': `Bearer ${NAMEDAY_API_TOKEN}` }
+    })
+      .then(r => {
+        if (!r.ok) throw new Error(`API error: ${r.status}`);
+        return r.json();
       })
-      .catch(fallback);
+      .then(data => {
+        if (data.success && data.name_days_by_type) {
+          // Combine Finnish and Swedish names
+          const finnishNames = (data.name_days_by_type.suomi || []).map(n => n.name);
+          const swedishNames = (data.name_days_by_type.ruotsi || []).map(n => n.name);
+          const allNames = [...finnishNames, ...swedishNames].slice(0, 3).join(', ');
+          
+          if (allNames) {
+            el.innerHTML = `🎂 Today's name day: <span style="font-weight:500">${escHtml(allNames)}</span>`;
+          } else {
+            fallback();
+          }
+        } else {
+          fallback();
+        }
+      })
+      .catch(err => {
+        console.warn('[wl] Nameday API failed, using fallback:', err.message);
+        fallback();
+      });
+  }
+
+  function fetchFlagDay() {
+    const el = document.getElementById('liveFlagDay');
+    if (!el) return;
+
+    fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        q: '*',
+        filter_by: `day:=${new Date().getDate()} && month:=${new Date().getMonth() + 1}`,
+        per_page: 5
+      })
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('Flag day API failed')))
+      .then(data => {
+        if (data.hits && data.hits.length > 0) {
+          const flag = data.hits[0].document;
+          const flagEmoji = flag.flags && flag.flags.includes('ax') ? '🇦🇽' : '🇫🇮';
+          el.innerHTML = `${flagEmoji} ${escHtml(flag.name_fi)}`;
+        }
+      })
+      .catch(err => {
+        console.warn('[wl] Flag day API failed:', err.message);
+        // Silently fail — flag day is optional
+      });
+  }
+
+  function fetchNotableDay() {
+    const el = document.getElementById('liveNameday');
+    if (!el || el.innerHTML.includes('🎂')) return; // Only show if no nameday
+
+    fetch(`${NAMEDAY_API_BASE}/typesense/collections/notable_days/documents/search`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        q: '*',
+        filter_by: `day:=${new Date().getDate()} && month:=${new Date().getMonth() + 1}`,
+        per_page: 5
+      })
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('Notable day API failed')))
+      .then(data => {
+        if (data.hits && data.hits.length > 0) {
+          const notable = data.hits[0].document;
+          el.innerHTML = `✨ ${escHtml(notable.name_fi)}`;
+        }
+      })
+      .catch(err => {
+        console.warn('[wl] Notable day API failed:', err.message);
+      });
   }
 
   function fetchWeather() {
@@ -3217,6 +3326,8 @@
   }
   fetchWeather();
   fetchNameday();
+  fetchFlagDay();
+  fetchNotableDay();
   renderMoon();
   renderFlagDay();
   renderDistractionCount();
@@ -4581,6 +4692,8 @@
     { id:'20260513-012', date:'2026-05-13', desc:'Timeblock: meeting form removed, block editing simplified', areas:[] },
     { id:'20260513-013', date:'2026-05-13', desc:'Day start and end times tracked and shown in exports', areas:[1] },
     { id:'20260513-014', date:'2026-05-13', desc:'Fix: streak counter now shows correct days at start of day', areas:[1,24] },
+    { id:'20260513-015', date:'2026-05-13', desc:'Nameday API: switch from HTML scraping to official Nimipäivärajapinta API', areas:[1] },
+    { id:'20260513-016', date:'2026-05-13', desc:'Calendar integration: flag days, notable days, and holidays via official API', areas:[1] },
   ];
 
   function mergeDevLog() {
