@@ -25,21 +25,32 @@ function Get-TodayMeetings {
             try   { $ol = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application') }
             catch { $ol = New-Object -ComObject Outlook.Application }
 
-            $ns     = $ol.GetNamespace('MAPI')
-            $cal    = $ns.GetDefaultFolder(9)
-            $items  = $cal.Items
-            $items.IncludeRecurrences = $true
+            $ns    = $ol.GetNamespace('MAPI')
+            $cal   = $ns.GetDefaultFolder(9)
+            $items = $cal.Items
             $items.Sort('[Start]')
+            $items.IncludeRecurrences = $true
 
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-            $fmt      = [Globalization.CultureInfo]::InvariantCulture
-            $filter   = "[Start] >= '{0}' AND [Start] < '{1}'" -f `
-                        $today.ToString('MM/dd/yyyy HH:mm', $fmt), `
-                        $tomorrow.ToString('MM/dd/yyyy HH:mm', $fmt)
+
+            # Try Restrict with system locale format (matches Finnish Outlook)
+            $cult   = [Globalization.CultureInfo]::CurrentCulture
+            $filter = "[Start] >= '{0}' AND [Start] < '{1}'" -f `
+                      $today.ToString('g', $cult), `
+                      $tomorrow.ToString('g', $cult)
+            $filtered = $items.Restrict($filter)
+
+            # If Restrict returns nothing, fall back to iterating all items
+            # (handles locale mismatches)
+            $source = if (@($filtered).Count -gt 0) { $filtered } else {
+                $items | Where-Object {
+                    try { $_.Start -ge $today -and $_.Start -lt $tomorrow } catch { $false }
+                }
+            }
 
             $results = @()
-            foreach ($item in $items.Restrict($filter)) {
+            foreach ($item in $source) {
                 $loc     = try { $item.Location } catch { '' }
                 $body    = try { $item.Body     } catch { '' }
                 $subject = try { $item.Subject  } catch { '(no title)' }
