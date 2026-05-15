@@ -55,9 +55,28 @@ async function runTests() {
     assert('liveSunrise element exists', await page.evaluate(() => !!document.getElementById('liveSunrise')));
     assert('liveRain element exists',    await page.evaluate(() => !!document.getElementById('liveRain')));
     assert('eodBtn exists',              await page.evaluate(() => !!document.getElementById('eodBtn')));
-    assert('jiraSection exists',          await page.evaluate(() => !!document.getElementById('jiraSection')));
+    assert('jiraSection exists',         await page.evaluate(() => !!document.getElementById('jiraSection')));
     assert('timerDistract btn exists',   await page.evaluate(() => !!document.getElementById('timerDistract')));
     assert('distractionSection exists',  await page.evaluate(() => !!document.getElementById('distractionSection')));
+    assert('parkSection exists',         await page.evaluate(() => !!document.getElementById('parkSection')));
+    assert('idkwBtn exists',             await page.evaluate(() => !!document.getElementById('idkwBtn')));
+    assert('upcomingSection exists',     await page.evaluate(() => !!document.getElementById('upcomingSection')));
+    assert('calSection exists',          await page.evaluate(() => !!document.getElementById('calSection')));
+    // CSP must include nimipaivarajapinta.fi for nameday API calls
+    const cspContent = await page.evaluate(() =>
+      document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.content || ''
+    );
+    assert('CSP includes nimipaivarajapinta.fi', cspContent.includes('nimipaivarajapinta.fi'));
+    // Nameday element has "Today's name day:" prefix (from fallback or cached API data)
+    // We can only verify it doesn't crash and that the element is present (API is live-only)
+    assert('liveNameday element rendered', await page.evaluate(() => {
+      const el = document.getElementById('liveNameday');
+      return el !== null; // presence verified; content is live-data dependent
+    }));
+    // liveFlagDay element should contain the "Next flag day:" label (rendered from hardcoded data)
+    assert('liveFlagDay rendered without crash', await page.evaluate(() =>
+      document.getElementById('liveFlagDay') !== null
+    ));
     await page.close();
   }
 
@@ -177,10 +196,12 @@ async function runTests() {
     const yesterday = dk(new Date(Date.now() - 86400000));
     const today     = dk(new Date());
     const tasks = [
-      { id: 'ac1', text: 'Carry me',      tag: 'work', status: 'inprogress', date: yesterday },
-      { id: 'ac2', text: 'Already done',  tag: 'work', status: 'done',       date: yesterday, completedAt: Date.now() - 3600000 },
+      { id: 'ac1', text: 'Carry me',        tag: 'work', status: 'inprogress', date: yesterday },
+      { id: 'ac2', text: 'Already done',    tag: 'work', status: 'done',       date: yesterday, completedAt: Date.now() - 3600000 },
       // Pending task — must carry with pending status, not reset to todo/inprogress
-      { id: 'ac4', text: 'Pending carry', tag: 'work', status: 'pending',    date: yesterday },
+      { id: 'ac4', text: 'Pending carry',   tag: 'work', status: 'pending',    date: yesterday },
+      // Upcoming task — must NOT be carried (it's future-dated, not overdue)
+      { id: 'ac5', text: 'Upcoming future', tag: 'work', status: 'upcoming',   date: yesterday },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
     await page.evaluate(() =>
@@ -192,14 +213,16 @@ async function runTests() {
     const todayTasks = await page.evaluate((today) =>
       window.__wl.getState().planTasks.filter(t => t.date === today)
     , today);
-    const carried      = todayTasks.find(t => t.text === 'Carry me');
-    const doneNotCarry = todayTasks.find(t => t.text === 'Already done');
-    const pendingTask  = todayTasks.find(t => t.text === 'Pending carry');
+    const carried        = todayTasks.find(t => t.text === 'Carry me');
+    const doneNotCarry   = todayTasks.find(t => t.text === 'Already done');
+    const pendingTask    = todayTasks.find(t => t.text === 'Pending carry');
+    const upcomingCarried = todayTasks.find(t => t.text === 'Upcoming future');
     assert('Unfinished task carried to today',         !!carried);
     assert('Carried task preserves inprogress',        carried?.status === 'inprogress');
     assert('Done task not carried',                    !doneNotCarry);
     assert('Pending task carried to today',            !!pendingTask);
     assert('Pending task preserves pending status',    pendingTask?.status === 'pending');
+    assert('Upcoming task not carried to today',       !upcomingCarried);
     await page.close();
   }
 
@@ -208,18 +231,28 @@ async function runTests() {
   {
     const today = dk(new Date());
     const tasks = [
-      { id: 's1', text: 'Zebra todo',  tag: 'work', status: 'todo',       date: today },
-      { id: 's2', text: 'Alpha todo',  tag: 'work', status: 'todo',       date: today },
-      { id: 's3', text: 'In progress', tag: 'work', status: 'inprogress', date: today },
-      { id: 's4', text: 'Done task',   tag: 'work', status: 'done',       date: today, completedAt: Date.now() - 1000 },
+      { id: 's1', text: 'Zebra todo',     tag: 'work', status: 'todo',       date: today },
+      { id: 's2', text: 'Alpha todo',     tag: 'work', status: 'todo',       date: today },
+      { id: 's3', text: 'In progress',    tag: 'work', status: 'inprogress', date: today },
+      { id: 's4', text: 'Done task',      tag: 'work', status: 'done',       date: today, completedAt: Date.now() - 1000 },
+      { id: 's5', text: 'Upcoming thing', tag: 'work', status: 'upcoming',   date: today },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
     const order = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.plan-item')).map(el => el.dataset.pid)
+      Array.from(document.querySelectorAll('#planList .plan-item')).map(el => el.dataset.pid)
     );
-    assert('In Progress before To do',     order.indexOf('s3') < order.indexOf('s1'));
-    assert('Alpha todo before Zebra todo', order.indexOf('s2') < order.indexOf('s1'));
-    assert('Done task not in plan list',   !order.includes('s4'));
+    assert('In Progress before To do',         order.indexOf('s3') < order.indexOf('s1'));
+    assert('Alpha todo before Zebra todo',     order.indexOf('s2') < order.indexOf('s1'));
+    assert('Done task not in main plan list',  !order.includes('s4'));
+    assert('Upcoming task not in main plan list', !order.includes('s5'));
+    // Upcoming task should appear in upcomingList instead
+    const upcomingOrder = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#upcomingList .plan-item')).map(el => el.dataset.pid)
+    );
+    assert('Upcoming task appears in upcoming section', upcomingOrder.includes('s5'));
+    assert('Upcoming section is visible', await page.evaluate(() =>
+      document.getElementById('upcomingSection').style.display !== 'none'
+    ));
     await page.close();
   }
 
@@ -713,6 +746,98 @@ async function runTests() {
     await page.waitForTimeout(200);
     const streakValAfter = await page.evaluate(() => document.getElementById('statStreak').textContent);
     assert('Streak updates to 3 after logging today', streakValAfter === '3');
+    await page.close();
+  }
+
+  // ── 25. Upcoming status & section ──────────────────────────────────────────
+  console.log('\n25. Upcoming status & section');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'up1', text: 'Upcoming A', tag: 'work', status: 'upcoming', date: today },
+      { id: 'up2', text: 'Upcoming B', tag: 'work', status: 'upcoming', date: today },
+      { id: 'up3', text: 'Todo task',  tag: 'work', status: 'todo',     date: today },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(300);
+
+    // Upcoming tasks must NOT appear in the main plan list
+    const mainPids = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#planList .plan-item')).map(el => el.dataset.pid)
+    );
+    assert('Upcoming tasks absent from main list', !mainPids.includes('up1') && !mainPids.includes('up2'));
+    assert('Todo task present in main list',       mainPids.includes('up3'));
+
+    // Both upcoming tasks should be in upcomingList
+    const upcomingPids = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#upcomingList .plan-item')).map(el => el.dataset.pid)
+    );
+    assert('Upcoming A in upcoming section', upcomingPids.includes('up1'));
+    assert('Upcoming B in upcoming section', upcomingPids.includes('up2'));
+
+    // upcomingSection must be visible and show the count
+    assert('Upcoming section visible',       await page.evaluate(() =>
+      document.getElementById('upcomingSection').style.display !== 'none'
+    ));
+    const upCount = await page.evaluate(() => document.getElementById('upcomingCount').textContent);
+    assert('Upcoming count shows 2',         upCount.includes('2'));
+
+    // Changing status from upcoming → todo moves task to main list
+    await page.evaluate(() => {
+      const sel = document.querySelector('#upcomingList .plan-status[data-pid="up1"]');
+      if (sel) { sel.value = 'todo'; sel.dispatchEvent(new Event('change')); }
+    });
+    await page.waitForTimeout(200);
+    const mainPidsAfter = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#planList .plan-item')).map(el => el.dataset.pid)
+    );
+    assert('Task moves to main list after status change from upcoming', mainPidsAfter.includes('up1'));
+
+    // upcomingSection hides when no upcoming tasks remain
+    await page.evaluate(() => {
+      const sel = document.querySelector('#upcomingList .plan-status[data-pid="up2"]');
+      if (sel) { sel.value = 'todo'; sel.dispatchEvent(new Event('change')); }
+    });
+    await page.waitForTimeout(200);
+    assert('Upcoming section hidden when empty', await page.evaluate(() =>
+      document.getElementById('upcomingSection').style.display === 'none'
+    ));
+
+    await page.close();
+  }
+
+  // ── 26. Timer stops automatically when task marked done ───────────────────
+  console.log('\n26. Timer stops when task marked done');
+  {
+    const today   = dk(new Date());
+    const entries = [{ id: 'td1', text: 'Active task', tag: 'work', ts: Date.now() - 60000, date: today }];
+    const tasks   = [{ id: 'tdp1', text: 'Active task', tag: 'work', status: 'inprogress', date: today }];
+    const page    = await freshPage(ctx, { wl_entries_v1: entries, wl_plan_v1: tasks, wl_cats_v1: CATS });
+
+    // Start the timer for the task
+    await page.evaluate(() => window.__wl.startTimer('td1'));
+    await page.waitForTimeout(300);
+    assert('Timer running before marking done', await page.evaluate(() => !!window.__wl.activeTimer()));
+
+    // Mark the task done via the status dropdown
+    await page.evaluate(() => {
+      const sel = document.querySelector('.plan-status[data-pid="tdp1"]');
+      if (sel) { sel.value = 'done'; sel.dispatchEvent(new Event('change')); }
+    });
+    await page.waitForTimeout(300);
+
+    assert('Timer stopped after marking done',    !await page.evaluate(() => !!window.__wl.activeTimer()));
+    assert('Timer bar hidden after auto-stop',    await page.evaluate(() =>
+      document.getElementById('timerBar').style.display === 'none' ||
+      document.getElementById('timerBar').style.display === ''
+    ));
+    // Entry should have a tsEnd set (timer was properly closed)
+    const tsEnd = await page.evaluate(() => {
+      const entries = JSON.parse(localStorage.getItem('wl_entries_v1') || '[]');
+      return entries.find(e => e.id === 'td1')?.tsEnd;
+    });
+    assert('Entry tsEnd set after auto-stop',     typeof tsEnd === 'number' && tsEnd > 0);
+
     await page.close();
   }
 

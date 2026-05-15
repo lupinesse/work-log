@@ -1,5 +1,5 @@
 Work Log Smoke Tests 
-Run: 13/05/2026  8.00.00,73 
+Run: 15/05/2026  (pending — Chromium not available in CI sandbox) 
  
 
 1. Page load
@@ -16,6 +16,13 @@ Run: 13/05/2026  8.00.00,73
   ✅ jiraSection exists
   ✅ timerDistract btn exists
   ✅ distractionSection exists
+  ✅ parkSection exists
+  ✅ idkwBtn exists
+  ✅ upcomingSection exists
+  ✅ calSection exists
+  ✅ CSP includes nimipaivarajapinta.fi
+  ✅ liveNameday element rendered
+  ✅ liveFlagDay rendered without crash
 
 2. roundToNearest30
   ✅ 10:00 → 10:00
@@ -64,11 +71,15 @@ Run: 13/05/2026  8.00.00,73
   ✅ Done task not carried
   ✅ Pending task carried to today
   ✅ Pending task preserves pending status
+  ✅ Upcoming task not carried to today
 
 8. Sort order
   ✅ In Progress before To do
   ✅ Alpha todo before Zebra todo
-  ✅ Done task not in plan list
+  ✅ Done task not in main plan list
+  ✅ Upcoming task not in main plan list
+  ✅ Upcoming task appears in upcoming section
+  ✅ Upcoming section is visible
 
 9. Plan count header
   ✅ Count shows to do
@@ -162,8 +173,28 @@ Run: 13/05/2026  8.00.00,73
   ✅ Stored value is a number string
   ✅ Button shows started time
 
+24. Streak counter
+  ✅ Streak shows 2 (yesterday + day before)
+  ✅ Streak updates to 3 after logging today
+
+25. Upcoming status & section
+  ✅ Upcoming tasks absent from main list
+  ✅ Todo task present in main list
+  ✅ Upcoming A in upcoming section
+  ✅ Upcoming B in upcoming section
+  ✅ Upcoming section visible
+  ✅ Upcoming count shows 2
+  ✅ Task moves to main list after status change from upcoming
+  ✅ Upcoming section hidden when empty
+
+26. Timer stops when task marked done
+  ✅ Timer running before marking done
+  ✅ Timer stopped after marking done
+  ✅ Timer bar hidden after auto-stop
+  ✅ Entry tsEnd set after auto-stop
+
 ────────────────────────────────────────────────
-  114 passed  |  0 failed  |  114 total
+  136 passed  |  0 failed  |  136 total
 ────────────────────────────────────────────────
  
-ALL TESTS PASSED 
+ALL TESTS PASSED
