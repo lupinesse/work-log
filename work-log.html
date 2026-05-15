@@ -1022,8 +1022,18 @@
   /* ── IDKW button ── */
   .idkw-btn { font-size:14px; background:none; border:none; cursor:pointer; padding:0 3px; opacity:0.5; line-height:1; transition:opacity 0.15s,transform 0.15s; }
   .idkw-btn:hover { opacity:1; transform:rotate(20deg) scale(1.1); }
-  @keyframes idkw-pulse { 0%,100%{box-shadow:0 0 0 0 #378ADD33;border-color:#378ADD66} 50%{box-shadow:0 0 0 6px #378ADD11;border-color:#378ADD} }
-  .idkw-highlight { animation:idkw-pulse 1.5s ease-in-out 4; border-color:#378ADD !important; background:#131a24 !important; }
+  /* ── Split / child tasks ── */
+  .plan-split-btn { background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text3); font-size:13px; padding:1px 5px; cursor:pointer; line-height:1; transition:color 0.12s,border-color 0.12s; }
+  .plan-split-btn:hover { color:var(--text); border-color:var(--text3); }
+  .plan-child-badge { background:#1D9E75; color:#fff; font-size:10px; font-weight:600; padding:0 5px; border-radius:99px; min-width:16px; text-align:center; }
+  .plan-split-row { display:flex; align-items:center; gap:6px; padding:4px 10px 4px 28px; border-top:0.5px solid var(--border); }
+  .plan-split-input { flex:1; background:rgba(255,255,255,0.05); border:0.5px solid #1D9E7588; border-radius:var(--radius); color:var(--text); font-family:var(--font); font-size:12px; padding:3px 8px; outline:none; }
+  .plan-split-input:focus { border-color:#1D9E75; }
+  .plan-split-input::placeholder { color:var(--text3); font-style:italic; }
+  .plan-split-done { background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text3); font-size:11px; padding:2px 7px; cursor:pointer; }
+  .plan-split-done:hover { background:var(--bg3); }
+  .plan-child-item { padding-left:18px; border-left:2px solid var(--border); margin-left:8px; }
+  .plan-child-arrow { color:var(--text3); font-size:11px; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -1649,6 +1659,11 @@
     if (bar) { bar.style.background = ''; bar.style.borderColor = ''; }
     const pulse = document.querySelector('.timer-pulse');
     if (pulse) pulse.style.background = '';
+    // Close park capture if open
+    const pc = document.getElementById('parkCapture');
+    const pb = document.getElementById('timerParkBtn');
+    if (pc) { pc.classList.remove('show'); pc.value = ''; }
+    if (pb) pb.classList.remove('active');
     updateTabAndFavicon();
   }
   function updateLiveBlock() {
@@ -3571,6 +3586,7 @@
   let pendingCollapsed = false;
   let editingPlanId = null;
   let _pendingCommentId = null;
+  let splitInputId = null;
   let _pendingCommentText = '';
   let _expandedHistoryId = null;
 
@@ -3639,16 +3655,30 @@
     const liveEntry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
     const liveText  = liveEntry ? liveEntry.text.toLowerCase() : null;
 
-    const flatSort = (tasks) => [...tasks].sort((a, b) => {
-      const aLive = liveText && a.text.toLowerCase() === liveText;
-      const bLive = liveText && b.text.toLowerCase() === liveText;
-      if (aLive && !bLive) return -1;
-      if (!aLive && bLive) return 1;
-      const aOrd = STATUS_ORDER[a.status||'todo'] ?? 1;
-      const bOrd = STATUS_ORDER[b.status||'todo'] ?? 1;
-      if (aOrd !== bOrd) return aOrd - bOrd;
-      return a.text.localeCompare(b.text);
-    });
+    const flatSort = (tasks) => {
+      const parents  = tasks.filter(t => !t.parentId);
+      const children = tasks.filter(t => !!t.parentId);
+      const sorted = [...parents].sort((a, b) => {
+        const aLive = liveText && a.text.toLowerCase() === liveText;
+        const bLive = liveText && b.text.toLowerCase() === liveText;
+        if (aLive && !bLive) return -1;
+        if (!aLive && bLive) return 1;
+        const aOrd = STATUS_ORDER[a.status||'todo'] ?? 1;
+        const bOrd = STATUS_ORDER[b.status||'todo'] ?? 1;
+        if (aOrd !== bOrd) return aOrd - bOrd;
+        return a.text.localeCompare(b.text);
+      });
+      // Insert children right after their parent
+      const result = [];
+      sorted.forEach(p => {
+        result.push(p);
+        const kids = children.filter(c => c.parentId === p.id).sort((a,b) => a.text.localeCompare(b.text));
+        kids.forEach(k => result.push(k));
+      });
+      // Orphaned children (parent deleted/moved) go at end
+      children.filter(c => !parents.find(p => p.id === c.parentId)).forEach(c => result.push(c));
+      return result;
+    };
 
     const statusOpts = (cur) => ['todo','inprogress','pending','blocked','done'].map(s => {
       const labels = { todo: 'To do', inprogress: 'In progress', pending: 'Pending', blocked: 'Blocked', done: 'Done' };
@@ -3764,21 +3794,34 @@
         </div>`;
       }
 
-      return `<div class="plan-item${status==='done'?' done':''}${isLive?' active-timer':''}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
-        <select class="plan-status ${status==='done'?'done-st':status}" data-pid="${t.id}">${statusOpts(status)}</select>
+      const childCount = planTasks.filter(c => c.parentId === t.id && c.date === viewKey && c.status !== 'done').length;
+      const childBadge = childCount > 0 ? `<span class="plan-child-badge">${childCount}</span>` : '';
+      const isChild = !!t.parentId;
+      const indent   = isChild ? ' plan-child-item' : '';
+      const childPrefix = isChild ? '<span class="plan-child-arrow">↳</span>' : '';
+
+      return `<div class="plan-item${status==='done'?' done':''}${isLive?' active-timer':''}${indent}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
+        ${childPrefix}<select class="plan-status ${status==='done'?'done-st':status}" data-pid="${t.id}">${statusOpts(status)}</select>
         <div class="plan-left">
           <div class="plan-top">
             <span class="plan-text">${taskNameHtml}</span>
           </div>
           ${commentRowHtml}
-          ${catLineHtml}
+          ${isChild ? '' : catLineHtml}
         </div>
         <div class="plan-actions">
+          ${childBadge}
+          ${status !== 'done' && !isChild ? `<button class="plan-split-btn" data-pid="${t.id}" title="split into subtasks">⊕</button>` : ''}
           <button class="plan-log-btn" data-pid="${t.id}" data-text="${escHtml(t.text)}">▶ start</button>
           <button class="plan-edit-btn" data-pid="${t.id}" title="edit">&#9998;</button>
           <button class="plan-del-btn" data-pid="${t.id}">&times;</button>
         </div>
-      </div>`;
+      </div>
+      ${splitInputId === t.id ? `<div class="plan-split-row" data-parent="${t.id}">
+        <span class="plan-child-arrow">↳</span>
+        <input class="plan-split-input" id="splitInp-${t.id}" placeholder="subtask name… ↵ to add" />
+        <button class="plan-split-done" data-pid="${t.id}">done</button>
+      </div>` : ''}`;
     }
 
     // Render both lists
@@ -4086,11 +4129,53 @@
       });
     });
 
-    // Delete task
+    // Delete task (children become orphaned top-level tasks)
     qa('.plan-del-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         planTasks = planTasks.filter(t => t.id !== btn.dataset.pid);
         savePlan(); renderPlan();
+      });
+    });
+
+    // Split into subtasks
+    qa('.plan-split-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        splitInputId = splitInputId === btn.dataset.pid ? null : btn.dataset.pid;
+        renderPlan();
+        if (splitInputId) {
+          const inp = document.getElementById('splitInp-' + splitInputId);
+          if (inp) inp.focus();
+        }
+      });
+    });
+    qa('.plan-split-done').forEach(btn => {
+      btn.addEventListener('click', () => { splitInputId = null; renderPlan(); });
+    });
+    qa('.plan-split-input').forEach(inp => {
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          const text = inp.value.trim();
+          if (!text) return;
+          const parentId = inp.closest('.plan-split-row').dataset.parent;
+          const parent = planTasks.find(t => t.id === parentId);
+          planTasks.push({
+            id: Date.now()+'',
+            text,
+            status: 'todo',
+            date: dk(new Date()),
+            tag: parent ? parent.tag : selectedTag,
+            parentId
+          });
+          savePlan();
+          inp.value = '';
+          renderPlan();
+          // Re-focus the new input after re-render
+          const newInp = document.getElementById('splitInp-' + parentId);
+          if (newInp) newInp.focus();
+        } else if (e.key === 'Escape') {
+          splitInputId = null; renderPlan();
+        }
       });
     });
   }
@@ -4920,6 +5005,9 @@
     { id:'20260515-008', date:'2026-05-15', desc:'Calendar events: add "Upcoming:" prefix for non-today events', areas:[1] },
     { id:'20260515-009', date:'2026-05-15', desc:'Re-add parked thoughts feature (💭 in timer bar, park section, → task / ✓ dismiss)', areas:[] },
     { id:'20260515-010', date:'2026-05-15', desc:'Re-add IDKW 🎲 button in plan header — picks random todo task', areas:[] },
+    { id:'20260515-011', date:'2026-05-15', desc:'Add ⊕ split button on tasks — creates child subtasks with parentId', areas:[] },
+    { id:'20260515-012', date:'2026-05-15', desc:'Child tasks render indented under parent, sorted grouped', areas:[] },
+    { id:'20260515-013', date:'2026-05-15', desc:'Park capture auto-closes when timer stops', areas:[] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
