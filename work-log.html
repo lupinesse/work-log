@@ -5110,7 +5110,7 @@
     } catch (err) {
       console.warn('[wl] Calendar unavailable:', err.message);
       const el = document.getElementById('calMeetings');
-      if (el) el.innerHTML = `<span class="cal-empty" style="color:var(--text3)">Calendar unavailable — is Outlook open?</span>`;
+      if (el) el.innerHTML = `<span class="cal-empty" style="color:var(--text3)" title="${escHtml(err.message)}">📅 Calendar unavailable — restart server with Outlook open</span>`;
       document.getElementById('calStrip').style.display = 'flex';
     }
   }
