@@ -1022,18 +1022,23 @@
   /* ── IDKW button ── */
   .idkw-btn { font-size:14px; background:none; border:none; cursor:pointer; padding:0 3px; opacity:0.5; line-height:1; transition:opacity 0.15s,transform 0.15s; }
   .idkw-btn:hover { opacity:1; transform:rotate(20deg) scale(1.1); }
-  /* ── Calendar meeting strip ── */
-  .cal-strip { display:flex; align-items:flex-start; gap:8px; padding:6px 0 8px; border-bottom:0.5px solid var(--border); margin-bottom:10px; }
-  #calMeetings { flex:1; display:flex; flex-direction:column; gap:3px; }
-  .cal-meeting { display:flex; align-items:baseline; gap:7px; font-size:12px; }
+  /* ── Calendar meeting section ── */
+  #calSection .plan-header-title::before { content: '📅'; margin-right: 6px; }
+  #calSection .plan-header { cursor: pointer; }
+  .cal-meeting { display:flex; align-items:center; gap:8px; padding:6px 12px; border-top:0.5px solid var(--border); font-size:12px; }
+  .cal-meeting:first-child { border-top: none; }
   .cal-meeting-time { font-family:var(--mono); font-size:11px; color:var(--text3); flex-shrink:0; min-width:46px; }
-  .cal-meeting-title { color:var(--text2); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .cal-meeting-title.now { color:var(--text); font-weight:600; }
-  .cal-meeting-title.past { color:var(--text3); text-decoration:line-through; }
+  .cal-meeting-title { color:var(--text2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cal-meeting-title.past { color:var(--text3); font-style:italic; }
   .cal-meeting-dur { font-size:10px; color:var(--text3); flex-shrink:0; }
-  .cal-meeting-join { font-size:10px; color:#378ADD; text-decoration:none; flex-shrink:0; }
-  .cal-meeting-join:hover { text-decoration:underline; }
-  .cal-empty { font-size:12px; color:var(--text3); font-style:italic; }
+  .cal-meeting-join { font-size:10px; color:#378ADD; text-decoration:none; flex-shrink:0; padding:1px 6px; border:0.5px solid #378ADD44; border-radius:var(--radius); }
+  .cal-meeting-join:hover { background:rgba(55,138,221,0.1); }
+  .cal-task-btn { font-size:10px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text3); padding:1px 6px; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+  .cal-task-btn:hover { background:var(--bg3); color:var(--text); }
+  .cal-empty { font-size:12px; color:var(--text3); font-style:italic; padding:8px 12px; }
+  @keyframes cal-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
+  .cal-meeting.now .cal-meeting-title { color:var(--text); font-weight:600; animation:cal-pulse 2s ease-in-out infinite; }
+  .cal-meeting.now .cal-meeting-time { color:#5DCAA5; }
   /* ── Jira ticket links ── */
   .jira-key-link { color: #378ADD; text-decoration: none; font-weight: 600; font-size: 11px; letter-spacing: 0.02em; }
   .jira-key-link:hover { text-decoration: underline; }
@@ -1081,8 +1086,13 @@
 </div>
 
 <!-- Calendar meeting strip -->
-<div id="calStrip" style="display:none" class="cal-strip">
-  <div id="calMeetings"></div>
+<div class="plan-section" id="calSection" style="display:none">
+  <div class="plan-header" id="calHeader">
+    <span class="plan-header-title">today's meetings</span>
+    <span class="plan-count" id="calCount"></span>
+    <span class="plan-toggle">&#9660;</span>
+  </div>
+  <div class="plan-body" id="calMeetings"></div>
 </div>
 
 
@@ -5066,14 +5076,15 @@
 
   /* ── Calendar (Outlook COM via local server) ── */
   function renderCalStrip(meetings) {
-    const strip = document.getElementById('calStrip');
-    const el    = document.getElementById('calMeetings');
-    if (!strip || !el) return;
-
-    strip.style.display = 'flex';
+    const section = document.getElementById('calSection');
+    const el      = document.getElementById('calMeetings');
+    const countEl = document.getElementById('calCount');
+    if (!section || !el) return;
 
     if (!meetings || meetings.length === 0) {
-      el.innerHTML = '<span class="cal-empty">No meetings today</span>';
+      section.style.display = '';
+      el.innerHTML = '<div class="cal-empty">No meetings today</div>';
+      if (countEl) countEl.textContent = '';
       return;
     }
 
@@ -5084,20 +5095,56 @@
       return m >= 60 ? `${Math.floor(m/60)}h${m%60 ? ` ${m%60}m` : ''}` : `${m}m`;
     };
 
+    const upcoming = meetings.filter(ev => new Date(ev.end) > now).length;
+    if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
+
     el.innerHTML = meetings.map(ev => {
       const start  = new Date(ev.start);
-      const end    = ev.end ? new Date(ev.end) : null;
-      const isPast = end ? end < now : start < now;
-      const isNow  = start <= now && (!end || end > now);
+      const end    = new Date(ev.end);
+      const isPast = end < now;
+      const isNow  = start <= now && end > now;
       const cls    = isNow ? 'now' : isPast ? 'past' : '';
-      const dur    = end ? `<span class="cal-meeting-dur">${fmtDur(start, end)}</span>` : '';
-      const join   = ev.joinUrl ? `<a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join</a>` : '';
-      return `<div class="cal-meeting">
+      const dur    = `<span class="cal-meeting-dur">${fmtDur(start, end)}</span>`;
+      const join   = ev.joinUrl
+        ? `<a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join</a>`
+        : '';
+      const taskBtn = `<button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">+ task</button>`;
+      return `<div class="cal-meeting ${cls}">
         <span class="cal-meeting-time">${fmtTime(start)}</span>
         <span class="cal-meeting-title ${cls}">${escHtml(ev.subject)}</span>
-        ${dur} ${join}
+        ${dur} ${join} ${taskBtn}
       </div>`;
     }).join('');
+
+    // Wire up "+ task" buttons
+    el.querySelectorAll('.cal-task-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const subject  = btn.dataset.subject;
+        const todayKey = dk(new Date());
+        const exists   = planTasks.find(t => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase());
+        if (!exists) {
+          planTasks.push({ id: Date.now()+'', text: subject, status: 'todo', date: todayKey, tag: selectedTag });
+          savePlan();
+          renderPlan();
+        }
+        if (activeTimer) stopTimer();
+        const entry = { id: Date.now()+'', text: subject, tag: selectedTag, ts: safeRoundedStart(), date: todayKey };
+        entries.push(entry);
+        const task = planTasks.find(t => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase());
+        if (task && task.status === 'todo') { task.status = 'inprogress'; savePlan(); }
+        viewDate = new Date();
+        save(); startTimer(entry.id); render();
+      });
+    });
+
+    section.style.display = '';
+
+    // Collapsible header
+    const hdr = document.getElementById('calHeader');
+    if (hdr && !hdr._calBound) {
+      hdr._calBound = true;
+      hdr.addEventListener('click', () => section.classList.toggle('collapsed'));
+    }
   }
 
   async function fetchAndRenderCalendar() {
@@ -5110,8 +5157,9 @@
     } catch (err) {
       console.warn('[wl] Calendar unavailable:', err.message);
       const el = document.getElementById('calMeetings');
-      if (el) el.innerHTML = `<span class="cal-empty" style="color:var(--text3)" title="${escHtml(err.message)}">📅 Calendar unavailable — restart server with Outlook open</span>`;
-      document.getElementById('calStrip').style.display = 'flex';
+      if (el) el.innerHTML = `<div class="cal-empty" title="${escHtml(err.message)}">📅 Calendar unavailable — restart server with Outlook open</div>`;
+      const sec = document.getElementById('calSection');
+      if (sec) sec.style.display = '';
     }
   }
 
