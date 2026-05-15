@@ -3225,27 +3225,75 @@
           found = true;
         }
 
-        // If nothing today, find NEXT flag day/holiday
+        // If nothing today, find NEXT event of any type (flag day, holiday, or notable day)
         if (!found) {
-          return fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              q: '*',
-              filter_by: `date:>${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`,
-              sort_by: 'date:asc',
-              per_page: 1
-            })
-          })
-            .then(r => r.ok ? r.json() : Promise.reject())
-            .then(data => {
-              if (data.hits && data.hits.length > 0) {
-                const flag = data.hits[0].document;
-                const dateStr = new Date(flag.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
-                el.innerHTML = `🇫🇮 Next: ${dateStr} — <span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
+          const todayStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          
+          return Promise.all([
+            // Next flag day
+            fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                q: '*',
+                filter_by: `date:>${todayStr}`,
+                sort_by: 'date:asc',
+                per_page: 1
+              })
+            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] })),
+            
+            // Next holiday
+            fetch(`${NAMEDAY_API_BASE}/typesense/collections/holidays/documents/search`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                q: '*',
+                filter_by: `date:>${todayStr} && in_short_list:=true`,
+                sort_by: 'date:asc',
+                per_page: 1
+              })
+            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] })),
+            
+            // Next notable day
+            fetch(`${NAMEDAY_API_BASE}/typesense/collections/notable_days/documents/search`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                q: '*',
+                filter_by: `date:>${todayStr}`,
+                sort_by: 'date:asc',
+                per_page: 1
+              })
+            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] }))
+          ])
+            .then(([flagNext, holidayNext, notableNext]) => {
+              // Collect all upcoming events with their dates
+              const events = [];
+              
+              if (flagNext.hits && flagNext.hits.length > 0) {
+                events.push({ date: flagNext.hits[0].document.date, emoji: '🇫🇮', name: flagNext.hits[0].document.name_fi });
+              }
+              if (holidayNext.hits && holidayNext.hits.length > 0) {
+                events.push({ date: holidayNext.hits[0].document.date, emoji: '📅', name: holidayNext.hits[0].document.name_fi });
+              }
+              if (notableNext.hits && notableNext.hits.length > 0) {
+                events.push({ date: notableNext.hits[0].document.date, emoji: '✨', name: notableNext.hits[0].document.name_fi });
+              }
+              
+              // Show the earliest one
+              if (events.length > 0) {
+                const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
+                const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
+                el.innerHTML = `${nextEvent.emoji} Next: ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
               }
             });
         }
