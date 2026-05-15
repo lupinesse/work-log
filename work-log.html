@@ -3128,15 +3128,15 @@
           let display = '🎂 ';
           
           if (finnishNames.length > 0 && swedishNames.length > 0) {
-            // Both Finnish and Swedish — Finnish bold, Swedish smaller/grayed with separator
-            display += `<span style="font-weight:500">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
-            display += ` <span style="font-size:85%;color:var(--text3)">· ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            // Both Finnish and Swedish with explicit labels
+            display += `<span style="font-weight:bold">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += ` <span style="font-size:80%;color:#999999;opacity:0.7">sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (finnishNames.length > 0) {
             // Finnish only
-            display += `<span style="font-weight:500">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `<span style="font-weight:bold">${finnishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (swedishNames.length > 0) {
             // Swedish only
-            display += `<span style="font-weight:500">${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `<span style="font-weight:bold">${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
             fallback();
             return;
