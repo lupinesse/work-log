@@ -1037,10 +1037,10 @@
   .cal-task-btn:hover { background:var(--bg3); color:var(--text); }
   .cal-empty { font-size:12px; color:var(--text3); font-style:italic; padding:8px 12px; }
   .cal-account-label { font-size:10px; color:var(--text3); flex-shrink:0; opacity:0.7; }
-  @keyframes cal-pulse { 0%,100%{background:rgba(186,117,23,0.08)} 50%{background:rgba(186,117,23,0.20)} }
-  .cal-meeting.now { animation:cal-pulse 2s ease-in-out infinite; border-left:3px solid #EF9F27; padding-left:9px; }
-  .cal-meeting.now .cal-meeting-title { color:#FAC775; font-weight:600; }
-  .cal-meeting.now .cal-meeting-time { color:#EF9F27; }
+  @keyframes cal-pulse { 0%,100%{background:rgba(37,99,235,0.08)} 50%{background:rgba(37,99,235,0.18)} }
+  .cal-meeting.now { animation:cal-pulse 2s ease-in-out infinite; border-left:3px solid #2563eb; padding-left:9px; }
+  .cal-meeting.now .cal-meeting-title { color:#1e3a8a; font-weight:700; }
+  .cal-meeting.now .cal-meeting-time  { color:#1e3a8a; font-weight:700; }
   /* ── Jira ticket links ── */
   .jira-key-link { color: #378ADD; text-decoration: none; font-weight: 600; font-size: 11px; letter-spacing: 0.02em; }
   .jira-key-link:hover { text-decoration: underline; }
@@ -3236,13 +3236,15 @@
 
           let display = '🎂 Today\'s name day: ';
 
+          const SE_FLAG = '<svg width="16" height="11" viewBox="0 0 16 11" style="vertical-align:middle;margin:0 2px;border-radius:1px;display:inline-block"><rect width="16" height="11" fill="#006AA7"/><rect x="4" width="2.5" height="11" fill="#FECC02"/><rect y="4" width="16" height="2.5" fill="#FECC02"/></svg>';
+
           if (finnishNames.length > 0 && swedishNames.length > 0) {
             display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
-            display += ` <span style="font-size:85%;color:var(--text3)">/ 🇸🇪 ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += ` <span style="font-size:85%;color:var(--text3)">/ ${SE_FLAG}${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (finnishNames.length > 0) {
             display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
           } else if (swedishNames.length > 0) {
-            display += `<span style="font-size:85%;color:var(--text3)">🇸🇪 ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `<span style="font-size:85%;color:var(--text3)">${SE_FLAG}${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
             fallback();
             return;
@@ -5091,6 +5093,9 @@
   })();
 
   /* ── Calendar (Outlook COM via local server) ── */
+  const CAL_ACCOUNT_LABELS = { lahitapiola: 'LähiTapiola', gofore: 'Gofore' };
+  let _calMeetingsCache = null;
+
   function renderCalStrip(meetings) {
     const section = document.getElementById('calSection');
     const el      = document.getElementById('calMeetings');
@@ -5124,16 +5129,17 @@
       const join   = ev.joinUrl
         ? `<a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join</a>`
         : '';
-      const acct   = ev.account ? `<span class="cal-account-label">[${escHtml(ev.account)}]</span>` : '';
-      const taskBtn = `<button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">+ task</button>`;
+      const label  = ev.account ? CAL_ACCOUNT_LABELS[ev.account] || ev.account : null;
+      const acct   = label ? `<span class="cal-account-label">[${escHtml(label)}]</span>` : '';
+      const taskBtn = `<button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">▶ start</button>`;
       return `<div class="cal-meeting ${cls}">
         <span class="cal-meeting-time">${fmtTime(start)}</span>
-        <span class="cal-meeting-title ${cls}">${escHtml(ev.subject)}</span>
+        <span class="cal-meeting-title">${escHtml(ev.subject)}</span>
         ${acct} ${dur} ${join} ${taskBtn}
       </div>`;
     }).join('');
 
-    // Wire up "+ task" buttons
+    // Wire up "▶ start" buttons
     el.querySelectorAll('.cal-task-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const subject  = btn.dataset.subject;
@@ -5142,7 +5148,6 @@
         if (!exists) {
           planTasks.push({ id: Date.now()+'', text: subject, status: 'todo', date: todayKey, tag: selectedTag });
           savePlan();
-          renderPlan();
         }
         if (activeTimer) stopTimer();
         const entry = { id: Date.now()+'', text: subject, tag: selectedTag, ts: safeRoundedStart(), date: todayKey };
@@ -5170,6 +5175,7 @@
       if (!res.ok) throw new Error(`Server ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+      _calMeetingsCache = data;
       renderCalStrip(data);
     } catch (err) {
       console.warn('[wl] Calendar unavailable:', err.message);
@@ -5180,9 +5186,11 @@
     }
   }
 
-  // Fetch on load and refresh every 10 minutes
+  // Fetch from server every 10 minutes; re-render from cache every minute
+  // so past/now/upcoming states update without hammering the server
   fetchAndRenderCalendar();
   setInterval(fetchAndRenderCalendar, 10 * 60 * 1000);
+  setInterval(() => { if (_calMeetingsCache) renderCalStrip(_calMeetingsCache); }, 60 * 1000);
 
   loadParked();
   renderParked();

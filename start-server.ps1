@@ -41,14 +41,14 @@ function Get-TodayMeetings {
                 # Skip public folders
                 try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
 
-                # Determine friendly account label
+                # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
-                $accountLabel = if     ($storeDisplay -match 'lahitapiola') { 'LähiTapiola' }
-                                elseif ($storeDisplay -match 'gofore')      { 'Gofore' }
+                $accountKey   = if     ($storeDisplay -match 'lahitapiola') { 'lahitapiola' }
+                                elseif ($storeDisplay -match 'gofore')      { 'gofore' }
                                 else                                         { $null }
 
                 # Method 1: GetDefaultFolder
-                try { $calFolders += @{ folder = $store.GetDefaultFolder(9); label = $accountLabel } } catch {}
+                try { $calFolders += @{ folder = $store.GetDefaultFolder(9); label = $accountKey } } catch {}
 
                 # Method 2: Walk root folders looking for IPF.Appointment (calendar class)
                 try {
@@ -57,7 +57,7 @@ function Get-TodayMeetings {
                         try {
                             if ($folder.DefaultItemType -eq 1) {
                                 $alreadyAdded = $calFolders | Where-Object { $_.folder.EntryID -eq $folder.EntryID }
-                                if (-not $alreadyAdded) { $calFolders += @{ folder = $folder; label = $accountLabel } }
+                                if (-not $alreadyAdded) { $calFolders += @{ folder = $folder; label = $accountKey } }
                             }
                         } catch {}
                     }
@@ -67,7 +67,7 @@ function Get-TodayMeetings {
             # Read meetings from every calendar folder found
             foreach ($entry in $calFolders) {
                 $calFolder   = $entry.folder
-                $accountLabel = $entry.label
+                $accountKey = $entry.label
                 foreach ($useRecurring in @($true, $false)) {
                     try {
                         $items = $calFolder.Items
@@ -98,7 +98,7 @@ function Get-TodayMeetings {
                                 end      = ([DateTime]$item.End).ToString('o')
                                 location = $loc
                                 joinUrl  = $joinUrl
-                                account  = $accountLabel
+                                account  = $accountKey
                             }
                         }
                     } catch { continue }
