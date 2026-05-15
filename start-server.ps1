@@ -19,9 +19,7 @@ function Send-Json($res, $body, $status = 200) {
 }
 
 function Get-TodayMeetings {
-    # Run in a dedicated STA thread — required for Outlook COM
-    $sta = [powershell]::Create()
-    $null = $sta.AddScript({
+    $script = {
         try {
             $ol = $null
             try   { $ol = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application') }
@@ -61,12 +59,20 @@ function Get-TodayMeetings {
         } catch {
             return @{ error = $_.Exception.Message }
         }
-    })
+    }
 
-    $apt  = [System.Threading.ApartmentState]::STA
-    $sta.Runspace.ApartmentState = $apt
-    $out  = $sta.Invoke()
-    $sta.Dispose()
+    # Create runspace with STA apartment state set BEFORE opening
+    $iss = [Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+    $rs  = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($iss)
+    $rs.ApartmentState = [Threading.ApartmentState]::STA
+    $rs.Open()
+
+    $ps = [PowerShell]::Create()
+    $ps.Runspace = $rs
+    $null = $ps.AddScript($script)
+    $out = $ps.Invoke()
+    $ps.Dispose()
+    $rs.Close()
     return $out
 }
 
