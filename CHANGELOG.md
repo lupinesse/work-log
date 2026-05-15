@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.0 — 15 May 2026
+## v1.6.0 — 15 May 2026
 
 ### Tasks
 - **Upcoming status** — new 🔜 status moves tasks to a dedicated "Upcoming Tasks" section below Pending/Blocked; upcoming tasks are excluded from overnight auto-carry (they are future-dated, not overdue)
