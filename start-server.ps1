@@ -45,17 +45,21 @@ while ($listener.IsListening) {
 
             $meetings = @()
             foreach ($item in $filtered) {
-                $joinUrl = $null
-                $loc  = try { $item.Location } catch { '' }
-                $body = try { $item.Body } catch { '' }
+                $joinUrl  = $null
+                $loc      = try { $item.Location } catch { '' }
+                $body     = try { $item.Body     } catch { '' }
+                $subject  = try { $item.Subject  } catch { '(no title)' }
+                $startStr = $item.Start.ToString('o')
+                $endStr   = $item.End.ToString('o')
+
                 if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
                     $joinUrl = $matches[0] -replace '&amp;','&'
                 }
 
                 $meetings += [ordered]@{
-                    subject  = try { $item.Subject } catch { '(no title)' }
-                    start    = $item.Start.ToString('o')
-                    end      = $item.End.ToString('o')
+                    subject  = $subject
+                    start    = $startStr
+                    end      = $endStr
                     location = $loc
                     joinUrl  = $joinUrl
                 }
