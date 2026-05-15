@@ -17,25 +17,58 @@ while ($listener.IsListening) {
 
     $res.Headers.Add('Access-Control-Allow-Origin', '*')
 
-    # ICS calendar proxy — fetches the calendar URL server-side to bypass CORS
-    if ($req.Url.LocalPath -eq '/api/ics') {
+    # Calendar endpoint — reads today's meetings from local Outlook via COM
+    if ($req.Url.LocalPath -eq '/api/calendar') {
         try {
-            $icsUrl = [System.Web.HttpUtility]::UrlDecode($req.QueryString['url'])
-            if (-not $icsUrl) { throw 'No URL provided' }
+            $outlook  = New-Object -ComObject Outlook.Application
+            $ns       = $outlook.GetNamespace('MAPI')
+            $calFolder = $ns.GetDefaultFolder(9)  # 9 = olFolderCalendar
 
-            $wc = New-Object System.Net.WebClient
-            $wc.Headers.Add('User-Agent', 'Mozilla/5.0 (compatible; WorkLog/1.0)')
-            $content = $wc.DownloadString($icsUrl)
+            $today    = [DateTime]::Today
+            $tomorrow = $today.AddDays(1)
 
-            $bytes = [System.Text.Encoding]::UTF8.GetBytes($content)
-            $res.ContentType       = 'text/calendar; charset=utf-8'
-            $res.ContentLength64   = $bytes.Length
+            $items = $calFolder.Items
+            $items.IncludeRecurrences = $true
+            $items.Sort('[Start]')
+
+            # Restrict to today's appointments
+            $fmt    = 'MM/dd/yyyy HH:mm'
+            $filter = "[Start] >= '$($today.ToString($fmt))' AND [Start] < '$($tomorrow.ToString($fmt))'"
+            $filtered = $items.Restrict($filter)
+
+            $meetings = @()
+            foreach ($item in $filtered) {
+                # Skip free/tentative if desired — 0=Free, 1=Tentative, 2=Busy, 3=OOF, 4=WorkingElsewhere
+                # Extract Teams URL from body or location
+                $joinUrl = $null
+                $body = try { $item.Body } catch { '' }
+                $loc  = try { $item.Location } catch { '' }
+                $haystack = "$loc $body"
+                if ($haystack -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                    $joinUrl = $matches[0] -replace '&amp;','&'
+                }
+
+                $meetings += [ordered]@{
+                    subject  = $item.Subject
+                    start    = $item.Start.ToString('o')
+                    end      = $item.End.ToString('o')
+                    location = $loc
+                    joinUrl  = $joinUrl
+                    isOnline = ($item.IsOnlineMeeting -eq $true)
+                    status   = [int]$item.BusyStatus
+                }
+            }
+
+            $json  = ConvertTo-Json -InputObject $meetings -Compress -Depth 3
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+            $res.ContentType     = 'application/json; charset=utf-8'
+            $res.ContentLength64 = $bytes.Length
             $res.OutputStream.Write($bytes, 0, $bytes.Length)
         } catch {
-            $err   = [System.Text.Encoding]::UTF8.GetBytes("ERROR: $_")
-            $res.StatusCode        = 500
-            $res.ContentType       = 'text/plain'
-            $res.ContentLength64   = $err.Length
+            $err   = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$($_.Exception.Message)`"}")
+            $res.StatusCode      = 500
+            $res.ContentType     = 'application/json'
+            $res.ContentLength64 = $err.Length
             $res.OutputStream.Write($err, 0, $err.Length)
         }
         $res.Close()
