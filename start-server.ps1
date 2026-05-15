@@ -27,30 +27,34 @@ function Get-TodayMeetings {
 
             $ns    = $ol.GetNamespace('MAPI')
             $cal   = $ns.GetDefaultFolder(9)
-            $items = $cal.Items
-            $items.Sort('[Start]')
-            $items.IncludeRecurrences = $true
 
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
 
-            # Try Restrict with system locale format (matches Finnish Outlook)
-            $cult   = [Globalization.CultureInfo]::CurrentCulture
-            $filter = "[Start] >= '{0}' AND [Start] < '{1}'" -f `
-                      $today.ToString('g', $cult), `
-                      $tomorrow.ToString('g', $cult)
-            $filtered = $items.Restrict($filter)
+            # Use short date pattern (no time, no locale separator issues)
+            $cult = [Globalization.CultureInfo]::CurrentCulture
+            $d1   = $today.ToString($cult.DateTimeFormat.ShortDatePattern)
+            $d2   = $tomorrow.ToString($cult.DateTimeFormat.ShortDatePattern)
 
-            # If Restrict returns nothing, fall back to iterating all items
-            # (handles locale mismatches)
-            $source = if (@($filtered).Count -gt 0) { $filtered } else {
-                $items | Where-Object {
-                    try { $_.Start -ge $today -and $_.Start -lt $tomorrow } catch { $false }
-                }
-            }
+            # Pass 1: recurring items (requires IncludeRecurrences + Restrict)
+            $items1 = $cal.Items
+            $items1.Sort('[Start]')
+            $items1.IncludeRecurrences = $true
+            $recurring = try { @($items1.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")) } catch { @() }
 
+            # Pass 2: single-occurrence items (no IncludeRecurrences needed)
+            $items2 = $cal.Items
+            $items2.Sort('[Start]')
+            $single = try { @($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")) } catch { @() }
+
+            # Merge, deduplicate by subject+start
+            $seen    = @{}
             $results = @()
-            foreach ($item in $source) {
+            foreach ($item in ($recurring + $single)) {
+                $key = "$($item.Subject)|$($item.Start)"
+                if ($seen.ContainsKey($key)) { continue }
+                $seen[$key] = $true
+
                 $loc     = try { $item.Location } catch { '' }
                 $body    = try { $item.Body     } catch { '' }
                 $subject = try { $item.Subject  } catch { '(no title)' }
