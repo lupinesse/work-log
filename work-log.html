@@ -3146,8 +3146,12 @@
     "05-09": "Europe Day",
     "05-12": "J.V. Snellman Day",
     "06-04": "Flag Day of the Finnish Defence Forces",
+    "07-06": "Eino Leino Day",
+    "10-01": "Miina Sillanpää Day",
     "10-10": "Aleksis Kivi Day",
     "10-24": "United Nations Day",
+    "11-06": "Swedish Heritage Day",
+    "11-20": "Children's Rights Day",
     "12-06": "Finnish Independence Day",
     "12-08": "Jean Sibelius Day",
   };
@@ -3155,14 +3159,15 @@
   function getFlagDays(year) {
     const days = { ...FLAG_DAYS_FIXED };
     // Mother's Day — 2nd Sunday of May
-    const motherDay = nthWeekday(year, 5, 0, 2);
-    days[fmtMD(motherDay)] = "Mother's Day";
-    // Midsummer Saturday — Saturday between Jun 20–26
-    const midsummer = nearestWeekday(new Date(year, 5, 20), 6);
-    days[fmtMD(midsummer)] = "Midsummer / Finnish Flag Day";
+    days[fmtMD(nthWeekday(year, 5, 0, 2))]  = "Mother's Day";
+    // Kaatuneitten muistopäivä — 3rd Sunday of May
+    days[fmtMD(nthWeekday(year, 5, 0, 3))]  = "Kaatuneitten muistopäivä";
+    // Midsummer / Finnish Flag Day — Saturday between Jun 20–26
+    days[fmtMD(nearestWeekday(new Date(year, 5, 20), 6))] = "Midsummer / Finnish Flag Day";
     // Father's Day — 2nd Sunday of November
-    const fatherDay = nthWeekday(year, 11, 0, 2);
-    days[fmtMD(fatherDay)] = "Father's Day";
+    days[fmtMD(nthWeekday(year, 11, 0, 2))] = "Father's Day";
+    // Finnish Nature Day — last Saturday of August
+    days[fmtMD(lastWeekday(year, 8, 6))]    = "Finnish Nature Day";
     return days;
   }
 
@@ -3174,6 +3179,13 @@
       if (d.getDay() === weekday) { count++; if (count === n) return new Date(d); }
       d.setDate(d.getDate() + 1);
     }
+  }
+
+  function lastWeekday(year, month, weekday) {
+    // Last occurrence of weekday (0=Sun..6=Sat) in month (1-12)
+    const d = new Date(year, month, 0); // last day of month
+    while (d.getDay() !== weekday) d.setDate(d.getDate() - 1);
+    return d;
   }
 
   function nearestWeekday(from, weekday) {
@@ -3226,11 +3238,11 @@
 
           if (finnishNames.length > 0 && swedishNames.length > 0) {
             display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
-            display += ` <span style="font-size:85%;color:var(--text3)">/ sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += ` <span style="font-size:85%;color:var(--text3)">/ 🇸🇪 ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else if (finnishNames.length > 0) {
             display += `${finnishNames.slice(0, 2).map(escHtml).join(', ')}`;
           } else if (swedishNames.length > 0) {
-            display += `<span style="font-size:85%;color:var(--text3)">sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
+            display += `<span style="font-size:85%;color:var(--text3)">🇸🇪 ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
             fallback();
             return;
