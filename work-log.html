@@ -3199,155 +3199,85 @@
     const el = document.getElementById('liveFlagDay');
     if (!el) return;
 
-    const now = new Date();
-    const day = now.getDate();
-    const mon = now.getMonth() + 1;
+    const now  = new Date();
+    const day  = now.getDate();
+    const mon  = now.getMonth() + 1;
     const year = now.getFullYear();
+    const FLAG_SVG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:5px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
 
-    // Priority: Flag day > Holiday > Notable day
+    // Hardcoded fallback — always shows something even if API is unreachable
+    function showFallback() {
+      const todayMD  = fmtMD(now);
+      const thisYear = getFlagDays(year);
+      const nextYear = getFlagDays(year + 1);
+      if (thisYear[todayMD]) {
+        el.innerHTML = `${FLAG_SVG}<span style="font-weight:500">${escHtml(thisYear[todayMD])}</span>`;
+        return;
+      }
+      const todayFull = `${year}-${todayMD}`;
+      const all = [
+        ...Object.entries(thisYear).map(([k,v]) => ({ key: `${year}-${k}`,     type: 'flag', name: v })),
+        ...Object.entries(nextYear).map(([k,v]) => ({ key: `${year+1}-${k}`,   type: 'flag', name: v }))
+      ].sort((a, b) => a.key.localeCompare(b.key));
+      const next = all.find(d => d.key > todayFull);
+      if (next) {
+        const dateStr = new Date(next.key + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
+        el.innerHTML = `${FLAG_SVG}Upcoming: ${dateStr} — <span style="font-weight:500">${escHtml(next.name)}</span>`;
+      }
+    }
+
+    const apiPost = (collection, body) =>
+      fetch(`${NAMEDAY_API_BASE}/typesense/collections/${collection}/documents/search`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] }));
+
+    const todayStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
+    // Check today first, then upcoming if nothing found
     Promise.all([
-      // Check for flag day TODAY
-      fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          q: '*',
-          filter_by: `day:=${day} && month:=${mon}`,
-          per_page: 1
-        })
-      }).then(r => r.ok ? r.json() : Promise.reject()),
-      
-      // Check for holiday TODAY
-      fetch(`${NAMEDAY_API_BASE}/typesense/collections/holidays/documents/search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          q: '*',
-          filter_by: `day:=${day} && month:=${mon} && in_short_list:=true`,
-          per_page: 1
-        })
-      }).then(r => r.ok ? r.json() : Promise.reject()),
-      
-      // Check for notable day TODAY
-      fetch(`${NAMEDAY_API_BASE}/typesense/collections/notable_days/documents/search`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          q: '*',
-          filter_by: `day:=${day} && month:=${mon}`,
-          per_page: 1
-        })
-      }).then(r => r.ok ? r.json() : Promise.reject())
+      apiPost('flag_days',    { q: '*', filter_by: `day:=${day} && month:=${mon}`,                        per_page: 1 }),
+      apiPost('holidays',     { q: '*', filter_by: `day:=${day} && month:=${mon} && in_short_list:=true`, per_page: 1 }),
+      apiPost('notable_days', { q: '*', filter_by: `day:=${day} && month:=${mon}`,                        per_page: 1 })
     ])
-      .then(([flagResult, holidayResult, notableResult]) => {
-        const FLAG_SVG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:5px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
-        let found = false;
-
-        // Priority 1: Flag day
-        if (flagResult.hits && flagResult.hits.length > 0) {
-          const flag = flagResult.hits[0].document;
-          el.innerHTML = `${FLAG_SVG}<span style="font-weight:500">${escHtml(flag.name_fi)}</span>`;
-          found = true;
+      .then(([flagToday, holidayToday, notableToday]) => {
+        // Show today's event if found
+        if (flagToday.hits && flagToday.hits.length > 0) {
+          el.innerHTML = `${FLAG_SVG}<span style="font-weight:500">${escHtml(flagToday.hits[0].document.name_fi)}</span>`;
+          return;
         }
-        // Priority 2: Holiday
-        else if (holidayResult.hits && holidayResult.hits.length > 0) {
-          const holiday = holidayResult.hits[0].document;
-          el.innerHTML = `📅 <span style="font-weight:500">${escHtml(holiday.name_fi)}</span>`;
-          found = true;
+        if (holidayToday.hits && holidayToday.hits.length > 0) {
+          el.innerHTML = `📅 <span style="font-weight:500">${escHtml(holidayToday.hits[0].document.name_fi)}</span>`;
+          return;
         }
-        // Priority 3: Notable day
-        else if (notableResult.hits && notableResult.hits.length > 0) {
-          const notable = notableResult.hits[0].document;
-          el.innerHTML = `📅 <span style="font-weight:500">${escHtml(notable.name_fi)}</span>`;
-          found = true;
+        if (notableToday.hits && notableToday.hits.length > 0) {
+          el.innerHTML = `📅 <span style="font-weight:500">${escHtml(notableToday.hits[0].document.name_fi)}</span>`;
+          return;
         }
 
-        // If nothing today, find NEXT event of any type (flag day, holiday, or notable day)
-        if (!found) {
-          const todayStr = `${year}-${String(mon).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          
-          return Promise.all([
-            // Next flag day
-            fetch(`${NAMEDAY_API_BASE}/typesense/collections/flag_days/documents/search`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                q: '*',
-                filter_by: `date:>${todayStr}`,
-                sort_by: 'date:asc',
-                per_page: 1
-              })
-            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] })),
-            
-            // Next holiday
-            fetch(`${NAMEDAY_API_BASE}/typesense/collections/holidays/documents/search`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                q: '*',
-                filter_by: `date:>${todayStr} && in_short_list:=true`,
-                sort_by: 'date:asc',
-                per_page: 1
-              })
-            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] })),
-            
-            // Next notable day
-            fetch(`${NAMEDAY_API_BASE}/typesense/collections/notable_days/documents/search`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${NAMEDAY_API_TOKEN}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                q: '*',
-                filter_by: `date:>${todayStr}`,
-                sort_by: 'date:asc',
-                per_page: 1
-              })
-            }).then(r => r.ok ? r.json() : Promise.reject()).catch(() => ({ hits: [] }))
-          ])
-            .then(([flagNext, holidayNext, notableNext]) => {
-              // Collect all upcoming events with their dates
-              const events = [];
-              
-              if (flagNext.hits && flagNext.hits.length > 0) {
-                events.push({ date: flagNext.hits[0].document.date, type: 'flag', name: flagNext.hits[0].document.name_fi });
-              }
-              if (holidayNext.hits && holidayNext.hits.length > 0) {
-                events.push({ date: holidayNext.hits[0].document.date, type: 'calendar', name: holidayNext.hits[0].document.name_fi });
-              }
-              if (notableNext.hits && notableNext.hits.length > 0) {
-                events.push({ date: notableNext.hits[0].document.date, type: 'calendar', name: notableNext.hits[0].document.name_fi });
-              }
+        // Nothing today — find next upcoming event
+        return Promise.all([
+          apiPost('flag_days',    { q: '*', filter_by: `date:>${todayStr}`,                        sort_by: 'date:asc', per_page: 1 }),
+          apiPost('holidays',     { q: '*', filter_by: `date:>${todayStr} && in_short_list:=true`, sort_by: 'date:asc', per_page: 1 }),
+          apiPost('notable_days', { q: '*', filter_by: `date:>${todayStr}`,                        sort_by: 'date:asc', per_page: 1 })
+        ]).then(([flagNext, holidayNext, notableNext]) => {
+          const events = [];
+          if (flagNext.hits    && flagNext.hits.length    > 0) events.push({ date: flagNext.hits[0].document.date,    type: 'flag',     name: flagNext.hits[0].document.name_fi });
+          if (holidayNext.hits && holidayNext.hits.length > 0) events.push({ date: holidayNext.hits[0].document.date, type: 'calendar', name: holidayNext.hits[0].document.name_fi });
+          if (notableNext.hits && notableNext.hits.length > 0) events.push({ date: notableNext.hits[0].document.date, type: 'calendar', name: notableNext.hits[0].document.name_fi });
 
-              // Show the earliest one
-              if (events.length > 0) {
-                const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
-                const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
-                const icon = nextEvent.type === 'flag' ? FLAG_SVG : '📅 ';
-                el.innerHTML = `${icon}Upcoming: ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
-              }
-            });
-        }
+          if (events.length > 0) {
+            const next = events.sort((a, b) => a.date.localeCompare(b.date))[0];
+            const dateStr = new Date(next.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
+            const icon = next.type === 'flag' ? FLAG_SVG : '📅 ';
+            el.innerHTML = `${icon}Upcoming: ${dateStr} — <span style="font-weight:500">${escHtml(next.name)}</span>`;
+          } else {
+            showFallback(); // API returned nothing — use hardcoded list
+          }
+        });
       })
-      .catch(err => {
-        console.warn('[wl] Calendar API failed:', err.message);
-      });
+      .catch(() => showFallback());
   }
 
   function fetchWeather() {
