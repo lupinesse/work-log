@@ -35,12 +35,33 @@ function Get-TodayMeetings {
             $seen    = @{}
             $results = @()
 
-            # Iterate all stores (accounts) to get all calendars
+            # Collect all calendar folders across all accounts
+            $calFolders = @()
             foreach ($store in $ns.Stores) {
-                try {
-                    $calFolder = $store.GetDefaultFolder(9)
-                } catch { continue }
+                # Skip public folders
+                try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
 
+                # Method 1: GetDefaultFolder
+                try { $calFolders += $store.GetDefaultFolder(9) } catch {}
+
+                # Method 2: Walk root folders looking for IPF.Appointment (calendar class)
+                try {
+                    $root = $store.GetRootFolder()
+                    foreach ($folder in $root.Folders) {
+                        try {
+                            if ($folder.DefaultItemType -eq 1) {  # 1 = olAppointmentItem
+                                # Only add if not already found via GetDefaultFolder
+                                $alreadyAdded = $calFolders | Where-Object { $_.EntryID -eq $folder.EntryID }
+                                if (-not $alreadyAdded) { $calFolders += $folder }
+                            }
+                        } catch {}
+                    }
+                } catch {}
+
+            }
+
+            # Read meetings from every calendar folder found
+            foreach ($calFolder in $calFolders) {
                 foreach ($useRecurring in @($true, $false)) {
                     try {
                         $items = $calFolder.Items
