@@ -20,8 +20,14 @@ while ($listener.IsListening) {
     # Calendar endpoint — reads today's meetings from local Outlook via COM
     if ($req.Url.LocalPath -eq '/api/calendar') {
         try {
-            $outlook  = New-Object -ComObject Outlook.Application
-            $ns       = $outlook.GetNamespace('MAPI')
+            # Connect to the already-running Outlook instead of launching a new one
+            try {
+                $outlook = [System.Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
+            } catch {
+                $outlook = New-Object -ComObject Outlook.Application
+            }
+
+            $ns        = $outlook.GetNamespace('MAPI')
             $calFolder = $ns.GetDefaultFolder(9)  # 9 = olFolderCalendar
 
             $today    = [DateTime]::Today
@@ -31,41 +37,39 @@ while ($listener.IsListening) {
             $items.IncludeRecurrences = $true
             $items.Sort('[Start]')
 
-            # Restrict to today's appointments
-            $fmt    = 'MM/dd/yyyy HH:mm'
-            $filter = "[Start] >= '$($today.ToString($fmt))' AND [Start] < '$($tomorrow.ToString($fmt))'"
-            $filtered = $items.Restrict($filter)
+            # Use invariant date format to avoid locale issues
+            $start_str = $today.ToString('MM/dd/yyyy HH:mm', [System.Globalization.CultureInfo]::InvariantCulture)
+            $end_str   = $tomorrow.ToString('MM/dd/yyyy HH:mm', [System.Globalization.CultureInfo]::InvariantCulture)
+            $filter    = "[Start] >= '$start_str' AND [Start] < '$end_str'"
+            $filtered  = $items.Restrict($filter)
 
             $meetings = @()
             foreach ($item in $filtered) {
-                # Skip free/tentative if desired — 0=Free, 1=Tentative, 2=Busy, 3=OOF, 4=WorkingElsewhere
-                # Extract Teams URL from body or location
                 $joinUrl = $null
-                $body = try { $item.Body } catch { '' }
                 $loc  = try { $item.Location } catch { '' }
-                $haystack = "$loc $body"
-                if ($haystack -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                $body = try { $item.Body } catch { '' }
+                if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
                     $joinUrl = $matches[0] -replace '&amp;','&'
                 }
 
                 $meetings += [ordered]@{
-                    subject  = $item.Subject
+                    subject  = try { $item.Subject } catch { '(no title)' }
                     start    = $item.Start.ToString('o')
                     end      = $item.End.ToString('o')
                     location = $loc
                     joinUrl  = $joinUrl
-                    isOnline = ($item.IsOnlineMeeting -eq $true)
-                    status   = [int]$item.BusyStatus
                 }
             }
 
             $json  = ConvertTo-Json -InputObject $meetings -Compress -Depth 3
+            if (-not $json) { $json = '[]' }
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
             $res.ContentType     = 'application/json; charset=utf-8'
             $res.ContentLength64 = $bytes.Length
             $res.OutputStream.Write($bytes, 0, $bytes.Length)
         } catch {
-            $err   = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$($_.Exception.Message)`"}")
+            $msg   = $_.Exception.Message -replace '"',"'"
+            $err   = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$msg`"}")
             $res.StatusCode      = 500
             $res.ContentType     = 'application/json'
             $res.ContentLength64 = $err.Length
