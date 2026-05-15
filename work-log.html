@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.open-meteo.com https://www.nimipaivat.fi; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.open-meteo.com https://www.nimipaivat.fi https://nimipaivarajapinta.fi; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1871,7 +1871,7 @@
 
     // Streak: day with longest tracked time
     const streakDays = [];
-    { const d2 = new Date(); const seen = new Set(entries.map(e=>e.date));
+    { const d2 = new Date(); d2.setDate(d2.getDate()-1); const seen = new Set(entries.map(e=>e.date));
       while (seen.has(dk(d2))) { streakDays.push(dk(d2)); d2.setDate(d2.getDate()-1); } }
     const streakSub = document.getElementById('statStreakSub');
     if (streakDays.length > 0) {
@@ -3108,7 +3108,7 @@
       const mon  = now.getMonth() + 1;
       const key  = String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
       if (FI_NAMEDAYS[key]) {
-        el.innerHTML = `🎂 ${escHtml(FI_NAMEDAYS[key])}`;
+        el.innerHTML = `🎂 Today's name day: <span style="font-weight:500">${escHtml(FI_NAMEDAYS[key])}</span>`;
       }
     };
 
@@ -3125,7 +3125,7 @@
           const finnishNames = (data.name_days_by_type.suomi || []).map(n => n.name);
           const swedishNames = (data.name_days_by_type.ruotsi || []).map(n => n.name);
           
-          let display = '🎂 ';
+          let display = '🎂 Today\'s name day: ';
           
           if (finnishNames.length > 0 && swedishNames.length > 0) {
             // Both Finnish and Swedish with explicit labels
@@ -3295,8 +3295,10 @@
               // Show the earliest one
               if (events.length > 0) {
                 const nextEvent = events.sort((a, b) => a.date.localeCompare(b.date))[0];
-                const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' });
-                el.innerHTML = `${nextEvent.emoji} ${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
+                const dateStr = new Date(nextEvent.date + 'T12:00:00').toLocaleDateString('en', { month: 'long', day: 'numeric' });
+                const FLAG_SVG = '<svg width="20" height="13" viewBox="0 0 18 11" style="vertical-align:middle;margin-right:4px;border-radius:1px;display:inline-block"><rect width="18" height="11" fill="#fff"/><rect y="4" width="18" height="3" fill="#003580"/><rect x="5" width="3" height="11" fill="#003580"/></svg>';
+                const prefix = nextEvent.emoji === '🇫🇮' ? `${FLAG_SVG}Next flag day: ` : `${nextEvent.emoji} `;
+                el.innerHTML = `${prefix}${dateStr} — <span style="font-weight:500">${escHtml(nextEvent.name)}</span>`;
               }
             });
         }
@@ -4729,6 +4731,11 @@
     { id:'20260513-003', date:'2026-05-13', desc:'Inline entry editing: click entry text to edit in place', areas:[3] },
     { id:'20260513-004', date:'2026-05-13', desc:'Timelog header added above entry list', areas:[] },
     { id:'20260513-005', date:'2026-05-13', desc:'Chart label column widened from 120px to 200px', areas:[] },
+    { id:'20260515-001', date:'2026-05-15', desc:'Restore "Today\'s name day:" prefix in nameday display (API and fallback)', areas:[1] },
+    { id:'20260515-002', date:'2026-05-15', desc:'Restore SVG Finnish flag + "Next flag day:" prefix in calendar event display', areas:[1] },
+    { id:'20260515-003', date:'2026-05-15', desc:'Use full month name (e.g. June 4) in next flag day display', areas:[1] },
+    { id:'20260515-004', date:'2026-05-15', desc:'Fix streakDays sub-stat to start from yesterday (consistent with calcStreak)', areas:[] },
+    { id:'20260515-005', date:'2026-05-15', desc:'Add nimipaivarajapinta.fi to CSP connect-src', areas:[1] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
