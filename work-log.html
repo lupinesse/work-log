@@ -2871,6 +2871,18 @@
     }
     header.push('---');
 
+    // Add Pomodoro sessions if any exist for this day
+    let pomoLog = [];
+    try { pomoLog = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]'); } catch(e) {}
+    const dayPomos = pomoLog.filter(p => p.date === dateKey);
+    if (dayPomos.length > 0) {
+      lines.push('');
+      lines.push('Pomodoro Sessions:');
+      dayPomos.forEach(p => {
+        lines.push(`  ${p.time || '--:--'} - ${p.mins}min session - ${p.notes ? escHtml(p.notes) : 'no notes'}`);
+      });
+    }
+
     const blob = new Blob([[...header, ...lines].join('\n')], { type: 'text/plain' });
     writeExportFile('timesheets', `work-log-${dateKey}.txt`, blob);
   }
@@ -2943,85 +2955,6 @@
   }
 
   // Finnish nameday (nimipäivä) — hardcoded official list (University of Helsinki 2020)
-  const FI_NAMEDAYS = {
-    "01-01":"Uusivuosi","01-02":"Aaro, Aarne, Aarno","01-03":"Anni, Annikki, Sanni","01-04":"Ruut, Ruuth","01-05":"Lea, Leea",
-    "01-06":"Nuutti","01-07":"Merttu","01-08":"Hilppa","01-09":"Valtteri","01-10":"Henna",
-    "01-11":"Kari","01-12":"Tauno","01-13":"Lotta, Loviisa","01-14":"Sakari, Saku","01-15":"Soile, Soili",
-    "01-16":"Ilmari","01-17":"Toni","01-18":"Riikka","01-19":"Heikki, Henrik","01-20":"Havu",
-    "01-21":"Aino","01-22":"Visa","01-23":"Eine, Einari","01-24":"Eero, Eerik","01-25":"Paavo, Pauli",
-    "01-26":"Joonas, Joona","01-27":"Vilhelm, Vili","01-28":"Kaarlo, Karl","01-29":"Vihtori","01-30":"Eeva, Eva","01-31":"Tiina, Tina",
-    "02-01":"Elmeri","02-02":"Kaisu, Kaisa","02-03":"Auli, Aulikki","02-04":"Veijo, Veikko","02-05":"Orvokki",
-    "02-06":"Lasse, Lassi","02-07":"Roope, Rolf","02-08":"Taito, Into","02-09":"Aslak","02-10":"Liisa, Elisa",
-    "02-11":"Talvikki","02-12":"Ruusu","02-13":"Vappu, Valpuri","02-14":"Ystävänpäivä","02-15":"Kristiina, Tiina",
-    "02-16":"Kai","02-17":"Väinö, Veini","02-18":"Kaisa, Kaisla","02-19":"Eija","02-20":"Heli, Hely",
-    "02-21":"Taru, Tarika","02-22":"Tuulikki, Tuuli","02-23":"Aino","02-24":"Matthias, Matti","02-25":"Tuija",
-    "02-26":"Nestori","02-27":"Torsten, Torsti","02-28":"Onni","02-29":"Siiri",
-    "03-01":"Alvar, Aslak","03-02":"Virpi, Virva","03-03":"Kaija, Merja","03-04":"Adrian, Risto","03-05":"Lauri",
-    "03-06":"Vesa","03-07":"Topi, Topias","03-08":"Vilhelmina, Minna","03-09":"Valto","03-10":"Väinö",
-    "03-11":"Kerttu","03-12":"Keijo, Keijo","03-13":"Aku, Akuliina","03-14":"Matilda, Tilda","03-15":"Risto",
-    "03-16":"Ilkka, Ilari","03-17":"Kaapo, Kaapro","03-18":"Edvard, Eetu","03-19":"Juho, Juhani","03-20":"Aki",
-    "03-21":"Pentti, Benedict","03-22":"Vihtori","03-23":"Pepe, Petteri","03-24":"Gabriel, Kaapri","03-25":"Maria",
-    "03-26":"Manuel","03-27":"Nestori","03-28":"Armas","03-29":"Jonas, Joonas","03-30":"Ritva","03-31":"Unto",
-    "04-01":"Hugo, Uко","04-02":"Paavo, Paula","04-03":"Sampo","04-04":"Arvo","04-05":"Irja, Irina",
-    "04-06":"Ville, Viljami","04-07":"Harri, Harald","04-08":"Kaarlo, Kai","04-09":"Veikko, Veijo","04-10":"Marjo, Marja",
-    "04-11":"Kauko","04-12":"Julius, Jyri","04-13":"Tero, Tarmo","04-14":"Tiina","04-15":"Tellervo",
-    "04-16":"Hillevi, Hillervi","04-17":"Riikka, Rikhard","04-18":"Valeria, Valeria","04-19":"Pilvi","04-20":"Petro",
-    "04-21":"Anssi, Anselmi","04-22":"Sari, Saara","04-23":"Yrjö, Jyri","04-24":"Albinus, Albert","04-25":"Markus, Marko",
-    "04-26":"Terttu, Teresia","04-27":"Aleksanteri","04-28":"Jalo","04-29":"Tyyne, Tiina","04-30":"Mirjam, Mirja",
-    "05-01":"Vappu, Valpuri","05-02":"Verna","05-03":"Jolanda","05-04":"Elina, Eliina","05-05":"Eino",
-    "05-06":"Ylermi","05-07":"Viivi, Vivian","05-08":"Heikki","05-09":"Tuomas, Tomi","05-10":"Kai",
-    "05-11":"Eveliina","05-12":"Roosa, Ruusa","05-13":"Pirjo, Petra","05-14":"Eero, Eerik","05-15":"Sofia, Sohvi",
-    "05-16":"Hely, Heli","05-17":"Erika, Eerika","05-18":"Heidi","05-19":"Konsta, Konstantinus","05-20":"Lilja, Liljana",
-    "05-21":"Konrad, Kunto","05-22":"Riitta, Rikhard","05-23":"Lyydia, Lyyli","05-24":"Silja, Siiri","05-25":"Urpo",
-    "05-26":"Hannu, Johannes","05-27":"Ritva, Rittta","05-28":"Tessa, Teresia","05-29":"Heluna, Helena","05-30":"Tekla",
-    "05-31":"Petteri, Pirkko",
-    "06-01":"Pirkko","06-02":"Antti, Anto","06-03":"Arvo","06-04":"Siiri","06-05":"Ulla, Ulrike",
-    "06-06":"Niilo, Nikolaus","06-07":"Pirkko, Pirjo","06-08":"Mikko","06-09":"Taito","06-10":"Sulo",
-    "06-11":"Barnabas, Panu","06-12":"Jonatan, Joonas","06-13":"Ritva, Riitta","06-14":"Helge","06-15":"Tuomo",
-    "06-16":"Unto","06-17":"Urho","06-18":"Taisto, Taistelu","06-19":"Siiri, Sirpa","06-20":"Into",
-    "06-21":"Juhannus/Aino","06-22":"Johannes, Juhana","06-23":"Juhannusaatto (Aino)","06-24":"Juhannus","06-25":"Uuno",
-    "06-26":"Sulo, Sulho","06-27":"Lauri","06-28":"Leo","06-29":"Pekka, Pietari","06-30":"Pauli",
-    "07-01":"Arvo, Aaro","07-02":"Tuulia, Tuula","07-03":"Tommi, Tomas","07-04":"Ulpu, Ulpukka","07-05":"Ulla",
-    "07-06":"Soile, Soili","07-07":"Eino","07-08":"Esko","07-09":"Veli","07-10":"Lilli, Lila",
-    "07-11":"Elina, Eliina","07-12":"Hermanni, Herman","07-13":"Veli, Veikko","07-14":"Miki","07-15":"Rauni",
-    "07-16":"Martti, Marto","07-17":"Osmo","07-18":"Riikka","07-19":"Sanna, Susanna","07-20":"Vihtori",
-    "07-21":"Johanna, Hanna","07-22":"Maria Magdaleena","07-23":"Olga","07-24":"Cristina","07-25":"Jaakko",
-    "07-26":"Oili, Oilikki","07-27":"Marstna, Marta","07-28":"Sulo","07-29":"Olavi","07-30":"Aino",
-    "07-31":"Eino",
-    "08-01":"Pirkko","08-02":"Lertta","08-03":"Kerttu, Oltta","08-04":"Mauno, Magnuus","08-05":"Oskar, Oskari",
-    "08-06":"Hirviläinen","08-07":"Hilkka, Hilttu","08-08":"Hilkka","08-09":"Veijo","08-10":"Lauri",
-    "08-11":"Timo, Timoteus","08-12":"Klaara","08-13":"Jarmo, Jeremia","08-14":"Arvo","08-15":"Marianpäivä",
-    "08-16":"Aulis","08-17":"Verneri, Verner","08-18":"Helena, Helinä","08-19":"Magnus, Mauno","08-20":"Sami, Samuel",
-    "08-21":"Soini, Pirjo","08-22":"Sigrid, Sirpa","08-23":"Eija","08-24":"Perttu, Vartolomeus","08-25":"Loviisa",
-    "08-26":"Tero, Iiro","08-27":"Justus","08-28":"Aku","08-29":"Iida","08-30":"Reino",
-    "08-31":"Ilkka",
-    "09-01":"Viivi","09-02":"Ansa, Anssa","09-03":"Ase","09-04":"Tauno","09-05":"Terho",
-    "09-06":"Siiri, Sinikka","09-07":"Kaisu","09-08":"Adrian, Risto","09-09":"Ilmari","09-10":"Oiva",
-    "09-11":"Eetu, Edvard","09-12":"Sulevi","09-13":"Meri, Neea","09-14":"Pyhä Risti","09-15":"Risto",
-    "09-16":"Aino","09-17":"Aikku","09-18":"Tytti","09-19":"Aino","09-20":"Kirsi, Kristiina",
-    "09-21":"Matteus, Matti","09-22":"Mauri","09-23":"Sulo","09-24":"Karri","09-25":"Siiri",
-    "09-26":"Kaarle","09-27":"Arto, Artturi","09-28":"Venla","09-29":"Mikael, Mikko","09-30":"Marko",
-    "10-01":"Raakel, Rakel","10-02":"Toivo","10-03":"Toivo","10-04":"Urho, Francis","10-05":"Raili, Raila",
-    "10-06":"Niilo","10-07":"Aaro","10-08":"Heta, Henrietta","10-09":"Ilmari","10-10":"Aleksi",
-    "10-11":"Torsten","10-12":"Väinö","10-13":"Lauri","10-14":"Kaarlo","10-15":"Hertta, Hedvig",
-    "10-16":"Brita","10-17":"Saija, Satu","10-18":"Lotta","10-19":"Uljas","10-20":"Ulla, Ulrika",
-    "10-21":"Ursula","10-22":"Salme","10-23":"Tuulikki","10-24":"Siiri","10-25":"Rasmus",
-    "10-26":"Amanda, Mandi","10-27":"Viivi","10-28":"Simon, Simeri","10-29":"Onerva","10-30":"Jaana, Hanna",
-    "10-31":"Armas",
-    "11-01":"Pyhäinpäivä","11-02":"Toivo","11-03":"Erkki, Erkka","11-04":"Marraskuu","11-05":"Sylvi",
-    "11-06":"Ruut, Ruutu","11-07":"Kerttu","11-08":"Paavo","11-09":"Tauno","11-10":"Martin, Martti",
-    "11-11":"Martti","11-12":"Yrjö, Jyri","11-13":"Kristian, Kristo","11-14":"Heli, Hely","11-15":"Leo",
-    "11-16":"Eino","11-17":"Veikko","11-18":"Tenho","11-19":"Tarmo","11-20":"Marsalkka",
-    "11-21":"Hilma, Vilma","11-22":"Cecilia, Silja","11-23":"Klemetti","11-24":"Heikki","11-25":"Katariina, Kaisa",
-    "11-26":"Arvo","11-27":"Virpi, Virva","11-28":"Liisamaria","11-29":"Aino","11-30":"Andrei, Antero",
-    "12-01":"Joulukuu, Oskari","12-02":"Pirkko","12-03":"Arvo","12-04":"Barbara, Pariisi","12-05":"Satu",
-    "12-06":"Itsenäisyyspäivä","12-07":"Pellervo, Pertti","12-08":"Aino","12-09":"Anna","12-10":"Juho",
-    "12-11":"Tatu, Taneli","12-12":"Tuovi","12-13":"Lucia, Lussi","12-14":"Aino","12-15":"Terttu",
-    "12-16":"Aino","12-17":"Rautalanka","12-18":"Henna","12-19":"Iiris","12-20":"Uri",
-    "12-21":"Tuomas","12-22":"Rasmus","12-23":"Vihtori","12-24":"Aatami, Eeva (Jouluaatto)","12-25":"Joulupäivä",
-    "12-26":"Tapani, Tapana","12-27":"Johannes","12-28":"Lauri","12-29":"Rauli","12-30":"Daavid",
-    "12-31":"Sylvester, Silvo"
-  };
 
   function getMoonData(date) {
     const JD  = date.getTime() / 86400000 + 2440587.5;
@@ -3284,16 +3217,6 @@
     const el = document.getElementById('liveNameday');
     if (!el) return;
 
-    const fallback = () => {
-      const now  = new Date();
-      const day  = now.getDate();
-      const mon  = now.getMonth() + 1;
-      const key  = String(mon).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-      if (FI_NAMEDAYS[key]) {
-        el.innerHTML = `🎂 Today's name day: <span style="font-weight:500">${escHtml(FI_NAMEDAYS[key])}</span>`;
-      }
-    };
-
     // Fetch both Finnish and Swedish names, show with explicit language labels
     fetch(`${NAMEDAY_API_BASE}/namedays/today`, {
       headers: { 'Authorization': `Bearer ${NAMEDAY_API_TOKEN}` }
@@ -3317,18 +3240,17 @@
           } else if (swedishNames.length > 0) {
             display += `<span style="font-size:85%;color:var(--text3)">sv: ${swedishNames.slice(0, 2).map(escHtml).join(', ')}</span>`;
           } else {
-            fallback();
-            return;
+            throw new Error('No name day data');
           }
 
           el.innerHTML = display;
         } else {
-          fallback();
+          throw new Error('Invalid API response');
         }
       })
       .catch(err => {
-        console.warn('[wl] Nameday API failed, using fallback:', err.message);
-        fallback();
+        console.warn('[wl] Nameday API failed:', err.message);
+        el.innerHTML = `<span style="color:#999999;font-size:85%">🎂 (API unavailable)</span>`;
       });
   }
 
@@ -4920,6 +4842,9 @@
     { id:'20260515-008', date:'2026-05-15', desc:'Calendar events: add "Upcoming:" prefix for non-today events', areas:[1] },
     { id:'20260515-009', date:'2026-05-15', desc:'Re-add parked thoughts feature (💭 in timer bar, park section, → task / ✓ dismiss)', areas:[] },
     { id:'20260515-010', date:'2026-05-15', desc:'Re-add IDKW 🎲 button in plan header — picks random todo task', areas:[] },
+    { id:'20260516-001', date:'2026-05-16', desc:'Nameday: remove hardcoded fallback table; show error if API unavailable', areas:[1] },
+    { id:'20260516-002', date:'2026-05-16', desc:'Fix: NAMEDAY_API_TOKEN properly used in fetchNameday', areas:[1] },
+    { id:'20260516-003', date:'2026-05-16', desc:'Export: include Pomodoro session log in daily .txt export', areas:[1] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
