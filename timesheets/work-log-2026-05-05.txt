@@ -1,5 +1,0 @@
-4h 30min - AITO-188702: Feature walkthrough preparations + meeting - AITO-188700: FUAT planning for Diha (Additions part 2)
-30min - Lunch - break
-1h - Toukokuun pääversion 23.5.2026 Versio info - meeting
-30min - AITO-196369: Prepare onboarding/knowledge transfer to XX - AITO-196363: Onboarding to AITO FUAT testing process/practicalities
-1h - Break - break
