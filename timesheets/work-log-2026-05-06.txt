@@ -1,3 +1,0 @@
-1h 30min - Break - break
-4h 30min - AITO-196370: Execute tests 2 - AITO-188746: Pre-UAT execution for DIHA (CoreSuite integration)
-30min - How to test CoreSuite from UI? - meeting
