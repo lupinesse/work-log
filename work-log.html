@@ -1040,6 +1040,8 @@
   .cal-meeting-join:hover { background:rgba(55,138,221,0.1); }
   .cal-task-btn { font-size:10px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:var(--text3); padding:1px 6px; cursor:pointer; flex-shrink:0; white-space:nowrap; }
   .cal-task-btn:hover { background:var(--bg3); color:var(--text); }
+  .cal-delete-btn { font-size:10px; background:none; border:0.5px solid var(--border); border-radius:var(--radius); color:#d32f2f; padding:1px 5px; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+  .cal-delete-btn:hover { background:#d32f2f22; border-color:#d32f2f; }
   .cal-empty { font-size:12px; color:var(--text3); font-style:italic; padding:8px 12px; }
   .cal-account-label { font-size:10px; color:var(--text3); flex-shrink:0; opacity:0.7; }
   @keyframes cal-pulse { 0%,100%{background:rgba(37,99,235,0.08)} 50%{background:rgba(37,99,235,0.18)} }
@@ -4822,6 +4824,8 @@
     { id:'20260518-011', date:'2026-05-18', desc:'Timesheets folder removed from git tracking, added to .gitignore (stays local only)', areas:[] },
     { id:'20260518-012', date:'2026-05-18', desc:'Fix carry-over: pending/blocked status from most recent past version propagates to today\'s copy', areas:[] },
     { id:'20260518-013', date:'2026-05-18', desc:'Re-implement upcoming status and 🔜 Upcoming Tasks section (lost in force push)', areas:[] },
+    { id:'20260518-014', date:'2026-05-18', desc:'Calendar: ✕ delete button on each meeting hides it for the day (persists in localStorage)', areas:[] },
+    { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
@@ -5087,7 +5091,7 @@
     const upcoming = meetings.filter(ev => new Date(ev.end) > now).length;
     if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
-    el.innerHTML = meetings.map(ev => {
+    el.innerHTML = meetings.map((ev, idx) => {
       const start  = new Date(ev.start);
       const end    = new Date(ev.end);
       const isPast = end < now;
@@ -5100,10 +5104,11 @@
       const label  = ev.account ? CAL_ACCOUNT_LABELS[ev.account] || ev.account : null;
       const acct   = label ? `<span class="cal-account-label">[${escHtml(label)}]</span>` : '';
       const taskBtn = `<button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">▶ start</button>`;
+      const deleteBtn = `<button class="cal-delete-btn" data-meeting-idx="${idx}" title="Hide this meeting">✕</button>`;
       return `<div class="cal-meeting ${cls}">
         <span class="cal-meeting-time">${fmtTime(start)}</span>
         <span class="cal-meeting-title">${escHtml(ev.subject)}</span>
-        ${acct} ${dur} ${join} ${taskBtn}
+        ${acct} ${dur} ${join} ${taskBtn} ${deleteBtn}
       </div>`;
     }).join('');
 
@@ -5127,6 +5132,31 @@
       });
     });
 
+    // Wire up delete buttons
+    const todayKey = dk(new Date());
+    const hiddenMeetings = (() => {
+      try { return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]'); } catch(e) { return []; }
+    })();
+    
+    el.querySelectorAll('.cal-delete-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.meetingIdx);
+        const meeting = meetings[idx];
+        if (meeting) {
+          // Add to hidden list
+          if (!hiddenMeetings.includes(meeting.subject)) {
+            hiddenMeetings.push(meeting.subject);
+            localStorage.setItem('wl_hidden_meetings_' + todayKey, JSON.stringify(hiddenMeetings));
+          }
+          // Remove from display
+          btn.closest('.cal-meeting').style.opacity = '0.5';
+          btn.closest('.cal-meeting').style.textDecoration = 'line-through';
+          btn.disabled = true;
+          btn.textContent = '✓';
+        }
+      });
+    });
+
     section.style.display = '';
 
     // Collapsible header
@@ -5144,7 +5174,15 @@
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       _calMeetingsCache = data;
-      renderCalStrip(data);
+      
+      // Filter out hidden meetings for today
+      const todayKey = dk(new Date());
+      const hiddenMeetings = (() => {
+        try { return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]'); } catch(e) { return []; }
+      })();
+      const filteredData = data.filter(m => !hiddenMeetings.includes(m.subject));
+      
+      renderCalStrip(filteredData);
     } catch (err) {
       console.warn('[wl] Calendar unavailable:', err.message);
       const el = document.getElementById('calMeetings');
@@ -5158,7 +5196,16 @@
   // so past/now/upcoming states update without hammering the server
   fetchAndRenderCalendar();
   setInterval(fetchAndRenderCalendar, 10 * 60 * 1000);
-  setInterval(() => { if (_calMeetingsCache) renderCalStrip(_calMeetingsCache); }, 60 * 1000);
+  setInterval(() => { 
+    if (_calMeetingsCache) {
+      const todayKey = dk(new Date());
+      const hiddenMeetings = (() => {
+        try { return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]'); } catch(e) { return []; }
+      })();
+      const filteredData = _calMeetingsCache.filter(m => !hiddenMeetings.includes(m.subject));
+      renderCalStrip(filteredData);
+    }
+  }, 60 * 1000);
 
   loadParked();
   renderParked();
