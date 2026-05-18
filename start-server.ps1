@@ -133,6 +133,42 @@ while ($listener.IsListening) {
     $res.Headers.Add('Access-Control-Allow-Origin', '*')
 
     try {
+        # Nameday proxy — forwards to nimipaivarajapinta.fi bypassing browser CORS
+        if ($req.Url.LocalPath -like '/api/namedays*' -or $req.Url.LocalPath -like '/api/typesense*') {
+            try {
+                $token  = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01'
+                $path   = $req.Url.LocalPath  # already /api/namedays/... or /api/typesense/...
+                $target = 'https://nimipaivarajapinta.fi' + $path
+                if ($req.Url.Query) { $target += $req.Url.Query }
+
+                $wc = New-Object System.Net.WebClient
+                $wc.Encoding = [System.Text.Encoding]::UTF8
+                $wc.Headers.Add('Authorization', "Bearer $token")
+                $wc.Headers.Add('Content-Type', 'application/json')
+
+                $result = if ($req.HttpMethod -eq 'POST') {
+                    $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                    $body   = $reader.ReadToEnd()
+                    $wc.UploadString($target, 'POST', $body)
+                } else {
+                    $wc.DownloadString($target)
+                }
+
+                $bytes = [System.Text.Encoding]::UTF8.GetBytes($result)
+                $res.ContentType     = 'application/json; charset=utf-8'
+                $res.ContentLength64 = $bytes.Length
+                $res.OutputStream.Write($bytes, 0, $bytes.Length)
+            } catch {
+                $msg   = [System.Text.Encoding]::UTF8.GetBytes("{`"error`":`"$($_.Exception.Message -replace '"',"'")`"}")
+                $res.StatusCode      = 500
+                $res.ContentType     = 'application/json'
+                $res.ContentLength64 = $msg.Length
+                $res.OutputStream.Write($msg, 0, $msg.Length)
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
                 $meetings = Get-TodayMeetings
