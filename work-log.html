@@ -4590,8 +4590,16 @@
     const todayTasks = planTasks.filter(t => t.date === todayKey);
     const pastTasks  = planTasks.filter(t => t.date < todayKey);
 
-    // Migration: stamp completedAt on any done task missing it
-    let changed = false;
+    // Remove pending/blocked tasks that were incorrectly carried to today
+    // (they should stay on the day they were originally planned)
+    const before = planTasks.length;
+    planTasks = planTasks.filter(t => {
+      if (t.date !== todayKey) return true;
+      if (t.status !== 'pending' && t.status !== 'blocked') return true;
+      // Only remove if there's a past version — it was carried, not created today
+      return !pastTasks.some(p => p.text.toLowerCase() === t.text.toLowerCase());
+    });
+    let changed = planTasks.length !== before;
     planTasks.forEach(t => {
       if (t.status === 'done' && !t.completedAt) {
         // Sentinel: midnight = date known, exact time unknown
@@ -4600,10 +4608,15 @@
       }
     });
 
-    if (!todayTasks.length || !pastTasks.length) { if (changed) savePlan(); return; }
+    if (changed) savePlan();
 
-    todayTasks.forEach(todayTask => {
-      const prev = pastTasks
+    // Recalculate after cleanup
+    const todayTasksCurrent = planTasks.filter(t => t.date === todayKey);
+    const pastTasksCurrent  = planTasks.filter(t => t.date < todayKey);
+    if (!todayTasksCurrent.length || !pastTasksCurrent.length) return;
+
+    todayTasksCurrent.forEach(todayTask => {
+      const prev = pastTasksCurrent
         .filter(t => t.text.toLowerCase() === todayTask.text.toLowerCase())
         .sort((a,b) => b.date.localeCompare(a.date))[0];
       if (!prev) return;
@@ -4635,7 +4648,7 @@
     const todayKey = dk(new Date());
     const carryKey = 'wl_carried_' + todayKey;
     if (localStorage.getItem(carryKey)) return;
-    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done');
+    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done' && t.status !== 'pending' && t.status !== 'blocked');
     if (!unfinished.length) { localStorage.setItem(carryKey, '1'); return; }
 
     // Deduplicate by text — keep only the MOST RECENT past version of each task.
