@@ -884,11 +884,11 @@
   /* Handoff note in timer bar */
   .timer-handoff {
     display: none; flex: 1; font-size: 12px; padding: 3px 10px;
-    border-radius: var(--radius); border: 0.5px solid rgba(255,255,255,0.2);
-    background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9);
+    border-radius: var(--radius); border: 0.5px solid rgba(255,255,255,0.3);
+    background: rgba(0,0,0,0.2); color: #ffffff;
     font-family: var(--font); outline: none;
   }
-  .timer-handoff::placeholder { color: rgba(255,255,255,0.35); }
+  .timer-handoff::placeholder { color: rgba(255,255,255,0.5); }
   .timer-handoff.show { display: block; }
   .timer-handoff-lbl {
     display: none; font-size: 11px; color: #EF9F27; white-space: nowrap; flex-shrink: 0;
@@ -1005,9 +1005,9 @@
   .timer-park-btn { font-size:15px; background:none; border:none; cursor:pointer; padding:0 3px; flex-shrink:0; opacity:0.6; transition:opacity 0.15s,transform 0.15s; line-height:1; }
   .timer-park-btn:hover { opacity:1; transform:scale(1.15); }
   .timer-park-btn.active { opacity:1; }
-  .park-capture { display:none; width:0; opacity:0; background:rgba(255,255,255,0.07); border:0.5px solid #378ADD; border-radius:var(--radius); color:var(--text); font-family:var(--font); font-size:12px; padding:3px 8px; outline:none; flex-shrink:0; transition:width 0.2s,opacity 0.15s; }
+  .park-capture { display:none; width:0; opacity:0; background:rgba(0,0,0,0.25); border:0.5px solid #378ADD; border-radius:var(--radius); color:#ffffff; font-family:var(--font); font-size:12px; padding:3px 8px; outline:none; flex-shrink:0; transition:width 0.2s,opacity 0.15s; }
   .park-capture.show { display:block; width:180px; opacity:1; }
-  .park-capture::placeholder { color:var(--text3); font-style:italic; }
+  .park-capture::placeholder { color:rgba(255,255,255,0.6); font-style:italic; }
   /* ── Parked thoughts section ── */
   .park-section { background:var(--bg2); border:0.5px solid #378ADD44; border-left:2px solid #378ADD; border-radius:var(--radius-lg); margin-bottom:10px; overflow:hidden; }
   .park-header { display:flex; align-items:center; gap:7px; padding:7px 12px; font-size:11px; color:#378ADD; font-weight:500; }
