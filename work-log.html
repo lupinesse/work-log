@@ -4590,42 +4590,28 @@
     const todayTasks = planTasks.filter(t => t.date === todayKey);
     const pastTasks  = planTasks.filter(t => t.date < todayKey);
 
-    // Remove pending/blocked tasks that were incorrectly carried to today
-    // (they should stay on the day they were originally planned)
-    const before = planTasks.length;
-    planTasks = planTasks.filter(t => {
-      if (t.date !== todayKey) return true;
-      if (t.status !== 'pending' && t.status !== 'blocked') return true;
-      // Only remove if there's a past version — it was carried, not created today
-      return !pastTasks.some(p => p.text.toLowerCase() === t.text.toLowerCase());
-    });
-    let changed = planTasks.length !== before;
+    // Migration: stamp completedAt on any done task missing it
+    let changed = false;
     planTasks.forEach(t => {
       if (t.status === 'done' && !t.completedAt) {
-        // Sentinel: midnight = date known, exact time unknown
         t.completedAt = new Date((t.date || todayKey) + 'T00:00:00').getTime();
         changed = true;
       }
     });
 
-    if (changed) savePlan();
+    if (!todayTasks.length || !pastTasks.length) { if (changed) savePlan(); return; }
 
-    // Recalculate after cleanup
-    const todayTasksCurrent = planTasks.filter(t => t.date === todayKey);
-    const pastTasksCurrent  = planTasks.filter(t => t.date < todayKey);
-    if (!todayTasksCurrent.length || !pastTasksCurrent.length) return;
-
-    todayTasksCurrent.forEach(todayTask => {
-      const prev = pastTasksCurrent
+    todayTasks.forEach(todayTask => {
+      const prev = pastTasks
         .filter(t => t.text.toLowerCase() === todayTask.text.toLowerCase())
         .sort((a,b) => b.date.localeCompare(a.date))[0];
       if (!prev) return;
 
-      // Self-heal: if today's task is inprogress but the most recent past version was
-      // pending/blocked, the carry ran before yesterday's status change was applied.
-      // Restore the correct status and copy the comments forward.
-      if (todayTask.status === 'inprogress' &&
-          (prev.status === 'pending' || prev.status === 'blocked')) {
+      // If the most recent past version was pending/blocked, carry that status forward
+      // regardless of what intermediate copies were (fixes: marked upcoming on Friday
+      // but Saturday/Sunday copies were already todo)
+      if ((prev.status === 'pending' || prev.status === 'blocked') &&
+          (todayTask.status === 'todo' || todayTask.status === 'inprogress')) {
         todayTask.status = prev.status;
         if (prev.statusComments && prev.statusComments.length && !todayTask.statusComments) {
           todayTask.statusComments = prev.statusComments.map(c => ({ ...c }));
@@ -4634,7 +4620,6 @@
       }
 
       // Only promote todo→inprogress if the most recent past version was inprogress
-      // (not pending or blocked — those are deliberate hold states that should be respected)
       if (todayTask.status === 'todo' && prev.status === 'inprogress') {
         todayTask.status = 'inprogress';
         changed = true;
@@ -4648,7 +4633,7 @@
     const todayKey = dk(new Date());
     const carryKey = 'wl_carried_' + todayKey;
     if (localStorage.getItem(carryKey)) return;
-    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done' && t.status !== 'pending' && t.status !== 'blocked');
+    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done');
     if (!unfinished.length) { localStorage.setItem(carryKey, '1'); return; }
 
     // Deduplicate by text — keep only the MOST RECENT past version of each task.
