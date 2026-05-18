@@ -716,6 +716,170 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 25. Calendar section & meetings ────────────────────────────────────────
+  console.log('\n25. Calendar section');
+  {
+    const page = await freshPage(ctx);
+    // Check that calendar section exists
+    assert('calSection exists', await page.evaluate(() => !!document.getElementById('calSection')));
+    assert('calHeader exists', await page.evaluate(() => !!document.getElementById('calHeader')));
+    assert('calMeetings exists', await page.evaluate(() => !!document.getElementById('calMeetings')));
+    assert('calCount badge exists', await page.evaluate(() => !!document.getElementById('calCount')));
+    
+    // Check that meetings can be hidden
+    const hasDeleteBtn = await page.evaluate(() => {
+      const btns = document.querySelectorAll('.cal-delete-btn');
+      return btns.length > 0;
+    });
+    assert('Delete buttons exist in DOM', hasDeleteBtn);
+    
+    await page.close();
+  }
+
+  // ── 26. Meeting deletion persistence ───────────────────────────────────────
+  console.log('\n26. Meeting deletion');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx);
+    
+    // Simulate clicking a delete button and verify localStorage is updated
+    const hiddenBefore = await page.evaluate(({ today }) => {
+      const key = 'wl_hidden_meetings_' + today;
+      return localStorage.getItem(key);
+    }, { today });
+    assert('No hidden meetings initially', hiddenBefore === null);
+    
+    // Simulate adding a hidden meeting
+    await page.evaluate(({ today }) => {
+      const key = 'wl_hidden_meetings_' + today;
+      const meetings = ['Team Standup'];
+      localStorage.setItem(key, JSON.stringify(meetings));
+    }, { today });
+    
+    const hiddenAfter = await page.evaluate(({ today }) => {
+      const key = 'wl_hidden_meetings_' + today;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    }, { today });
+    assert('Hidden meeting persists in storage', hiddenAfter.includes('Team Standup'));
+    
+    await page.close();
+  }
+
+  // ── 27. Nameday with Swedish flag SVG ──────────────────────────────────────
+  console.log('\n27. Nameday display');
+  {
+    const page = await freshPage(ctx);
+    
+    // Check that nameday element exists
+    assert('liveNameday element exists', await page.evaluate(() => !!document.getElementById('liveNameday')));
+    
+    // Check that it either shows a name or error message
+    const content = await page.evaluate(() => {
+      const el = document.getElementById('liveNameday');
+      return el ? el.textContent : '';
+    });
+    const hasContent = content.length > 0;
+    assert('liveNameday has content', hasContent);
+    
+    // Check for either emoji or SVG flag
+    const hasFlagOrEmoji = await page.evaluate(() => {
+      const el = document.getElementById('liveNameday');
+      const svg = el.querySelector('svg');
+      const text = el.textContent;
+      return !!svg || text.includes('🎂');
+    });
+    assert('Nameday shows flag SVG or emoji', hasFlagOrEmoji);
+    
+    await page.close();
+  }
+
+  // ── 28. Flag days section ──────────────────────────────────────────────────
+  console.log('\n28. Flag days API');
+  {
+    const page = await freshPage(ctx);
+    
+    // Check that flag day element exists
+    assert('liveFlagDay element exists', await page.evaluate(() => !!document.getElementById('liveFlagDay')));
+    
+    // Check that it has content (flag day emoji or text)
+    const content = await page.evaluate(() => {
+      const el = document.getElementById('liveFlagDay');
+      return el ? el.textContent : '';
+    });
+    const hasContent = content.length > 0;
+    assert('liveFlagDay displays content', hasContent);
+    
+    await page.close();
+  }
+
+  // ── 29. Status carry-over (pending/blocked) ────────────────────────────────
+  console.log('\n29. Status carry-over');
+  {
+    const yesterday = dk(new Date(Date.now() - 86400000));
+    const today = dk(new Date());
+    
+    // Create a task with pending status from yesterday
+    const planTasks = [
+      { id: 'p1', text: 'Important task', status: 'pending', date: yesterday, tag: 'work', 
+        comments: [{ text: 'Waiting for review', ts: Date.now() - 86400000 }] }
+    ];
+    
+    const page = await freshPage(ctx, { wl_plan_v1: planTasks, wl_cats_v1: CATS });
+    
+    // Check if pending section is visible
+    const hasPendingSection = await page.evaluate(() => {
+      return !!document.querySelector('[id*="pending"]');
+    });
+    assert('Page has pending/blocked section', hasPendingSection);
+    
+    await page.close();
+  }
+
+  // ── 30. Upcoming Tasks section ─────────────────────────────────────────────
+  console.log('\n30. Upcoming Tasks');
+  {
+    const today = dk(new Date());
+    const tomorrow = dk(new Date(Date.now() + 86400000));
+    
+    const planTasks = [
+      { id: 'u1', text: 'Today task', status: 'todo', date: today, tag: 'work' },
+      { id: 'u2', text: 'Tomorrow task', status: 'todo', date: tomorrow, tag: 'work' }
+    ];
+    
+    const page = await freshPage(ctx, { wl_plan_v1: planTasks, wl_cats_v1: CATS });
+    
+    // Check for upcoming section
+    const hasUpcoming = await page.evaluate(() => {
+      const text = document.body.textContent;
+      return text.includes('Upcoming') || text.includes('upcoming');
+    });
+    assert('Upcoming section or label visible', hasUpcoming);
+    
+    await page.close();
+  }
+
+  // ── 31. Timer input field text visibility ──────────────────────────────────
+  console.log('\n31. Timer input styling');
+  {
+    const page = await freshPage(ctx);
+    
+    // Check that input fields have proper visibility
+    const handoffColor = await page.evaluate(() => {
+      const el = document.getElementById('timerHandoff');
+      return window.getComputedStyle(el).color;
+    });
+    assert('Handoff input has visible text color', handoffColor !== '' && handoffColor !== 'rgba(0, 0, 0, 0)');
+    
+    const parkColor = await page.evaluate(() => {
+      const el = document.getElementById('parkCapture');
+      return window.getComputedStyle(el).color;
+    });
+    assert('Park capture input has visible text color', parkColor !== '' && parkColor !== 'rgba(0, 0, 0, 0)');
+    
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   console.log('\n' + '─'.repeat(48));

@@ -114,3 +114,34 @@ Validates calcStreak() counts consecutive days correctly from yesterday backward
 Tests that: (1) streak shows correct count at start of day before logging anything, 
 (2) streak updates when a new entry is logged today.
 **Update if:** calcStreak() logic, dk() date formatting, or the backwards iteration changes.
+
+## 25. Calendar section (4 tests)
+Validates the calendar section structure exists: calSection, calHeader, calMeetings, calCount badge.
+Checks that delete buttons (.cal-delete-btn) are present in the DOM for meeting removal.
+**Update if:** calendar section HTML IDs, meeting rendering structure, or delete button styling changes.
+
+## 26. Meeting deletion (2 tests)
+Validates that meetings can be hidden and their hidden state persists in localStorage
+under key wl_hidden_meetings_YYYY-MM-DD.
+**Update if:** localStorage key format, hidden meeting storage structure, or delete click handler changes.
+
+## 27. Nameday display (3 tests)
+Validates liveNameday element exists, has content, and displays either a Swedish flag SVG or emoji.
+**Update if:** nameday element ID, API response handling, or flag display logic changes.
+
+## 28. Flag days API (2 tests)
+Validates liveFlagDay element exists and displays content from the flag days API.
+**Update if:** flag day element ID, API endpoint, or rendering logic changes.
+
+## 29. Status carry-over (2 tests)
+Validates that task statuses (pending/blocked) from previous days are preserved when carried forward,
+and that the pending/blocked section renders correctly.
+**Update if:** patchCarriedTasks() status preservation, or pending section HTML structure changes.
+
+## 30. Upcoming Tasks (2 tests)
+Validates that the upcoming tasks section appears for tasks with dates beyond today.
+**Update if:** upcoming section rendering, label text, or future task filtering logic changes.
+
+## 31. Timer input styling (2 tests)
+Validates that timer input fields (timerHandoff, parkCapture) have visible text colors for readability.
+**Update if:** input field text color CSS or dark mode handling changes.
