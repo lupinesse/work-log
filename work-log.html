@@ -565,6 +565,10 @@
   .plan-status.todo       { background-color: var(--bg2); color: var(--text3);  border-color: var(--border2); }
   .plan-status.inprogress { background-color: #FFB830;   color: #1a0800;        border-color: #C07820; font-weight: 600; }
   .plan-status.done-st    { background-color: #0a3d1f;   color: #5DCAA5;        border-color: #1D9E75; }
+  .plan-status.upcoming   { background-color: rgba(29,158,117,0.12); color: #1D9E75; border-color: rgba(29,158,117,0.4); }
+  .upcoming-section { border-color: rgba(29,158,117,0.25); }
+  .upcoming-section .plan-header { background: linear-gradient(90deg, rgba(29,158,117,0.08) 0%, transparent 100%); }
+  .upcoming-section .plan-header-title::before { content: '🔜'; margin-right: 6px; }
   .plan-status.pending    { background-color: rgba(123,97,255,0.15); color: #9b7dff; border-color: rgba(123,97,255,0.5); }
   .plan-status.blocked    { background-color: rgba(198,40,40,0.15);  color: #f17070; border-color: rgba(198,40,40,0.5); }
 
@@ -828,6 +832,7 @@
   body.emergency .header,
   body.emergency #planSection,
   body.emergency #pendingSection,
+  body.emergency #upcomingSection,
   body.emergency #completedSection,
   body.emergency #distractionSection,
   body.emergency #captureRow,
@@ -1177,6 +1182,17 @@
   </div>
 </div>
 
+<div class="plan-section upcoming-section" id="upcomingSection" style="display:none">
+  <div class="plan-header" id="upcomingHeader">
+    <span class="plan-header-title">upcoming tasks</span>
+    <span class="plan-count" id="upcomingCount"></span>
+    <span class="plan-toggle">&#9660;</span>
+  </div>
+  <div class="plan-body">
+    <div id="upcomingList"></div>
+  </div>
+</div>
+
 <div class="plan-section pending-section" id="pendingSection" style="display:none">
   <div class="plan-header" id="pendingHeader">
     <span class="plan-header-title">pending / blocked tasks</span>
@@ -1359,7 +1375,7 @@
   function validPlanTask(t) {
     return t && typeof t.id === 'string' && typeof t.text === 'string' &&
            typeof t.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
-           ['todo','inprogress','done','pending','blocked'].includes(t.status);
+           ['todo','inprogress','done','pending','blocked','upcoming'].includes(t.status);
   }
   function validBlock(b) {
     return b && typeof b.id === 'string' && typeof b.date === 'string' &&
@@ -3446,12 +3462,14 @@
     const viewKey      = dk(viewDate);
     const todayKey     = dk(new Date());
     const allViewTasks = planTasks.filter(t => t.date === viewKey);
-    const mainTasks    = allViewTasks.filter(t => t.status !== 'done' && t.status !== 'pending' && t.status !== 'blocked');
-    const pendingTasks = allViewTasks.filter(t => t.status === 'pending' || t.status === 'blocked');
+    const mainTasks     = allViewTasks.filter(t => t.status !== 'done' && t.status !== 'pending' && t.status !== 'blocked' && t.status !== 'upcoming');
+    const pendingTasks  = allViewTasks.filter(t => t.status === 'pending' || t.status === 'blocked');
+    const upcomingTasks = allViewTasks.filter(t => t.status === 'upcoming');
     const todoCount     = allViewTasks.filter(t => (t.status||'todo') === 'todo').length;
     const progressCount = allViewTasks.filter(t => t.status === 'inprogress').length;
     const pendingCount  = allViewTasks.filter(t => t.status === 'pending').length;
     const blockedCount  = allViewTasks.filter(t => t.status === 'blocked').length;
+    const upcomingCount = allViewTasks.filter(t => t.status === 'upcoming').length;
     const doneCount     = isToday(viewDate)
       ? planTasks.filter(t => t.date === viewKey && t.status === 'done').length
       : allViewTasks.filter(t => t.status === 'done').length;
@@ -3464,6 +3482,15 @@
     document.getElementById('planCount').textContent =
       (todoCount + progressCount + doneCount) ? mainParts.join(' · ') : '';
     document.getElementById('planSection').classList.toggle('collapsed', planCollapsed);
+
+    // Upcoming section
+    const upcomingSectionEl = document.getElementById('upcomingSection');
+    if (upcomingTasks.length > 0) {
+      upcomingSectionEl.style.display = '';
+      document.getElementById('upcomingCount').textContent = `${upcomingCount} upcoming`;
+    } else {
+      upcomingSectionEl.style.display = 'none';
+    }
 
     // Pending section header
     const pendingParts = [];
@@ -3482,8 +3509,9 @@
     const addRow = document.getElementById('planAddRow');
     if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
 
-    const mainListEl    = document.getElementById('planList');
-    const pendingListEl = document.getElementById('pendingList');
+    const mainListEl     = document.getElementById('planList');
+    const pendingListEl  = document.getElementById('pendingList');
+    const upcomingListEl = document.getElementById('upcomingList');
 
     // Empty-state for main list (the pending list is shown/hidden entirely)
     if (!mainTasks.length) {
@@ -3524,13 +3552,14 @@
       return result;
     };
 
-    const statusOpts = (cur) => ['todo','inprogress','pending','blocked','done'].map(s => {
-      const labels = { todo: 'To do', inprogress: 'In progress', pending: 'Pending', blocked: 'Blocked', done: 'Done' };
+    const statusOpts = (cur) => ['todo','inprogress','upcoming','pending','blocked','done'].map(s => {
+      const labels = { todo: 'To do', inprogress: 'In progress', upcoming: 'Upcoming', pending: 'Pending', blocked: 'Blocked', done: 'Done' };
       return `<option value="${s}"${cur===s?' selected':''}>${labels[s]}</option>`;
     }).join('');
 
-    const mainSorted    = flatSort(mainTasks);
-    const pendingSorted = flatSort(pendingTasks);
+    const mainSorted     = flatSort(mainTasks);
+    const pendingSorted  = flatSort(pendingTasks);
+    const upcomingSorted = flatSort(upcomingTasks);
 
     const fmtMins = (mins) => {
       const h = Math.floor(mins/60), m = mins%60;
@@ -3671,6 +3700,7 @@
     // Render both lists
     if (mainTasks.length) mainListEl.innerHTML = mainSorted.map(renderRow).join('');
     pendingListEl.innerHTML = pendingSorted.map(renderRow).join('');
+    upcomingListEl.innerHTML = upcomingSorted.map(renderRow).join('');
 
     // Event handlers bound across both lists
     const both = [mainListEl, pendingListEl];
@@ -4114,6 +4144,11 @@
   document.getElementById('planInput').addEventListener('keydown', e => { if (e.key === 'Enter') addPlanTask(); });
   document.getElementById('planHeader').addEventListener('click', () => {
     planCollapsed = !planCollapsed; renderPlan();
+  });
+  let upcomingCollapsed = false;
+  document.getElementById('upcomingHeader').addEventListener('click', () => {
+    upcomingCollapsed = !upcomingCollapsed;
+    document.getElementById('upcomingSection').classList.toggle('collapsed', upcomingCollapsed);
   });
   document.getElementById('pendingHeader').addEventListener('click', () => {
     pendingCollapsed = !pendingCollapsed; renderPlan();
@@ -4610,7 +4645,7 @@
       // If the most recent past version was pending/blocked, carry that status forward
       // regardless of what intermediate copies were (fixes: marked upcoming on Friday
       // but Saturday/Sunday copies were already todo)
-      if ((prev.status === 'pending' || prev.status === 'blocked') &&
+      if ((prev.status === 'pending' || prev.status === 'blocked' || prev.status === 'upcoming') &&
           (todayTask.status === 'todo' || todayTask.status === 'inprogress')) {
         todayTask.status = prev.status;
         if (prev.statusComments && prev.statusComments.length && !todayTask.statusComments) {
@@ -4633,7 +4668,7 @@
     const todayKey = dk(new Date());
     const carryKey = 'wl_carried_' + todayKey;
     if (localStorage.getItem(carryKey)) return;
-    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done');
+    const unfinished = planTasks.filter(t => t.date < todayKey && t.status !== 'done' && t.status !== 'upcoming');
     if (!unfinished.length) { localStorage.setItem(carryKey, '1'); return; }
 
     // Deduplicate by text — keep only the MOST RECENT past version of each task.
