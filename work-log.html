@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.open-meteo.com https://nimipaivarajapinta.fi http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src https://api.open-meteo.com http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -3205,7 +3205,7 @@
 
   // Nimipäivärajapinta API token
   const NAMEDAY_API_TOKEN = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01';
-  const NAMEDAY_API_BASE  = 'https://nimipaivarajapinta.fi/api';
+  const NAMEDAY_API_BASE  = '/api';  // proxied through local server to avoid CORS
 
   function fetchNameday() {
     const el = document.getElementById('liveNameday');
