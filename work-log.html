@@ -726,6 +726,30 @@
     cursor: pointer; opacity: 0.25; padding: 0 2px; line-height: 1; flex-shrink: 0;
   }
   .cp-del-btn:hover { opacity: 1; }
+  .cp-edit-btn {
+    font-size: 10px; background: none; border: 0.5px solid var(--border); color: var(--text3);
+    cursor: pointer; opacity: 0.6; padding: 1px 4px; border-radius: var(--radius); flex-shrink: 0;
+  }
+  .cp-edit-btn:hover { opacity: 1; color: var(--text); background: var(--bg2); }
+  .cp-row.cp-editing { flex-direction: column; gap: 4px; }
+  .cp-row.cp-editing .cp-handle { display: none; }
+  .cp-row.cp-editing .cp-check { display: none; }
+  .cp-row.cp-editing .cp-label { display: none; }
+  .cp-row.cp-editing .cp-del-btn { display: none; }
+  .cp-edit-input {
+    width: 100%; font-size: 12px; padding: 4px 6px; border: 0.5px solid #378ADD;
+    border-radius: var(--radius); background: var(--bg); color: var(--text);
+    font-family: var(--font); outline: none;
+  }
+  .cp-edit-actions { display: flex; gap: 4px; }
+  .cp-edit-actions button { font-size: 10px; padding: 3px 8px; border: 0.5px solid var(--border);
+    border-radius: var(--radius); background: var(--bg); color: var(--text); cursor: pointer;
+  }
+  .cp-edit-actions button:hover { background: var(--bg2); }
+  .cp-edit-actions .save { color: #4CAF50; border-color: #4CAF50; }
+  .cp-edit-actions .save:hover { background: #4CAF5022; }
+  .cp-edit-actions .cancel { color: #d32f2f; border-color: #d32f2f; }
+  .cp-edit-actions .cancel:hover { background: #d32f2f22; }
   .cp-add-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; padding-top: 5px; border-top: 0.5px dashed var(--border); }
   .cp-add-input {
     flex: 1; font-size: 12px; background: none; border: none; outline: none;
@@ -3684,10 +3708,11 @@
       if (cpOpen || cpTotal === 0 && cpOpen) {
         const pct = cpTotal ? Math.round(cpDone / cpTotal * 100) : 0;
         const rowsHtml = cps.map((cp, i) =>
-          `<div class="cp-row" draggable="true" data-pid="${t.id}" data-cpidx="${i}">
+          `<div class="cp-row" draggable="true" data-pid="${t.id}" data-cpidx="${i}" data-cp-id="${cp.id}">
             <span class="cp-handle" title="drag to reorder">⠿</span>
             <div class="cp-check${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">✓</div>
             <span class="cp-label${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">${escHtml(cp.text)}</span>
+            <button class="cp-edit-btn" title="Edit step" data-pid="${t.id}" data-cpidx="${i}" data-cp-id="${cp.id}">✎</button>
             <button class="cp-del-btn" data-pid="${t.id}" data-cpidx="${i}" title="remove">×</button>
           </div>`
         ).join('');
@@ -4073,6 +4098,19 @@
       });
     });
 
+    // Checkpoint: edit
+    qa('.cp-edit-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const taskId = btn.dataset.pid;
+        const cpIdx = parseInt(btn.dataset.cpidx);
+        const task = planTasks.find(t => t.id === taskId);
+        if (task && task.checkpoints && task.checkpoints[cpIdx]) {
+          startEditingCheckpoint(task, cpIdx);
+        }
+      });
+    });
+
     // Checkpoint: add on Enter
     qa('.cp-add-input').forEach(inp => {
       inp.addEventListener('keydown', e => {
@@ -4121,6 +4159,71 @@
         _cpDragIdx = null; _cpDragPid = null;
       });
     });
+
+    function startEditingCheckpoint(task, cpIdx) {
+      const checkpoint = task.checkpoints[cpIdx];
+      if (!checkpoint) return;
+      
+      const row = document.querySelector(`[data-pid="${task.id}"][data-cpidx="${cpIdx}"]`);
+      if (!row) return;
+      
+      const originalText = checkpoint.text;
+      row.classList.add('cp-editing');
+      
+      const input = document.createElement('input');
+      input.className = 'cp-edit-input';
+      input.type = 'text';
+      input.value = originalText;
+      
+      const actionDiv = document.createElement('div');
+      actionDiv.className = 'cp-edit-actions';
+      
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'save';
+      saveBtn.textContent = '✓ save';
+      
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'cancel';
+      cancelBtn.textContent = '✕ cancel';
+      
+      actionDiv.appendChild(saveBtn);
+      actionDiv.appendChild(cancelBtn);
+      
+      // Insert after the label span
+      const label = row.querySelector('.cp-label');
+      if (label) {
+        label.parentNode.insertBefore(input, label.nextSibling);
+        input.parentNode.insertBefore(actionDiv, input.nextSibling);
+      }
+      
+      input.focus();
+      input.select();
+      
+      const saveEdit = () => {
+        const newText = input.value.trim();
+        if (newText && newText !== originalText) {
+          checkpoint.text = newText;
+          savePlan();
+        }
+        row.classList.remove('cp-editing');
+        input.remove();
+        actionDiv.remove();
+        renderPlan();
+      };
+      
+      const cancelEdit = () => {
+        row.classList.remove('cp-editing');
+        input.remove();
+        actionDiv.remove();
+      };
+      
+      saveBtn.addEventListener('click', saveEdit);
+      cancelBtn.addEventListener('click', cancelEdit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveEdit();
+        if (e.key === 'Escape') cancelEdit();
+      });
+    }
 
     // Edit task text
     qa('.plan-edit-btn').forEach(btn => {
@@ -5146,6 +5249,7 @@
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
     { id:'20260519-002', date:'2026-05-19', desc:'Completed tasks: ✎ edit button allows inline editing and correction of typos', areas:[] },
+    { id:'20260519-003', date:'2026-05-19', desc:'Checkpoint steps: ✎ edit button allows inline editing of step text within tasks', areas:[] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
