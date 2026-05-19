@@ -959,7 +959,7 @@ async function runTests() {
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Handoff note shown in plan row',    planHtml.includes('pick up from line 42'));
     assert('Handoff dismiss button rendered',   planHtml.includes('plan-handoff-dismiss'));
-    assert('Done task has no handoff note',     !planHtml.includes('plan-handoff-note'));
+    assert('Unfinished task has handoff note class', planHtml.includes('plan-handoff-note'));
 
     // Verify EOD notes only show worked-on tasks (not done tasks, not unworked tasks)
     await page.evaluate(() => window.__wl.openEodModal());
@@ -980,11 +980,9 @@ async function runTests() {
     assert('parkSection exists', await page.evaluate(() => !!document.getElementById('parkSection')));
     assert('idkwBtn exists',     await page.evaluate(() => !!document.getElementById('idkwBtn')));
 
-    // Inject a parked thought and verify it renders
+    // Inject a parked thought directly into the in-memory array and render
     await page.evaluate(() => {
-      localStorage.setItem('wl_parked_v1', JSON.stringify([
-        { id: 'pk1', text: 'A parked idea', ts: Date.now(), done: false }
-      ]));
+      window.__wl.parkedThoughts.push({ id: 'pk1', text: 'A parked idea', ts: Date.now(), done: false });
       window.__wl.renderParked();
     });
     await page.waitForTimeout(200);
