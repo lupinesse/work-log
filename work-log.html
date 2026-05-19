@@ -735,6 +735,11 @@
     color: var(--text); font-family: var(--font); padding: 2px 0;
   }
   .cp-add-input::placeholder { color: var(--text3); }
+  .cp-edit-input {
+    flex: 1; font-size: 12px; font-family: var(--font); background: none;
+    border: none; border-bottom: 0.5px solid var(--info-text); outline: none;
+    color: var(--text); padding: 0 2px; line-height: 1.4;
+  }
   .cp-add-icon { font-size: 12px; color: var(--text3); flex-shrink: 0; }
   .plan-inline-edit { display: flex; align-items: center; gap: 5px; flex: 1; }
   .plan-inline-input {
@@ -3498,6 +3503,8 @@
   let _pendingCommentText = '';
   let _expandedHistoryId = null;
   let _cpOpenIds = new Set();
+  let _cpEditId  = null; // pid of task whose checkpoint is being edited
+  let _cpEditIdx = null; // index of checkpoint being edited
 
   function loadPlan() {
     try {
@@ -3728,10 +3735,12 @@
       if (cpOpen || cpTotal === 0 && cpOpen) {
         const pct = cpTotal ? Math.round(cpDone / cpTotal * 100) : 0;
         const rowsHtml = cps.map((cp, i) =>
-          `<div class="cp-row" draggable="true" data-pid="${t.id}" data-cpidx="${i}">
+          `<div class="cp-row${_cpEditId===t.id&&_cpEditIdx===i?' cp-editing':''}" draggable="${_cpEditId===t.id&&_cpEditIdx===i?'false':'true'}" data-pid="${t.id}" data-cpidx="${i}">
             <span class="cp-handle" title="drag to reorder">⠿</span>
             <div class="cp-check${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">✓</div>
-            <span class="cp-label${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">${escHtml(cp.text)}</span>
+            ${_cpEditId===t.id&&_cpEditIdx===i
+              ? `<input class="cp-edit-input" data-pid="${t.id}" data-cpidx="${i}" value="${escHtml(cp.text)}" />`
+              : `<span class="cp-label${cp.done?' cp-checked':''}" data-pid="${t.id}" data-cpidx="${i}">${escHtml(cp.text)}</span>`}
             <button class="cp-del-btn" data-pid="${t.id}" data-cpidx="${i}" title="remove">×</button>
           </div>`
         ).join('');
@@ -4094,7 +4103,7 @@
       });
     });
 
-    // Checkpoint: toggle done via label click
+    // Checkpoint: toggle done via label click; double-click to edit
     qa('.cp-label').forEach(lbl => {
       lbl.addEventListener('click', e => {
         e.stopPropagation();
@@ -4104,6 +4113,34 @@
         t.checkpoints[idx].done = !t.checkpoints[idx].done;
         savePlan(); renderPlan();
       });
+      lbl.addEventListener('dblclick', e => {
+        e.stopPropagation();
+        _cpEditId  = lbl.dataset.pid;
+        _cpEditIdx = parseInt(lbl.dataset.cpidx);
+        renderPlan();
+        setTimeout(() => {
+          const inp = document.querySelector('.cp-edit-input[data-pid="' + _cpEditId + '"][data-cpidx="' + _cpEditIdx + '"]');
+          if (inp) { inp.focus(); inp.select(); }
+        }, 0);
+      });
+    });
+
+    // Checkpoint: save/cancel inline edit
+    qa('.cp-edit-input').forEach(inp => {
+      const save = () => {
+        const val = inp.value.trim();
+        const t = planTasks.find(t => t.id === inp.dataset.pid);
+        if (t && t.checkpoints && val) t.checkpoints[parseInt(inp.dataset.cpidx)].text = val;
+        _cpEditId = null; _cpEditIdx = null;
+        savePlan(); renderPlan();
+      };
+      inp.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'Enter')  { e.preventDefault(); save(); }
+        if (e.key === 'Escape') { _cpEditId = null; _cpEditIdx = null; renderPlan(); }
+      });
+      inp.addEventListener('blur', save);
+      inp.addEventListener('click', e => e.stopPropagation());
     });
 
     // Checkpoint: delete
@@ -5181,6 +5218,7 @@
     { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
+    { id:'20260519-007', date:'2026-05-19', desc:'Checkpoint steps: double-click label to edit inline; Enter/blur saves, Escape cancels', areas:[] },
     { id:'20260519-006', date:'2026-05-19', desc:'Fix: checkpoint badge status color only applied when checkpoints exist (0/N); + steps badge stays gray', areas:[] },
     { id:'20260519-005', date:'2026-05-19', desc:'Fix: checkpoint badge color mirrors task status (amber for in-progress, purple for pending, red for blocked) until progress begins', areas:[] },
     { id:'20260519-004', date:'2026-05-19', desc:'Iteration expiry dates moved to localStorage (wl_expiry_dates); seeded from EXPIRY_SEED on first load; editable via 📅 iterations button', areas:[6] },
