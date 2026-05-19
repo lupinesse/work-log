@@ -696,6 +696,9 @@
   .cp-badge:hover { color: var(--text2); border-color: var(--text3); }
   .cp-badge.cp-has-progress { background: rgba(255,184,48,0.15); color: #EF9F27; border-color: rgba(255,184,48,0.4); }
   .cp-badge.cp-done-all { background: rgba(29,158,117,0.18); color: #1D9E75; border-color: rgba(29,158,117,0.5); }
+  .cp-badge.cp-st-inprogress { background: rgba(255,184,48,0.18); color: #C07820; border-color: rgba(192,120,32,0.5); }
+  .cp-badge.cp-st-pending    { background: rgba(123,97,255,0.12); color: #9b7dff; border-color: rgba(123,97,255,0.4); }
+  .cp-badge.cp-st-blocked    { background: rgba(198,40,40,0.12);  color: #f17070; border-color: rgba(198,40,40,0.4); }
   .cp-area { margin-top: 7px; padding-top: 7px; border-top: 0.5px solid var(--border); }
   .cp-progress-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
   .cp-bar { flex: 1; height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
@@ -3715,7 +3718,8 @@
       const cpOpen  = _cpOpenIds.has(t.id);
       let cpBadgeClass = 'cp-badge';
       if (cpDone > 0 && cpDone < cpTotal) cpBadgeClass += ' cp-has-progress';
-      if (cpTotal > 0 && cpDone === cpTotal) cpBadgeClass += ' cp-done-all';
+      else if (cpTotal > 0 && cpDone === cpTotal) cpBadgeClass += ' cp-done-all';
+      else cpBadgeClass += ` cp-st-${status}`; // no progress yet — mirror task status color
       const cpBadgeLabel = cpTotal === 0
         ? '+ steps'
         : (cpDone === cpTotal ? `✓ ${cpTotal}` : `${cpDone}/${cpTotal}`);
@@ -5177,6 +5181,7 @@
     { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
+    { id:'20260519-005', date:'2026-05-19', desc:'Fix: checkpoint badge color mirrors task status (amber for in-progress, purple for pending, red for blocked) until progress begins', areas:[] },
     { id:'20260519-004', date:'2026-05-19', desc:'Iteration expiry dates moved to localStorage (wl_expiry_dates); seeded from EXPIRY_SEED on first load; editable via 📅 iterations button', areas:[6] },
     { id:'20260519-003', date:'2026-05-19', desc:'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window', areas:[6] },
     { id:'20260519-002', date:'2026-05-19', desc:'Smoke tests: fix test 24 streak assertion, fix test 25 cal-delete-btn via renderCalStrip injection, add tests 32–34 (checkpoints, handoff notes, parked thoughts)', areas:[] },
