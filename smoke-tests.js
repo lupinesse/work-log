@@ -707,7 +707,7 @@ async function runTests() {
     // Now add an entry for today and verify streak updates
     await page.evaluate(() => {
       const state = window.__wl.getState();
-      state.entries.push({ id: 'sk3', text: 'Task today', tag: 'work', ts: Date.now(), date: dk(new Date()) });
+      state.entries.push({ id: 'sk3', text: 'Task today', tag: 'work', ts: Date.now(), date: window.__wl.dk(new Date()) });
       window.__wl.render();
     });
     await page.waitForTimeout(200);
