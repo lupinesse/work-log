@@ -941,7 +941,9 @@ async function runTests() {
       { id: 'hn1', text: 'Unfinished task', tag: 'work', status: 'inprogress', date: today },
       { id: 'hn2', text: 'Done task',       tag: 'work', status: 'done',       date: today }
     ];
-    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    // An entry for today is needed — EOD now only shows tasks worked on today
+    const entries = [{ id: 'e1', text: 'Unfinished task', tag: 'work', ts: Date.now(), date: today }];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS, wl_entries_v1: entries });
     await page.waitForTimeout(300);
 
     assert('eodTaskNotes element exists', await page.evaluate(() =>
@@ -957,16 +959,14 @@ async function runTests() {
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Handoff note shown in plan row',    planHtml.includes('pick up from line 42'));
     assert('Handoff dismiss button rendered',   planHtml.includes('plan-handoff-dismiss'));
-    
-    // Verify done task specifically has no handoff note (not entire list)
-    const doneTaskRow = await page.evaluate(() => {
-      const rows = document.querySelectorAll('[data-task-id]');
-      for (const row of rows) {
-        if (row.textContent.includes('Done task')) return row.innerHTML;
-      }
-      return '';
-    });
-    assert('Done task has no handoff note',     !doneTaskRow.includes('plan-handoff-note'));
+    assert('Done task has no handoff note',     !planHtml.includes('plan-handoff-note'));
+
+    // Verify EOD notes only show worked-on tasks (not done tasks, not unworked tasks)
+    await page.evaluate(() => window.__wl.openEodModal());
+    await page.waitForTimeout(200);
+    const notesHtml = await page.evaluate(() => document.getElementById('eodTaskNotes').innerHTML);
+    assert('Worked task shown in EOD notes',  notesHtml.includes('Unfinished task'));
+    assert('Done task not in EOD notes',      !notesHtml.includes('Done task'));
 
     await page.close();
   }
@@ -985,7 +985,6 @@ async function runTests() {
       localStorage.setItem('wl_parked_v1', JSON.stringify([
         { id: 'pk1', text: 'A parked idea', ts: Date.now(), done: false }
       ]));
-      window.__wl.loadParked();      // ← LOAD from localStorage into parkedThoughts array
       window.__wl.renderParked();
     });
     await page.waitForTimeout(200);
@@ -995,6 +994,50 @@ async function runTests() {
     assert('Parked item text rendered',             html.includes('A parked idea'));
     assert('Promote-to-task button exists',         html.includes('parked-promote'));
     assert('Dismiss button exists',                 html.includes('parked-dismiss'));
+
+    await page.close();
+  }
+
+
+  // ── 35. Focus mode checkpoints ─────────────────────────────────────────────
+  console.log('\n35. Focus mode checkpoints');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'fm1', text: 'Focus task', tag: 'work', status: 'inprogress', date: today,
+        checkpoints: [
+          { id: 'fc1', text: 'Step A', done: false },
+          { id: 'fc2', text: 'Step B', done: true  }
+        ]
+      }
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(300);
+
+    // Enter focus mode
+    await page.evaluate(() => document.getElementById('emergencyBtn').click());
+    await page.waitForTimeout(200);
+
+    assert('Body has emergency class', await page.evaluate(() =>
+      document.body.classList.contains('emergency')
+    ));
+    assert('emergencyCps element exists', await page.evaluate(() =>
+      !!document.getElementById('emergencyCps')
+    ));
+    assert('Pomodoro section exists in DOM during focus mode', await page.evaluate(() =>
+      !!document.querySelector('.pomo-section')
+    ));
+    assert('tagRow hidden in focus mode', await page.evaluate(() => {
+      const el = document.getElementById('tagRow');
+      return !el || getComputedStyle(el).display === 'none';
+    }));
+
+    // Exit focus mode
+    await page.evaluate(() => document.getElementById('emergencyExit').click());
+    await page.waitForTimeout(200);
+    assert('Body loses emergency class on exit', await page.evaluate(() =>
+      !document.body.classList.contains('emergency')
+    ));
 
     await page.close();
   }

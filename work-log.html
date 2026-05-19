@@ -897,9 +897,42 @@
   body.emergency #chart,
   body.emergency #tbSection,
   body.emergency .export-section,
-  body.emergency #newdayBanner { display: none !important; }
+  body.emergency #newdayBanner,
+  body.emergency #tagRow,
+  body.emergency #timeline,
+  body.emergency #calSection { display: none !important; }
 
   body.emergency { background: var(--bg); }
+
+  /* Pomodoro floats top-right in focus mode */
+  body.emergency .pomo-section {
+    position: fixed; top: 1rem; right: 1.5rem;
+    width: 176px; background: var(--bg);
+    border: 0.5px solid var(--border2); border-radius: var(--radius-lg);
+    padding: 14px; z-index: 1001;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+  body.emergency .pomo-header { font-size: 10px; text-align:center; margin-bottom: 8px; }
+  body.emergency .pomo-durations,
+  body.emergency .pomo-log,
+  body.emergency .pomo-section > div:last-of-type { display: none !important; }
+
+  /* Checkpoints inside focus mode */
+  .emergency-cps-wrap { width: 100%; max-width: 480px; text-align: left; }
+  .emergency-cps-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 7px; }
+  .emergency-cp-row { display: flex; align-items: center; gap: 9px; padding: 5px 0; border-bottom: 0.5px solid var(--border); }
+  .emergency-cp-row:last-child { border-bottom: none; }
+  .emergency-cp-check {
+    width: 15px; height: 15px; border-radius: 3px;
+    border: 0.5px solid var(--border2); flex-shrink: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); font-size: 10px; color: transparent;
+  }
+  .emergency-cp-check.cp-done { background: #1D9E75; border-color: #1D9E75; color: #fff; }
+  .emergency-cp-text { font-size: 13px; color: var(--text2); flex: 1; line-height: 1.4; }
+  .emergency-cp-text.cp-done { text-decoration: line-through; color: var(--text3); }
+  .emergency-cps-empty { font-size: 12px; color: var(--text3); font-style: italic; text-align: center; padding: 6px 0; }
+
 
   .emergency-screen {
     display: none;
@@ -1229,6 +1262,10 @@
   <div>
     <div class="emergency-label">currently working on</div>
     <div class="emergency-task" id="emergencyTask">—</div>
+  </div>
+  <div class="emergency-cps-wrap" id="emergencyCpsWrap" style="display:none">
+    <div class="emergency-cps-label">steps</div>
+    <div id="emergencyCps"></div>
   </div>
   <div class="emergency-next-wrap">
     <div class="emergency-label">smallest next action</div>
@@ -2006,6 +2043,7 @@
       if (emergencyMode) {
         const emergEl = document.getElementById('emergencyTask');
         if (emergEl) emergEl.textContent = entry ? entry.text : '—';
+        renderEmergencyCps();
       }
     } catch(e) { console.error('[wl] tickTimer error:', e); }
   }
@@ -2654,6 +2692,32 @@
   /* ── Emergency Mode ── */
   let emergencyMode = false;
 
+  function renderEmergencyCps() {
+    const wrap = document.getElementById('emergencyCpsWrap');
+    const el   = document.getElementById('emergencyCps');
+    if (!wrap || !el) return;
+    const entry = activeTimer ? entries.find(e => e.id === activeTimer.entryId) : null;
+    const todayKey = dk(new Date());
+    const task = entry ? planTasks.find(t => t.text === entry.text && t.date === todayKey) : null;
+    const cps  = task && Array.isArray(task.checkpoints) ? task.checkpoints : [];
+    if (!cps.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    el.innerHTML = cps.map((cp, i) =>
+      `<div class="emergency-cp-row">
+        <div class="emergency-cp-check${cp.done ? ' cp-done' : ''}" data-tid="${task.id}" data-cidx="${i}">✓</div>
+        <span class="emergency-cp-text${cp.done ? ' cp-done' : ''}">${escHtml(cp.text)}</span>
+      </div>`
+    ).join('');
+    el.querySelectorAll('.emergency-cp-check').forEach(box => {
+      box.addEventListener('click', () => {
+        const t = planTasks.find(t => t.id === box.dataset.tid);
+        if (!t || !t.checkpoints) return;
+        t.checkpoints[parseInt(box.dataset.cidx)].done = !t.checkpoints[parseInt(box.dataset.cidx)].done;
+        savePlan(); renderEmergencyCps(); renderPlan();
+      });
+    });
+  }
+
   function enterEmergency() {
     emergencyMode = true;
     document.body.classList.add('emergency');
@@ -2663,6 +2727,7 @@
     const saved = entry ? (localStorage.getItem('wl_emergency_next_' + entry.id) || '') : '';
     document.getElementById('emergencyNext').value = saved;
     document.getElementById('emergencyNext').focus();
+    renderEmergencyCps();
   }
 
   function exitEmergency() {
@@ -5218,6 +5283,8 @@
     { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
+    { id:'20260519-008', date:'2026-05-19', desc:'Focus mode: checkpoints shown for active task, pomodoro fixed top-right, tagRow/timeline/calSection hidden', areas:[] },
+    { id:'20260519-009', date:'2026-05-19', desc:'EOD handoff notes: only show tasks actually worked on today', areas:[] },
     { id:'20260519-007', date:'2026-05-19', desc:'Checkpoint steps: double-click label to edit inline; Enter/blur saves, Escape cancels', areas:[] },
     { id:'20260519-006', date:'2026-05-19', desc:'Fix: checkpoint badge status color only applied when checkpoints exist (0/N); + steps badge stays gray', areas:[] },
     { id:'20260519-005', date:'2026-05-19', desc:'Fix: checkpoint badge color mirrors task status (amber for in-progress, purple for pending, red for blocked) until progress begins', areas:[] },
@@ -5266,8 +5333,11 @@
 
     document.getElementById('eodSubtitle').textContent = dateStr;
 
-    // Notes for tomorrow — one input per unfinished task
-    const unfinishedTasks = planTasks.filter(t => t.date === todayKey && t.status !== 'done');
+    // Notes for tomorrow — only tasks that were actually worked on today
+    const workedToday = new Set(entries.filter(e => e.date === todayKey).map(e => e.text.toLowerCase().trim()));
+    const unfinishedTasks = planTasks.filter(t =>
+      t.date === todayKey && t.status !== 'done' && workedToday.has(t.text.toLowerCase().trim())
+    );
     let handoffNotes = {};
     try { handoffNotes = JSON.parse(localStorage.getItem('wl_handoff') || '{}'); } catch(e) {}
     const taskNotesEl = document.getElementById('eodTaskNotes');
@@ -5283,7 +5353,7 @@
         </div>`
       ).join('');
     } else {
-      taskNotesEl.innerHTML = `<div class="eod-empty">all tasks done — nothing to carry forward 🎉</div>`;
+      taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on today — or all done 🎉</div>`;
     }
 
     // Today's dev changes
@@ -5668,7 +5738,7 @@
       activeTimer: () => activeTimer,
       load, save, savePlan, loadPlan, loadParked,
       autoCarryTasks, patchCarriedTasks,
-      render, renderPlan, renderCompleted, renderCalStrip, renderParked,
+      render, renderPlan, renderCompleted, renderCalStrip, renderParked, openEodModal,
       startTimer, stopTimer, pauseTimer,
       getCat, escHtml, renderDistractionCount,
       getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
