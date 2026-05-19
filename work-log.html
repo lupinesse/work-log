@@ -3719,7 +3719,7 @@
       let cpBadgeClass = 'cp-badge';
       if (cpDone > 0 && cpDone < cpTotal) cpBadgeClass += ' cp-has-progress';
       else if (cpTotal > 0 && cpDone === cpTotal) cpBadgeClass += ' cp-done-all';
-      else cpBadgeClass += ` cp-st-${status}`; // no progress yet — mirror task status color
+      else if (cpTotal > 0) cpBadgeClass += ` cp-st-${status}`; // has steps but none ticked yet — mirror task status color
       const cpBadgeLabel = cpTotal === 0
         ? '+ steps'
         : (cpDone === cpTotal ? `✓ ${cpTotal}` : `${cpDone}/${cpTotal}`);
@@ -5181,6 +5181,7 @@
     { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
+    { id:'20260519-006', date:'2026-05-19', desc:'Fix: checkpoint badge status color only applied when checkpoints exist (0/N); + steps badge stays gray', areas:[] },
     { id:'20260519-005', date:'2026-05-19', desc:'Fix: checkpoint badge color mirrors task status (amber for in-progress, purple for pending, red for blocked) until progress begins', areas:[] },
     { id:'20260519-004', date:'2026-05-19', desc:'Iteration expiry dates moved to localStorage (wl_expiry_dates); seeded from EXPIRY_SEED on first load; editable via 📅 iterations button', areas:[6] },
     { id:'20260519-003', date:'2026-05-19', desc:'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window', areas:[6] },
