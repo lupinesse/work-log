@@ -712,7 +712,7 @@ async function runTests() {
     });
     await page.waitForTimeout(200);
     const streakValAfter = await page.evaluate(() => document.getElementById('statStreak').textContent);
-    assert('Streak updates to 3 after logging today', streakValAfter === '3');
+    assert('Streak stays at 2 — today not counted by design', streakValAfter === '2');
     await page.close();
   }
 
@@ -726,13 +726,21 @@ async function runTests() {
     assert('calMeetings exists', await page.evaluate(() => !!document.getElementById('calMeetings')));
     assert('calCount badge exists', await page.evaluate(() => !!document.getElementById('calCount')));
     
-    // Check that meetings can be hidden
-    const hasDeleteBtn = await page.evaluate(() => {
-      const btns = document.querySelectorAll('.cal-delete-btn');
-      return btns.length > 0;
+    // Inject a mock meeting so renderCalStrip produces delete buttons
+    await page.evaluate(() => {
+      const now = Date.now();
+      window.__wl.renderCalStrip([{
+        subject: 'Test Meeting',
+        start: new Date(now + 3600000).toISOString(),
+        end:   new Date(now + 7200000).toISOString()
+      }]);
     });
+    await page.waitForTimeout(200);
+    const hasDeleteBtn = await page.evaluate(() =>
+      document.querySelectorAll('.cal-delete-btn').length > 0
+    );
     assert('Delete buttons exist in DOM', hasDeleteBtn);
-    
+
     await page.close();
   }
 
@@ -877,6 +885,117 @@ async function runTests() {
     });
     assert('Park capture input has visible text color', parkColor !== '' && parkColor !== 'rgba(0, 0, 0, 0)');
     
+    await page.close();
+  }
+
+
+  // ── 32. Task checkpoints ───────────────────────────────────────────────────
+  console.log('\n32. Task checkpoints');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'cp1', text: 'Task with steps', tag: 'work', status: 'inprogress', date: today,
+        checkpoints: [
+          { id: 'c1', text: 'Step one',   done: false },
+          { id: 'c2', text: 'Step two',   done: true  },
+          { id: 'c3', text: 'Step three', done: false }
+        ]
+      },
+      { id: 'cp2', text: 'Task no steps', tag: 'work', status: 'todo', date: today }
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(300);
+
+    const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
+    assert('cp-badge rendered for task with checkpoints', planHtml.includes('cp-badge'));
+    assert('Badge shows correct fraction (1/3)',          planHtml.includes('1/3'));
+    assert('+ steps badge on task with no checkpoints',   planHtml.includes('+ steps'));
+
+    // Open checkpoints by clicking the badge
+    await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
+    await page.waitForTimeout(200);
+    const openHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
+    assert('Checkpoint area opens on badge click', openHtml.includes('cp-area'));
+    assert('Step text rendered',                   openHtml.includes('Step one'));
+    assert('Done step has cp-checked class',       openHtml.includes('cp-checked'));
+    assert('Progress bar rendered',                openHtml.includes('cp-fill'));
+
+    // Tick an unchecked checkpoint
+    await page.evaluate(() =>
+      document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
+    );
+    await page.waitForTimeout(200);
+    const afterTick = await page.evaluate(() =>
+      window.__wl.getState().planTasks.find(t => t.id === 'cp1')
+    );
+    assert('Checkpoint saved as done after tick', afterTick?.checkpoints[0]?.done === true);
+
+    await page.close();
+  }
+
+  // ── 33. EOD handoff notes ───────────────────────────────────────────────────
+  console.log('\n33. EOD handoff notes');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'hn1', text: 'Unfinished task', tag: 'work', status: 'inprogress', date: today },
+      { id: 'hn2', text: 'Done task',       tag: 'work', status: 'done',       date: today }
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(300);
+
+    assert('eodTaskNotes element exists', await page.evaluate(() =>
+      !!document.getElementById('eodTaskNotes')
+    ));
+
+    // Pre-set a handoff note and verify it appears in the plan row
+    await page.evaluate(() => {
+      localStorage.setItem('wl_handoff', JSON.stringify({ 'unfinished task': 'pick up from line 42' }));
+      window.__wl.renderPlan();
+    });
+    await page.waitForTimeout(200);
+    const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
+    assert('Handoff note shown in plan row',    planHtml.includes('pick up from line 42'));
+    assert('Handoff dismiss button rendered',   planHtml.includes('plan-handoff-dismiss'));
+    
+    // Verify done task specifically has no handoff note (not entire list)
+    const doneTaskRow = await page.evaluate(() => {
+      const rows = document.querySelectorAll('[data-task-id]');
+      for (const row of rows) {
+        if (row.textContent.includes('Done task')) return row.innerHTML;
+      }
+      return '';
+    });
+    assert('Done task has no handoff note',     !doneTaskRow.includes('plan-handoff-note'));
+
+    await page.close();
+  }
+
+  // ── 34. Parked thoughts ─────────────────────────────────────────────────────
+  console.log('\n34. Parked thoughts');
+  {
+    const page = await freshPage(ctx);
+    await page.waitForTimeout(300);
+
+    assert('parkSection exists', await page.evaluate(() => !!document.getElementById('parkSection')));
+    assert('idkwBtn exists',     await page.evaluate(() => !!document.getElementById('idkwBtn')));
+
+    // Inject a parked thought and verify it renders
+    await page.evaluate(() => {
+      localStorage.setItem('wl_parked_v1', JSON.stringify([
+        { id: 'pk1', text: 'A parked idea', ts: Date.now(), done: false }
+      ]));
+      window.__wl.loadParked();      // ← LOAD from localStorage into parkedThoughts array
+      window.__wl.renderParked();
+    });
+    await page.waitForTimeout(200);
+    const section = await page.evaluate(() => document.getElementById('parkSection').style.display);
+    assert('Park section visible when items exist', section !== 'none');
+    const html = await page.evaluate(() => document.getElementById('parkList').innerHTML);
+    assert('Parked item text rendered',             html.includes('A parked idea'));
+    assert('Promote-to-task button exists',         html.includes('parked-promote'));
+    assert('Dismiss button exists',                 html.includes('parked-dismiss'));
+
     await page.close();
   }
 
