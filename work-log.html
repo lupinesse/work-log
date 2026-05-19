@@ -694,12 +694,12 @@
     transition: color 0.1s, border-color 0.1s;
   }
   .cp-badge:hover { color: var(--text2); border-color: var(--text3); }
-  .cp-badge.cp-has-progress { background: rgba(255,184,48,0.15); color: #EF9F27; border-color: rgba(255,184,48,0.4); }
+  .cp-badge.cp-has-progress { background: rgba(29,158,117,0.1); color: #5DCAA5; border-color: rgba(29,158,117,0.35); }
   .cp-badge.cp-done-all { background: rgba(29,158,117,0.18); color: #1D9E75; border-color: rgba(29,158,117,0.5); }
   .cp-area { margin-top: 7px; padding-top: 7px; border-top: 0.5px solid var(--border); }
   .cp-progress-row { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
   .cp-bar { flex: 1; height: 3px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .cp-fill { height: 100%; background: #FFB830; border-radius: 2px; transition: width 0.3s; }
+  .cp-fill { height: 100%; background: #1D9E75; border-radius: 2px; transition: width 0.3s; }
   .cp-frac { font-size: 10px; color: var(--text3); font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 28px; text-align: right; }
   .cp-row {
     display: flex; align-items: center; gap: 6px; padding: 3px 0;
@@ -726,30 +726,6 @@
     cursor: pointer; opacity: 0.25; padding: 0 2px; line-height: 1; flex-shrink: 0;
   }
   .cp-del-btn:hover { opacity: 1; }
-  .cp-edit-btn {
-    font-size: 10px; background: none; border: 0.5px solid var(--border); color: var(--text3);
-    cursor: pointer; opacity: 0.6; padding: 1px 4px; border-radius: var(--radius); flex-shrink: 0;
-  }
-  .cp-edit-btn:hover { opacity: 1; color: var(--text); background: var(--bg2); }
-  .cp-row.cp-editing { flex-direction: column; gap: 4px; }
-  .cp-row.cp-editing .cp-handle { display: none; }
-  .cp-row.cp-editing .cp-check { display: none; }
-  .cp-row.cp-editing .cp-label { display: none; }
-  .cp-row.cp-editing .cp-del-btn { display: none; }
-  .cp-edit-input {
-    width: 100%; font-size: 12px; padding: 4px 6px; border: 0.5px solid #378ADD;
-    border-radius: var(--radius); background: var(--bg); color: var(--text);
-    font-family: var(--font); outline: none;
-  }
-  .cp-edit-actions { display: flex; gap: 4px; }
-  .cp-edit-actions button { font-size: 10px; padding: 3px 8px; border: 0.5px solid var(--border);
-    border-radius: var(--radius); background: var(--bg); color: var(--text); cursor: pointer;
-  }
-  .cp-edit-actions button:hover { background: var(--bg2); }
-  .cp-edit-actions .save { color: #4CAF50; border-color: #4CAF50; }
-  .cp-edit-actions .save:hover { background: #4CAF5022; }
-  .cp-edit-actions .cancel { color: #d32f2f; border-color: #d32f2f; }
-  .cp-edit-actions .cancel:hover { background: #d32f2f22; }
   .cp-add-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; padding-top: 5px; border-top: 0.5px dashed var(--border); }
   .cp-add-input {
     flex: 1; font-size: 12px; background: none; border: none; outline: none;
@@ -782,19 +758,6 @@
   .completed-text { flex: 1; font-size: 12px; color: #585856; text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (prefers-color-scheme: dark) { .completed-text { color: #888886; } }
   .completed-when { font-size: 10px; color: var(--text3); flex-shrink: 0; opacity: 0.7; font-family: var(--mono); }
-  .completed-edit-btn { font-size: 10px; color: var(--text3); background: none; border: 0.5px solid var(--border); padding: 2px 5px; border-radius: var(--radius); cursor: pointer; flex-shrink: 0; }
-  .completed-edit-btn:hover { background: var(--bg2); color: var(--text); }
-  .completed-item.editing { display: flex; flex-direction: column; gap: 6px; padding: 8px 4px; }
-  .completed-item.editing .completed-text { display: none; }
-  .completed-item.editing .completed-when { display: none; }
-  .completed-edit-input { width: 100%; font-size: 12px; padding: 4px 6px; border: 0.5px solid #378ADD; border-radius: var(--radius); background: var(--bg); color: var(--text); font-family: var(--font); outline: none; }
-  .completed-edit-actions { display: flex; gap: 4px; }
-  .completed-edit-actions button { font-size: 10px; padding: 3px 8px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); cursor: pointer; }
-  .completed-edit-actions button:hover { background: var(--bg2); }
-  .completed-edit-actions .save { color: #4CAF50; border-color: #4CAF50; }
-  .completed-edit-actions .save:hover { background: #4CAF5022; }
-  .completed-edit-actions .cancel { color: #d32f2f; border-color: #d32f2f; }
-  .completed-edit-actions .cancel:hover { background: #d32f2f22; }
   /* ── Timeblock ── */
   .tb-section { margin-top: 18px; border-top: 0.5px solid var(--border); padding-top: 14px; }
   .tb-header  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; cursor: pointer; user-select: none; }
@@ -1042,6 +1005,34 @@
     background: var(--bg2); color: var(--text2); font-family: var(--font);
   }
   .eod-close:hover { background: var(--bg3); }
+  /* Iteration expiry dates editor */
+  .expiry-btn {
+    font-size: 11px; padding: 3px 10px; border-radius: var(--radius);
+    border: 0.5px solid var(--border2); cursor: pointer;
+    background: var(--bg); color: var(--text3); font-family: var(--font);
+  }
+  .expiry-btn:hover { background: var(--bg2); color: var(--text2); }
+  .expiry-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 1001; align-items: center; justify-content: center;
+  }
+  .expiry-overlay.show { display: flex; }
+  .expiry-modal {
+    background: var(--bg); border: 0.5px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 24px 28px;
+    max-width: 420px; width: 90%;
+  }
+  .expiry-modal-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .expiry-modal-sub { font-size: 12px; color: var(--text3); margin-bottom: 14px; line-height: 1.5; }
+  .expiry-textarea {
+    width: 100%; height: 260px; font-size: 12px; font-family: var(--mono);
+    background: var(--bg2); border: 0.5px solid var(--border2);
+    border-radius: var(--radius); padding: 10px 12px; color: var(--text);
+    resize: vertical; outline: none; line-height: 1.7;
+  }
+  .expiry-textarea:focus { border-color: var(--info-text); }
+  .expiry-feedback { font-size: 11px; margin-top: 6px; min-height: 16px; color: #1D9E75; }
+  .expiry-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
   /* EOD task notes */
   .eod-task-note-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border); }
   .eod-task-note-row:last-child { border-bottom: none; }
@@ -1167,10 +1158,6 @@
   .plan-split-done:hover { background:var(--bg3); }
   .plan-child-item { padding-left:18px; border-left:2px solid var(--border); margin-left:8px; }
   .plan-child-arrow { color:var(--text3); font-size:11px; flex-shrink:0; }
-  #debugInfo { font-size: 9px; color: var(--text3); padding: 8px 12px; margin-top: 20px; border-top: 0.5px solid var(--border); font-family: var(--mono); line-height: 1.5; opacity: 0.7; }
-  #debugInfo:hover { opacity: 1; }
-  #debugInfo span { display: block; }
-  #debugInfo .commit { color: var(--text2); font-weight: 500; }
 </style>
 </head>
 <body>
@@ -1340,7 +1327,22 @@
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="expiry-btn" id="expiryBtn" title="Edit iteration expiry dates">📅 iterations</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
+    </div>
+  </div>
+</div>
+
+<!-- Iteration expiry dates editor modal -->
+<div class="expiry-overlay" id="expiryOverlay">
+  <div class="expiry-modal">
+    <div class="expiry-modal-title">📅 Iteration expiry dates</div>
+    <div class="expiry-modal-sub">One date per line in YYYY-MM-DD format. Completed tasks are hidden from the day after their iteration ends. Dates are stored in your browser.</div>
+    <textarea class="expiry-textarea" id="expiryTextarea" spellcheck="false"></textarea>
+    <div class="expiry-feedback" id="expiryFeedback"></div>
+    <div class="expiry-footer">
+      <button class="eod-close" id="expiryCancel">Cancel</button>
+      <button class="eod-close" id="expirySave" style="background:var(--bg3)">Save</button>
     </div>
   </div>
 </div>
@@ -3712,11 +3714,10 @@
       if (cpOpen || cpTotal === 0 && cpOpen) {
         const pct = cpTotal ? Math.round(cpDone / cpTotal * 100) : 0;
         const rowsHtml = cps.map((cp, i) =>
-          `<div class="cp-row" draggable="true" data-pid="${t.id}" data-cpidx="${i}" data-cp-id="${cp.id}">
+          `<div class="cp-row" draggable="true" data-pid="${t.id}" data-cpidx="${i}">
             <span class="cp-handle" title="drag to reorder">⠿</span>
             <div class="cp-check${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">✓</div>
             <span class="cp-label${cp.done ? ' cp-checked' : ''}" data-pid="${t.id}" data-cpidx="${i}">${escHtml(cp.text)}</span>
-            <button class="cp-edit-btn" title="Edit step" data-pid="${t.id}" data-cpidx="${i}" data-cp-id="${cp.id}">✎</button>
             <button class="cp-del-btn" data-pid="${t.id}" data-cpidx="${i}" title="remove">×</button>
           </div>`
         ).join('');
@@ -4102,19 +4103,6 @@
       });
     });
 
-    // Checkpoint: edit
-    qa('.cp-edit-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        const taskId = btn.dataset.pid;
-        const cpIdx = parseInt(btn.dataset.cpidx);
-        const task = planTasks.find(t => t.id === taskId);
-        if (task && task.checkpoints && task.checkpoints[cpIdx]) {
-          startEditingCheckpoint(task, cpIdx);
-        }
-      });
-    });
-
     // Checkpoint: add on Enter
     qa('.cp-add-input').forEach(inp => {
       inp.addEventListener('keydown', e => {
@@ -4163,71 +4151,6 @@
         _cpDragIdx = null; _cpDragPid = null;
       });
     });
-
-    function startEditingCheckpoint(task, cpIdx) {
-      const checkpoint = task.checkpoints[cpIdx];
-      if (!checkpoint) return;
-      
-      const row = document.querySelector(`[data-pid="${task.id}"][data-cpidx="${cpIdx}"]`);
-      if (!row) return;
-      
-      const originalText = checkpoint.text;
-      row.classList.add('cp-editing');
-      
-      const input = document.createElement('input');
-      input.className = 'cp-edit-input';
-      input.type = 'text';
-      input.value = originalText;
-      
-      const actionDiv = document.createElement('div');
-      actionDiv.className = 'cp-edit-actions';
-      
-      const saveBtn = document.createElement('button');
-      saveBtn.className = 'save';
-      saveBtn.textContent = '✓ save';
-      
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'cancel';
-      cancelBtn.textContent = '✕ cancel';
-      
-      actionDiv.appendChild(saveBtn);
-      actionDiv.appendChild(cancelBtn);
-      
-      // Insert after the label span
-      const label = row.querySelector('.cp-label');
-      if (label) {
-        label.parentNode.insertBefore(input, label.nextSibling);
-        input.parentNode.insertBefore(actionDiv, input.nextSibling);
-      }
-      
-      input.focus();
-      input.select();
-      
-      const saveEdit = () => {
-        const newText = input.value.trim();
-        if (newText && newText !== originalText) {
-          checkpoint.text = newText;
-          savePlan();
-        }
-        row.classList.remove('cp-editing');
-        input.remove();
-        actionDiv.remove();
-        renderPlan();
-      };
-      
-      const cancelEdit = () => {
-        row.classList.remove('cp-editing');
-        input.remove();
-        actionDiv.remove();
-      };
-      
-      saveBtn.addEventListener('click', saveEdit);
-      cancelBtn.addEventListener('click', cancelEdit);
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveEdit();
-        if (e.key === 'Escape') cancelEdit();
-      });
-    }
 
     // Edit task text
     qa('.plan-edit-btn').forEach(btn => {
@@ -4988,6 +4911,62 @@
 
   let completedCollapsed = false;
 
+  // ── Iteration expiry dates (stored in localStorage, seeded on first load) ──
+  const STORE_EXPIRY = 'wl_expiry_dates';
+  const EXPIRY_SEED = [
+    // PI 26-1
+    '2026-01-31','2026-02-14','2026-02-28','2026-03-14','2026-03-28',
+    // PI 26-2
+    '2026-04-11','2026-04-25','2026-05-09','2026-05-23','2026-06-06',
+    // PI 26-3
+    '2026-06-20','2026-07-04','2026-07-18','2026-08-01','2026-08-15','2026-08-29',
+    // PI 26-4
+    '2026-09-12','2026-09-26','2026-10-10','2026-10-24','2026-11-07',
+    // PI 26-5
+    '2026-11-21','2026-12-05','2026-12-19','2027-01-02','2027-01-16',
+  ];
+
+  let _expiryDates = null; // cached; invalidated when user saves changes
+
+  function loadExpiryDates() {
+    try {
+      const raw = localStorage.getItem(STORE_EXPIRY);
+      if (raw) { _expiryDates = JSON.parse(raw).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort(); return; }
+    } catch(e) {}
+    // Seed localStorage with defaults on first load
+    _expiryDates = [...EXPIRY_SEED];
+    localStorage.setItem(STORE_EXPIRY, JSON.stringify(_expiryDates));
+  }
+
+  function getIterationExpiry(completedDay) {
+    if (!_expiryDates) loadExpiryDates();
+    return _expiryDates.find(d => d > completedDay) || null;
+  }
+
+  function openExpiryModal() {
+    if (!_expiryDates) loadExpiryDates();
+    document.getElementById('expiryTextarea').value = _expiryDates.join('\n');
+    document.getElementById('expiryFeedback').textContent = '';
+    document.getElementById('expiryOverlay').classList.add('show');
+    document.getElementById('expiryTextarea').focus();
+  }
+
+  function saveExpiryDates() {
+    const raw = document.getElementById('expiryTextarea').value;
+    const dates = raw.split('\n').map(l => l.trim()).filter(l => /^\d{4}-\d{2}-\d{2}$/.test(l));
+    const invalid = raw.split('\n').map(l => l.trim()).filter(l => l && !/^\d{4}-\d{2}-\d{2}$/.test(l));
+    if (invalid.length) {
+      const fb = document.getElementById('expiryFeedback');
+      fb.style.color = '#f17070';
+      fb.textContent = `Invalid lines (ignored): ${invalid.join(', ')}`;
+    }
+    _expiryDates = [...new Set(dates)].sort();
+    localStorage.setItem(STORE_EXPIRY, JSON.stringify(_expiryDates));
+    document.getElementById('expiryOverlay').classList.remove('show');
+    renderCompleted();
+  }
+
+
   function renderCompleted() {
     const viewKey  = dk(viewDate);
     const viewTs   = new Date(viewKey + 'T12:00:00').getTime();
@@ -5004,8 +4983,11 @@
         if (activeTodayTexts.has(t.text.toLowerCase())) return false;
         const completedTs  = t.completedAt || new Date((t.date||viewKey)+'T23:59:00').getTime();
         const completedDay = dk(new Date(completedTs));
-        const cutoffTs     = completedTs + 14 * 24 * 60 * 60 * 1000;
-        return viewKey >= completedDay && viewTs <= cutoffTs;
+        const expiryDay    = getIterationExpiry(completedDay);
+        // Show from completion day until (but not including) the iteration expiry date.
+        // If beyond last known iteration, keep visible indefinitely.
+        if (!expiryDay) return viewKey >= completedDay;
+        return viewKey >= completedDay && viewKey < expiryDay;
       })
       .sort((a,b) => (b.completedAt||0) - (a.completedAt||0));
 
@@ -5039,85 +5021,18 @@
         const d = new Date(t.date + 'T12:00:00');
         whenStr = `completed ${d.toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })}`;
       }
-      return `<div class="completed-item" data-task-id="${t.id}">
+      return `<div class="completed-item">
         <span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done</span>
         <span class="completed-dot" style="background:${cat.color}"></span>
         <span class="completed-text">${t.emoji?escHtml(t.emoji)+' ':''}${jiraTicketHtml(t.text)}</span>
         <span class="completed-when">${whenStr}</span>
-        <button class="completed-edit-btn" title="Edit task" data-task-id="${t.id}">✎ edit</button>
       </div>`;
     }).join('');
-    
-    // Wire up edit buttons
-    document.querySelectorAll('.completed-edit-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const taskId = btn.dataset.taskId;
-        const task = planTasks.find(t => t.id === taskId);
-        if (task) startEditingCompleted(task);
-      });
-    });
   }
-  
-  function startEditingCompleted(task) {
-    const item = document.querySelector(`[data-task-id="${task.id}"]`);
-    if (!item) return;
-    
-    const originalText = task.text;
-    item.classList.add('editing');
-    
-    const input = document.createElement('input');
-    input.className = 'completed-edit-input';
-    input.type = 'text';
-    input.value = originalText;
-    
-    const actionDiv = document.createElement('div');
-    actionDiv.className = 'completed-edit-actions';
-    
-    const saveBtn = document.createElement('button');
-    saveBtn.className = 'save';
-    saveBtn.textContent = '✓ save';
-    
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'cancel';
-    cancelBtn.textContent = '✕ cancel';
-    
-    actionDiv.appendChild(saveBtn);
-    actionDiv.appendChild(cancelBtn);
-    
-    // Insert after the status badge
-    const badge = item.querySelector('.plan-status');
-    badge.parentNode.insertBefore(input, badge.nextSibling);
-    input.parentNode.insertBefore(actionDiv, input.nextSibling);
-    
-    input.focus();
-    input.select();
-    
-    const saveEdit = () => {
-      const newText = input.value.trim();
-      if (newText && newText !== originalText) {
-        task.text = newText;
-        savePlan();
-      }
-      item.classList.remove('editing');
-      input.remove();
-      actionDiv.remove();
-      renderCompleted();
-    };
-    
-    const cancelEdit = () => {
-      item.classList.remove('editing');
-      input.remove();
-      actionDiv.remove();
-    };
-    
-    saveBtn.addEventListener('click', saveEdit);
-    cancelBtn.addEventListener('click', cancelEdit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') saveEdit();
-      if (e.key === 'Escape') cancelEdit();
-    });
-  }
+
+  document.getElementById('completedHeader').addEventListener('click', () => {
+    completedCollapsed = !completedCollapsed; renderCompleted();
+  });
   /* ── Distraction tracking ── */
   function loadDistractions() {
     try {
@@ -5252,8 +5167,9 @@
     { id:'20260518-015', date:'2026-05-18', desc:'Fix: timer input fields now have bright white text on dark background for readability', areas:[1] },
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
-    { id:'20260519-002', date:'2026-05-19', desc:'Completed tasks: ✎ edit button allows inline editing and correction of typos', areas:[] },
-    { id:'20260519-003', date:'2026-05-19', desc:'Checkpoint steps: ✎ edit button allows inline editing of step text within tasks', areas:[] },
+    { id:'20260519-004', date:'2026-05-19', desc:'Iteration expiry dates moved to localStorage (wl_expiry_dates); seeded from EXPIRY_SEED on first load; editable via 📅 iterations button', areas:[6] },
+    { id:'20260519-003', date:'2026-05-19', desc:'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window', areas:[6] },
+    { id:'20260519-002', date:'2026-05-19', desc:'Smoke tests: fix test 24 streak assertion, fix test 25 cal-delete-btn via renderCalStrip injection, add tests 32–34 (checkpoints, handoff notes, parked thoughts)', areas:[] },
     { id:'20260513-006', date:'2026-05-13', desc:'Jira CSV importer: drag and drop Jira export to load issues', areas:[] },
     { id:'20260513-007', date:'2026-05-13', desc:'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection', areas:[7,9] },
     { id:'20260513-008', date:'2026-05-13', desc:'Plan section headers restyled: smaller, uppercase, icon prefixes', areas:[] },
@@ -5388,6 +5304,20 @@
       localStorage.setItem('wl_handoff', JSON.stringify(notes));
     } catch(e) {}
   }
+  document.getElementById('expiryBtn').addEventListener('click', openExpiryModal);
+  document.getElementById('expirySave').addEventListener('click', saveExpiryDates);
+  document.getElementById('expiryCancel').addEventListener('click', () => {
+    document.getElementById('expiryOverlay').classList.remove('show');
+  });
+  document.getElementById('expiryOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('expiryOverlay'))
+      document.getElementById('expiryOverlay').classList.remove('show');
+  });
+  document.getElementById('expiryTextarea').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.stopPropagation(); } // allow newlines
+    if (e.key === 'Escape') document.getElementById('expiryOverlay').classList.remove('show');
+  });
+
   document.getElementById('eodClose').addEventListener('click', () => {
     saveEodHandoffNotes();
     document.getElementById('eodOverlay').classList.remove('show');
@@ -5402,6 +5332,7 @@
   });
 
   load();
+  loadExpiryDates();
   mergeDevLog();
   loadBlocks();
   loadPlan();
@@ -5683,7 +5614,7 @@
       activeTimer: () => activeTimer,
       load, save, savePlan, loadPlan,
       autoCarryTasks, patchCarriedTasks,
-      render, renderPlan, renderCompleted,
+      render, renderPlan, renderCompleted, renderCalStrip, renderParked,
       startTimer, stopTimer, pauseTimer,
       getCat, escHtml, renderDistractionCount,
       getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
@@ -5970,18 +5901,6 @@
   })();
 
 })();
-</script>
-<div id="debugInfo">
-  <span class="commit">Latest commit: 975471a</span>
-  <span>Commit time: 2026-05-19 08:22:38 UTC</span>
-  <span>Page loaded: <span id="pageLoadTime"></span></span>
-</div>
-<script>
-  document.getElementById('pageLoadTime').textContent = new Date().toLocaleString('en-US', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
-    hour12: false
-  }).replace(',', '');
 </script>
 </body>
 </html>
