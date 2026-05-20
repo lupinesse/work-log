@@ -684,6 +684,8 @@
     color: var(--text3); padding: 0 2px; line-height: 1; flex-shrink: 0;
   }
   .plan-del-btn:hover { color: var(--text); }
+  .bill-btn { background:none; border:none; cursor:pointer; font-size:13px; line-height:1; padding:0 2px; flex-shrink:0; opacity:0.85; }
+  .bill-btn:hover { opacity:1; transform:scale(1.15); }
   /* ── Task checkpoints ── */
   .cp-badge {
     display: inline-flex; align-items: center; gap: 4px;
@@ -1652,7 +1654,8 @@
       manageHtml = `
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
-        <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>`;
+        <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
+        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable===false ? "💸 non-billable" : "💰 billable"}</button>`;
     }
 
     row.innerHTML = `
@@ -1734,6 +1737,14 @@
     // Add: open
     const addBtn = document.getElementById('catAddBtn');
     if (addBtn) addBtn.addEventListener('click', () => { addingNewCat = true; editingCatId = null; renderTagRow(); });
+    const billBtn = document.getElementById('catBillBtn');
+    if (billBtn) billBtn.addEventListener('click', () => {
+      const cat = getCat(selectedTag);
+      cat.billable = cat.billable === false;
+      // Retroactively update all tasks with this category
+      planTasks.forEach(t => { if (t.tag === selectedTag) t.billable = cat.billable; });
+      save(); savePlan(); renderTagRow(); renderPlan(); renderCompleted();
+    });
 
     // Add: save
     const newOk = document.getElementById('catNewOk');
@@ -2187,6 +2198,8 @@
 
       const startVal = toTimeInput(e.ts);
       const endVal   = e.tsEnd ? toTimeInput(e.tsEnd) : '';
+      const entryTask    = planTasks.find(t => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
+      const entryBillEmj = (entryTask && entryTask.billable === false) ? '💸' : '💰';
 
       return `
         <div class="entry${isTiming?' is-timing':''}" data-id="${e.id}">
@@ -2207,6 +2220,7 @@
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
             <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
+            <button class="bill-btn" data-etext="${escHtml(e.text)}" title="${entryBillEmj==='💰'?'billable — click to mark non-billable':'non-billable — click to mark billable'}">${entryBillEmj}</button>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
@@ -2345,7 +2359,15 @@
     // Build deduplicated recent list, then filter out hidden ones
     const allRecent = [...entries].reverse()
       .filter(e => { const k=e.text.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
-    const recent = allRecent.filter(e => !qpHidden.has(e.text.toLowerCase())).slice(0, 16);
+    // Hide tasks whose last-logged date is at or past the current iteration boundary
+    const todayKeyQp = dk(new Date());
+    const expiredQp  = new Set(
+      allRecent.filter(e => {
+        const expiry = getIterationExpiry(e.date || '');
+        return expiry && todayKeyQp >= expiry;
+      }).map(e => e.text.toLowerCase())
+    );
+    const recent = allRecent.filter(e => !qpHidden.has(e.text.toLowerCase()) && !expiredQp.has(e.text.toLowerCase())).slice(0, 16);
     // Hidden count is the intersection of qpHidden with task texts actually present in entries
     const hiddenInUse = allRecent.filter(e => qpHidden.has(e.text.toLowerCase())).length;
 
@@ -2541,13 +2563,14 @@
       });
     });
 
-    // Billable: total tracked time rounded up to nearest 30 min
-    const totalTrackedMs = dayEntries
-      .filter(e => e.tsEnd && e.tsEnd > e.ts)
-      .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
-    const billableMins = Math.ceil(totalTrackedMs / (30 * 60000)) * 30;
-    const bh = Math.floor(billableMins/60), bm = billableMins%60;
-    const billableStr = bh > 0 ? (bm > 0 ? `${bh}h ${bm}min` : `${bh}h`) : `${bm}min`;
+    // Billable / non-billable breakdown
+    function isEntryBillable(text) {
+      const t = planTasks.find(t => t.text.toLowerCase().trim() === text.toLowerCase().trim());
+      return t ? t.billable !== false : true;
+    }
+    const totalTrackedMs  = timedEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+    const billableMs      = timedEntries.filter(e => isEntryBillable(e.text)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+    const nonBillableMs   = totalTrackedMs - billableMs;
 
     const header = [`Work Log — ${dateStr}`];
     if (dayStartTs) {
@@ -2556,10 +2579,49 @@
       header.push(`Started: ${startStr}  |  Ended: ${endStr}`);
       if (dayEndTs) header.push(`Workday: ${fmtDurMs(dayEndTs - dayStartTs)}`);
     }
-    if (totalTrackedMs > 0) header.push(`Billable: ${billableStr}`);
+    if (totalTrackedMs > 0) {
+      header.push(`Total tracked: ${fmtDurMs(totalTrackedMs)}  |  💰 Billable: ${fmtDurMs(billableMs)}  |  💸 Non-billable: ${fmtDurMs(nonBillableMs)}`);
+    }
     header.push('---');
 
-    const blob = new Blob([[...header, ...lines].join('\n')], { type: 'text/plain' });
+    // Pasteable billable summary — last line of the file
+    // Format: "Category (task1, task2), uncategorised-task"
+    const stripJira = t => t.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
+    const billableTimed = timedEntries.filter(e => isEntryBillable(e.text));
+    // Merge same-task entries within 30 min gap (same logic as timeline)
+    const mergeForExport = arr => {
+      const sorted = [...arr].sort((a,b) => a.ts - b.ts);
+      const out = [];
+      for (const e of sorted) {
+        const prev = out[out.length-1];
+        if (prev && prev.text.toLowerCase()===e.text.toLowerCase() && e.ts-(prev._end||prev.ts)<=30*60000)
+          prev._end = Math.max(prev._end||prev.ts, e.tsEnd||e.ts);
+        else out.push({...e, _end: e.tsEnd||e.ts});
+      }
+      return out;
+    };
+    const billableMerged = mergeForExport(billableTimed);
+    // Group by category, preserve order of first appearance
+    const summaryOrder = [];
+    const summaryGroups = {};
+    const summaryUngrouped = [];
+    billableMerged.forEach(e => {
+      const taskName = stripJira(e.text);
+      if (!e.tag || e.tag === 'other') {
+        if (!summaryUngrouped.includes(taskName)) summaryUngrouped.push(taskName);
+      } else {
+        const catLabel = getCatLabel(e.tag);
+        if (!summaryGroups[e.tag]) { summaryOrder.push(e.tag); summaryGroups[e.tag] = { label: catLabel, tasks: [] }; }
+        if (!summaryGroups[e.tag].tasks.includes(taskName)) summaryGroups[e.tag].tasks.push(taskName);
+      }
+    });
+    const summaryParts = [
+      ...summaryOrder.map(k => `${summaryGroups[k].label} (${summaryGroups[k].tasks.join(', ')})` ),
+      ...summaryUngrouped
+    ];
+    const summaryLine = summaryParts.length ? summaryParts.join(', ') : '';
+
+    const blob = new Blob([[...header, ...lines, ...(summaryLine ? ['---', summaryLine] : [])].join('\n')], { type: 'text/plain' });
     const filename = `work-log-${dateStr}.txt`;
     writeExportFile('timesheets', filename, blob);
   }
@@ -2727,14 +2789,6 @@
     const saved = entry ? (localStorage.getItem('wl_emergency_next_' + entry.id) || '') : '';
     document.getElementById('emergencyNext').value = saved;
     document.getElementById('emergencyNext').focus();
-    // Auto-expand checkpoints for active task
-    if (entry) {
-      const todayKey = dk(new Date());
-      const task = planTasks.find(t => t.text === entry.text && t.date === todayKey);
-      if (task && Array.isArray(task.checkpoints) && task.checkpoints.length) {
-        _cpOpenIds.add(task.id);
-      }
-    }
     renderEmergencyCps();
   }
 
@@ -2746,15 +2800,6 @@
     const note  = document.getElementById('emergencyNext').value.trim();
     if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
     else if (entry)    localStorage.removeItem('wl_emergency_next_' + entry.id);
-    // Keep checkpoints expanded after exiting focus mode
-    if (entry) {
-      const todayKey = dk(new Date());
-      const task = planTasks.find(t => t.text === entry.text && t.date === todayKey);
-      if (task && Array.isArray(task.checkpoints) && task.checkpoints.length) {
-        _cpOpenIds.add(task.id);
-      }
-    }
-    renderPlan();  // Re-render to show expanded checkpoints
   }
 
   document.getElementById('emergencyBtn').addEventListener('click', () => {
@@ -3211,7 +3256,6 @@
       renderEodBtn();
       checkPomoWeeklyClear();
       render();
-      renderPlan();  // Re-render plan to show carried tasks with reset checkpoints
     }
   }
 
@@ -3846,7 +3890,7 @@
           <select class="plan-status ${status}" data-pid="${t.id}">${statusOpts(status)}</select>
           <div class="plan-left">
             <div class="plan-top">
-              <span class="plan-text">${taskNameHtml}${pbCommentBubble ? '&thinsp;' + pbCommentBubble : ''}<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen?'collapse steps':'expand steps'}">${cpBadgeLabel}</button></span>
+              <span class="plan-text">${taskNameHtml}${pbCommentBubble ? '&thinsp;' + pbCommentBubble : ''}<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen?'collapse steps':'expand steps'}">${cpBadgeLabel}</button><button class="bill-btn" data-pid="${t.id}" title="${t.billable===false?'mark billable':'mark non-billable'}">${t.billable===false?'💸':'💰'}</button></span>
             </div>
             ${handoffNoteHtml}
             ${cpAreaHtml}
@@ -3867,7 +3911,7 @@
         ${childPrefix}<select class="plan-status ${status==='done'?'done-st':status}" data-pid="${t.id}">${statusOpts(status)}</select>
         <div class="plan-left">
           <div class="plan-top">
-            <span class="plan-text">${taskNameHtml}${!isChild ? `<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen?'collapse steps':'expand steps'}">${cpBadgeLabel}</button>` : ''}</span>
+            <span class="plan-text">${taskNameHtml}${!isChild ? `<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen?'collapse steps':'expand steps'}">${cpBadgeLabel}</button>` : ''}<button class="bill-btn" data-pid="${t.id}" title="${t.billable===false?'mark billable':'mark non-billable'}">${t.billable===false?'💸':'💰'}</button></span>
           </div>
           ${handoffNoteHtml}
           ${!isChild ? cpAreaHtml : ''}
@@ -4468,7 +4512,7 @@
     const inp = document.getElementById('planInput');
     const text = inp.value.trim();
     if (!text) return;
-    planTasks.push({ id: Date.now()+'', text, status: 'todo', tag: selectedTag, date: dk(new Date()) });
+    planTasks.push({ id: Date.now()+'', text, status: 'todo', tag: selectedTag, date: dk(new Date()), billable: getCat(selectedTag).billable !== false });
     inp.value = '';
     savePlan(); renderPlan();
     inp.focus();
@@ -4591,14 +4635,32 @@
             .map(b => b.text.toLowerCase())
     );
 
-    entries.filter(e => e.date === dateKey).forEach(e => {
-      if (e.id === liveId) return;
-      // Skip if this entry matches a meeting block (with or without 📅 prefix)
-      const cleanText = e.text.replace(/^📅\s*/, '').toLowerCase();
-      if (meetingNames.has(cleanText) || meetingNames.has(e.text.toLowerCase())) return;
-      const endTs = e.tsEnd && e.tsEnd > e.ts
-        ? e.tsEnd
-        : (isToday(viewDate) ? Date.now() : null);
+    // Merge same-task entries with < 30 min gap into a single visual block
+    function mergeAutoEntries(rawEntries) {
+      const sorted = [...rawEntries].sort((a, b) => a.ts - b.ts);
+      const merged = [];
+      for (const e of sorted) {
+        const prev = merged[merged.length - 1];
+        const prevEnd = prev ? (prev._mergedEnd || prev.ts) : 0;
+        if (prev &&
+            prev.text.toLowerCase() === e.text.toLowerCase() &&
+            e.ts - prevEnd <= 30 * 60 * 1000) {
+          prev._mergedEnd = Math.max(prevEnd, e.tsEnd || e.ts);
+          prev.tag = prev.tag || e.tag;
+        } else {
+          merged.push({ ...e, _mergedEnd: e.tsEnd || e.ts });
+        }
+      }
+      return merged;
+    }
+
+    const dayAutoEntries = entries.filter(e => e.date === dateKey && e.id !== liveId &&
+      !meetingNames.has(e.text.replace(/^📅\s*/,'').toLowerCase()) &&
+      !meetingNames.has(e.text.toLowerCase()) &&
+      (e.tsEnd || isToday(viewDate))
+    );
+    mergeAutoEntries(dayAutoEntries).forEach(e => {
+      const endTs = e._mergedEnd || (isToday(viewDate) ? Date.now() : null);
       if (!endTs) return;
       const el = autoBlockEl(e.text, e.tag, e.ts, endTs, false);
       if (el) grid.appendChild(el);
@@ -4959,6 +5021,10 @@
     const todayTasks = planTasks.filter(t => t.date === todayKey);
     const pastTasks  = planTasks.filter(t => t.date < todayKey);
 
+    // Migration: stamp billable on tasks and categories that predate the feature
+    planTasks.forEach(t => { if (t.billable === undefined) t.billable = true; });
+    categories.forEach(c => { if (c.billable === undefined) c.billable = true; });
+
     // Migration: stamp completedAt on any done task missing it
     let changed = false;
     planTasks.forEach(t => {
@@ -5167,6 +5233,26 @@
   document.getElementById('completedHeader').addEventListener('click', () => {
     completedCollapsed = !completedCollapsed; renderCompleted();
   });
+  // Delegated bill-btn handler — covers plan, pending, completed sections
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.bill-btn');
+    if (!btn) return;
+    e.stopPropagation();
+    if (btn.dataset.pid) {
+      const t = planTasks.find(t => t.id === btn.dataset.pid);
+      if (!t) return;
+      t.billable = t.billable === false ? true : false;
+      savePlan(); renderPlan(); renderCompleted();
+    } else if (btn.dataset.etext) {
+      // Log entry — find matching plan task(s) by text
+      const key = btn.dataset.etext.toLowerCase().trim();
+      const tasks = planTasks.filter(t => t.text.toLowerCase().trim() === key);
+      if (!tasks.length) return;
+      const newBill = tasks[0].billable === false;
+      tasks.forEach(t => t.billable = newBill);
+      savePlan(); render();
+    }
+  }, true);
   /* ── Distraction tracking ── */
   function loadDistractions() {
     try {
@@ -5302,6 +5388,11 @@
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
     { id:'20260519-008', date:'2026-05-19', desc:'Focus mode: checkpoints shown for active task, pomodoro fixed top-right, tagRow/timeline/calSection hidden', areas:[] },
+    { id:'20260520-005', date:'2026-05-20', desc:'Billable emoji shown in time log entries; clickable to toggle matching plan task', areas:[] },
+    { id:'20260520-001', date:'2026-05-20', desc:'Billable/non-billable: 💰/💸 toggle on all task rows + category default; retroactive update on category change; new tasks default billable', areas:[] },
+    { id:'20260520-002', date:'2026-05-20', desc:'Export: billable/non-billable totals in header; pasteable summary line grouped by category at end of .txt', areas:[] },
+    { id:'20260520-003', date:'2026-05-20', desc:'Quick-pick: tasks past iteration boundary hidden automatically', areas:[] },
+    { id:'20260520-004', date:'2026-05-20', desc:'Timeline + export: consecutive same-task blocks with <30min gap merged into single block', areas:[] },
     { id:'20260519-011', date:'2026-05-19', desc:'Calendar meetings sorted by start time (not by calendar source)', areas:[] },
     { id:'20260519-010', date:'2026-05-19', desc:'Moved parked thoughts section between today\'s meetings and today\'s tasks', areas:[] },
     { id:'20260519-009', date:'2026-05-19', desc:'EOD handoff notes: only show tasks actually worked on today', areas:[] },
@@ -5763,8 +5854,16 @@
       render, renderPlan, renderCompleted, renderCalStrip, renderParked, openEodModal, parkedThoughts,
       startTimer, stopTimer, pauseTimer,
       getCat, escHtml, renderDistractionCount,
+      getIterationExpiry, loadExpiryDates,
       getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
     };
+    // Live viewDate getter/setter so tests can change the view date
+    // and renderCompleted re-runs automatically
+    Object.defineProperty(window.__wl, 'viewDate', {
+      get: () => viewDate,
+      set: (v) => { viewDate = v instanceof Date ? v : new Date(v); renderCompleted(); },
+      enumerable: true, configurable: true
+    });
   }
   /* ── Jira CSV importer ── */
   (function initJiraImporter() {
