@@ -12,12 +12,14 @@ ADHD-friendly work tracker — single HTML file, runs locally in your browser.
 
 ![Pomodoro](screenshots/ss4-pomodoro.png)
 
+![Focus Mode](screenshots/ss5-focus-mode.png)
+
 ## How to use
 
 > **Important:** The tracker needs to run via a local server (not opened directly as a file) so your data saves correctly between sessions.
 
 ### Windows
-1. Download `work-log.html` and `launch.bat` into the same folder
+1. Download `work-log.html`, `launch.bat`, and `start-server.ps1` into the same folder
 2. Double-click `launch.bat`
 3. The tracker opens automatically in your browser
 
@@ -33,19 +35,38 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ## Features
 
-- **Time logging** — log what you're working on with a live timer
+### Time tracking
+- **Live timer** — start a timer on any task, pause and resume, add a handoff note when stopping
+- **Time log** — every logged entry shown with duration, epic, and billable flag
+- **Billable tracking** — mark epics and individual entries as billable; totals shown per task and per day
+- **Quick pick** — recent tasks shown as chips for fast re-logging
+
+### Tasks
 - **Today's tasks** — To do / In Progress / Done with epic colour coding
-- **Task hierarchy** — drag tasks to create parent-child relationships
-- **Timeblock** — visual 08:00–18:00 grid with auto-blocks from logged entries
-- **Pomodoro timer** — 5 / 10 / 20 min with session log
-- **Epics** — colour-coded categories for your work
-- **Weather** — current conditions, rain forecast, sunrise/sunset
-- **Moon phase** — current phase, illumination and zodiac sign
+- **Task subtasks** — split any task into child steps; completing all steps completes the parent
+- **Deadlines** — date picker with overdue (red) and due-today (amber) highlighting
+- **Auto-carry** — unfinished tasks roll over to the next day automatically
+- **Jira import** — paste a Jira CSV export to bulk-add tickets as tasks
+- **Completion history** — done tasks shown for 14 days with timestamp, then expire by iteration
+
+### Focus mode
+- **Focus screen** — one-click distraction-free view showing only the active task and next steps
+- **Parked thoughts** — capture stray thoughts mid-focus without leaving the screen
+- **Pomodoro timer** — 5 / 10 / 20 min ring timer with session log; visible in focus mode
+
+### Planning
+- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link
+- **Timeblock** — visual 08:00–18:00 grid auto-filled from logged entries; drag to rearrange
+- **Day streak** — consecutive days with logged work
+
+### Export & review
+- **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
+- **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
+
+### Info widgets
+- **Weather** — current conditions, rain forecast, sunrise/sunset (Helsinki)
+- **Moon phase** — current phase, illumination %, and zodiac sign
 - **Finnish nameday** — fetched live from nimipaivat.fi
-- **Export** — download your day as a .txt file
-- **End the day** — one-click export with test area review
-- **Auto-carry** — unfinished tasks roll over to the next day
-- **Completed tasks** — 14-day rolling history
 
 ## Testing
 
@@ -55,4 +76,8 @@ A smoke test suite is included. Requires Node.js.
 node smoke-tests.js
 ```
 
-Or double-click `run-tests.bat` on Windows. To schedule tests to run automatically each morning, run `schedule-tests.bat` once as Administrator.
+Or double-click `run-tests.bat` on Windows.
+
+To schedule tests to run automatically each morning, run `schedule-tests.bat` once as Administrator.
+
+To set up automated weekly releases every Friday, run `setup-scheduler.ps1` once as Administrator.
