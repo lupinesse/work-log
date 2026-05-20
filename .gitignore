@@ -1,3 +1,5 @@
 timesheets/
 JSON backups/
 .claude/
+node_modules/
+config.local.ps1

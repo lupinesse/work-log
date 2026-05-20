@@ -2,6 +2,11 @@ $port = 8080
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $url  = "http://localhost:$port/"
 
+# Load personal config (not committed to git)
+$NamedayApiToken = ''
+$configFile = Join-Path $root 'config.local.ps1'
+if (Test-Path $configFile) { . $configFile }
+
 $listener = New-Object Net.HttpListener
 $listener.Prefixes.Add($url)
 $listener.Start()
@@ -43,9 +48,7 @@ function Get-TodayMeetings {
 
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
-                $accountKey   = if     ($storeDisplay -match 'lahitapiola') { 'lahitapiola' }
-                                elseif ($storeDisplay -match 'gofore')      { 'gofore' }
-                                else                                         { $null }
+                $accountKey = if ($storeDisplay) { $storeDisplay } else { $null }
 
                 # Method 1: GetDefaultFolder
                 try { $calFolders += @{ folder = $store.GetDefaultFolder(9); label = $accountKey } } catch {}
@@ -136,7 +139,7 @@ while ($listener.IsListening) {
         # Nameday proxy — forwards to nimipaivarajapinta.fi bypassing browser CORS
         if ($req.Url.LocalPath -like '/api/namedays*' -or $req.Url.LocalPath -like '/api/typesense*') {
             try {
-                $token  = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01'
+                $token  = $NamedayApiToken
                 $path   = $req.Url.LocalPath  # already /api/namedays/... or /api/typesense/...
                 $target = 'https://nimipaivarajapinta.fi' + $path
                 if ($req.Url.Query) { $target += $req.Url.Query }
