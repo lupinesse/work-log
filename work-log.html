@@ -1790,7 +1790,8 @@
     return d.toLocaleDateString('en', {weekday:'short', month:'short', day:'numeric'});
   }
   function fmtTime(ts) {
-    return new Date(ts).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',hour12:false});
+    const d = new Date(ts);
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
   }
   function fmtElapsed(ms) {
     const s = Math.floor(ms / 1000);
@@ -2199,7 +2200,12 @@
       const startVal = toTimeInput(e.ts);
       const endVal   = e.tsEnd ? toTimeInput(e.tsEnd) : '';
       const entryTask    = planTasks.find(t => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
-      const entryBillEmj = (entryTask && entryTask.billable === false) ? '💸' : '💰';
+      const entryBillVal = e.billable !== undefined
+        ? e.billable
+        : entryTask
+          ? entryTask.billable !== false
+          : getCat(e.tag || 'other').billable !== false;
+      const entryBillEmj = entryBillVal ? '💰' : '💸';
 
       return `
         <div class="entry${isTiming?' is-timing':''}" data-id="${e.id}">
@@ -2220,7 +2226,7 @@
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
             <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
-            <button class="bill-btn" data-etext="${escHtml(e.text)}" title="${entryBillEmj==='💰'?'billable — click to mark non-billable':'non-billable — click to mark billable'}">${entryBillEmj}</button>
+            <button class="bill-btn" data-eid="${e.id}" data-etext="${escHtml(e.text)}" data-etag="${e.tag||'other'}" title="${entryBillEmj==='💰'?'billable — click to mark non-billable':'non-billable — click to mark billable'}">${entryBillEmj}</button>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
@@ -2463,8 +2469,11 @@
 
     const tm2=Math.round(grandTotal/60000), th2=Math.floor(tm2/60), tm3=tm2%60;
     const totalDur=th2>0?(tm3>0?`${th2}h ${tm3}m`:`${th2}h`):`${tm3}m`;
+    const billMs    = timed.filter(e=>isEntryBillable(e)).reduce((s,e)=>s+(e.tsEnd-e.ts),0);
+    const nonBillMs = timed.reduce((s,e)=>s+(e.tsEnd-e.ts),0) - billMs;
+    const fmtMs = ms => { const m=Math.round(ms/60000),h=Math.floor(m/60),r=m%60; return h>0?(r>0?`${h}h ${r}m`:`${h}h`):`${r}m`; };
     const title = chartMode==='task' ? 'time by task' : 'time by epic';
-    el.innerHTML=`<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div></div>`;
+    el.innerHTML=`<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs>0||nonBillMs>0?`<div class="chart-total">💰 billable: <span>${fmtMs(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtMs(nonBillMs)}</span></div>`:''}</div>`;
     el.querySelectorAll('.chart-tog').forEach(b=>b.addEventListener('click',()=>{chartMode=b.dataset.mode;renderChart(list);}));
   }
 
@@ -2510,6 +2519,14 @@
   }
 
   /* ── Export ── */
+  // Module-level billable lookup: entry own flag → planTask → category default
+  function isEntryBillable(e) {
+    if (e.billable !== undefined) return e.billable;
+    const t = planTasks.find(t => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
+    if (t) return t.billable !== false;
+    return getCat(e.tag || 'other').billable !== false;
+  }
+
   function exportTxt() {
     const dayEntries = viewEntries().slice().reverse();
     if (!dayEntries.length) return;
@@ -2564,12 +2581,8 @@
     });
 
     // Billable / non-billable breakdown
-    function isEntryBillable(text) {
-      const t = planTasks.find(t => t.text.toLowerCase().trim() === text.toLowerCase().trim());
-      return t ? t.billable !== false : true;
-    }
     const totalTrackedMs  = timedEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
-    const billableMs      = timedEntries.filter(e => isEntryBillable(e.text)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+    const billableMs      = timedEntries.filter(e => isEntryBillable(e)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
     const nonBillableMs   = totalTrackedMs - billableMs;
 
     const header = [`Work Log — ${dateStr}`];
@@ -2587,7 +2600,7 @@
     // Pasteable billable summary — last line of the file
     // Format: "Category (task1, task2), uncategorised-task"
     const stripJira = t => t.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
-    const billableTimed = timedEntries.filter(e => isEntryBillable(e.text));
+    const billableTimed = timedEntries.filter(e => isEntryBillable(e));
     // Merge same-task entries within 30 min gap (same logic as timeline)
     const mergeForExport = arr => {
       const sorted = [...arr].sort((a,b) => a.ts - b.ts);
@@ -5244,13 +5257,22 @@
       t.billable = t.billable === false ? true : false;
       savePlan(); renderPlan(); renderCompleted();
     } else if (btn.dataset.etext) {
-      // Log entry — find matching plan task(s) by text
-      const key = btn.dataset.etext.toLowerCase().trim();
-      const tasks = planTasks.filter(t => t.text.toLowerCase().trim() === key);
-      if (!tasks.length) return;
-      const newBill = tasks[0].billable === false;
-      tasks.forEach(t => t.billable = newBill);
-      savePlan(); render();
+      // Log entry — save billable directly on the entry, and sync to matching planTasks
+      const entry = entries.find(e => e.id === btn.dataset.eid);
+      if (!entry) return;
+      const newBill = entry.billable === false || entry.billable === undefined
+        ? !(getCat(entry.tag||'other').billable !== false)
+        : false;
+      // Determine toggle: if currently billable → make non-billable, and vice versa
+      const curBill = entry.billable !== undefined
+        ? entry.billable
+        : getCat(entry.tag||'other').billable !== false;
+      entry.billable = !curBill;
+      // Also update matching planTasks so plan rows stay in sync
+      const key = entry.text.toLowerCase().trim();
+      planTasks.filter(t => t.text.toLowerCase().trim() === key)
+               .forEach(t => t.billable = entry.billable);
+      save(); savePlan(); render();
     }
   }, true);
   /* ── Distraction tracking ── */
