@@ -1274,11 +1274,6 @@
   <button class="emergency-exit" id="emergencyExit">exit focus mode</button>
 </div>
 
-<div id="parkSection" style="display:none" class="park-section">
-  <div class="park-header">💭 parked thoughts <span class="park-badge" id="parkBadge">0</span></div>
-  <div id="parkList"></div>
-</div>
-
 <div class="stats">
   <div class="stat"><div class="stat-val" id="statToday">0</div><div class="stat-lbl">tasks today</div><div class="stat-sub" id="statTodaySub"></div></div>
   <div class="stat"><div class="stat-val" id="statWeek">0</div><div class="stat-lbl">epics this week</div><div class="stat-sub" id="statWeekSub"></div></div>
@@ -1315,6 +1310,11 @@
     <span class="plan-toggle">&#9660;</span>
   </div>
   <div class="plan-body" id="calMeetings"></div>
+</div>
+
+<div id="parkSection" style="display:none" class="park-section">
+  <div class="park-header">💭 parked thoughts <span class="park-badge" id="parkBadge">0</span></div>
+  <div id="parkList"></div>
 </div>
 
 <div class="plan-section" id="planSection">
@@ -5284,6 +5284,7 @@
     { id:'20260518-016', date:'2026-05-18', desc:'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning', areas:[] },
     { id:'20260519-001', date:'2026-05-19', desc:'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover', areas:[] },
     { id:'20260519-008', date:'2026-05-19', desc:'Focus mode: checkpoints shown for active task, pomodoro fixed top-right, tagRow/timeline/calSection hidden', areas:[] },
+    { id:'20260519-010', date:'2026-05-19', desc:'Moved parked thoughts section between today\'s meetings and today\'s tasks', areas:[] },
     { id:'20260519-009', date:'2026-05-19', desc:'EOD handoff notes: only show tasks actually worked on today', areas:[] },
     { id:'20260519-007', date:'2026-05-19', desc:'Checkpoint steps: double-click label to edit inline; Enter/blur saves, Escape cancels', areas:[] },
     { id:'20260519-006', date:'2026-05-19', desc:'Fix: checkpoint badge status color only applied when checkpoints exist (0/N); + steps badge stays gray', areas:[] },
