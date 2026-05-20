@@ -2727,6 +2727,14 @@
     const saved = entry ? (localStorage.getItem('wl_emergency_next_' + entry.id) || '') : '';
     document.getElementById('emergencyNext').value = saved;
     document.getElementById('emergencyNext').focus();
+    // Auto-expand checkpoints for active task
+    if (entry) {
+      const todayKey = dk(new Date());
+      const task = planTasks.find(t => t.text === entry.text && t.date === todayKey);
+      if (task && Array.isArray(task.checkpoints) && task.checkpoints.length) {
+        _cpOpenIds.add(task.id);
+      }
+    }
     renderEmergencyCps();
   }
 
@@ -2738,6 +2746,15 @@
     const note  = document.getElementById('emergencyNext').value.trim();
     if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
     else if (entry)    localStorage.removeItem('wl_emergency_next_' + entry.id);
+    // Keep checkpoints expanded after exiting focus mode
+    if (entry) {
+      const todayKey = dk(new Date());
+      const task = planTasks.find(t => t.text === entry.text && t.date === todayKey);
+      if (task && Array.isArray(task.checkpoints) && task.checkpoints.length) {
+        _cpOpenIds.add(task.id);
+      }
+    }
+    renderPlan();  // Re-render to show expanded checkpoints
   }
 
   document.getElementById('emergencyBtn').addEventListener('click', () => {
@@ -3194,6 +3211,7 @@
       renderEodBtn();
       checkPomoWeeklyClear();
       render();
+      renderPlan();  // Re-render plan to show carried tasks with reset checkpoints
     }
   }
 
