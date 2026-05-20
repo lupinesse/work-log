@@ -894,7 +894,8 @@
   body.emergency #upcomingSection,
   body.emergency #completedSection,
   body.emergency #distractionSection,
-  body.emergency #captureRow,
+  body.emergency .capture-row,
+  body.emergency #quickPick,
   body.emergency .time-log,
   body.emergency #chart,
   body.emergency #tbSection,
@@ -902,22 +903,17 @@
   body.emergency #newdayBanner,
   body.emergency #tagRow,
   body.emergency #timeline,
-  body.emergency #calSection { display: none !important; }
+  body.emergency #jiraSection { display: none !important; }
 
   body.emergency { background: var(--bg); }
 
-  /* Pomodoro floats top-right in focus mode */
+  /* Pomodoro sits below exit button in focus mode */
   body.emergency .pomo-section {
-    position: fixed; top: 1rem; right: 1.5rem;
-    width: 176px; background: var(--bg);
-    border: 0.5px solid var(--border2); border-radius: var(--radius-lg);
-    padding: 14px; z-index: 1001;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.35);
+    margin-top: 20px; border-top: 0.5px solid var(--border);
+    padding-top: 16px; text-align: center; width: 100%; max-width: 280px;
   }
-  body.emergency .pomo-header { font-size: 10px; text-align:center; margin-bottom: 8px; }
-  body.emergency .pomo-durations,
   body.emergency .pomo-log,
-  body.emergency .pomo-section > div:last-of-type { display: none !important; }
+  body.emergency .pomo-chime { display: none !important; }
 
   /* Checkpoints inside focus mode */
   .emergency-cps-wrap { width: 100%; max-width: 480px; text-align: left; }
@@ -1266,7 +1262,7 @@
     <div class="emergency-task" id="emergencyTask">—</div>
   </div>
   <div class="emergency-cps-wrap" id="emergencyCpsWrap" style="display:none">
-    <div class="emergency-cps-label">steps</div>
+    <div class="emergency-cps-label">next steps</div>
     <div id="emergencyCps"></div>
   </div>
   <div class="emergency-next-wrap">
@@ -1461,7 +1457,7 @@
     <button class="pomo-btn pomo-start" id="pomoStart">start</button>
     <button class="pomo-btn" id="pomoReset">reset</button>
   </div>
-  <div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
+  <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
     🔔 time chime every
     <select id="chimeIntervalSel" style="font-size:11px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);border-radius:var(--radius);padding:2px 6px;font-family:var(--font)">
       <option value="0">off</option>
@@ -2803,6 +2799,8 @@
     document.getElementById('emergencyNext').value = saved;
     document.getElementById('emergencyNext').focus();
     renderEmergencyCps();
+    // Move pomo below exit button
+    document.getElementById('emergencyScreen').appendChild(document.querySelector('.pomo-section'));
   }
 
   function exitEmergency() {
@@ -2813,6 +2811,9 @@
     const note  = document.getElementById('emergencyNext').value.trim();
     if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
     else if (entry)    localStorage.removeItem('wl_emergency_next_' + entry.id);
+    // Move pomo back to its original position after tbSection
+    const tbSection = document.getElementById('tbSection');
+    tbSection.parentNode.insertBefore(document.querySelector('.pomo-section'), tbSection.nextSibling);
   }
 
   document.getElementById('emergencyBtn').addEventListener('click', () => {

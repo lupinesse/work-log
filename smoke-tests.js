@@ -997,6 +997,52 @@ async function runTests() {
   }
 
 
+  // ── 6. completedAt expiry at iteration boundaries ──────────────────────────
+  console.log('\n6. completedAt expiry at iteration boundaries');
+  {
+    // Task completed on 2026-05-15 should expire at iteration boundary 2026-05-23
+    const completedDay = '2026-05-15';
+    const iterationExpiry = '2026-05-23';
+    const lastDayBeforeExpiry = '2026-05-22';
+    const firstDayAfterExpiry = '2026-05-23';
+    
+    const tasks = [
+      { id: 'exp1', text: 'Expired task', tag: 'work', status: 'done', date: completedDay, 
+        completedAt: new Date(completedDay + 'T14:30:00').getTime() }
+    ];
+    const expiryDates = ['2026-05-09','2026-05-23','2026-06-06']; // iteration boundaries
+    
+    // Test 1: Task is visible on the day it was completed
+    {
+      const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS, wl_expiry_dates: expiryDates });
+      await page.evaluate((viewDate) => { window.__wl.viewDate = new Date(viewDate + 'T12:00:00'); }, completedDay);
+      await page.waitForTimeout(100);
+      const visible = await page.evaluate(() => document.querySelectorAll('.completed-item').length > 0);
+      assert('Task visible on completion day (2026-05-15)', visible);
+      await page.close();
+    }
+    
+    // Test 2: Task is visible the day before iteration expiry
+    {
+      const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS, wl_expiry_dates: expiryDates });
+      await page.evaluate((viewDate) => { window.__wl.viewDate = new Date(viewDate + 'T12:00:00'); }, lastDayBeforeExpiry);
+      await page.waitForTimeout(100);
+      const visible = await page.evaluate(() => document.querySelectorAll('.completed-item').length > 0);
+      assert('Task visible before expiry (2026-05-22)', visible);
+      await page.close();
+    }
+    
+    // Test 3: Task is NOT visible on the iteration expiry date
+    {
+      const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS, wl_expiry_dates: expiryDates });
+      await page.evaluate((viewDate) => { window.__wl.viewDate = new Date(viewDate + 'T12:00:00'); }, firstDayAfterExpiry);
+      await page.waitForTimeout(100);
+      const visible = await page.evaluate(() => document.querySelectorAll('.completed-item').length > 0);
+      assert('Task expires at iteration boundary (2026-05-23)', !visible);
+      await page.close();
+    }
+  }
+
   // ── 35. Focus mode checkpoints ─────────────────────────────────────────────
   console.log('\n35. Focus mode checkpoints');
   {
@@ -1010,34 +1056,44 @@ async function runTests() {
       }
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-    await page.waitForTimeout(300);
+    const timer = { entryId: 'tm_foc', startTs: Date.now(), accumulatedMs: 0, paused: false };
+    const entries = [{ id: 'tm_foc', text: 'Focus task', tag: 'work', ts: Date.now() - 1000, date: today }];
+    
+    // Re-setup page with timer so active task is detected
+    const page2 = await freshPage(ctx, { wl_plan_v1: tasks, wl_timer_v1: timer, wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page2.waitForTimeout(300);
 
     // Enter focus mode
-    await page.evaluate(() => document.getElementById('emergencyBtn').click());
-    await page.waitForTimeout(200);
+    await page2.evaluate(() => document.getElementById('emergencyBtn').click());
+    await page2.waitForTimeout(200);
 
-    assert('Body has emergency class', await page.evaluate(() =>
+    assert('Body has emergency class', await page2.evaluate(() =>
       document.body.classList.contains('emergency')
     ));
-    assert('emergencyCps element exists', await page.evaluate(() =>
+    assert('emergencyCps element exists', await page2.evaluate(() =>
       !!document.getElementById('emergencyCps')
     ));
-    assert('Pomodoro section exists in DOM during focus mode', await page.evaluate(() =>
+    assert('Pomodoro section exists in DOM during focus mode', await page2.evaluate(() =>
       !!document.querySelector('.pomo-section')
     ));
-    assert('tagRow hidden in focus mode', await page.evaluate(() => {
+    assert('tagRow hidden in focus mode', await page2.evaluate(() => {
       const el = document.getElementById('tagRow');
       return !el || getComputedStyle(el).display === 'none';
     }));
 
-    // Exit focus mode
-    await page.evaluate(() => document.getElementById('emergencyExit').click());
-    await page.waitForTimeout(200);
-    assert('Body loses emergency class on exit', await page.evaluate(() =>
+    // Exit focus mode and check if checkpoints are auto-expanded
+    await page2.evaluate(() => document.getElementById('emergencyExit').click());
+    await page2.waitForTimeout(200);
+    assert('Body loses emergency class on exit', await page2.evaluate(() =>
       !document.body.classList.contains('emergency')
     ));
+    assert('Checkpoints auto-expanded after focus mode exit', await page2.evaluate(() => {
+      const cpArea = document.querySelector('.cp-area');
+      return cpArea && cpArea.style.display !== 'none' && cpArea.querySelectorAll('.cp-row').length > 0;
+    }));
 
     await page.close();
+    await page2.close();
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────
