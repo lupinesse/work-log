@@ -285,8 +285,9 @@ function fmtLabel(d) {
  * @returns {number} Timestamp, conditionally rounded.
  */
 function roundToNearest30IfBillable(ts, entry) {
-  // If entry is provided, check if it's billable
-  // Only round billable tasks; non-billable tasks keep exact time
+  // Assumption: non-billable entries keep exact timestamps for accurate time reporting.
+  // Billable entries are rounded because clients are invoiced in 30-minute increments.
+  // Changing this requires updating the export format in 05-entries.js and DATA.md.
   if (entry && !isEntryBillable(entry)) return ts;
   return roundToNearest30(ts);
 }

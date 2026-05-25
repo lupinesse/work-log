@@ -49,14 +49,21 @@ function addEntry(withTimer) {
  * 1. The entry's own `billable` flag (if explicitly set).
  * 2. The matching plan task's `billable` flag.
  * 3. The category default.
+ *
+ * Assumption: entries and tasks where `billable` is `undefined` are treated as
+ * billable by default. This preserves backward compatibility with data created
+ * before the billable flag was introduced — older entries must not silently
+ * disappear from billing reports after an upgrade.
+ * If the default should change to non-billable, a migration of existing
+ * localStorage data is required (see DATA.md § wl_entries).
+ *
  * @param {Object} e - Log entry object.
  * @returns {boolean} True if the entry should be counted as billable.
  */
 function isEntryBillable(e) {
   if (e.billable !== undefined) return e.billable;
   const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
-  // `!== false` (not `=== true`) so that plan tasks created before the billable
-  // feature was added (where t.billable is undefined) are treated as billable.
+  // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
   if (t) return t.billable !== false;
   // Same `!== false` convention for categories — undefined → billable.
   return getCat(e.tag || 'other').billable !== false;
