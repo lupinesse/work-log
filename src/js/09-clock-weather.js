@@ -200,13 +200,7 @@ function tickClock() {
   }
 }
 
-// Static location: Uusi Lastensairaala, Helsinki
-const WEATHER_LAT = 60.1887;
-const WEATHER_LON = 24.927;
-const WEATHER_NAME = 'Helsinki';
-
-// Jira base URL — used to linkify AITO-XXXXX ticket keys
-const JIRA_BASE = 'https://lahitapiola.atlassian.net/browse';
+// WEATHER_LAT, WEATHER_LON, WEATHER_NAME, JIRA_BASE are defined in 00-config.js
 
 /**
  * Returns HTML for a task text string, converting any leading Jira ticket key

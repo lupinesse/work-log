@@ -1,7 +1,6 @@
 /* ── Calendar (Outlook COM via local server) ── */
 
-/** Map of account key → display label for Outlook calendar accounts. */
-const CAL_ACCOUNT_LABELS = { lahitapiola: 'LähiTapiola', gofore: 'Gofore' };
+// CAL_ACCOUNT_LABELS is defined in 00-config.js
 let _calMeetingsCache = null;
 
 /**
