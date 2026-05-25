@@ -55,7 +55,10 @@ function addEntry(withTimer) {
 function isEntryBillable(e) {
   if (e.billable !== undefined) return e.billable;
   const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
+  // `!== false` (not `=== true`) so that plan tasks created before the billable
+  // feature was added (where t.billable is undefined) are treated as billable.
   if (t) return t.billable !== false;
+  // Same `!== false` convention for categories — undefined → billable.
   return getCat(e.tag || 'other').billable !== false;
 }
 
@@ -159,7 +162,10 @@ function exportTxt() {
   // Format: "Category (task1, task2), uncategorised-task"
   const stripJira = (t) => t.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
   const billableTimed = timedEntries.filter((e) => isEntryBillable(e));
-  // Merge same-task entries within 30 min gap (same logic as timeline)
+  // Merge same-task entries that are separated by ≤30 minutes into a single block.
+  // Rationale: 30 min is the billing rounding unit — splitting a task at a gap
+  // shorter than one slot would produce two entries that each round to the same
+  // half-hour anyway, while making the billable summary harder to read.
   const mergeForExport = (arr) => {
     const sorted = [...arr].sort((a, b) => a.ts - b.ts);
     const out = [];

@@ -338,6 +338,8 @@ function roundToNearest30(ts) {
   const m = d.getMinutes();
   const blockStart = Math.floor(m / 30) * 30; // 0 or 30
   const withinBlock = m - blockStart; // 0–29
+  // Midpoint tie-breaking: exactly 15 min into a slot rounds DOWN (conservative for billing).
+  // A task must exceed half the slot before the next slot is claimed.
   const roundedMins = withinBlock <= 15 ? blockStart : blockStart + 30;
   const result = new Date(d);
   result.setSeconds(0, 0);

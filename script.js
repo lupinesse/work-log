@@ -666,6 +666,8 @@
     const m = d.getMinutes();
     const blockStart = Math.floor(m / 30) * 30; // 0 or 30
     const withinBlock = m - blockStart; // 0–29
+    // Midpoint tie-breaking: exactly 15 min into a slot rounds DOWN (conservative for billing).
+    // A task must exceed half the slot before the next slot is claimed.
     const roundedMins = withinBlock <= 15 ? blockStart : blockStart + 30;
     const result = new Date(d);
     result.setSeconds(0, 0);
@@ -1825,7 +1827,10 @@
   function isEntryBillable(e) {
     if (e.billable !== undefined) return e.billable;
     const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
+    // `!== false` (not `=== true`) so that plan tasks created before the billable
+    // feature was added (where t.billable is undefined) are treated as billable.
     if (t) return t.billable !== false;
+    // Same `!== false` convention for categories — undefined → billable.
     return getCat(e.tag || 'other').billable !== false;
   }
 
@@ -1929,7 +1934,10 @@
     // Format: "Category (task1, task2), uncategorised-task"
     const stripJira = (t) => t.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
     const billableTimed = timedEntries.filter((e) => isEntryBillable(e));
-    // Merge same-task entries within 30 min gap (same logic as timeline)
+    // Merge same-task entries that are separated by ≤30 minutes into a single block.
+    // Rationale: 30 min is the billing rounding unit — splitting a task at a gap
+    // shorter than one slot would produce two entries that each round to the same
+    // half-hour anyway, while making the billable summary harder to read.
     const mergeForExport = (arr) => {
       const sorted = [...arr].sort((a, b) => a.ts - b.ts);
       const out = [];
@@ -5561,7 +5569,10 @@
     const todayTasks = planTasks.filter((t) => t.date === todayKey);
     const pastTasks = planTasks.filter((t) => t.date < todayKey);
 
-    // Migration: stamp billable on tasks and categories that predate the feature
+    // Migration: stamp billable on tasks and categories that predate the feature.
+    // Assumption: the app was originally developed for billable contract work, so
+    // any task or category without an explicit flag is assumed billable to avoid
+    // retroactively understating tracked hours.
     planTasks.forEach((t) => {
       if (t.billable === undefined) t.billable = true;
     });
@@ -5625,6 +5636,9 @@
     const todayKey = dk(new Date());
     const carryKey = 'wl_carried_' + todayKey;
     if (localStorage.getItem(carryKey)) return;
+    // 'upcoming' tasks are intentionally scheduled for a future date by the user
+    // and should never be auto-carried — they will appear naturally on their target date.
+    // 'done' tasks are complete and need no carry.
     const unfinished = planTasks.filter(
       (t) => t.date < todayKey && t.status !== 'done' && t.status !== 'upcoming'
     );

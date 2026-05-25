@@ -678,7 +678,10 @@ function patchCarriedTasks() {
   const todayTasks = planTasks.filter((t) => t.date === todayKey);
   const pastTasks = planTasks.filter((t) => t.date < todayKey);
 
-  // Migration: stamp billable on tasks and categories that predate the feature
+  // Migration: stamp billable on tasks and categories that predate the feature.
+  // Assumption: the app was originally developed for billable contract work, so
+  // any task or category without an explicit flag is assumed billable to avoid
+  // retroactively understating tracked hours.
   planTasks.forEach((t) => {
     if (t.billable === undefined) t.billable = true;
   });
@@ -742,6 +745,9 @@ function autoCarryTasks() {
   const todayKey = dk(new Date());
   const carryKey = 'wl_carried_' + todayKey;
   if (localStorage.getItem(carryKey)) return;
+  // 'upcoming' tasks are intentionally scheduled for a future date by the user
+  // and should never be auto-carried — they will appear naturally on their target date.
+  // 'done' tasks are complete and need no carry.
   const unfinished = planTasks.filter(
     (t) => t.date < todayKey && t.status !== 'done' && t.status !== 'upcoming'
   );
