@@ -1,16 +1,5 @@
 /* ── Epic helpers ── */
-/**
- * Returns `c` if it is a safe CSS colour (hex or hsl()), otherwise returns a neutral fallback.
- * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
- * @param {string} c
- * @returns {string} A safe CSS colour string.
- */
-function safeCssColor(c) {
-  // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
-  return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
-    ? c
-    : '#888780';
-}
+// safeCssColor() and escHtml() are defined in 00-pure-fns.js.
 
 /**
  * Returns the category object for `id`, falling back to 'other' if not found.
@@ -264,17 +253,11 @@ function renderTagRow() {
 }
 
 /* ── Utility ── */
+// dk(), fmtTime(), fmtElapsed(), roundUp30(), roundToNearest30(), safeCssColor(), escHtml()
+// are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
 
 /**
- * Formats a Date as YYYY-MM-DD using local time. Used as the canonical day key throughout.
- * @param {Date} d
- * @returns {string} e.g. '2026-05-25'
- */
-function dk(d) {
-  return d.toISOString().slice(0, 10);
-}
-/**
- * Returns true if `d` falls on today's calendar date (local time).
+ * Returns true if `d` falls on today's calendar date (UTC).
  * @param {Date} d
  * @returns {boolean}
  */
@@ -292,60 +275,6 @@ function fmtLabel(d) {
   const diffDays = Math.round(diffMs / 86400000);
   if (diffDays === 1) return 'yesterday';
   return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
-}
-/**
- * Formats a Unix timestamp as HH:MM in 24-hour local time.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @returns {string} e.g. '09:30'
- */
-function fmtTime(ts) {
-  const d = new Date(ts);
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-}
-/**
- * Formats a duration in milliseconds as a compact time string.
- * @param {number} ms - Duration in milliseconds.
- * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
- */
-function fmtElapsed(ms) {
-  const s = Math.floor(ms / 1000);
-  const hh = Math.floor(s / 3600),
-    mm = Math.floor((s % 3600) / 60),
-    ss = s % 60;
-  if (hh > 0)
-    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-/**
- * Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
- * Used for billing time estimates.
- * @param {number} ms - Duration in milliseconds.
- * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
- */
-function roundUp30(ms) {
-  const SLOT = 30 * 60 * 1000;
-  return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
-}
-
-/**
- * Rounds a timestamp to the nearest 30-minute clock mark.
- * 0–15 min into a block rounds down; 16–45 rounds to the next half-hour; 46–59 rounds up.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @returns {number} Rounded Unix timestamp in milliseconds.
- */
-function roundToNearest30(ts) {
-  const d = new Date(ts);
-  const m = d.getMinutes();
-  const blockStart = Math.floor(m / 30) * 30; // 0 or 30
-  const withinBlock = m - blockStart; // 0–29
-  // Midpoint tie-breaking: exactly 15 min into a slot rounds DOWN (conservative for billing).
-  // A task must exceed half the slot before the next slot is claimed.
-  const roundedMins = withinBlock <= 15 ? blockStart : blockStart + 30;
-  const result = new Date(d);
-  result.setSeconds(0, 0);
-  result.setMinutes(roundedMins % 60);
-  if (roundedMins >= 60) result.setHours(d.getHours() + 1);
-  return result.getTime();
 }
 
 /**
@@ -413,15 +342,4 @@ function calcStreak() {
   }
   return streak;
 }
-/**
- * Escapes a string for safe insertion as HTML text content.
- * @param {string} s
- * @returns {string}
- */
-function escHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+// escHtml() is defined in 00-pure-fns.js.

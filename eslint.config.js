@@ -52,10 +52,10 @@ export default [
     },
   },
 
-  // Playwright test suite — CommonJS Node file that passes browser-side code to
-  // page.evaluate(); both Node and browser globals are legitimately in scope.
+  // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
+  // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
   {
-    files: ['*.cjs'],
+    files: ['*.cjs', 'test/**/*.cjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

@@ -78,84 +78,8 @@ let blocks = [];
 let planDragId = null;
 
 /* ── Load / Save ── */
-// Schema validators — strip malformed records rather than rejecting the whole array
-
-/**
- * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
- * @param {*} e - Candidate value parsed from JSON.
- * @returns {boolean}
- */
-function validEntry(e) {
-  return (
-    e &&
-    typeof e.id === 'string' &&
-    typeof e.text === 'string' &&
-    typeof e.ts === 'number' &&
-    typeof e.date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(e.date)
-  );
-}
-/**
- * Returns true if `c` is a well-formed category object.
- * @param {*} c - Candidate value parsed from JSON.
- * @returns {boolean}
- */
-function validCategory(c) {
-  return (
-    c && typeof c.id === 'string' && typeof c.label === 'string' && typeof c.color === 'string'
-  );
-}
-/**
- * Returns true if `t` is a well-formed plan task with a recognised status value.
- * @param {*} t - Candidate value parsed from JSON.
- * @returns {boolean}
- */
-function validPlanTask(t) {
-  return (
-    t &&
-    typeof t.id === 'string' &&
-    typeof t.text === 'string' &&
-    typeof t.date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(t.date) &&
-    ['todo', 'inprogress', 'done', 'pending', 'blocked', 'upcoming'].includes(t.status)
-  );
-}
-/**
- * Returns true if `b` is a well-formed timeblock record.
- * @param {*} b - Candidate value parsed from JSON.
- * @returns {boolean}
- */
-function validBlock(b) {
-  return (
-    b &&
-    typeof b.id === 'string' &&
-    typeof b.date === 'string' &&
-    typeof b.slot === 'number' &&
-    typeof b.duration === 'number' &&
-    typeof b.text === 'string'
-  );
-}
-/**
- * Returns true if `t` is a resumable timer state.
- * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
- * @param {*} t - Candidate value parsed from JSON.
- * @returns {boolean}
- */
-function validTimer(t) {
-  if (!t || typeof t.entryId !== 'string') return false;
-  // Running timer: startTs is a number (when the current run started)
-  // Paused timer:  startTs is null, accumulatedMs holds the work time so far
-  if (t.paused === true) return typeof t.accumulatedMs === 'number';
-  return typeof t.startTs === 'number';
-}
-/**
- * Returns true if `e` is a valid Pomodoro session log entry.
- * @param {*} e - Candidate value.
- * @returns {boolean}
- */
-function validPomoEntry(e) {
-  return e && typeof e.ts === 'number' && typeof e.mins === 'number';
-}
+// Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,
+// validPomoEntry) are defined in 00-pure-fns.js (concatenated earlier in the build).
 
 /**
  * Loads all persistent state from localStorage into module-level variables.
