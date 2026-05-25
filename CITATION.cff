@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use or adapt this software, please cite it using the metadata below."
+title: "Work Log — ADHD-friendly time tracker"
+version: 1.8.0
+date-released: "2026-05-25"
+url: "https://github.com/lupinesse/worklog"
+repository-code: "https://github.com/lupinesse/worklog"
+license: MIT
+abstract: >
+  A single-file, local-first browser application for tracking work time,
+  managing daily tasks, integrating with Outlook calendar via COM interop,
+  and syncing task metadata to Notion. Designed with ADHD-friendly features
+  such as automated break reminders, focus mode, distraction capture,
+  three-state checkpoints, and an "I don't know what to do" random task picker.
+authors:
+  - name: "Jenni Järvinen"
+    email: lupinesse@gmail.com
+keywords:
+  - time-tracking
+  - productivity
+  - ADHD
+  - task-management
+  - single-page-application
+  - pomodoro
+  - outlook-integration
+  - notion-integration
