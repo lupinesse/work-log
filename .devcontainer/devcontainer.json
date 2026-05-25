@@ -1,0 +1,55 @@
+{
+  // Dev container for Work Log.
+  // Opens the project in a reproducible Node 20 environment — same version
+  // used in CI — with all npm dependencies pre-installed and the app ready
+  // to build and test.
+  //
+  // Prerequisites: Docker Desktop + VS Code Dev Containers extension, or
+  //                GitHub Codespaces (open via the green Code button on GitHub).
+  //
+  // Quick start inside the container:
+  //   npm run build      # concatenate JS + compile SCSS
+  //   npm run dev        # start Vite dev server at http://localhost:5173
+  //   npm run test:unit  # fast unit tests (no browser required)
+  //   npm test           # full suite (unit + Playwright smoke tests)
+  //   npm run lint       # ESLint + Prettier check
+  //   npm run docs       # generate JSDoc → docs/
+
+  "name": "Work Log",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+
+  "features": {
+    // Playwright needs Chromium system deps; this feature installs them.
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+
+  // Install npm dependencies and Playwright browsers after the container starts.
+  "postCreateCommand": "npm ci && npx playwright install --with-deps chromium",
+
+  "forwardPorts": [5173, 8080],
+
+  "portsAttributes": {
+    "5173": { "label": "Vite dev server", "onAutoForward": "notify" },
+    "8080": { "label": "Vite preview", "onAutoForward": "notify" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ritwickdey.LiveServer"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+      }
+    }
+  },
+
+  // Run as non-root for security.
+  "remoteUser": "node"
+}
