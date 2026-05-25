@@ -1,5 +1,17 @@
 # Contributing to Work Log
 
+## AI pair programming
+
+This project is developed using **AI pair programming**: the human author (Jenni Järvinen)
+directs the work, reviews every change, and makes all design decisions.
+Claude (Anthropic) acts as an AI collaborator — drafting code, writing tests, catching bugs,
+and improving documentation — with every output reviewed and approved before merging.
+
+This matches the "pair programming used (together with another AI)" practice from the
+[UK Government Higher QA checklist](https://best-practice-and-impact.github.io/qa-of-code-guidance/checklist_higher.html).
+
+---
+
 ## Development Setup
 
 ### Prerequisites
