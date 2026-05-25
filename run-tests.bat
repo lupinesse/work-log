@@ -23,7 +23,7 @@ if not exist "node_modules\playwright" (
 )
 
 :: Run tests, capture output
-node smoke-tests.js >> "%RESULT_FILE%" 2>&1
+node smoke-tests.cjs >> "%RESULT_FILE%" 2>&1
 set EXIT_CODE=%errorlevel%
 
 :: Parse result from file

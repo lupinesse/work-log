@@ -4,6 +4,8 @@ $url  = "http://localhost:$port/"
 
 # Load personal config (not committed to git)
 $NamedayApiToken = ''
+$AnthropicApiKey = ''
+$NotionToken     = ''
 $configFile = Join-Path $root 'config.local.ps1'
 if (Test-Path $configFile) { . $configFile }
 
@@ -172,6 +174,217 @@ while ($listener.IsListening) {
             continue
         }
 
+        # AI proxy — forwards to Anthropic API bypassing browser CORS
+        if ($req.Url.LocalPath -eq '/api/ai' -and $req.HttpMethod -eq 'POST') {
+            try {
+                if (-not $AnthropicApiKey) {
+                    Send-Json $res "{`"error`":`"AI key not configured`"}" 500
+                } else {
+                    $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                    $body   = $reader.ReadToEnd()
+
+                    $wc = New-Object System.Net.WebClient
+                    $wc.Encoding = [System.Text.Encoding]::UTF8
+                    $wc.Headers.Add('x-api-key', $AnthropicApiKey)
+                    $wc.Headers.Add('anthropic-version', '2023-06-01')
+                    $wc.Headers.Add('Content-Type', 'application/json')
+
+                    $result = $wc.UploadString('https://api.anthropic.com/v1/messages', 'POST', $body)
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($result)
+                    $res.ContentType     = 'application/json; charset=utf-8'
+                    $res.ContentLength64 = $bytes.Length
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
+            } catch {
+                $msg = $_.Exception.Message -replace '"',"'"
+                $fullErr = "AI API error: $msg`n$($_.Exception.InnerException.Message)"
+                Write-Host "ERROR: $fullErr" -ForegroundColor Red
+                Send-Json $res "{`"error`":`"$msg`"}" 500
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
+        # Notion AI proxy - forwards to Anthropic with Notion MCP token injected server-side
+        if ($req.Url.LocalPath -eq '/api/notion-ai' -and $req.HttpMethod -eq 'POST') {
+            try {
+                if (-not $AnthropicApiKey) {
+                    Send-Json $res "{`"error`":`"AI key not configured`"}" 500
+                } elseif (-not $NotionToken) {
+                    Send-Json $res "{`"error`":`"Notion token not configured - add NotionToken to config.local.ps1`"}" 500
+                } else {
+                    $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                    $bodyStr = $reader.ReadToEnd()
+
+                    # Rebuild body with Notion auth token; use @() to force arrays
+                    # Use string concatenation (not interpolation) so $ in task titles is safe
+                    $parsed   = $bodyStr | ConvertFrom-Json
+                    $mdl      = if ($parsed.model)      { $parsed.model }      else { 'claude-sonnet-4-6' }
+                    $mtok     = if ($parsed.max_tokens) { [int]$parsed.max_tokens } else { 1000 }
+                    $msgsJson = ConvertTo-Json -InputObject @($parsed.messages) -Depth 5 -Compress
+                    $mcpJson  = '[{"type":"url","url":"https://mcp.notion.com/mcp","name":"notion","authorization_token":"' + $NotionToken + '"}]'
+                    $newBody  = '{"model":"' + $mdl + '","max_tokens":' + $mtok + ',"mcp_servers":' + $mcpJson + ',"messages":' + $msgsJson + '}'
+
+                    $wc = New-Object System.Net.WebClient
+                    $wc.Encoding = [System.Text.Encoding]::UTF8
+                    $wc.Headers.Add('x-api-key', $AnthropicApiKey)
+                    $wc.Headers.Add('anthropic-version', '2023-06-01')
+                    $wc.Headers.Add('anthropic-beta', 'mcp-client-2025-04-04')
+                    $wc.Headers.Add('Content-Type', 'application/json')
+
+                    $result = $wc.UploadString('https://api.anthropic.com/v1/messages', 'POST', $newBody)
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($result)
+                    $res.ContentType     = 'application/json; charset=utf-8'
+                    $res.ContentLength64 = $bytes.Length
+                    $res.OutputStream.Write($bytes, 0, $bytes.Length)
+                }
+            } catch {
+                $notionErr = $_.Exception.Message -replace '"',"'" -replace "`r`n",' ' -replace "`n",' '
+                $notionDetail = ''
+                try {
+                    $webEx = if ($_.Exception.InnerException -is [System.Net.WebException]) { $_.Exception.InnerException } `
+                             elseif ($_.Exception -is [System.Net.WebException]) { $_.Exception } else { $null }
+                    if ($webEx -and $webEx.Response) {
+                        $errStream = $webEx.Response.GetResponseStream()
+                        $errReader = New-Object System.IO.StreamReader($errStream, [System.Text.Encoding]::UTF8)
+                        $notionDetail = $errReader.ReadToEnd()
+                        $errReader.Close()
+                    }
+                } catch {}
+                Write-Host ERROR: $notionErr -ForegroundColor Red
+                if ($notionDetail) { Write-Host "DETAIL: $notionDetail" -ForegroundColor Yellow }
+                $safeDetail = $notionDetail -replace '"',"'" -replace "`r`n",' ' -replace "`n",' '
+                Send-Json $res "{`"error`":`"$notionErr`",`"detail`":`"$safeDetail`"}" 500
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
+        # Notion direct REST -- query Projects DB for matching Epic, create child page (no AI)
+        if ($req.Url.LocalPath -eq '/api/notion-add-task' -and $req.HttpMethod -eq 'POST') {
+            try {
+                if (-not $NotionToken) {
+                    Send-Json $res '{"error":"Notion token not configured"}' 500
+                } else {
+                    $reader  = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                    $bodyStr = $reader.ReadToEnd()
+                    $parsed  = $bodyStr | ConvertFrom-Json
+                    $taskTitle = [string]$parsed.title
+                    $epic      = ([string]$parsed.epic).ToLower()
+                    $dbId      = '154a6fd4-a089-462b-8892-b1f340d6d2ef'
+
+                    # Step 1 -- query database sorted by last-edited; filter in PS for resilience
+                    $wc1 = New-Object System.Net.WebClient
+                    $wc1.Encoding = [System.Text.Encoding]::UTF8
+                    $wc1.Headers.Add('Authorization', 'Bearer ' + $NotionToken)
+                    $wc1.Headers.Add('Notion-Version', '2022-06-28')
+                    $wc1.Headers.Add('Content-Type', 'application/json')
+                    $qJson = '{"sorts":[{"timestamp":"last_edited_time","direction":"descending"}],"page_size":50}'
+                    $qRaw  = $wc1.UploadString('https://api.notion.com/v1/databases/' + $dbId + '/query', 'POST', $qJson)
+                    $qData = $qRaw | ConvertFrom-Json
+
+                    # Find first Active page whose Epic matches the category
+                    $match = $null
+                    foreach ($pg in @($qData.results)) {
+                        # Status: handles both Notion 'status' type and legacy 'select' type
+                        $sProp = $pg.properties.Status
+                        $sVal  = ''
+                        if ($sProp -and $sProp.status)     { $sVal = [string]$sProp.status.name }
+                        elseif ($sProp -and $sProp.select) { $sVal = [string]$sProp.select.name }
+                        if ($sVal -and $sVal.ToLower() -ne 'active') { continue }
+
+                        # Epic: handles 'select', 'multi_select', and 'rich_text' types
+                        $eProp = $pg.properties.Epic
+                        $eVal  = ''
+                        if ($eProp -and $eProp.select) {
+                            $eVal = [string]$eProp.select.name
+                        } elseif ($eProp -and $eProp.multi_select -and @($eProp.multi_select).Count -gt 0) {
+                            $eVal = [string](@($eProp.multi_select)[0].name)
+                        } elseif ($eProp -and $eProp.rich_text -and @($eProp.rich_text).Count -gt 0) {
+                            $eVal = [string](@($eProp.rich_text)[0].plain_text)
+                        }
+                        if ($eVal.ToLower() -eq $epic) { $match = $pg; break }
+                    }
+
+                    # Fallback: if no exact Epic match, use first Active project (any epic)
+                    if (-not $match) {
+                        foreach ($pg in @($qData.results)) {
+                            $sProp = $pg.properties.Status
+                            $sVal  = ''
+                            if ($sProp -and $sProp.status)     { $sVal = [string]$sProp.status.name }
+                            elseif ($sProp -and $sProp.select) { $sVal = [string]$sProp.select.name }
+                            if ($sVal.ToLower() -eq 'active') { $match = $pg; break }
+                        }
+                    }
+
+                    if (-not $match) {
+                        Send-Json $res ('{"error":"No active project found (tried epic: ' + $epic + ')"}') 404
+                    } else {
+                        # Step 2 -- create child page under the matched project
+                        $parentId  = [string]$match.id
+                        $titleJson = ConvertTo-Json -InputObject $taskTitle -Compress
+                        $cJson = '{"parent":{"page_id":"' + $parentId + '"},"properties":{"title":{"title":[{"text":{"content":' + $titleJson + '}}]}}}'
+
+                        $wc2 = New-Object System.Net.WebClient
+                        $wc2.Encoding = [System.Text.Encoding]::UTF8
+                        $wc2.Headers.Add('Authorization', 'Bearer ' + $NotionToken)
+                        $wc2.Headers.Add('Notion-Version', '2022-06-28')
+                        $wc2.Headers.Add('Content-Type', 'application/json')
+                        $cRaw  = $wc2.UploadString('https://api.notion.com/v1/pages', 'POST', $cJson)
+                        $cData = $cRaw | ConvertFrom-Json
+
+                        $pageUrl = [string]$cData.url
+                        if (-not $pageUrl) { $pageUrl = 'https://notion.so/' + ([string]$cData.id -replace '-','') }
+                        Send-Json $res ('{"url":"' + $pageUrl + '"}')
+                    }
+                }
+            } catch {
+                $ntErr    = $_.Exception.Message -replace '"',"'" -replace "`r`n",' ' -replace "`n",' '
+                $ntDetail = ''
+                try {
+                    $ntEx = $null
+                    if ($_.Exception.InnerException -is [System.Net.WebException]) { $ntEx = $_.Exception.InnerException }
+                    elseif ($_.Exception -is [System.Net.WebException]) { $ntEx = $_.Exception }
+                    if ($ntEx -and $ntEx.Response) {
+                        $ntStream = $ntEx.Response.GetResponseStream()
+                        $ntReader = New-Object System.IO.StreamReader($ntStream, [System.Text.Encoding]::UTF8)
+                        $ntDetail = $ntReader.ReadToEnd() -replace '"',"'" -replace "`r`n",' ' -replace "`n",' '
+                        $ntReader.Close()
+                    }
+                } catch {}
+                Write-Host "NOTION-TASK ERROR: $ntErr" -ForegroundColor Red
+                if ($ntDetail) { Write-Host "DETAIL: $ntDetail" -ForegroundColor Yellow }
+                Send-Json $res ('{"error":"' + $ntErr + '","detail":"' + $ntDetail + '"}') 500
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
+        # Portable deploy — runs the npm portable build + copy to .portable-dest
+        if ($req.Url.LocalPath -eq '/api/portable-deploy' -and $req.HttpMethod -eq 'POST') {
+            try {
+                $start = Get-Date
+                # Run from project root (where the listener lives)
+                Push-Location $root
+                try {
+                    $output = & npm run portable:deploy 2>&1 | Out-String
+                    $exitCode = $LASTEXITCODE
+                } finally {
+                    Pop-Location
+                }
+                $ms = [int]((Get-Date) - $start).TotalMilliseconds
+                $ok = if ($exitCode -eq 0) { 'true' } else { 'false' }
+                # Escape for JSON — backslashes, quotes, newlines
+                $safeOutput = $output -replace '\\', '\\' -replace '"', '\"' -replace "`r", '' -replace "`n", '\n'
+                Send-Json $res "{`"ok`":$ok,`"durationMs`":$ms,`"exitCode`":$exitCode,`"output`":`"$safeOutput`"}" $(if ($exitCode -eq 0) { 200 } else { 500 })
+            } catch {
+                $msg = $_.Exception.Message -replace '"',"'"
+                Send-Json $res "{`"ok`":false,`"error`":`"$msg`"}" 500
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
                 $meetings = Get-TodayMeetings
@@ -190,7 +403,10 @@ while ($listener.IsListening) {
             }
         } else {
             # Static file serving
-            $file = Join-Path $root ($req.Url.LocalPath.TrimStart('/') -replace '/', '\')
+            $localPath = $req.Url.LocalPath
+            # Root path → serve work-log.html as the index
+            if ($localPath -eq '/' -or $localPath -eq '') { $localPath = '/work-log.html' }
+            $file = Join-Path $root ($localPath.TrimStart('/') -replace '/', '\')
             if (Test-Path $file -PathType Leaf) {
                 $bytes = [IO.File]::ReadAllBytes($file)
                 $ext   = [IO.Path]::GetExtension($file).ToLower()

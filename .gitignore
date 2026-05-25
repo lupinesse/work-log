@@ -6,3 +6,16 @@ docs/
 .DS_Store
 *.local
 lint-results.txt
+
+# Generated / local-only files
+test-results.txt
+lint-out.json
+verify-*.png
+*.png
+
+# Personal data — never commit
+timesheets/
+JSON backups/
+
+# Claude Code session data
+.claude/
