@@ -149,13 +149,22 @@ function pomoDone() {
 
 /**
  * Reads and validates the pomodoro session log from localStorage.
+ * Invalid records are dropped and reported via wlLog.warn.
  * @returns {Array<{ts: number, mins: number, task: string|null}>} Session log entries.
  */
 function pomoGetLog() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-    return Array.isArray(raw) ? raw.filter(validPomoEntry) : [];
+    const all = Array.isArray(raw) ? raw : [];
+    const valid = all.filter(validPomoEntry);
+    if (valid.length < all.length)
+      wlLog.warn(`pomoGetLog: dropped ${all.length - valid.length} invalid pomodoro record(s)`, {
+        total: all.length,
+        kept: valid.length,
+      });
+    return valid;
   } catch (e) {
+    wlLog.error('pomoGetLog: failed to parse pomodoro log', e);
     return [];
   }
 }

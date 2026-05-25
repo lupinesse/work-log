@@ -83,26 +83,46 @@ let planDragId = null;
 
 /**
  * Loads all persistent state from localStorage into module-level variables.
- * Invalid records are silently dropped per-item rather than rejecting entire arrays.
+ * Invalid records are dropped per-item (rather than rejecting entire arrays)
+ * and any drops are reported via wlLog.warn so data-quality issues are visible
+ * in DevTools rather than silently disappearing.
  * Falls back to the last snapshot if entries are missing from primary storage.
  */
 function load() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
-    entries = Array.isArray(raw) ? raw.filter(validEntry) : [];
+    const all = Array.isArray(raw) ? raw : [];
+    entries = all.filter(validEntry);
+    if (entries.length < all.length)
+      wlLog.warn(`load: dropped ${all.length - entries.length} invalid entry record(s)`, {
+        total: all.length,
+        kept: entries.length,
+      });
   } catch (e) {
     entries = [];
+    wlLog.error('load: failed to parse entries from localStorage', e);
   }
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
     activeTimer = raw && validTimer(raw) ? raw : null;
+    if (raw && !validTimer(raw)) wlLog.warn('load: discarded invalid timer state', raw);
   } catch (e) {
     activeTimer = null;
+    wlLog.error('load: failed to parse timer state', e);
   }
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
-    if (Array.isArray(raw) && raw.length) categories = raw.filter(validCategory);
-  } catch (e) {}
+    if (Array.isArray(raw) && raw.length) {
+      categories = raw.filter(validCategory);
+      if (categories.length < raw.length)
+        wlLog.warn(`load: dropped ${raw.length - categories.length} invalid category record(s)`, {
+          total: raw.length,
+          kept: categories.length,
+        });
+    }
+  } catch (e) {
+    wlLog.error('load: failed to parse categories', e);
+  }
   // Auto-restore from snapshot if entries are unexpectedly empty
   if (!entries.length) {
     try {
@@ -111,7 +131,7 @@ function load() {
         entries = snap.entries.filter(validEntry);
         if (Array.isArray(snap.categories) && snap.categories.length)
           categories = snap.categories.filter(validCategory);
-        console.warn('Restored from snapshot — entries were missing from primary storage');
+        wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
       }
     } catch (e) {}
   }
