@@ -59,8 +59,9 @@
    * @type {Object.<string, string>}
    */
   const CAL_ACCOUNT_LABELS = {
-    lahitapiola: 'LähiTapiola',
-    gofore: 'Gofore',
+    // Replace with your own account keys and labels, e.g.:
+    // acme: 'Acme Corp',
+    // contractor: 'My Contractor',
   };
 
   // ── 00-logger.js ──
@@ -3395,8 +3396,7 @@
     // Kept as stub for compatibility
   }
 
-  // Nimipäivärajapinta API token
-  const NAMEDAY_API_TOKEN = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01';
+  // Token is injected server-side by start-server.ps1 — never put it in client JS.
   const NAMEDAY_API_BASE = '/api'; // proxied through local server to avoid CORS
 
   /**
@@ -3409,9 +3409,7 @@
     if (!el) return;
 
     // Fetch both Finnish and Swedish names, show with explicit language labels
-    fetch(`${NAMEDAY_API_BASE}/namedays/today`, {
-      headers: { Authorization: `Bearer ${NAMEDAY_API_TOKEN}` },
-    })
+    fetch(`${NAMEDAY_API_BASE}/namedays/today`)
       .then((r) => {
         if (!r.ok) throw new Error(`API error: ${r.status}`);
         return r.json();
@@ -3500,10 +3498,7 @@
     const apiPost = (collection, body) =>
       fetch(`${NAMEDAY_API_BASE}/typesense/collections/${collection}/documents/search`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${NAMEDAY_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
         .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -6667,7 +6662,7 @@ Requirements:
     {
       id: '20260515-014',
       date: '2026-05-15',
-      desc: 'Jira ticket links: AITO-XXXXX prefix becomes clickable link to lahitapiola.atlassian.net',
+      desc: 'Jira ticket links: PROJ-XXXXX prefix becomes clickable link to the configured Jira instance',
       areas: [],
     },
     {
@@ -6697,7 +6692,7 @@ Requirements:
     {
       id: '20260518-004',
       date: '2026-05-18',
-      desc: 'Calendar: [Gofore]/[LähiTapiola] account label per meeting',
+      desc: 'Calendar: configurable account labels shown per meeting (see CAL_ACCOUNT_LABELS in 00-config.js)',
       areas: [],
     },
     {
@@ -6925,7 +6920,7 @@ Requirements:
     {
       id: '20260519-003',
       date: '2026-05-19',
-      desc: 'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window',
+      desc: 'Completed tasks expire at iteration boundaries instead of a 14-day rolling window',
       areas: [6],
     },
     {

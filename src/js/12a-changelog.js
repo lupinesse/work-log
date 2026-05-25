@@ -271,7 +271,7 @@ const DEV_CHANGES = [
   {
     id: '20260515-014',
     date: '2026-05-15',
-    desc: 'Jira ticket links: AITO-XXXXX prefix becomes clickable link to lahitapiola.atlassian.net',
+    desc: 'Jira ticket links: PROJ-XXXXX prefix becomes clickable link to the configured Jira instance',
     areas: [],
   },
   {
@@ -301,7 +301,7 @@ const DEV_CHANGES = [
   {
     id: '20260518-004',
     date: '2026-05-18',
-    desc: 'Calendar: [Gofore]/[LähiTapiola] account label per meeting',
+    desc: 'Calendar: configurable account labels shown per meeting (see CAL_ACCOUNT_LABELS in 00-config.js)',
     areas: [],
   },
   {
@@ -529,7 +529,7 @@ const DEV_CHANGES = [
   {
     id: '20260519-003',
     date: '2026-05-19',
-    desc: 'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window',
+    desc: 'Completed tasks expire at iteration boundaries instead of a 14-day rolling window',
     areas: [6],
   },
   {

@@ -5,5 +5,12 @@
 $NamedayApiToken = 'your-token-here'
 
 # Anthropic API key for the AI proxy (https://console.anthropic.com)
-# The Make-it-interesting feature will be unavailable without this key
+# Required for the "Make it interesting" and Notion AI features
 $AnthropicApiKey = ''
+
+# Notion integration token (https://www.notion.so/my-integrations)
+$NotionToken = ''
+
+# Notion database ID — the UUID from your database's URL
+# e.g. https://notion.so/your-workspace/YOUR-DATABASE-ID?v=...
+$NotionDatabaseId = ''

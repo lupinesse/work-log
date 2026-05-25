@@ -3,9 +3,10 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $url  = "http://localhost:$port/"
 
 # Load personal config (not committed to git)
-$NamedayApiToken = ''
-$AnthropicApiKey = ''
-$NotionToken     = ''
+$NamedayApiToken  = ''
+$AnthropicApiKey  = ''
+$NotionToken      = ''
+$NotionDatabaseId = ''
 $configFile = Join-Path $root 'config.local.ps1'
 if (Test-Path $configFile) { . $configFile }
 
@@ -271,7 +272,7 @@ while ($listener.IsListening) {
                     $parsed  = $bodyStr | ConvertFrom-Json
                     $taskTitle = [string]$parsed.title
                     $epic      = ([string]$parsed.epic).ToLower()
-                    $dbId      = '154a6fd4-a089-462b-8892-b1f340d6d2ef'
+                    $dbId      = $NotionDatabaseId   # set in config.local.ps1
 
                     # Step 1 -- query database sorted by last-edited; filter in PS for resilience
                     $wc1 = New-Object System.Net.WebClient

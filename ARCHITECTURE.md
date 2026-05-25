@@ -334,17 +334,17 @@ upcoming    → Scheduled for future date
 wl_hidden_meetings_YYYY-MM-DD → [subject1, subject2, ...]
 ```
 
-**Account Label Mapping**:
+**Account Label Mapping** (configured in `src/js/00-config.js`):
 ```javascript
 const CAL_ACCOUNT_LABELS = { 
-  lahitapiola: 'LähiTapiola',
-  gofore: 'Gofore' 
+  acme: 'Acme Corp',
+  contractor: 'My Contractor' 
 };
 ```
 Tries 3 lookup strategies:
 1. Exact match on key
-2. Email domain match (x@gofore.com → gofore)
-3. Substring match (contains "gofore")
+2. Email domain match (x@acme.com → acme)
+3. Substring match (contains "acme")
 
 ---
 

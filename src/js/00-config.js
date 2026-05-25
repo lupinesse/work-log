@@ -57,6 +57,7 @@ const JIRA_BASE = 'https://lahitapiola.atlassian.net/browse';
  * @type {Object.<string, string>}
  */
 const CAL_ACCOUNT_LABELS = {
-  lahitapiola: 'LähiTapiola',
-  gofore: 'Gofore',
+  // Replace with your own account keys and labels, e.g.:
+  // acme: 'Acme Corp',
+  // contractor: 'My Contractor',
 };

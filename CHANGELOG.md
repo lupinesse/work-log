@@ -62,7 +62,7 @@
 - Walks all accounts and folders to find calendars including external accounts
 - Shows past / now / upcoming states; pulse animation on current meeting
 - Recurring and single-occurrence events supported
-- Teams join links surfaced; account labels mapped (e.g. lahitapiola → LähiTapiola)
+- Teams join links surfaced; configurable account labels shown per calendar account
 - Delete button per meeting; meetings sorted and deduplicated
 
 ### Nameday

@@ -439,8 +439,7 @@ function renderFlagDay() {
   // Kept as stub for compatibility
 }
 
-// Nimipäivärajapinta API token
-const NAMEDAY_API_TOKEN = 'ndt_32a4ed60ad8dc72397936afa3af3fd0832e28ef34ed9d6a6bd04927239588f01';
+// Token is injected server-side by start-server.ps1 — never put it in client JS.
 const NAMEDAY_API_BASE = '/api'; // proxied through local server to avoid CORS
 
 /**
@@ -453,9 +452,7 @@ function fetchNameday() {
   if (!el) return;
 
   // Fetch both Finnish and Swedish names, show with explicit language labels
-  fetch(`${NAMEDAY_API_BASE}/namedays/today`, {
-    headers: { Authorization: `Bearer ${NAMEDAY_API_TOKEN}` },
-  })
+  fetch(`${NAMEDAY_API_BASE}/namedays/today`)
     .then((r) => {
       if (!r.ok) throw new Error(`API error: ${r.status}`);
       return r.json();
@@ -540,7 +537,7 @@ function fetchCalendarEvents() {
   const apiPost = (collection, body) =>
     fetch(`${NAMEDAY_API_BASE}/typesense/collections/${collection}/documents/search`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${NAMEDAY_API_TOKEN}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
