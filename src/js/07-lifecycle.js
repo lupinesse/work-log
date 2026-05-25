@@ -219,8 +219,14 @@ setInterval(saveSnapshot, 30 * 60 * 1000);
 wlLog.config({
   version: '1.8.0',
   date: dk(new Date()),
+  // Persistent state counts (from localStorage after load + migration)
   entries: entries.length,
   categories: categories.length,
+  planTasks: planTasks.length,
+  blocks: blocks.length,
+  // Runtime state
   timer: activeTimer ? 'active' : 'idle',
   snapshot: !!localStorage.getItem('wl_snapshot'),
+  // Environment: true when the PS API server responded (weather / calendar live)
+  apiServer: !!localStorage.getItem('wl_api_ok'),
 });

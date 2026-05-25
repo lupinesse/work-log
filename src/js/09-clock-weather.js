@@ -711,8 +711,13 @@ fetch('/api/config')
     if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
     if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
     if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
+    // Mark that the API server responded — read by wlLog.config() in 07-lifecycle.js
+    // to record which environment the app is running in.
+    localStorage.setItem('wl_api_ok', '1');
   })
-  .catch(() => {})
+  .catch(() => {
+    localStorage.removeItem('wl_api_ok');
+  })
   .finally(() => fetchWeather());
 
 fetchNameday();
