@@ -5,11 +5,7 @@
 import { readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { compile } from 'sass';
-
-const JS_SRC = 'src/js';
-const JS_OUT = 'script.js';
-const CSS_SRC = 'src/css/styles.scss';
-const CSS_OUT = 'styles.css';
+import { JS_SRC, JS_OUT, CSS_SRC, CSS_OUT } from './build-config.js';
 
 function buildJS() {
   const files = readdirSync(JS_SRC)

@@ -19,14 +19,15 @@ import {
   existsSync,
 } from 'fs';
 import { join } from 'path';
-
-const OUT_DIR = 'portable';
-const BACKUPS = 'JSON backups';
-const HTML_IN = 'work-log.html';
-const CSS_IN = 'styles.css';
-const JS_IN = 'script.js';
-const PS_SERVER = 'start-server.ps1';
-const PS_CONFIG = 'config.local.ps1';
+import {
+  PORTABLE_OUT as OUT_DIR,
+  BACKUPS_DIR as BACKUPS,
+  HTML_IN,
+  CSS_OUT as CSS_IN,
+  JS_OUT as JS_IN,
+  PS_SERVER,
+  PS_CONFIG,
+} from './build-config.js';
 
 // 1. Clean & recreate output dir
 if (existsSync(OUT_DIR)) rmSync(OUT_DIR, { recursive: true, force: true });

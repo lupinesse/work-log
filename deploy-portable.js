@@ -10,9 +10,7 @@
 
 import { existsSync, readFileSync, writeFileSync, rmSync, cpSync, statSync, readdirSync } from 'fs';
 import { resolve } from 'path';
-
-const SRC = 'portable';
-const DEST_FILE = '.portable-dest';
+import { PORTABLE_OUT as SRC, DEST_FILE } from './build-config.js';
 
 function getDestArg() {
   const arg = process.argv[2];
