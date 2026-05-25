@@ -44,6 +44,14 @@ jobs:
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Append config defaults to release notes
+        run: node scripts/config-snapshot.cjs >> release-notes.md
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

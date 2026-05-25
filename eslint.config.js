@@ -55,7 +55,7 @@ export default [
   // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
   // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
   {
-    files: ['*.cjs', 'test/**/*.cjs'],
+    files: ['*.cjs', 'test/**/*.cjs', 'scripts/**/*.cjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
