@@ -1,0 +1,890 @@
+/* ── Dev changelog ── */
+const STORE_DEV_LOG = 'wl_dev_log';
+const TEST_AREA_NAMES = {
+  1: 'Page load',
+  2: 'roundToNearest30',
+  3: 'localStorage round-trip',
+  4: 'Timer display',
+  5: 'Timer persistence',
+  6: 'completedAt',
+  7: 'Auto-carry',
+  8: 'Sort order',
+  9: 'Plan count header',
+  10: 'Week number',
+  11: 'Billable tracking',
+  12: 'Export format',
+  13: 'Timeline rendering',
+};
+
+// Updated each session by Claude — id format: YYYYMMDD-NNN
+const DEV_CHANGES = [
+  {
+    id: '20260506-001',
+    date: '2026-05-06',
+    desc: 'Two-box header layout with week/moon/nameday',
+    areas: [1],
+  },
+  { id: '20260506-002', date: '2026-05-06', desc: 'Week number (ISO) in header', areas: [10] },
+  {
+    id: '20260506-003',
+    date: '2026-05-06',
+    desc: 'Sunrise/sunset/day length from Open-Meteo',
+    areas: [1, 3],
+  },
+  {
+    id: '20260506-004',
+    date: '2026-05-06',
+    desc: 'Moon phase calculation and zodiac sign',
+    areas: [1],
+  },
+  {
+    id: '20260506-005',
+    date: '2026-05-06',
+    desc: 'Finnish nameday from nimipaivat.fi',
+    areas: [1],
+  },
+  {
+    id: '20260506-006',
+    date: '2026-05-06',
+    desc: 'Completed tasks section with 14-day rolling window',
+    areas: [6, 9],
+  },
+  {
+    id: '20260506-007',
+    date: '2026-05-06',
+    desc: 'Child task auto-promotes parent to In Progress',
+    areas: [7, 8],
+  },
+  {
+    id: '20260506-008',
+    date: '2026-05-06',
+    desc: 'Plan count header format: X to do · X in progress · X done',
+    areas: [9],
+  },
+  {
+    id: '20260506-009',
+    date: '2026-05-06',
+    desc: 'Critical fix: load() restored to startup sequence',
+    areas: [1, 3, 4, 5, 7],
+  },
+  {
+    id: '20260506-010',
+    date: '2026-05-06',
+    desc: 'save() guard against overwriting data with empty arrays',
+    areas: [3],
+  },
+  {
+    id: '20260506-011',
+    date: '2026-05-06',
+    desc: 'Timer restoration protected against load failures',
+    areas: [5],
+  },
+  {
+    id: '20260506-012',
+    date: '2026-05-06',
+    desc: 'completedAt uses roundToNearest30; 23:59 shown as date-only',
+    areas: [6],
+  },
+  {
+    id: '20260506-013',
+    date: '2026-05-06',
+    desc: 'Rain forecast starts from next hour (no past times)',
+    areas: [1],
+  },
+  { id: '20260506-014', date: '2026-05-06', desc: 'Pomodoro ring empties clockwise', areas: [1] },
+  { id: '20260506-015', date: '2026-05-06', desc: 'Pomodoro session log added', areas: [1] },
+  { id: '20260506-016', date: '2026-05-06', desc: 'Smoke test suite (38 tests) added', areas: [] },
+  {
+    id: '20260506-017',
+    date: '2026-05-06',
+    desc: 'End-of-day modal with dev changelog',
+    areas: [],
+  },
+  {
+    id: '20260508-001',
+    date: '2026-05-08',
+    desc: 'Focus mode: Pomodoro now visible alongside emergency task',
+    areas: [1],
+  },
+  {
+    id: '20260508-002',
+    date: '2026-05-08',
+    desc: 'safeRoundedStart() prevents rounded entry times overlapping previous tsEnd',
+    areas: [2, 3, 4, 5],
+  },
+  {
+    id: '20260508-003',
+    date: '2026-05-08',
+    desc: 'statToday counts unique task names, not raw entry count',
+    areas: [9],
+  },
+  {
+    id: '20260508-004',
+    date: '2026-05-08',
+    desc: 'Timeblock expanded to 07:00–21:00 with one-time slot migration',
+    areas: [1],
+  },
+  {
+    id: '20260508-005',
+    date: '2026-05-08',
+    desc: 'Plan task statuses: Pending and Blocked added',
+    areas: [7, 8, 9],
+  },
+  {
+    id: '20260508-006',
+    date: '2026-05-08',
+    desc: 'Pending/Blocked tasks show editable comment with timestamp history',
+    areas: [7, 8],
+  },
+  {
+    id: '20260508-007',
+    date: '2026-05-08',
+    desc: 'Auto-complete parent task when all children marked done',
+    areas: [7, 8],
+  },
+  {
+    id: '20260508-008',
+    date: '2026-05-08',
+    desc: 'Auto-stop timer when active task is marked done in task list',
+    areas: [4, 5, 7],
+  },
+  {
+    id: '20260508-009',
+    date: '2026-05-08',
+    desc: 'Export .txt includes day started, ended, and total workday length',
+    areas: [1],
+  },
+  {
+    id: '20260508-010',
+    date: '2026-05-08',
+    desc: 'File System Access API: exports saved to timesheets/ and JSON backups/ subfolders',
+    areas: [1],
+  },
+  {
+    id: '20260513-001',
+    date: '2026-05-13',
+    desc: 'Quick pick: remove button to hide tasks from recent list',
+    areas: [],
+  },
+  {
+    id: '20260513-002',
+    date: '2026-05-13',
+    desc: 'Quick pick: restore hidden items button; hidden list persists in localStorage',
+    areas: [],
+  },
+  {
+    id: '20260513-003',
+    date: '2026-05-13',
+    desc: 'Inline entry editing: click entry text to edit in place',
+    areas: [3],
+  },
+  {
+    id: '20260513-004',
+    date: '2026-05-13',
+    desc: 'Timelog header added above entry list',
+    areas: [],
+  },
+  {
+    id: '20260513-005',
+    date: '2026-05-13',
+    desc: 'Chart label column widened from 120px to 200px',
+    areas: [],
+  },
+  {
+    id: '20260515-001',
+    date: '2026-05-15',
+    desc: 'Restore "Today\'s name day:" prefix in nameday display (API and fallback)',
+    areas: [1],
+  },
+  {
+    id: '20260515-002',
+    date: '2026-05-15',
+    desc: 'Restore SVG Finnish flag + "Next flag day:" prefix in calendar event display',
+    areas: [1],
+  },
+  {
+    id: '20260515-003',
+    date: '2026-05-15',
+    desc: 'Use full month name (e.g. June 4) in next flag day display',
+    areas: [1],
+  },
+  {
+    id: '20260515-004',
+    date: '2026-05-15',
+    desc: 'Fix streakDays sub-stat to start from yesterday (consistent with calcStreak)',
+    areas: [],
+  },
+  {
+    id: '20260515-005',
+    date: '2026-05-15',
+    desc: 'Add nimipaivarajapinta.fi to CSP connect-src',
+    areas: [1],
+  },
+  {
+    id: '20260515-006',
+    date: '2026-05-15',
+    desc: 'Calendar events: SVG Finnish flag for flag days, 📅 for holidays/notable days, no text prefix',
+    areas: [1],
+  },
+  {
+    id: '20260515-007',
+    date: '2026-05-15',
+    desc: 'Nameday: Finnish names plain, Swedish names smaller/dimmed with sv: label',
+    areas: [1],
+  },
+  {
+    id: '20260515-008',
+    date: '2026-05-15',
+    desc: 'Calendar events: add "Upcoming:" prefix for non-today events',
+    areas: [1],
+  },
+  {
+    id: '20260515-009',
+    date: '2026-05-15',
+    desc: 'Re-add parked thoughts feature (💭 in timer bar, park section, → task / ✓ dismiss)',
+    areas: [],
+  },
+  {
+    id: '20260515-010',
+    date: '2026-05-15',
+    desc: 'Re-add IDKW 🎲 button in plan header — picks random todo task',
+    areas: [],
+  },
+  {
+    id: '20260515-011',
+    date: '2026-05-15',
+    desc: 'Add ⊕ split button on tasks — creates child subtasks with parentId',
+    areas: [],
+  },
+  {
+    id: '20260515-012',
+    date: '2026-05-15',
+    desc: 'Child tasks render indented under parent, sorted grouped',
+    areas: [],
+  },
+  {
+    id: '20260515-013',
+    date: '2026-05-15',
+    desc: 'Park capture auto-closes when timer stops',
+    areas: [],
+  },
+  {
+    id: '20260515-014',
+    date: '2026-05-15',
+    desc: 'Jira ticket links: AITO-XXXXX prefix becomes clickable link to lahitapiola.atlassian.net',
+    areas: [],
+  },
+  {
+    id: '20260515-015',
+    date: '2026-05-15',
+    desc: "M365 calendar: ICS feed shows today's meetings in header strip with time, duration, Teams join link",
+    areas: [],
+  },
+  {
+    id: '20260518-001',
+    date: '2026-05-18',
+    desc: 'Calendar: read from all Outlook accounts (GetDefaultFolder + folder tree walk)',
+    areas: [],
+  },
+  {
+    id: '20260518-002',
+    date: '2026-05-18',
+    desc: "Calendar: TODAY'S MEETINGS section header, collapsible, matches plan-section style",
+    areas: [],
+  },
+  {
+    id: '20260518-003',
+    date: '2026-05-18',
+    desc: 'Calendar: past meetings grey/italic, ongoing meeting pulses blue, stops when meeting ends',
+    areas: [],
+  },
+  {
+    id: '20260518-004',
+    date: '2026-05-18',
+    desc: 'Calendar: [Gofore]/[LähiTapiola] account label per meeting',
+    areas: [],
+  },
+  {
+    id: '20260518-005',
+    date: '2026-05-18',
+    desc: "Calendar: ▶ start button adds meeting to today's plan and starts timer",
+    areas: [],
+  },
+  {
+    id: '20260518-006',
+    date: '2026-05-18',
+    desc: "Calendar section moved above today's tasks",
+    areas: [],
+  },
+  {
+    id: '20260518-007',
+    date: '2026-05-18',
+    desc: 'Nameday: Swedish flag SVG replaces emoji (reliable on all Windows fonts)',
+    areas: [1],
+  },
+  {
+    id: '20260518-008',
+    date: '2026-05-18',
+    desc: "Flag days: add Kaatuneitten muistopäivä (3rd Sun May), Eino Leino, Miina Sillanpää, Swedish Heritage Day, Children's Rights Day, Finnish Nature Day",
+    areas: [1],
+  },
+  {
+    id: '20260518-009',
+    date: '2026-05-18',
+    desc: 'Nameday + calendar API proxied through local server to bypass CORS (works on any port)',
+    areas: [],
+  },
+  {
+    id: '20260518-010',
+    date: '2026-05-18',
+    desc: 'CSP: allow any localhost port and 127.0.0.1 for server flexibility',
+    areas: [],
+  },
+  {
+    id: '20260518-011',
+    date: '2026-05-18',
+    desc: 'Timesheets folder removed from git tracking, added to .gitignore (stays local only)',
+    areas: [],
+  },
+  {
+    id: '20260518-012',
+    date: '2026-05-18',
+    desc: "Fix carry-over: pending/blocked status from most recent past version propagates to today's copy",
+    areas: [],
+  },
+  {
+    id: '20260518-013',
+    date: '2026-05-18',
+    desc: 'Re-implement upcoming status and 🔜 Upcoming Tasks section (lost in force push)',
+    areas: [],
+  },
+  {
+    id: '20260518-014',
+    date: '2026-05-18',
+    desc: 'Calendar: ✕ delete button on each meeting hides it for the day (persists in localStorage)',
+    areas: [],
+  },
+  {
+    id: '20260518-015',
+    date: '2026-05-18',
+    desc: 'Fix: timer input fields now have bright white text on dark background for readability',
+    areas: [1],
+  },
+  {
+    id: '20260518-016',
+    date: '2026-05-18',
+    desc: 'EOD modal: notes-for-tomorrow section with per-task handoff inputs; note shown inline in plan rows next morning',
+    areas: [],
+  },
+  {
+    id: '20260519-001',
+    date: '2026-05-19',
+    desc: 'Task checkpoints: inline step list with progress bar, tick-off, delete, drag-to-reorder; carried forward (reset) on day rollover',
+    areas: [],
+  },
+  {
+    id: '20260519-008',
+    date: '2026-05-19',
+    desc: 'Focus mode: checkpoints shown for active task, pomodoro fixed top-right, tagRow/timeline/calSection hidden',
+    areas: [],
+  },
+  {
+    id: '20260520-005',
+    date: '2026-05-20',
+    desc: 'Billable emoji shown in time log entries; clickable to toggle matching plan task',
+    areas: [3, 11],
+  },
+  {
+    id: '20260520-001',
+    date: '2026-05-20',
+    desc: 'Billable/non-billable: 💰/💸 toggle on all task rows + category default; retroactive update on category change; new tasks default billable',
+    areas: [3, 11],
+  },
+  {
+    id: '20260520-002',
+    date: '2026-05-20',
+    desc: 'Export: billable/non-billable totals in header; pasteable summary line grouped by category at end of .txt',
+    areas: [11, 12],
+  },
+  {
+    id: '20260520-003',
+    date: '2026-05-20',
+    desc: 'Quick-pick: tasks past iteration boundary hidden automatically',
+    areas: [3],
+  },
+  {
+    id: '20260520-004',
+    date: '2026-05-20',
+    desc: 'Timeline + export: consecutive same-task blocks with <30min gap merged into single block',
+    areas: [4, 8, 12, 13],
+  },
+  {
+    id: '20260521-001',
+    date: '2026-05-21',
+    desc: 'Notion integration: 📋 button on each task — sends to Notion second brain as child page under matching project (auto-matched by epic). Uses Claude API + Notion MCP; Anthropic key stored in localStorage',
+    areas: [3],
+  },
+  {
+    id: '20260521-002',
+    date: '2026-05-21',
+    desc: 'Fix: scheduled smoke tests not running (require() broke when package.json got "type":"module"); renamed smoke-tests.js → .cjs',
+    areas: [],
+  },
+  {
+    id: '20260521-003',
+    date: '2026-05-21',
+    desc: 'Fix: paused timers were silently discarded on reload (validTimer rejected startTs:null); now accepts paused timers with accumulatedMs',
+    areas: [3, 5],
+  },
+  {
+    id: '20260521-004',
+    date: '2026-05-21',
+    desc: 'Fix: export "Ended:" line ignored active timer; now factors in running/paused timer\'s effective end',
+    areas: [12],
+  },
+  {
+    id: '20260521-005',
+    date: '2026-05-21',
+    desc: 'Fix: completed section left stale .completed-item DOM nodes when filtered empty (caused phantom items on date change)',
+    areas: [6],
+  },
+  {
+    id: '20260521-006',
+    date: '2026-05-21',
+    desc: 'Focus mode: checkpoints for active task auto-expand after exit',
+    areas: [],
+  },
+  {
+    id: '20260521-007',
+    date: '2026-05-21',
+    desc: "Calendar: tasks started from today's meetings always default to the meeting category (not the currently-selected tag)",
+    areas: [],
+  },
+  {
+    id: '20260521-008',
+    date: '2026-05-21',
+    desc: 'EOD: clicking 🌙 end-the-day auto-deploys the portable build (rebuilds + copies to the saved destination) via PS server /api/portable-deploy. Fire-and-forget — never blocks the modal',
+    areas: [],
+  },
+  {
+    id: '20260521-009',
+    date: '2026-05-21',
+    desc: 'Time-by-task chart: active timer\'s row updates live — synthetic tsEnd treats running timer as ending "now" (paused: ts+accumulated). Auto-refreshes every 15 min while a timer runs. Live row has pulsing dot + bar',
+    areas: [4, 13],
+  },
+  {
+    id: '20260521-010',
+    date: '2026-05-21',
+    desc: 'Task row: billable 💰/💸 button moved from end of line to between status dropdown and task name (more discoverable, less visual clutter at the action-button cluster)',
+    areas: [11],
+  },
+  {
+    id: '20260521-011',
+    date: '2026-05-21',
+    desc: 'EOD: portable deploy moved from modal-open to "Done — close" button so JSON + .txt have time to flush to OneDrive before the build script reads them. Status shown via top-right toast',
+    areas: [],
+  },
+  {
+    id: '20260519-011',
+    date: '2026-05-19',
+    desc: 'Calendar meetings sorted by start time (not by calendar source)',
+    areas: [],
+  },
+  {
+    id: '20260519-010',
+    date: '2026-05-19',
+    desc: "Moved parked thoughts section between today's meetings and today's tasks",
+    areas: [],
+  },
+  {
+    id: '20260519-009',
+    date: '2026-05-19',
+    desc: 'EOD handoff notes: only show tasks actually worked on today',
+    areas: [],
+  },
+  {
+    id: '20260519-007',
+    date: '2026-05-19',
+    desc: 'Checkpoint steps: double-click label to edit inline; Enter/blur saves, Escape cancels',
+    areas: [],
+  },
+  {
+    id: '20260519-006',
+    date: '2026-05-19',
+    desc: 'Fix: checkpoint badge status color only applied when checkpoints exist (0/N); + steps badge stays gray',
+    areas: [],
+  },
+  {
+    id: '20260519-005',
+    date: '2026-05-19',
+    desc: 'Fix: checkpoint badge color mirrors task status (amber for in-progress, purple for pending, red for blocked) until progress begins',
+    areas: [],
+  },
+  {
+    id: '20260519-004',
+    date: '2026-05-19',
+    desc: 'Iteration expiry dates moved to localStorage (wl_expiry_dates); seeded from EXPIRY_SEED on first load; editable via 📅 iterations button',
+    areas: [6],
+  },
+  {
+    id: '20260519-003',
+    date: '2026-05-19',
+    desc: 'Completed tasks expire at iteration boundaries (AITO PI 2026 schedule) instead of 14-day rolling window',
+    areas: [6],
+  },
+  {
+    id: '20260519-002',
+    date: '2026-05-19',
+    desc: 'Smoke tests: fix test 24 streak assertion, fix test 25 cal-delete-btn via renderCalStrip injection, add tests 32–34 (checkpoints, handoff notes, parked thoughts)',
+    areas: [],
+  },
+  {
+    id: '20260513-006',
+    date: '2026-05-13',
+    desc: 'Jira CSV importer: drag and drop Jira export to load issues',
+    areas: [],
+  },
+  {
+    id: '20260513-007',
+    date: '2026-05-13',
+    desc: 'Jira CSV importer: category mapping, select/deselect tasks, duplicate detection',
+    areas: [7, 9],
+  },
+  {
+    id: '20260513-008',
+    date: '2026-05-13',
+    desc: 'Plan section headers restyled: smaller, uppercase, icon prefixes',
+    areas: [],
+  },
+  {
+    id: '20260513-009',
+    date: '2026-05-13',
+    desc: 'Pending/Blocked: dedicated tinted section with amber/red accent',
+    areas: [7, 8],
+  },
+  {
+    id: '20260513-010',
+    date: '2026-05-13',
+    desc: 'Pending/Blocked: status comment history with timestamps and expand toggle',
+    areas: [7, 8],
+  },
+  {
+    id: '20260513-011',
+    date: '2026-05-13',
+    desc: 'Timeblock: emoji picker added to slots',
+    areas: [],
+  },
+  {
+    id: '20260513-012',
+    date: '2026-05-13',
+    desc: 'Timeblock: meeting form removed, block editing simplified',
+    areas: [],
+  },
+  {
+    id: '20260513-013',
+    date: '2026-05-13',
+    desc: 'Day start and end times tracked and shown in exports',
+    areas: [1],
+  },
+  {
+    id: '20260513-014',
+    date: '2026-05-13',
+    desc: 'Fix: streak counter now shows correct days at start of day',
+    areas: [1, 24],
+  },
+  {
+    id: '20260513-015',
+    date: '2026-05-13',
+    desc: 'Nameday API: switch from HTML scraping to official Nimipäivärajapinta API',
+    areas: [1],
+  },
+  {
+    id: '20260513-016',
+    date: '2026-05-13',
+    desc: 'Calendar integration: flag days, notable days, and holidays via official API',
+    areas: [1],
+  },
+];
+
+/**
+ * Merges the hardcoded {@link DEV_CHANGES} array into the persisted dev log in
+ * localStorage, adding only entries whose `id` is not already stored.
+ * Maintains chronological sort order by `id`.
+ */
+function mergeDevLog() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
+    const storedIds = new Set(stored.map((e) => e.id));
+    const newEntries = DEV_CHANGES.filter((e) => !storedIds.has(e.id));
+    if (newEntries.length) {
+      const merged = [...stored, ...newEntries].sort((a, b) => a.id.localeCompare(b.id));
+      localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
+    }
+  } catch (e) {}
+}
+
+/**
+ * Opens the end-of-day modal: auto-exports the time log and JSON backup, saves
+ * the EOD timestamp, populates handoff notes for unfinished tasks, renders today's
+ * dev changelog entries, and lists the test areas to review.
+ */
+function openEodModal() {
+  const todayKey = dk(new Date());
+  const d = new Date();
+  const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // Auto-export
+  exportTxt();
+  exportBackup();
+  localStorage.setItem('wl_last_export', todayKey);
+  // Save EOD timestamp
+  if (!getEodTs()) localStorage.setItem(eodKey(), String(Date.now()));
+  renderEodBtn();
+  // Note: portable deploy is triggered by the "Done — close" button, NOT here,
+  // so the JSON + .txt have time to flush to disk before the build script reads them.
+  document.getElementById('eodExportStatus').innerHTML =
+    `<div class="eod-exported">✅ Time log (.txt) and backup (.json) exported automatically</div>`;
+
+  document.getElementById('eodSubtitle').textContent = dateStr;
+
+  // Notes for tomorrow — only tasks that were actually worked on today
+  const workedToday = new Set(
+    entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase().trim())
+  );
+  const unfinishedTasks = planTasks.filter(
+    (t) =>
+      t.date === todayKey && t.status !== 'done' && workedToday.has(t.text.toLowerCase().trim())
+  );
+  let handoffNotes = {};
+  try {
+    handoffNotes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+  } catch (e) {}
+  const taskNotesEl = document.getElementById('eodTaskNotes');
+  if (unfinishedTasks.length) {
+    const statusLabel = {
+      todo: 'to do',
+      inprogress: 'in progress',
+      pending: 'pending',
+      blocked: 'blocked',
+    };
+    taskNotesEl.innerHTML = unfinishedTasks
+      .map(
+        (t) =>
+          `<div class="eod-task-note-row">
+          <span class="eod-task-note-label" title="${escHtml(t.text)}">${t.emoji ? escHtml(t.emoji) + ' ' : ''}${escHtml(t.text)}</span>
+          <span class="eod-task-note-status ${t.status || 'todo'}">${statusLabel[t.status || 'todo'] || t.status}</span>
+          <input class="eod-task-note-input" data-task="${escHtml(t.text.toLowerCase().trim())}"
+            value="${escHtml(handoffNotes[t.text.toLowerCase().trim()] || '')}"
+            placeholder="where to continue…" />
+        </div>`
+      )
+      .join('');
+  } else {
+    taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on today — or all done 🎉</div>`;
+  }
+
+  // Today's dev changes
+  let allLog = [];
+  try {
+    allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
+  } catch (e) {}
+  const todayChanges = allLog.filter((e) => e.date === todayKey);
+  const changesEl = document.getElementById('eodChanges');
+  if (todayChanges.length) {
+    changesEl.innerHTML = todayChanges
+      .map(
+        (e) =>
+          `<div class="eod-change">
+          <span class="eod-change-desc">${escHtml(e.desc)}</span>
+          <span class="eod-change-areas">${e.areas.length ? 'Test ' + e.areas.join(', ') : '—'}</span>
+        </div>`
+      )
+      .join('');
+  } else {
+    changesEl.innerHTML = `<div class="eod-empty">No code changes logged today</div>`;
+  }
+
+  // Affected test areas (deduplicated)
+  const affectedAreas = [...new Set(todayChanges.flatMap((e) => e.areas))].sort((a, b) => a - b);
+  const areasEl = document.getElementById('eodTestAreas');
+  if (affectedAreas.length) {
+    areasEl.innerHTML = affectedAreas
+      .map(
+        (n) =>
+          `<div class="eod-test-area">
+          <span class="eod-test-num">#${n}</span>
+          <span>${escHtml(TEST_AREA_NAMES[n] || 'Unknown')}</span>
+        </div>`
+      )
+      .join('');
+  } else {
+    areasEl.innerHTML = `<div class="eod-empty">No test areas flagged for review</div>`;
+  }
+
+  // Copy to clipboard
+  document.getElementById('eodCopyBtn').onclick = () => {
+    const lines = [
+      `End of day: ${dateStr}`,
+      '',
+      'Changes implemented:',
+      ...todayChanges.map(
+        (e) => `  - ${e.desc}${e.areas.length ? ' (Test ' + e.areas.join(', ') + ')' : ''}`
+      ),
+      '',
+      'Test areas to review:',
+      ...affectedAreas.map((n) => `  - Test ${n}: ${TEST_AREA_NAMES[n]}`),
+    ];
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+      const btn = document.getElementById('eodCopyBtn');
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => (btn.textContent = '📋 copy to clipboard'), 2000);
+    });
+  };
+
+  document.getElementById('eodOverlay').classList.add('show');
+}
+
+document.getElementById('eodBtn').addEventListener('click', () => {
+  const ready = confirm(
+    '📎 Before closing the day:\n\n' +
+      "Have you shared work-log.html with Claude to log today's changes?\n\n" +
+      'OK — yes, changes are logged, continue\n' +
+      'Cancel — not yet, go back'
+  );
+  if (ready) openEodModal();
+});
+/**
+ * Reads all handoff-note inputs in the EOD modal and persists their values to
+ * the `wl_handoff` localStorage key. Empty values are removed from the map.
+ */
+function saveEodHandoffNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+    document.querySelectorAll('.eod-task-note-input').forEach((inp) => {
+      const key = inp.dataset.task;
+      const val = inp.value.trim();
+      if (val) notes[key] = val;
+      else delete notes[key];
+    });
+    localStorage.setItem('wl_handoff', JSON.stringify(notes));
+  } catch (e) {}
+}
+document.getElementById('expiryBtn').addEventListener('click', openExpiryModal);
+document.getElementById('expirySave').addEventListener('click', saveExpiryDates);
+document.getElementById('expiryCancel').addEventListener('click', () => {
+  document.getElementById('expiryOverlay').classList.remove('show');
+});
+document.getElementById('expiryOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('expiryOverlay'))
+    document.getElementById('expiryOverlay').classList.remove('show');
+});
+document.getElementById('expiryTextarea').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.stopPropagation();
+  } // allow newlines
+  if (e.key === 'Escape') document.getElementById('expiryOverlay').classList.remove('show');
+});
+
+document.getElementById('eodClose').addEventListener('click', () => {
+  saveEodHandoffNotes();
+  // Trigger portable deploy now — the export ran when the modal opened, so the
+  // file system has had a few seconds to flush JSON + .txt to OneDrive before
+  // the build script reads them.
+  triggerPortableDeploy();
+  document.getElementById('eodOverlay').classList.remove('show');
+  renderPlan();
+});
+
+/**
+ * Fire-and-forget portable deploy: calls `POST /api/portable-deploy` to trigger
+ * the PowerShell build script, then displays a transient top-right toast with the
+ * result (success, failure, or server unreachable). Never throws.
+ */
+function triggerPortableDeploy() {
+  const toast = document.createElement('div');
+  toast.className = 'wl-toast wl-toast-info';
+  toast.textContent = '⏳ Deploying portable build…';
+  document.body.appendChild(toast);
+
+  const setToast = (cls, text, lifetimeMs = 5000) => {
+    toast.className = 'wl-toast ' + cls;
+    toast.textContent = text;
+    setTimeout(() => toast.remove(), lifetimeMs);
+  };
+
+  (async () => {
+    let res;
+    try {
+      res = await fetch('/api/portable-deploy', { method: 'POST' });
+    } catch (err) {
+      setToast('wl-toast-err', '⚠ Portable deploy skipped: PS server unreachable');
+      return;
+    }
+    const bodyText = await res.text().catch(() => '');
+    let data = null;
+    if (bodyText) {
+      try {
+        data = JSON.parse(bodyText);
+      } catch {}
+    }
+
+    if (res.status === 404) {
+      setToast(
+        'wl-toast-err',
+        '⚠ Portable deploy unavailable: restart PS server (.\\launch.bat) to pick up updated start-server.ps1'
+      );
+      return;
+    }
+    if (res.status === 503) {
+      setToast('wl-toast-err', '⚠ Portable deploy skipped: PS server not running');
+      return;
+    }
+    if (res.ok && data && data.ok) {
+      const s = (data.durationMs / 1000).toFixed(1);
+      setToast('wl-toast-ok', `📦 Portable deployed in ${s}s`, 4000);
+      return;
+    }
+    const msg =
+      data && (data.error || data.output)
+        ? String(data.error || data.output).slice(0, 200)
+        : bodyText
+          ? bodyText.slice(0, 200)
+          : `HTTP ${res.status} empty body`;
+    setToast('wl-toast-err', `⚠ Portable deploy failed: ${msg}`, 8000);
+  })();
+}
+document.getElementById('eodOverlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('eodOverlay')) {
+    saveEodHandoffNotes();
+    document.getElementById('eodOverlay').classList.remove('show');
+    renderPlan();
+  }
+});
+
+load();
+loadExpiryDates();
+mergeDevLog();
+loadBlocks();
+loadPlan();
+const carried = autoCarryTasks();
+patchCarriedTasks();
+// Default to alphabetically first epic
+selectedTag = [...categories].sort((a, b) => a.label.localeCompare(b.label))[0]?.id || 'work';
+renderTagRow();
+checkNewDay();
+render();
+renderSodBtn();
+renderEodBtn();
+checkPomoWeeklyClear();
+renderPlan();
+if (carried > 0) {
+  const countEl = document.getElementById('planCount');
+  if (countEl)
+    countEl.textContent =
+      (countEl.textContent ? countEl.textContent + ' · ' : '') +
+      `${carried} carried from yesterday`;
+}
+renderTimeblock();
+renderPomoLog();
+renderCompleted();
+resumeTimerIfActive();

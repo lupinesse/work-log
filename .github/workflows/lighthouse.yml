@@ -1,0 +1,54 @@
+name: Lighthouse CI
+
+# Runs Google Lighthouse on every PR and on pushes to main.
+# Results are posted as:
+#   - A temporary public report URL (comment on the PR)
+#   - Downloadable HTML/JSON artifacts under the Actions run
+#
+# Thresholds are set to "warn" in .lighthouserc.json so the build never fails
+# outright on the first run. Once you have a stable baseline, change "warn" to
+# "error" to enforce regression gates.
+#
+# Optional: install the LHCI GitHub App and add LHCI_GITHUB_APP_TOKEN as a
+# repository secret to get per-check score breakdowns directly on the PR.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # Start vite preview in the background; it serves dist/ on port 8090.
+      - name: Start preview server
+        run: npx vite preview &
+
+      # Wait until the app responds before kicking off Lighthouse.
+      - name: Wait for server
+        run: npx wait-on http://localhost:8090/work-log.html --timeout 30000
+
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: http://localhost:8090/work-log.html
+          configPath: .lighthouserc.json
+          uploadArtifacts: true
+          runs: 1
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}

@@ -1,0 +1,281 @@
+/* Timer bar */
+.timer-bar {
+  border-radius: var(--radius-lg);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #0a3d1f;
+  border: 0.5px solid #1d9e75;
+  transition:
+    background 0.3s,
+    border-color 0.3s;
+}
+.timer-bar.paused {
+  background: #2a2206;
+  border-color: #ba7517;
+}
+.timer-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1d9e75;
+  flex-shrink: 0;
+  animation: pulse 1.2s ease-in-out infinite;
+  transition: background 0.3s;
+}
+.timer-bar.paused .timer-pulse {
+  background: #ba7517;
+  animation: none;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+}
+.timer-task {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  color: #9fe1cb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s;
+}
+.timer-bar.paused .timer-task {
+  color: #fac775;
+}
+.timer-elapsed {
+  font-size: 16px;
+  font-weight: 500;
+  font-family: var(--mono);
+  color: #5dcaa5;
+  flex-shrink: 0;
+  min-width: 64px;
+  text-align: right;
+  transition: color 0.3s;
+}
+.timer-bar.paused .timer-elapsed {
+  color: #ef9f27;
+}
+.timer-paused-lbl {
+  font-size: 10px;
+  color: #ef9f27;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+  display: none;
+}
+.timer-bar.paused .timer-paused-lbl {
+  display: block;
+}
+.timer-pause,
+.timer-stop {
+  background: none;
+  border: 0.5px solid #1d9e75;
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #5dcaa5;
+  cursor: pointer;
+  font-family: var(--font);
+  flex-shrink: 0;
+  transition:
+    border-color 0.3s,
+    color 0.3s;
+}
+.timer-bar.paused .timer-pause {
+  border-color: #ba7517;
+  color: #ef9f27;
+}
+.timer-pause:hover {
+  background: rgba(29, 158, 117, 0.15);
+}
+.timer-bar.paused .timer-pause:hover {
+  background: rgba(186, 117, 23, 0.15);
+}
+.timer-stop:hover {
+  background: rgba(29, 158, 117, 0.15);
+}
+.timer-bar.paused .timer-stop {
+  border-color: #ba7517;
+  color: #ef9f27;
+}
+.timer-bar.paused .timer-stop:hover {
+  background: rgba(186, 117, 23, 0.15);
+}
+.timer-distract {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: var(--radius);
+  border: 0.5px solid #c4b5fd;
+  background: none;
+  color: #c4b5fd;
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+.timer-distract:hover {
+  background: rgba(196, 181, 253, 0.12);
+}
+
+/* Timer start button */
+.timer-btn {
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #1d9e75;
+  white-space: nowrap;
+  font-family: var(--font);
+}
+.timer-btn:hover {
+  background: var(--bg2);
+}
+.timer-btn:active {
+  transform: scale(0.97);
+}
+.timer-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Running entry indicator */
+.entry.is-timing .etime-start {
+  color: #1d9e75;
+}
+.entry.is-timing .edot {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+/* Capture */
+.capture-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.capture-input {
+  flex: 1;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.capture-input:focus {
+  border-color: var(--info-text);
+  box-shadow: 0 0 0 2px var(--info-bg);
+}
+.capture-input::placeholder {
+  color: var(--text3);
+}
+.add-btn {
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text);
+  white-space: nowrap;
+  font-family: var(--font);
+}
+.add-btn:hover {
+  background: var(--bg2);
+}
+.add-btn:active {
+  transform: scale(0.97);
+}
+
+/* ── Make-it-interesting hook (Feature 1) ── */
+.timer-hook-btn {
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: var(--radius);
+  border: 0.5px solid #7b61ff;
+  background: none;
+  color: #7b61ff;
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.timer-hook-btn:hover {
+  background: rgba(123, 97, 255, 0.12);
+}
+.timer-hook-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.timer-hook-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg2);
+  border: 0.5px solid #7b61ff;
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  width: min(480px, 90vw);
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.timer-hook-panel::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  z-index: -1;
+}
+.timer-hook-content {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-right: 32px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.timer-hook-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.timer-hook-close:hover {
+  color: var(--text);
+}
+.timer-hook-regen {
+  background: none;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text3);
+  font-size: 11px;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.timer-hook-regen:hover {
+  color: var(--text);
+  background: var(--bg3);
+}

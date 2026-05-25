@@ -1,0 +1,54 @@
+name: GitHub Release
+
+# Publishes a GitHub Release whenever a version tag is pushed.
+# The release body is extracted from the matching section in CHANGELOG.md.
+#
+# Usage:
+#   git tag v1.8.0 && git push origin v1.8.0
+#
+# The tag must match the CHANGELOG heading exactly, e.g. "## v1.8.0".
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required to create a GitHub Release
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed so the full CHANGELOG history is available
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}"   # e.g. v1.7.0
+
+          # Pull the block that starts at "## <TAG>" and ends at the next
+          # "## v" heading or a "---" horizontal rule, whichever comes first.
+          awk -v tag="$TAG" '
+            $0 == "## " tag { found=1; next }
+            found && /^---$/ { exit }
+            found && /^## v/ { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+          # Trim leading/trailing blank lines
+          sed -i '/./,$!d' release-notes.md
+          sed -i -e :a -e '/^\s*$/{$d;N;ba}' release-notes.md
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.notes.outputs.tag }}" \
+            --title "${{ steps.notes.outputs.tag }}" \
+            --notes-file release-notes.md \
+            --verify-tag

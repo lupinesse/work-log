@@ -1,0 +1,16 @@
+// Work Log — main stylesheet entry point.
+// Plain SCSS for now; partials are split by topic but contain no Sass logic
+// (no variables, mixins, or nesting) so the output matches the original CSS
+// byte-for-byte modulo whitespace.
+
+@use 'base'; // reset, :root vars, dark mode, body
+@use 'header'; // header section + stats
+@use 'timer'; // timer bar, start button, running indicator, capture row
+@use 'picker'; // quick pick + epic dropdown
+@use 'timeline'; // timeline + bar chart
+@use 'tasks'; // today's tasks, jira CSV importer, status comments, pending/blocked
+@use 'checkpoints'; // task checkpoints
+@use 'timeblock'; // timeblock grid + new day banner
+@use 'focus'; // export marker, emergency mode, focus-mode checkpoints, handoff
+@use 'modals'; // EOD modal, iteration expiry, EOD task notes, morning handoff
+@use 'features'; // pomodoro, park capture, parked thoughts, IDKW, calendar, jira ticket links, debug info

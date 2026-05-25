@@ -1,0 +1,19 @@
+{
+  "source": {
+    "include": ["src/js"],
+    "includePattern": "\\.js$"
+  },
+  "opts": {
+    "destination": "docs/",
+    "recurse": true,
+    "readme": "README.md"
+  },
+  "plugins": ["plugins/markdown"],
+  "templates": {
+    "cleverLinks": false,
+    "monospaceLinks": false
+  },
+  "metadata": {
+    "title": "Work Log — Source Reference"
+  }
+}

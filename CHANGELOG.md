@@ -1,5 +1,138 @@
 # Changelog
 
+## v1.8.0
+
+### Code Quality & Documentation
+- Full JSDoc coverage across all 15 JS source modules (functions, params, return types)
+- JSDoc added to structured logger, timer, render, focus, lifecycle, pomodoro, entries, tasks, timeblock, clock/weather, calendar, Jira, Notion, changelog, and misc modules
+- Accessibility: ARIA labels on all icon-only buttons, `role="dialog"` / `aria-modal` on modals, `role="region"` on stat and pomodoro sections, `role="list"` on task lists, `aria-live` on dynamic counters
+- Keyboard navigation for all collapsible section headers (Enter/Space) with MutationObserver-driven `aria-expanded` sync
+- Modal focus management: focus saved on open, restored on close; Escape closes dialogs
+- `planHeader` excluded from `role="button"` due to nested interactive button (idkwBtn)
+
+### Automation & Tooling
+- Husky pre-commit hook running ESLint + Prettier via lint-staged
+- Dependabot auto-update configuration for npm dependencies
+- GitHub Releases workflow: auto-extracts CHANGELOG section for the tag and creates a GH Release
+- Lighthouse CI workflow: builds, serves via `vite preview`, audits with thresholds (≥85% a11y/best-practices, ≥70% performance)
+- `.lighthouserc.json` with `warn`-level thresholds (ready to promote to `error`)
+- Break restoration: automated hourly break now auto-restarts the pre-break task when the 10-min pomodoro ends at :00
+
+### Bug Fixes
+- Three-state checkpoint toggle (false → 'partial' → true) fixed in focus mode overlay
+- Smoke test suite updated for three-state toggle; regression test added (Section 38)
+
+---
+
+## v1.7.0
+
+### Tasks
+- Task checkpoints — break any task into steps with a three-state toggle (not done / partial / done)
+- Checkpoint steps can be reordered by drag and edited inline with double-click
+- Checkpoint badge colour mirrors parent task status
+- Edit capability for completed tasks
+- Pending/blocked status now propagates correctly through carried copies on day rollover
+- Pending/blocked tasks no longer carry over automatically to the next day
+
+### Focus Mode
+- Focus mode improvements: auto-expand and transition handoff
+- Parked thoughts can be moved between meetings and today's tasks
+
+### Billable Tracking
+- Billable/non-billable totals shown under "time by task" in the summary
+- Billable emoji hidden on completed tasks (data retained, display cleaned up)
+
+### Calendar
+- Meetings sorted by start time
+- Delete button for individual meetings in the today's meetings section
+
+### Reliability & QA
+- Nameday API proxied through local server to fix CORS issue
+- CSP updated to allow any localhost port for server flexibility
+- Smoke test suite expanded to 31 sections (161+ tests)
+- Screenshots replaced with fully anonymised versions
+
+---
+
+## v1.6.0
+
+### Calendar Integration
+- Outlook calendar via COM interop (no sharing or permissions required, Windows only)
+- Falls back to M365 ICS if COM unavailable
+- Walks all accounts and folders to find calendars including external accounts
+- Shows past / now / upcoming states; pulse animation on current meeting
+- Recurring and single-occurrence events supported
+- Teams join links surfaced; account labels mapped (e.g. lahitapiola → LähiTapiola)
+- Delete button per meeting; meetings sorted and deduplicated
+
+### Nameday
+- Switched to official Nimipäivärajapinta API
+- Finnish and Swedish names shown with explicit language labels
+- Flag days, holidays, and notable days combined into a single display
+
+### Jira Integration
+- Paste a Jira CSV export to bulk-create tasks
+- Ticket keys linkified (e.g. PROJ-123 → link)
+- Deduplication prevents re-importing existing tickets
+
+### Tasks
+- Inline editing for task names (click to edit)
+- Hidden tasks toggle — dismiss tasks from view without deleting
+- Split feature: group child tasks under a parent
+- Upcoming status and section for future-dated work
+- Parked thoughts section restored
+
+### Chart
+- Time-by-task chart improvements
+- Streak counter fixed — now counts from yesterday, not today
+
+### Reliability
+- Timer fix: liveEntry undefined crash in renderTimeblock resolved
+- CSS fix: duplicate `</style>` tag removed
+- 114 smoke tests passing including boundary, paused block cap, and parent invariant
+
+---
+
+## v1.5.0
+
+- Intermediate release consolidating local and remote branches
+
+---
+
+## v1.4.0
+
+### Features
+- Emergency / focus mode with transition handoff notes
+- Task retirement — completed tasks age out after configurable period
+
+### Reliability
+- Critical timer fix: liveEntry undefined crash in renderTimeblock (timer not ticking)
+- Banner null crash fixed; `_lastTickDate` TDZ issue resolved
+- Start-of-day (SoD) button tracks when the day began
+- `safeCssColor` blocks CSS injection from malformed category colours
+- Emoji on task names preserved across carries and edits
+
+### Testing
+- Smoke test suite expanded: 38 → 53 → 70 → 95 → 114 tests
+- New tests cover distraction tracking, active task, tab title, safeCssColor, header elements, save guard, completed section, parent promotion, untracked boundary, and paused block cap
+
+---
+
+## v1.2.1
+
+### Security
+- Local server now binds to 127.0.0.1 only — no longer accessible on the local network
+
+### Setup
+- `launch.bat` restored (was missing from initial release)
+- `launch.sh` added for Linux / Mac users (Python3 HTTP server, auto port detection)
+
+### Testing
+- Initial smoke test suite added (38 tests covering load, timer, carry, sort, rounding)
+- Morning test automation scripts and test status docs added
+
+---
+
 ## v1.1.0
 
 ### Header

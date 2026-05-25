@@ -1,5 +1,8 @@
-timesheets/
-JSON backups/
-.claude/
 node_modules/
-config.local.ps1
+dist/
+portable/
+docs/
+.portable-dest
+.DS_Store
+*.local
+lint-results.txt
