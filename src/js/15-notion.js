@@ -26,7 +26,7 @@ function setAnthropicKey(key) {
  * at `/api/notion-ai` (API keys never exposed to the browser).
  * Used for the URL-bookmarking form — task imports use {@link addTaskToNotion} instead.
  * @param {string} prompt            - User prompt text.
- * @param {{model?: string, maxTokens?: number}} [opts] - Optional overrides.
+ * @param {Object} [opts] - Optional overrides (`model` string, `maxTokens` number).
  * @returns {Promise<string>} The concatenated text content of the response.
  * @throws {Error} If the API returns a non-OK status.
  */

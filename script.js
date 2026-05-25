@@ -14,10 +14,16 @@
   // Location — used for the Open-Meteo weather API call
   // ---------------------------------------------------------------------------
 
-  /** @type {number} Latitude of the work location (decimal degrees). */
+  /**
+   * Latitude of the work location (decimal degrees).
+   * @type {number}
+   */
   const WEATHER_LAT = 60.1887;
 
-  /** @type {number} Longitude of the work location (decimal degrees). */
+  /**
+   * Longitude of the work location (decimal degrees).
+   * @type {number}
+   */
   const WEATHER_LON = 24.927;
 
   /**
@@ -2194,7 +2200,10 @@
   // ── 06-focus.js ──
   /* ── Emergency Mode ── */
 
-  /** @type {boolean} True while the focus/emergency overlay is visible. */
+  /**
+   * True while the focus/emergency overlay is visible.
+   * @type {boolean}
+   */
   let emergencyMode = false;
 
   /**
@@ -3190,7 +3199,7 @@
    * Calculates moon phase, illumination percentage, and zodiac sign for a date
    * using a simplified version of the Meeus algorithm.
    * @param {Date} date - The date to evaluate.
-   * @returns {{emoji: string, phase: string, illum: number, sign: [string, string]}}
+   * @returns {{emoji: string, phase: string, illum: number, sign: Array.<string>}}
    *   `emoji` = phase emoji, `phase` = phase name, `illum` = illumination (%),
    *   `sign` = [symbol, name] of the current zodiac sign.
    */
@@ -3676,7 +3685,11 @@
   // ── 10-tasks.js ──
   /* ── Today's tasks ── */
   const STORE_PLAN = 'wl_plan_v1';
-  /** @type {Array<Object>} Plan task list — each item: `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority] }` */
+  /**
+   * Plan task list — each item:
+   * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority] }`
+   * @type {Array<Object>}
+   */
   let planTasks = [];
   let planCollapsed = false;
   let pendingCollapsed = false;
@@ -4886,7 +4899,10 @@
 
   // ── 11-timeblock.js ──
   /* ── Timeblock ── */
-  /** @type {string} localStorage key for the time-block array. */
+  /**
+   * localStorage key for the time-block array.
+   * @type {string}
+   */
   const STORE_BLOCKS = 'wl_blocks_v1';
   const TB_START = 7; // 07:00
   const TB_END = 21; // 21:00
@@ -8251,7 +8267,7 @@ Requirements:
    * at `/api/notion-ai` (API keys never exposed to the browser).
    * Used for the URL-bookmarking form — task imports use {@link addTaskToNotion} instead.
    * @param {string} prompt            - User prompt text.
-   * @param {{model?: string, maxTokens?: number}} [opts] - Optional overrides.
+   * @param {Object} [opts] - Optional overrides (`model` string, `maxTokens` number).
    * @returns {Promise<string>} The concatenated text content of the response.
    * @throws {Error} If the API returns a non-OK status.
    */

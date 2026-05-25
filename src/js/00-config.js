@@ -12,10 +12,16 @@
 // Location — used for the Open-Meteo weather API call
 // ---------------------------------------------------------------------------
 
-/** @type {number} Latitude of the work location (decimal degrees). */
+/**
+ * Latitude of the work location (decimal degrees).
+ * @type {number}
+ */
 const WEATHER_LAT = 60.1887;
 
-/** @type {number} Longitude of the work location (decimal degrees). */
+/**
+ * Longitude of the work location (decimal degrees).
+ * @type {number}
+ */
 const WEATHER_LON = 24.927;
 
 /**

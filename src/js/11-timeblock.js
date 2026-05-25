@@ -1,5 +1,8 @@
 /* ── Timeblock ── */
-/** @type {string} localStorage key for the time-block array. */
+/**
+ * localStorage key for the time-block array.
+ * @type {string}
+ */
 const STORE_BLOCKS = 'wl_blocks_v1';
 const TB_START = 7; // 07:00
 const TB_END = 21; // 21:00

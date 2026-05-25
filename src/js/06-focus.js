@@ -1,6 +1,9 @@
 /* ── Emergency Mode ── */
 
-/** @type {boolean} True while the focus/emergency overlay is visible. */
+/**
+ * True while the focus/emergency overlay is visible.
+ * @type {boolean}
+ */
 let emergencyMode = false;
 
 /**

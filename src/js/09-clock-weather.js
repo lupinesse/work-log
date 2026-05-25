@@ -243,7 +243,7 @@ function weatherEmoji(code) {
  * Calculates moon phase, illumination percentage, and zodiac sign for a date
  * using a simplified version of the Meeus algorithm.
  * @param {Date} date - The date to evaluate.
- * @returns {{emoji: string, phase: string, illum: number, sign: [string, string]}}
+ * @returns {{emoji: string, phase: string, illum: number, sign: Array.<string>}}
  *   `emoji` = phase emoji, `phase` = phase name, `illum` = illumination (%),
  *   `sign` = [symbol, name] of the current zodiac sign.
  */

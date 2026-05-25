@@ -1,6 +1,10 @@
 /* ── Today's tasks ── */
 const STORE_PLAN = 'wl_plan_v1';
-/** @type {Array<Object>} Plan task list — each item: `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority] }` */
+/**
+ * Plan task list — each item:
+ * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority] }`
+ * @type {Array<Object>}
+ */
 let planTasks = [];
 let planCollapsed = false;
 let pendingCollapsed = false;

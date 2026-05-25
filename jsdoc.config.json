@@ -6,14 +6,16 @@
   "opts": {
     "destination": "docs/",
     "recurse": true,
-    "readme": "README.md"
+    "readme": "README.md",
+    "package": "package.json"
   },
   "plugins": ["plugins/markdown"],
   "templates": {
     "cleverLinks": false,
-    "monospaceLinks": false
-  },
-  "metadata": {
-    "title": "Work Log — Source Reference"
+    "monospaceLinks": false,
+    "default": {
+      "outputSourceFiles": true,
+      "includeDate": false
+    }
   }
 }
