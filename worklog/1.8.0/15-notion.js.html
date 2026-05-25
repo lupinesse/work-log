@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: 15-notion.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: 15-notion.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/* ── Notion integration ── */
+// Task-to-Notion uses Notion REST API directly via /api/notion-add-task (no AI needed).
+// callClaudeWithNotion is kept for the URL-bookmarking form via /api/notion-ai proxy.
+// Notion token lives in config.local.ps1 (server-side, never exposed to the browser).
+const STORE_ANTHROPIC_KEY = 'wl_anthropic_key'; // kept for backward compat with URL bookmarking form
+
+/**
+ * Retrieves the stored Anthropic API key from localStorage (trimmed).
+ * @returns {string} The key, or an empty string if not set.
+ */
+function getAnthropicKey() {
+  return (localStorage.getItem(STORE_ANTHROPIC_KEY) || '').trim();
+}
+
+/**
+ * Stores or removes the Anthropic API key in localStorage.
+ * @param {string} key - Key to store; falsy to remove.
+ */
+function setAnthropicKey(key) {
+  if (key) localStorage.setItem(STORE_ANTHROPIC_KEY, key.trim());
+  else localStorage.removeItem(STORE_ANTHROPIC_KEY);
+}
+
+/**
+ * Calls the Claude API with a Notion MCP server attached, via the local proxy
+ * at `/api/notion-ai` (API keys never exposed to the browser).
+ * Used for the URL-bookmarking form — task imports use {@link addTaskToNotion} instead.
+ * @param {string} prompt            - User prompt text.
+ * @param {Object} [opts] - Optional overrides (`model` string, `maxTokens` number).
+ * @returns {Promise&lt;string>} The concatenated text content of the response.
+ * @throws {Error} If the API returns a non-OK status.
+ */
+async function callClaudeWithNotion(prompt, opts = {}) {
+  const res = await fetch('/api/notion-ai', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: opts.model || 'claude-sonnet-4-6',
+      max_tokens: opts.maxTokens || 1000,
+      mcp_servers: [{ type: 'url', url: 'https://mcp.notion.com/mcp', name: 'notion' }],
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`API ${res.status}${body ? ': ' + body.slice(0, 200) : ''}`);
+  }
+  const data = await res.json();
+  return (data.content || [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim();
+}
+
+/**
+ * Adds a work-log task to Notion as a child page under the matching project.
+ * The project is looked up server-side by matching the task's category label to a
+ * Notion project's Epic field. Uses `/api/notion-add-task` (Notion REST API, no AI).
+ * @param {Object} task - Plan task object with at least `text` and `tag`.
+ * @returns {Promise&lt;string>} The URL of the newly created Notion page.
+ * @throws {Error} If the API call fails or no URL is returned.
+ */
+async function addTaskToNotion(task) {
+  const cat = getCat(task.tag || 'other');
+  const epic = (cat.label || 'other').toLowerCase();
+
+  const res = await fetch('/api/notion-add-task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: task.text, epic }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = (data.detail || data.error || `API ${res.status}`).slice(0, 300);
+    throw new Error(msg);
+  }
+  if (!data.url) throw new Error('No URL returned from Notion');
+  return data.url;
+}
+
+/**
+ * Persists the Notion page URL on a plan task so the per-task button changes
+ * to an "open in Notion" link on next render.
+ * @param {string} taskId - Plan task ID.
+ * @param {string} url    - Notion page URL returned by the API.
+ */
+function saveTaskNotionUrl(taskId, url) {
+  const t = planTasks.find((t) => t.id === taskId);
+  if (!t) return;
+  t.notionUrl = url;
+  savePlan();
+  renderPlan();
+}
+
+// Delegated click handler for the per-task Notion button
+document.addEventListener(
+  'click',
+  (e) => {
+    const btn = e.target.closest('.notion-task-btn');
+    if (!btn || !btn.dataset.pid) return;
+    e.stopPropagation();
+    const t = planTasks.find((x) => x.id === btn.dataset.pid);
+    if (!t) return;
+    // If already sent, open the Notion page
+    if (t.notionUrl) {
+      window.open(t.notionUrl, '_blank', 'noopener');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '…';
+    addTaskToNotion(t)
+      .then((url) => {
+        if (url &amp;&amp; url.startsWith('http')) {
+          saveTaskNotionUrl(t.id, url);
+        } else {
+          btn.textContent = '📋';
+          btn.disabled = false;
+          alert('Notion responded but no URL: ' + url);
+        }
+      })
+      .catch((err) => {
+        btn.textContent = '📋';
+        btn.disabled = false;
+        alert('Failed to add to Notion: ' + err.message);
+      });
+  },
+  true
+);
+
+// Expose for the URL-bookmarking form so it shares the same auth path
+window._wlNotion = { callClaudeWithNotion, getAnthropicKey, setAnthropicKey };
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a>
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

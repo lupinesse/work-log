@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: 02-utils.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: 02-utils.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/* ── Epic helpers ── */
+/**
+ * Returns `c` if it is a safe CSS colour (hex or hsl()), otherwise returns a neutral fallback.
+ * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
+ * @param {string} c
+ * @returns {string} A safe CSS colour string.
+ */
+function safeCssColor(c) {
+  // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
+  return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
+    ? c
+    : '#888780';
+}
+
+/**
+ * Returns the category object for `id`, falling back to 'other' if not found.
+ * The returned colour is always sanitised through safeCssColor.
+ * @param {string} id - Category ID.
+ * @returns {{ id: string, label: string, color: string }}
+ */
+function getCat(id) {
+  const cat = categories.find((c) => c.id === id) || categories.find((c) => c.id === 'other');
+  if (!cat) return { id: 'other', label: 'other', color: '#888780' };
+  return { ...cat, color: safeCssColor(cat.color) };
+}
+function getCatColor(id) {
+  return getCat(id).color;
+}
+function getCatLabel(id) {
+  return getCat(id).label;
+}
+
+function addCategory() {
+  const name = prompt('New epic name:');
+  if (!name || !name.trim()) return;
+  const label = name.trim();
+  if (categories.find((c) => c.label.toLowerCase() === label.toLowerCase())) {
+    alert('An epic with that name already exists.');
+    return;
+  }
+  const color = nextDistinctColor();
+  const id = 'cat_' + Date.now();
+  categories.push({ id, label, color });
+  selectedTag = id;
+  save();
+  renderTagRow();
+}
+
+let editingCatId = null;
+let addingNewCat = false;
+
+function renderTagRow() {
+  const row = document.getElementById('tagRow');
+  const selCat = getCat(selectedTag);
+
+  // Build manage row content based on state
+  let manageHtml;
+  if (editingCatId) {
+    const c = getCat(editingCatId);
+    manageHtml = `&lt;div class="cat-inline-edit">
+        &lt;input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
+        &lt;button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&amp;#10003;&lt;/button>
+        &lt;button class="cat-inline-cancel" id="catEditCancel">&amp;#10005;&lt;/button>
+      &lt;/div>`;
+  } else if (addingNewCat) {
+    manageHtml = `&lt;div class="cat-inline-edit">
+        &lt;input class="cat-inline-input" id="catNewInput" placeholder="new epic name" style="flex:1" />
+        &lt;button class="cat-inline-ok" id="catNewOk">&amp;#10003;&lt;/button>
+        &lt;button class="cat-inline-cancel" id="catNewCancel">&amp;#10005;&lt;/button>
+      &lt;/div>`;
+  } else {
+    manageHtml = `
+        &lt;button class="cat-manage-btn" id="catRenBtn">&amp;#9998; rename&lt;/button>
+        &lt;button class="cat-manage-btn danger" id="catDelBtn">&amp;#215; delete&lt;/button>
+        &lt;button class="cat-manage-btn add" id="catAddBtn">+ add epic&lt;/button>
+        &lt;button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 non-billable' : '💰 billable'}&lt;/button>`;
+  }
+
+  row.innerHTML = `
+      &lt;div class="cat-dropdown-row">
+        &lt;label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${selCat.color}">
+          &lt;input type="color" id="catQuickColorPick" value="${selCat.color}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
+        &lt;/label>
+        &lt;select class="cat-select" id="catSelect">
+        ${[...categories]
+          .sort((a, b) => a.label.localeCompare(b.label))
+          .map(
+            (c) =>
+              `&lt;option value="${c.id}"${c.id === selectedTag ? ' selected' : ''}>${escHtml(c.label)}&lt;/option>`
+          )
+          .join('')}
+        &lt;/select>
+      &lt;/div>
+      &lt;div class="cat-manage-row" id="catManageRow">${manageHtml}&lt;/div>`;
+
+  // Select change
+  document.getElementById('catSelect').addEventListener('change', (e) => {
+    selectedTag = e.target.value;
+    editingCatId = null;
+    addingNewCat = false;
+    renderTagRow();
+  });
+
+  // Quick colour picker — click the dot to change colour immediately
+  const quickColorPick = document.getElementById('catQuickColorPick');
+  if (quickColorPick) {
+    quickColorPick.addEventListener('input', () => {
+      const dot = document.getElementById('catDotPreview');
+      if (dot) dot.style.background = quickColorPick.value;
+    });
+    quickColorPick.addEventListener('change', () => {
+      const cat = categories.find((c) => c.id === selectedTag);
+      if (cat) {
+        cat.color = quickColorPick.value;
+        save();
+        renderTagRow();
+        render();
+        renderTimeblock();
+        renderCompleted();
+      }
+    });
+  }
+
+  // Rename: open
+  const renBtn = document.getElementById('catRenBtn');
+  if (renBtn)
+    renBtn.addEventListener('click', () => {
+      editingCatId = selectedTag;
+      addingNewCat = false;
+      renderTagRow();
+    });
+
+  // Rename: save
+  const editOk = document.getElementById('catEditOk');
+  if (editOk) {
+    const saveEdit = () => {
+      const input = document.getElementById('catEditInput');
+      const label = input ? input.value.trim() : '';
+      const id = editOk.dataset.id;
+      if (!label) {
+        editingCatId = null;
+        renderTagRow();
+        return;
+      }
+      if (categories.find((c) => c.id !== id &amp;&amp; c.label.toLowerCase() === label.toLowerCase())) {
+        input.style.borderColor = '#C62828';
+        input.focus();
+        return;
+      }
+      const cat = categories.find((c) => c.id === id);
+      if (cat) cat.label = label;
+      editingCatId = null;
+      save();
+      renderTagRow();
+      render();
+      renderTimeblock();
+      renderCompleted();
+    };
+    editOk.addEventListener('click', saveEdit);
+    const inp = document.getElementById('catEditInput');
+    if (inp) {
+      inp.focus();
+      inp.select();
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveEdit();
+        if (e.key === 'Escape') {
+          editingCatId = null;
+          renderTagRow();
+        }
+      });
+    }
+  }
+
+  // Rename: cancel
+  const editCancel = document.getElementById('catEditCancel');
+  if (editCancel)
+    editCancel.addEventListener('click', () => {
+      editingCatId = null;
+      renderTagRow();
+    });
+
+  // Delete
+  const delBtn = document.getElementById('catDelBtn');
+  if (delBtn)
+    delBtn.addEventListener('click', () => {
+      categories = categories.filter((c) => c.id !== selectedTag);
+      selectedTag = 'work';
+      save();
+      renderTagRow();
+      render();
+    });
+
+  // Add: open
+  const addBtn = document.getElementById('catAddBtn');
+  if (addBtn)
+    addBtn.addEventListener('click', () => {
+      addingNewCat = true;
+      editingCatId = null;
+      renderTagRow();
+    });
+  const billBtn = document.getElementById('catBillBtn');
+  if (billBtn)
+    billBtn.addEventListener('click', () => {
+      const cat = getCat(selectedTag);
+      cat.billable = cat.billable === false;
+      // Retroactively update all tasks with this category
+      planTasks.forEach((t) => {
+        if (t.tag === selectedTag) t.billable = cat.billable;
+      });
+      save();
+      savePlan();
+      renderTagRow();
+      renderPlan();
+      renderCompleted();
+    });
+
+  // Add: save
+  const newOk = document.getElementById('catNewOk');
+  if (newOk) {
+    const saveNew = () => {
+      const input = document.getElementById('catNewInput');
+      const label = input ? input.value.trim() : '';
+      if (!label) {
+        addingNewCat = false;
+        renderTagRow();
+        return;
+      }
+      if (categories.find((c) => c.label.toLowerCase() === label.toLowerCase())) {
+        input.style.borderColor = '#C62828';
+        input.focus();
+        return;
+      }
+      const color = nextDistinctColor();
+      const id = 'cat_' + Date.now();
+      categories.push({ id, label, color });
+      selectedTag = id;
+      addingNewCat = false;
+      document.getElementById('captureInput').value = '';
+      save();
+      renderTagRow();
+      render();
+    };
+    newOk.addEventListener('click', saveNew);
+    const ni = document.getElementById('catNewInput');
+    if (ni) {
+      ni.focus();
+      ni.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveNew();
+        if (e.key === 'Escape') {
+          addingNewCat = false;
+          renderTagRow();
+        }
+      });
+    }
+  }
+
+  // Add: cancel
+  const newCancel = document.getElementById('catNewCancel');
+  if (newCancel)
+    newCancel.addEventListener('click', () => {
+      addingNewCat = false;
+      renderTagRow();
+    });
+}
+
+/* ── Utility ── */
+
+/**
+ * Formats a Date as YYYY-MM-DD using local time. Used as the canonical day key throughout.
+ * @param {Date} d
+ * @returns {string} e.g. '2026-05-25'
+ */
+function dk(d) {
+  return d.toISOString().slice(0, 10);
+}
+/**
+ * Returns true if `d` falls on today's calendar date (local time).
+ * @param {Date} d
+ * @returns {boolean}
+ */
+function isToday(d) {
+  return dk(d) === dk(new Date());
+}
+/**
+ * Returns a human-readable day label: 'today', 'yesterday', or a short locale date string.
+ * @param {Date} d
+ * @returns {string}
+ */
+function fmtLabel(d) {
+  if (isToday(d)) return 'today';
+  const diffMs = new Date(dk(new Date())) - new Date(dk(d));
+  const diffDays = Math.round(diffMs / 86400000);
+  if (diffDays === 1) return 'yesterday';
+  return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+/**
+ * Formats a Unix timestamp as HH:MM in 24-hour local time.
+ * @param {number} ts - Unix timestamp in milliseconds.
+ * @returns {string} e.g. '09:30'
+ */
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+/**
+ * Formats a duration in milliseconds as a compact time string.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
+ */
+function fmtElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  const hh = Math.floor(s / 3600),
+    mm = Math.floor((s % 3600) / 60),
+    ss = s % 60;
+  if (hh > 0)
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+/**
+ * Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
+ * Used for billing time estimates.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
+ */
+function roundUp30(ms) {
+  const SLOT = 30 * 60 * 1000;
+  return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
+}
+
+/**
+ * Rounds a timestamp to the nearest 30-minute clock mark.
+ * 0–15 min into a block rounds down; 16–45 rounds to the next half-hour; 46–59 rounds up.
+ * @param {number} ts - Unix timestamp in milliseconds.
+ * @returns {number} Rounded Unix timestamp in milliseconds.
+ */
+function roundToNearest30(ts) {
+  const d = new Date(ts);
+  const m = d.getMinutes();
+  const blockStart = Math.floor(m / 30) * 30; // 0 or 30
+  const withinBlock = m - blockStart; // 0–29
+  // Midpoint tie-breaking: exactly 15 min into a slot rounds DOWN (conservative for billing).
+  // A task must exceed half the slot before the next slot is claimed.
+  const roundedMins = withinBlock &lt;= 15 ? blockStart : blockStart + 30;
+  const result = new Date(d);
+  result.setSeconds(0, 0);
+  result.setMinutes(roundedMins % 60);
+  if (roundedMins >= 60) result.setHours(d.getHours() + 1);
+  return result.getTime();
+}
+
+/**
+ * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.
+ * Non-billable entries keep their exact timestamps for accurate reporting.
+ * @param {number} ts - Unix timestamp in milliseconds.
+ * @param {object|null} entry - Work-log entry; if null, always rounds.
+ * @returns {number} Timestamp, conditionally rounded.
+ */
+function roundToNearest30IfBillable(ts, entry) {
+  // If entry is provided, check if it's billable
+  // Only round billable tasks; non-billable tasks keep exact time
+  if (entry &amp;&amp; !isEntryBillable(entry)) return ts;
+  return roundToNearest30(ts);
+}
+
+/**
+ * Returns a rounded start timestamp that does not overlap any existing entry for today.
+ * Prevents new entries from appearing to start before a prior entry's end time.
+ * @returns {number} Unix timestamp in milliseconds.
+ */
+function safeRoundedStart() {
+  const ts = roundToNearest30(Date.now());
+  const todayKey = dk(new Date());
+  const lastEnd = entries
+    .filter((e) => e.date === todayKey &amp;&amp; e.tsEnd)
+    .reduce((max, e) => Math.max(max, e.tsEnd), 0);
+  return Math.max(ts, lastEnd);
+}
+
+/**
+ * Returns entries for the currently viewed date, sorted newest-first.
+ * @returns {Array&lt;object>}
+ */
+function viewEntries() {
+  return entries
+    .filter((e) => e.date === dk(viewDate))
+    .slice()
+    .reverse();
+}
+/**
+ * Counts entries logged since the start of the current ISO week (Monday 00:00 local).
+ * @returns {number}
+ */
+function weekCount() {
+  const now = new Date(),
+    mon = new Date(now);
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  mon.setHours(0, 0, 0, 0);
+  return entries.filter((e) => new Date(e.ts) >= mon).length;
+}
+/**
+ * Counts consecutive days with at least one logged entry, looking backwards from yesterday.
+ * Today is excluded so the streak only increments once the day has been completed.
+ * @returns {number}
+ */
+function calcStreak() {
+  const days = new Set(entries.map((e) => e.date));
+  let streak = 0,
+    d = new Date();
+  d.setDate(d.getDate() - 1); // Start from yesterday, not today
+  while (days.has(dk(d))) {
+    streak++;
+    d.setDate(d.getDate() - 1);
+  }
+  return streak;
+}
+/**
+ * Escapes a string for safe insertion as HTML text content.
+ * @param {string} s
+ * @returns {string}
+ */
+function escHtml(s) {
+  return String(s)
+    .replace(/&amp;/g, '&amp;amp;')
+    .replace(/&lt;/g, '&amp;lt;')
+    .replace(/>/g, '&amp;gt;')
+    .replace(/"/g, '&amp;quot;');
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.5</a>
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
