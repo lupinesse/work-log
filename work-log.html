@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="ADHD-friendly work tracker — log tasks, run timers, plan your day, and export a daily summary. Runs entirely in your browser.">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.open-meteo.com https://api.anthropic.com http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <link rel="stylesheet" href="styles.css">
@@ -78,7 +79,7 @@
   <span class="timer-elapsed" id="timerElapsed" aria-label="Elapsed time">00:00</span>
   <span class="timer-handoff-lbl" id="timerHandoffLbl" aria-hidden="true">handoff:</span>
   <input class="timer-handoff" id="timerHandoff" aria-label="Handoff note for your future self" placeholder="what should future you know?" />
-  <button class="timer-distract" id="timerDistract" aria-label="Log distraction">😵 distracted</button>
+  <button class="timer-distract" id="timerDistract">😵 distracted</button>
   <button class="timer-park-btn" id="timerParkBtn" aria-label="Park a thought" title="park a thought">💭</button>
   <input class="park-capture" id="parkCapture" aria-label="Thought to park" placeholder="park this thought… ↵" />
   <button class="emergency-btn-trigger" id="emergencyBtn" aria-label="Enter focus mode" aria-haspopup="dialog">🚨 focus</button>
@@ -129,7 +130,7 @@
 </div>
 
 <div class="plan-section" id="planSection">
-  <div class="plan-header" id="planHeader" aria-expanded="true" aria-controls="planList">
+  <div class="plan-header" id="planHeader" aria-controls="planList">
     <span class="plan-header-title">today's tasks</span>
     <span class="plan-count" id="planCount"></span>
     <button class="idkw-btn" id="idkwBtn" aria-label="Pick a random task" title="I don't know what to do — pick one for me">🎲</button>
@@ -390,7 +391,7 @@
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="expiry-btn" id="expiryBtn" aria-label="Edit iteration expiry dates" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
+      <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
   </div>

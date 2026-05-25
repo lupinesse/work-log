@@ -347,10 +347,12 @@ function a11yHeaderKeydown(el) {
 // Sync aria-expanded on toggling section headers.
 // Each section header's click listener was set up in other modules; we patch
 // aria-expanded by observing classList changes on the section wrappers.
+// planHeader is excluded: it has no widget role (it contains a nested <button>
+// so role="button" would be invalid), and aria-expanded is not allowed on a
+// generic div — see also the keyboard-nav exclusion note above.
 (function syncAriaExpanded() {
   const pairs = [
     { sectionId: 'calSection', headerId: 'calHeader' },
-    { sectionId: 'planSection', headerId: 'planHeader' },
     { sectionId: 'upcomingSection', headerId: 'upcomingHeader' },
     { sectionId: 'pendingSection', headerId: 'pendingHeader' },
     { sectionId: 'completedSection', headerId: 'completedHeader' },
