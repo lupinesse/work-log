@@ -27,18 +27,7 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/* ── Epic helpers ── */
-/**
- * Returns `c` if it is a safe CSS colour (hex or hsl()), otherwise returns a neutral fallback.
- * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
- * @param {string} c
- * @returns {string} A safe CSS colour string.
- */
-function safeCssColor(c) {
-  // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
-  return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
-    ? c
-    : '#888780';
-}
+// safeCssColor() and escHtml() are defined in 00-pure-fns.js.
 
 /**
  * Returns the category object for `id`, falling back to 'other' if not found.
@@ -292,17 +281,11 @@ function renderTagRow() {
 }
 
 /* ── Utility ── */
+// dk(), fmtTime(), fmtElapsed(), roundUp30(), roundToNearest30(), safeCssColor(), escHtml()
+// are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
 
 /**
- * Formats a Date as YYYY-MM-DD using local time. Used as the canonical day key throughout.
- * @param {Date} d
- * @returns {string} e.g. '2026-05-25'
- */
-function dk(d) {
-  return d.toISOString().slice(0, 10);
-}
-/**
- * Returns true if `d` falls on today's calendar date (local time).
+ * Returns true if `d` falls on today's calendar date (UTC).
  * @param {Date} d
  * @returns {boolean}
  */
@@ -321,60 +304,6 @@ function fmtLabel(d) {
   if (diffDays === 1) return 'yesterday';
   return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 }
-/**
- * Formats a Unix timestamp as HH:MM in 24-hour local time.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @returns {string} e.g. '09:30'
- */
-function fmtTime(ts) {
-  const d = new Date(ts);
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-}
-/**
- * Formats a duration in milliseconds as a compact time string.
- * @param {number} ms - Duration in milliseconds.
- * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
- */
-function fmtElapsed(ms) {
-  const s = Math.floor(ms / 1000);
-  const hh = Math.floor(s / 3600),
-    mm = Math.floor((s % 3600) / 60),
-    ss = s % 60;
-  if (hh > 0)
-    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-}
-/**
- * Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
- * Used for billing time estimates.
- * @param {number} ms - Duration in milliseconds.
- * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
- */
-function roundUp30(ms) {
-  const SLOT = 30 * 60 * 1000;
-  return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
-}
-
-/**
- * Rounds a timestamp to the nearest 30-minute clock mark.
- * 0–15 min into a block rounds down; 16–45 rounds to the next half-hour; 46–59 rounds up.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @returns {number} Rounded Unix timestamp in milliseconds.
- */
-function roundToNearest30(ts) {
-  const d = new Date(ts);
-  const m = d.getMinutes();
-  const blockStart = Math.floor(m / 30) * 30; // 0 or 30
-  const withinBlock = m - blockStart; // 0–29
-  // Midpoint tie-breaking: exactly 15 min into a slot rounds DOWN (conservative for billing).
-  // A task must exceed half the slot before the next slot is claimed.
-  const roundedMins = withinBlock &lt;= 15 ? blockStart : blockStart + 30;
-  const result = new Date(d);
-  result.setSeconds(0, 0);
-  result.setMinutes(roundedMins % 60);
-  if (roundedMins >= 60) result.setHours(d.getHours() + 1);
-  return result.getTime();
-}
 
 /**
  * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.
@@ -384,8 +313,9 @@ function roundToNearest30(ts) {
  * @returns {number} Timestamp, conditionally rounded.
  */
 function roundToNearest30IfBillable(ts, entry) {
-  // If entry is provided, check if it's billable
-  // Only round billable tasks; non-billable tasks keep exact time
+  // Assumption: non-billable entries keep exact timestamps for accurate time reporting.
+  // Billable entries are rounded because clients are invoiced in 30-minute increments.
+  // Changing this requires updating the export format in 05-entries.js and DATA.md.
   if (entry &amp;&amp; !isEntryBillable(entry)) return ts;
   return roundToNearest30(ts);
 }
@@ -441,18 +371,7 @@ function calcStreak() {
   }
   return streak;
 }
-/**
- * Escapes a string for safe insertion as HTML text content.
- * @param {string} s
- * @returns {string}
- */
-function escHtml(s) {
-  return String(s)
-    .replace(/&amp;/g, '&amp;amp;')
-    .replace(/&lt;/g, '&amp;lt;')
-    .replace(/>/g, '&amp;gt;')
-    .replace(/"/g, '&amp;quot;');
-}
+// escHtml() is defined in 00-pure-fns.js.
 </code></pre>
         </article>
     </section>
@@ -463,7 +382,7 @@ function escHtml(s) {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#MIGRATIONS">MIGRATIONS</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#migrateStorage">migrateStorage</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
 </nav>
 
 <br class="clear">

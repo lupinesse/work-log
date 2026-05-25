@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 07-lifecycle.js</title>
+    <title>JSDoc: Source: 00-pure-fns.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 07-lifecycle.js</h1>
+    <h1 class="page-title">Source: 00-pure-fns.js</h1>
 
     
 
@@ -26,226 +26,237 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Start of day ── */
+            <pre class="prettyprint source linenums"><code>/**
+ * @file 00-pure-fns.js
+ * Pure functions with no side-effects and no dependencies on global state.
+ * Extracted here so they can be imported by Node unit tests without a browser.
+ *
+ * In the browser build these declarations become globals inside the IIFE.
+ * In Node (require / test runner) the module.exports block at the bottom exports them.
+ */
+
+/* ── CSS / HTML safety ── */
 
 /**
- * Returns the localStorage key used to store today's start-of-day timestamp.
- * @returns {string} Key in the format `wl_sod_YYYY-MM-DD`.
+ * Returns `c` if it is a safe CSS colour (hex or hsl()), otherwise returns a neutral fallback.
+ * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
+ * @param {string} c
+ * @returns {string} A safe CSS colour string.
  */
-function sodKey() {
-  return 'wl_sod_' + dk(new Date());
-}
-/**
- * Retrieves today's recorded start-of-day timestamp from localStorage.
- * @returns {number|null} Unix timestamp (ms), or null if not yet set.
- */
-function getDayStart() {
-  return parseInt(localStorage.getItem(sodKey()) || '0') || null;
-}
-
-/**
- * Updates the "start the day" button to show the recorded start time (if any)
- * or its default label. Colours the button green once a time is set.
- */
-function renderSodBtn() {
-  const btn = document.getElementById('sodBtn');
-  if (!btn) return;
-  const sod = getDayStart();
-  if (sod) {
-    const d = new Date(sod);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.textContent = `🌅 started ${hh}:${mm}`;
-    btn.style.color = '#1D9E75';
-    btn.style.borderColor = '#1D9E75';
-  } else {
-    btn.textContent = '🌅 start the day';
-    btn.style.color = '';
-    btn.style.borderColor = '';
-  }
-}
-
-document.getElementById('sodBtn').addEventListener('click', () => {
-  const existing = getDayStart();
-  if (existing) {
-    // Allow re-setting — ask for time
-    const d = new Date(existing);
-    const cur =
-      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    const val = prompt(`Started at (HH:MM):`, cur);
-    if (!val) return;
-    const [h, m] = val.split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return;
-    const ts = new Date();
-    ts.setHours(h, m, 0, 0);
-    localStorage.setItem(sodKey(), String(ts.getTime()));
-  } else {
-    localStorage.setItem(sodKey(), String(Date.now()));
-  }
-  renderSodBtn();
-  renderTimeblock();
-});
-
-/* ── End of day button state ── */
-
-/**
- * Returns the localStorage key used to store today's end-of-day timestamp.
- * @returns {string} Key in the format `wl_eod_YYYY-MM-DD`.
- */
-function eodKey() {
-  return 'wl_eod_' + dk(new Date());
+function safeCssColor(c) {
+  // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
+  return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
+    ? c
+    : '#888780';
 }
 
 /**
- * Retrieves today's recorded end-of-day timestamp from localStorage.
- * @returns {number|null} Unix timestamp (ms), or null if not yet set.
+ * Escapes a string for safe insertion as HTML text content.
+ * @param {string} s
+ * @returns {string}
  */
-function getEodTs() {
-  return parseInt(localStorage.getItem(eodKey()) || '0') || null;
+function escHtml(s) {
+  return String(s)
+    .replace(/&amp;/g, '&amp;amp;')
+    .replace(/&lt;/g, '&amp;lt;')
+    .replace(/>/g, '&amp;gt;')
+    .replace(/"/g, '&amp;quot;');
+}
+
+/* ── Date / time formatting ── */
+
+/**
+ * Formats a Date as YYYY-MM-DD using UTC (toISOString).
+ * Note: uses UTC midnight, not local midnight — callers near midnight in UTC+ zones
+ * should be aware that this may return the previous calendar day.
+ * @param {Date} d
+ * @returns {string} e.g. '2026-05-25'
+ */
+function dk(d) {
+  return d.toISOString().slice(0, 10);
 }
 
 /**
- * Updates the "end the day" button to show the recorded end time (if any)
- * or its default label, and dims the button once a time is set.
+ * Formats a Unix timestamp as HH:MM in 24-hour local time.
+ * @param {number} ts - Unix timestamp in milliseconds.
+ * @returns {string} e.g. '09:30'
  */
-function renderEodBtn() {
-  const btn = document.getElementById('eodBtn');
-  if (!btn) return;
-  const eod = getEodTs();
-  if (eod) {
-    const d = new Date(eod);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.textContent = `🌙 ended ${hh}:${mm}`;
-    btn.style.opacity = '0.7';
-  } else {
-    btn.textContent = '🌙 end the day';
-    btn.style.opacity = '';
-  }
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
-/* ── Pomodoro weekly clear ── */
-
 /**
- * Clears the pomodoro log when a new ISO week begins.
- * Compares the stored week key against the current ISO week; if they differ,
- * the log is removed and the new week key is saved.
+ * Formats a duration in milliseconds as a compact time string.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
  */
-function checkPomoWeeklyClear() {
-  const now = new Date();
-  const currentWeekKey = `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
-  const storedWeek = localStorage.getItem('wl_pomo_week');
-  if (storedWeek &amp;&amp; storedWeek !== currentWeekKey) {
-    localStorage.removeItem(STORE_POMO_LOG);
-  }
-  localStorage.setItem('wl_pomo_week', currentWeekKey);
+function fmtElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  const hh = Math.floor(s / 3600),
+    mm = Math.floor((s % 3600) / 60),
+    ss = s % 60;
+  if (hh > 0)
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
-/* ── Event listeners ── */
-document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
-document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
-document.getElementById('captureInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addEntry(false);
-});
-document.getElementById('timerPause').addEventListener('click', () => {
-  if (activeTimer &amp;&amp; activeTimer.paused) resumeTimer();
-  else pauseTimer();
-});
-document.getElementById('prevDay').addEventListener('click', () => {
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() - 1);
-  render();
-});
-document.getElementById('nextDay').addEventListener('click', () => {
-  if (isToday(viewDate)) return;
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() + 1);
-  render();
-});
-
-/* ── Auto-backup ── */
+/* ── Billing time rounding ── */
 
 /**
- * Returns true if today has at least one log entry that has not yet been
- * exported (i.e. the last export date differs from today's date key).
+ * Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
+ * Used for billing time estimates — even a 1-second task costs one half-hour slot.
+ *
+ * Assumption: billing granularity is 30 minutes and the minimum billable unit is
+ * 30 minutes. Changing this assumption requires updating both this function and
+ * any UI that displays billable totals (04-render.js renderBillableBar).
+ *
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
+ */
+function roundUp30(ms) {
+  const SLOT = 30 * 60 * 1000;
+  return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
+}
+
+/**
+ * Rounds a timestamp to the nearest 30-minute clock mark.
+ *
+ * Tie-breaking rule (at exactly 15 min into a 30-min slot): rounds DOWN.
+ * Rationale: conservative for billing — a task must exceed the midpoint of the slot
+ * before the next slot is claimed.
+ *
+ * Assumption: rounding ties (exactly 15 min past a slot start) are resolved in
+ * favour of the earlier slot to avoid inflating billable time. This matches the
+ * intent documented in DATA.md under wl_entries.ts.
+ *
+ * @param {number} ts - Unix timestamp in milliseconds.
+ * @returns {number} Rounded Unix timestamp in milliseconds.
+ */
+function roundToNearest30(ts) {
+  const d = new Date(ts);
+  const m = d.getMinutes();
+  const blockStart = Math.floor(m / 30) * 30; // 0 or 30
+  const withinBlock = m - blockStart; // 0–29
+  // withinBlock &lt;= 15 → keep blockStart (rounds down / tie goes down)
+  // withinBlock >  15 → advance to blockStart + 30
+  const roundedMins = withinBlock &lt;= 15 ? blockStart : blockStart + 30;
+  const result = new Date(d);
+  result.setSeconds(0, 0);
+  result.setMinutes(roundedMins % 60);
+  if (roundedMins >= 60) result.setHours(d.getHours() + 1);
+  return result.getTime();
+}
+
+/* ── Schema validators ── */
+// These are used by 01-state.js load() to strip malformed records from localStorage.
+// They are pure: each validates only its argument with no side-effects.
+
+/**
+ * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
+ * @param {*} e - Candidate value parsed from JSON.
  * @returns {boolean}
  */
-function todayHasUnexportedEntries() {
-  const todayKey = dk(new Date());
-  const lastExport = localStorage.getItem('wl_last_export');
-  return entries.some((e) => e.date === todayKey) &amp;&amp; lastExport !== todayKey;
-}
-
-/**
- * Writes a recoverable snapshot of today's log entries to localStorage every
- * 30 minutes.  The snapshot contains both a human-readable plaintext summary
- * and the raw entry/category arrays so data can be recovered after accidental
- * clearing.  No-ops when there are no entries for today.
- */
-function saveSnapshot() {
-  const todayKey = dk(new Date());
-  const dayEntries = entries
-    .filter((e) => e.date === todayKey)
-    .slice()
-    .sort((a, b) => a.ts - b.ts);
-  if (!dayEntries.length) return;
-  const order = [],
-    grouped = {};
-  dayEntries.forEach((e) => {
-    const key = e.text.toLowerCase();
-    if (!grouped[key]) {
-      order.push(key);
-      grouped[key] = { label: e.text, tag: e.tag, totalMs: 0, hasTime: false };
-    }
-    if (e.tsEnd &amp;&amp; e.tsEnd > e.ts) {
-      grouped[key].totalMs += e.tsEnd - e.ts;
-      grouped[key].hasTime = true;
-    }
-  });
-  const lines = order.map((key) => {
-    const { label, tag, totalMs, hasTime } = grouped[key];
-    let timeStr;
-    if (hasTime) {
-      const mins = Math.round(totalMs / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      timeStr = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-    } else {
-      timeStr = '--';
-    }
-    return `${timeStr} - ${label} - ${getCatLabel(tag)}`;
-  });
-  localStorage.setItem(
-    'wl_snapshot',
-    JSON.stringify({
-      date: todayKey,
-      text: lines.join('\n'),
-      entries: entries,
-      categories: categories,
-    })
+function validEntry(e) {
+  return !!(
+    e &amp;&amp;
+    typeof e.id === 'string' &amp;&amp;
+    typeof e.text === 'string' &amp;&amp;
+    typeof e.ts === 'number' &amp;&amp;
+    typeof e.date === 'string' &amp;&amp;
+    /^\d{4}-\d{2}-\d{2}$/.test(e.date)
   );
 }
 
 /**
- * Formerly offered to download yesterday's snapshot on page load.
- * The banner was removed — end-of-day modal handles exports now.
- * Kept as a no-op stub to avoid removing the call sites.
+ * Returns true if `c` is a well-formed category object.
+ * @param {*} c - Candidate value parsed from JSON.
+ * @returns {boolean}
  */
-function checkSnapshot() {
-  // Banner removed — end-of-day modal handles exports now
+function validCategory(c) {
+  return !!(
+    c &amp;&amp;
+    typeof c.id === 'string' &amp;&amp;
+    typeof c.label === 'string' &amp;&amp;
+    typeof c.color === 'string'
+  );
 }
 
-saveSnapshot();
-setInterval(saveSnapshot, 30 * 60 * 1000);
+/**
+ * Returns true if `t` is a well-formed plan task with a recognised status value.
+ * @param {*} t - Candidate value parsed from JSON.
+ * @returns {boolean}
+ */
+function validPlanTask(t) {
+  return !!(
+    t &amp;&amp;
+    typeof t.id === 'string' &amp;&amp;
+    typeof t.text === 'string' &amp;&amp;
+    typeof t.date === 'string' &amp;&amp;
+    /^\d{4}-\d{2}-\d{2}$/.test(t.date) &amp;&amp;
+    ['todo', 'inprogress', 'done', 'pending', 'blocked', 'upcoming'].includes(t.status)
+  );
+}
 
-wlLog.config({
-  version: '1.8.0',
-  date: dk(new Date()),
-  entries: entries.length,
-  categories: categories.length,
-  timer: activeTimer ? 'active' : 'idle',
-  snapshot: !!localStorage.getItem('wl_snapshot'),
-});
+/**
+ * Returns true if `b` is a well-formed timeblock record.
+ * @param {*} b - Candidate value parsed from JSON.
+ * @returns {boolean}
+ */
+function validBlock(b) {
+  return !!(
+    b &amp;&amp;
+    typeof b.id === 'string' &amp;&amp;
+    typeof b.date === 'string' &amp;&amp;
+    typeof b.slot === 'number' &amp;&amp;
+    typeof b.duration === 'number' &amp;&amp;
+    typeof b.text === 'string'
+  );
+}
+
+/**
+ * Returns true if `t` is a resumable timer state.
+ * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
+ * @param {*} t - Candidate value parsed from JSON.
+ * @returns {boolean}
+ */
+function validTimer(t) {
+  if (!t || typeof t.entryId !== 'string') return false;
+  // Running timer: startTs is a number (when the current run started)
+  // Paused timer:  startTs is null, accumulatedMs holds the work time so far
+  if (t.paused === true) return typeof t.accumulatedMs === 'number';
+  return typeof t.startTs === 'number';
+}
+
+/**
+ * Returns true if `e` is a valid Pomodoro session log entry.
+ * @param {*} e - Candidate value.
+ * @returns {boolean}
+ */
+function validPomoEntry(e) {
+  return !!(e &amp;&amp; typeof e.ts === 'number' &amp;&amp; typeof e.mins === 'number');
+}
+
+// ── CommonJS export (Node / unit tests only) ─────────────────────────────────
+// In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
+// this block is skipped — functions remain as globals in the closure.
+if (typeof module !== 'undefined') {
+  module.exports = {
+    safeCssColor,
+    escHtml,
+    dk,
+    fmtTime,
+    fmtElapsed,
+    roundUp30,
+    roundToNearest30,
+    validEntry,
+    validCategory,
+    validPlanTask,
+    validBlock,
+    validTimer,
+    validPomoEntry,
+  };
+}
 </code></pre>
         </article>
     </section>

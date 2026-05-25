@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 07-lifecycle.js</title>
+    <title>JSDoc: Source: 01b-migrate.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 07-lifecycle.js</h1>
+    <h1 class="page-title">Source: 01b-migrate.js</h1>
 
     
 
@@ -26,226 +26,71 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Start of day ── */
+            <pre class="prettyprint source linenums"><code>/**
+ * @file 01b-migrate.js
+ * Automatic localStorage schema migration.
+ *
+ * Runs once per page load, before load() reads from the versioned keys.
+ * Each migration entry maps an old key name to the new one. If the old
+ * key has data and the new key is empty, the data is copied across and
+ * the old key is removed. Already-migrated users are unaffected (the
+ * old key simply won't exist).
+ *
+ * Adding a new migration: append an entry to MIGRATIONS. Never remove
+ * old entries — a user might be upgrading across multiple versions.
+ *
+ * @see DATA.md for the full localStorage schema reference.
+ */
 
 /**
- * Returns the localStorage key used to store today's start-of-day timestamp.
- * @returns {string} Key in the format `wl_sod_YYYY-MM-DD`.
+ * Describes one key-rename migration.
+ * @typedef {{ from: string, to: string, description: string }} Migration
  */
-function sodKey() {
-  return 'wl_sod_' + dk(new Date());
-}
-/**
- * Retrieves today's recorded start-of-day timestamp from localStorage.
- * @returns {number|null} Unix timestamp (ms), or null if not yet set.
- */
-function getDayStart() {
-  return parseInt(localStorage.getItem(sodKey()) || '0') || null;
-}
 
-/**
- * Updates the "start the day" button to show the recorded start time (if any)
- * or its default label. Colours the button green once a time is set.
- */
-function renderSodBtn() {
-  const btn = document.getElementById('sodBtn');
-  if (!btn) return;
-  const sod = getDayStart();
-  if (sod) {
-    const d = new Date(sod);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.textContent = `🌅 started ${hh}:${mm}`;
-    btn.style.color = '#1D9E75';
-    btn.style.borderColor = '#1D9E75';
-  } else {
-    btn.textContent = '🌅 start the day';
-    btn.style.color = '';
-    btn.style.borderColor = '';
-  }
-}
-
-document.getElementById('sodBtn').addEventListener('click', () => {
-  const existing = getDayStart();
-  if (existing) {
-    // Allow re-setting — ask for time
-    const d = new Date(existing);
-    const cur =
-      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-    const val = prompt(`Started at (HH:MM):`, cur);
-    if (!val) return;
-    const [h, m] = val.split(':').map(Number);
-    if (isNaN(h) || isNaN(m)) return;
-    const ts = new Date();
-    ts.setHours(h, m, 0, 0);
-    localStorage.setItem(sodKey(), String(ts.getTime()));
-  } else {
-    localStorage.setItem(sodKey(), String(Date.now()));
-  }
-  renderSodBtn();
-  renderTimeblock();
-});
-
-/* ── End of day button state ── */
+/** @type {Migration[]} */
+const MIGRATIONS = [
+  // v0 → v1: keys gained _v1 suffix and some were renamed for clarity.
+  // (Original single-file release used these bare names.)
+  { from: 'wl_entries', to: 'wl_entries_v1', description: 'entries array' },
+  { from: 'wl_cats', to: 'wl_cats_v1', description: 'categories array' },
+  { from: 'wl_categories', to: 'wl_cats_v1', description: 'categories array (alt name)' },
+  { from: 'wl_timer', to: 'wl_timer_v1', description: 'active timer state' },
+  { from: 'wl_active_timer', to: 'wl_timer_v1', description: 'active timer state (alt name)' },
+  { from: 'wl_plan', to: 'wl_plan_v1', description: 'plan tasks array' },
+  { from: 'wl_pomoLog', to: 'wl_pomoLog_v1', description: 'pomodoro session log' },
+  { from: 'wl_qp_hidden', to: 'wl_qp_hidden_v1', description: 'quick-pick hidden tasks' },
+];
 
 /**
- * Returns the localStorage key used to store today's end-of-day timestamp.
- * @returns {string} Key in the format `wl_eod_YYYY-MM-DD`.
+ * Runs all pending schema migrations.
+ * Safe to call multiple times — migrations are skipped if the source key
+ * is absent or the destination key already has data.
  */
-function eodKey() {
-  return 'wl_eod_' + dk(new Date());
-}
-
-/**
- * Retrieves today's recorded end-of-day timestamp from localStorage.
- * @returns {number|null} Unix timestamp (ms), or null if not yet set.
- */
-function getEodTs() {
-  return parseInt(localStorage.getItem(eodKey()) || '0') || null;
-}
-
-/**
- * Updates the "end the day" button to show the recorded end time (if any)
- * or its default label, and dims the button once a time is set.
- */
-function renderEodBtn() {
-  const btn = document.getElementById('eodBtn');
-  if (!btn) return;
-  const eod = getEodTs();
-  if (eod) {
-    const d = new Date(eod);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.textContent = `🌙 ended ${hh}:${mm}`;
-    btn.style.opacity = '0.7';
-  } else {
-    btn.textContent = '🌙 end the day';
-    btn.style.opacity = '';
-  }
-}
-
-/* ── Pomodoro weekly clear ── */
-
-/**
- * Clears the pomodoro log when a new ISO week begins.
- * Compares the stored week key against the current ISO week; if they differ,
- * the log is removed and the new week key is saved.
- */
-function checkPomoWeeklyClear() {
-  const now = new Date();
-  const currentWeekKey = `${now.getFullYear()}-W${String(getISOWeek(now)).padStart(2, '0')}`;
-  const storedWeek = localStorage.getItem('wl_pomo_week');
-  if (storedWeek &amp;&amp; storedWeek !== currentWeekKey) {
-    localStorage.removeItem(STORE_POMO_LOG);
-  }
-  localStorage.setItem('wl_pomo_week', currentWeekKey);
-}
-
-/* ── Event listeners ── */
-document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
-document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
-document.getElementById('captureInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addEntry(false);
-});
-document.getElementById('timerPause').addEventListener('click', () => {
-  if (activeTimer &amp;&amp; activeTimer.paused) resumeTimer();
-  else pauseTimer();
-});
-document.getElementById('prevDay').addEventListener('click', () => {
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() - 1);
-  render();
-});
-document.getElementById('nextDay').addEventListener('click', () => {
-  if (isToday(viewDate)) return;
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() + 1);
-  render();
-});
-
-/* ── Auto-backup ── */
-
-/**
- * Returns true if today has at least one log entry that has not yet been
- * exported (i.e. the last export date differs from today's date key).
- * @returns {boolean}
- */
-function todayHasUnexportedEntries() {
-  const todayKey = dk(new Date());
-  const lastExport = localStorage.getItem('wl_last_export');
-  return entries.some((e) => e.date === todayKey) &amp;&amp; lastExport !== todayKey;
-}
-
-/**
- * Writes a recoverable snapshot of today's log entries to localStorage every
- * 30 minutes.  The snapshot contains both a human-readable plaintext summary
- * and the raw entry/category arrays so data can be recovered after accidental
- * clearing.  No-ops when there are no entries for today.
- */
-function saveSnapshot() {
-  const todayKey = dk(new Date());
-  const dayEntries = entries
-    .filter((e) => e.date === todayKey)
-    .slice()
-    .sort((a, b) => a.ts - b.ts);
-  if (!dayEntries.length) return;
-  const order = [],
-    grouped = {};
-  dayEntries.forEach((e) => {
-    const key = e.text.toLowerCase();
-    if (!grouped[key]) {
-      order.push(key);
-      grouped[key] = { label: e.text, tag: e.tag, totalMs: 0, hasTime: false };
+function migrateStorage() {
+  let migratedCount = 0;
+  for (const { from, to, description } of MIGRATIONS) {
+    const oldData = localStorage.getItem(from);
+    if (!oldData) continue; // already migrated or never existed
+    if (localStorage.getItem(to)) {
+      // Destination already has data — don't overwrite; just clean up old key
+      localStorage.removeItem(from);
+      wlLog.warn(
+        `migrate: removed stale old key "${from}" (${description}); "${to}" already exists`
+      );
+      continue;
     }
-    if (e.tsEnd &amp;&amp; e.tsEnd > e.ts) {
-      grouped[key].totalMs += e.tsEnd - e.ts;
-      grouped[key].hasTime = true;
-    }
-  });
-  const lines = order.map((key) => {
-    const { label, tag, totalMs, hasTime } = grouped[key];
-    let timeStr;
-    if (hasTime) {
-      const mins = Math.round(totalMs / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      timeStr = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-    } else {
-      timeStr = '--';
-    }
-    return `${timeStr} - ${label} - ${getCatLabel(tag)}`;
-  });
-  localStorage.setItem(
-    'wl_snapshot',
-    JSON.stringify({
-      date: todayKey,
-      text: lines.join('\n'),
-      entries: entries,
-      categories: categories,
-    })
-  );
+    localStorage.setItem(to, oldData);
+    localStorage.removeItem(from);
+    migratedCount++;
+    wlLog.info(`migrate: "${from}" → "${to}" (${description})`);
+  }
+  if (migratedCount > 0) {
+    wlLog.info(`migrate: completed ${migratedCount} migration(s)`);
+  }
 }
 
-/**
- * Formerly offered to download yesterday's snapshot on page load.
- * The banner was removed — end-of-day modal handles exports now.
- * Kept as a no-op stub to avoid removing the call sites.
- */
-function checkSnapshot() {
-  // Banner removed — end-of-day modal handles exports now
-}
-
-saveSnapshot();
-setInterval(saveSnapshot, 30 * 60 * 1000);
-
-wlLog.config({
-  version: '1.8.0',
-  date: dk(new Date()),
-  entries: entries.length,
-  categories: categories.length,
-  timer: activeTimer ? 'active' : 'idle',
-  snapshot: !!localStorage.getItem('wl_snapshot'),
-});
+// Run immediately so data is in the right keys before load() is called.
+migrateStorage();
 </code></pre>
         </article>
     </section>

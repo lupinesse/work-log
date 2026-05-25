@@ -248,6 +248,74 @@ Set to <code>''</code> to disable link generation.</p>
 
         
             
+<h4 class="name" id="MIGRATIONS"><span class="type-signature">(constant) </span>MIGRATIONS<span class="type-signature"> :Array.&lt;<a href="global.html#Migration">Migration</a>></span></h4>
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;<a href="global.html#Migration">Migration</a>></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="01b-migrate.js.html">01b-migrate.js</a>, <a href="01b-migrate.js.html#line23">line 23</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
 <h4 class="name" id="STORE_BLOCKS"><span class="type-signature">(constant) </span>STORE_BLOCKS<span class="type-signature"> :string</span></h4>
 
 
@@ -1861,7 +1929,7 @@ Today is excluded so the streak only increments once the day has been completed.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line405">line 405</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line335">line 335</a>
     </li></ul></dd>
     
 
@@ -2796,7 +2864,7 @@ in-memory cache so future exports fall back to browser downloads.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line320">line 320</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line327">line 327</a>
     </li></ul></dd>
     
 
@@ -3264,7 +3332,9 @@ Called once by 07-lifecycle.js after state is loaded.</p>
 
 
 <div class="description">
-    <p>Formats a Date as YYYY-MM-DD using local time. Used as the canonical day key throughout.</p>
+    <p>Formats a Date as YYYY-MM-DD using UTC (toISOString).
+Note: uses UTC midnight, not local midnight — callers near midnight in UTC+ zones
+should be aware that this may return the previous calendar day.</p>
 </div>
 
 
@@ -3357,7 +3427,7 @@ Called once by 07-lifecycle.js after state is loaded.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line273">line 273</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line47">line 47</a>
     </li></ul></dd>
     
 
@@ -4169,7 +4239,7 @@ The previously saved next-action note is restored if one exists for the active e
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line421">line 421</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line30">line 30</a>
     </li></ul></dd>
     
 
@@ -4367,7 +4437,7 @@ quick-pick items. Triggers a file download or writes to the save folder.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line221">line 221</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line228">line 228</a>
     </li></ul></dd>
     
 
@@ -4599,7 +4669,7 @@ or falls back to a browser download.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line72">line 72</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line79">line 79</a>
     </li></ul></dd>
     
 
@@ -5365,7 +5435,7 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line310">line 310</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line66">line 66</a>
     </li></ul></dd>
     
 
@@ -5524,7 +5594,7 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line289">line 289</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line272">line 272</a>
     </li></ul></dd>
     
 
@@ -5838,7 +5908,7 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line301">line 301</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line56">line 56</a>
     </li></ul></dd>
     
 
@@ -6108,7 +6178,7 @@ The returned colour is always sanitised through safeCssColor.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line21">line 21</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line10">line 10</a>
     </li></ul></dd>
     
 
@@ -7514,7 +7584,7 @@ IndexedDB (with an in-memory cache).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line278">line 278</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line285">line 285</a>
     </li></ul></dd>
     
 
@@ -8100,6 +8170,12 @@ duration button.</p>
 <li>The matching plan task's <code>billable</code> flag.</li>
 <li>The category default.</li>
 </ol>
+<p>Assumption: entries and tasks where <code>billable</code> is <code>undefined</code> are treated as
+billable by default. This preserves backward compatibility with data created
+before the billable flag was introduced — older entries must not silently
+disappear from billing reports after an upgrade.
+If the default should change to non-billable, a migration of existing
+localStorage data is required (see DATA.md § wl_entries).</p>
 </div>
 
 
@@ -8192,7 +8268,7 @@ duration button.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line55">line 55</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line63">line 63</a>
     </li></ul></dd>
     
 
@@ -8258,7 +8334,7 @@ duration button.</p>
 
 
 <div class="description">
-    <p>Returns true if <code>d</code> falls on today's calendar date (local time).</p>
+    <p>Returns true if <code>d</code> falls on today's calendar date (UTC).</p>
 </div>
 
 
@@ -8351,7 +8427,7 @@ duration button.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line281">line 281</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line264">line 264</a>
     </li></ul></dd>
     
 
@@ -8821,7 +8897,7 @@ Falls back to the last snapshot if entries are missing from primary storage.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line165">line 165</a>
+        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line89">line 89</a>
     </li></ul></dd>
     
 
@@ -9180,6 +9256,96 @@ Maintains chronological sort order by <code>id</code>.</p>
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
         <a href="12a-changelog.js.html">12a-changelog.js</a>, <a href="12a-changelog.js.html#line614">line 614</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="migrateStorage"><span class="type-signature"></span>migrateStorage<span class="signature">()</span><span class="type-signature"></span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Runs all pending schema migrations.
+Safe to call multiple times — migrations are skipped if the source key
+is absent or the destination key already has data.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="01b-migrate.js.html">01b-migrate.js</a>, <a href="01b-migrate.js.html#line41">line 41</a>
     </li></ul></dd>
     
 
@@ -10283,7 +10449,7 @@ current expiry dates (one per line).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line264">line 264</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line271">line 271</a>
     </li></ul></dd>
     
 
@@ -10667,7 +10833,7 @@ browsers that do not support the API.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line377">line 377</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line384">line 384</a>
     </li></ul></dd>
     
 
@@ -12274,7 +12440,7 @@ folder name (green) or a &quot;pick save folder&quot; prompt (default colour).</
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line397">line 397</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line404">line 404</a>
     </li></ul></dd>
     
 
@@ -13124,8 +13290,13 @@ tracking no longer exists the timer is cleared. No-ops if no timer is active.</p
 
 
 <div class="description">
-    <p>Rounds a timestamp to the nearest 30-minute clock mark.
-0–15 min into a block rounds down; 16–45 rounds to the next half-hour; 46–59 rounds up.</p>
+    <p>Rounds a timestamp to the nearest 30-minute clock mark.</p>
+<p>Tie-breaking rule (at exactly 15 min into a 30-min slot): rounds DOWN.
+Rationale: conservative for billing — a task must exceed the midpoint of the slot
+before the next slot is claimed.</p>
+<p>Assumption: rounding ties (exactly 15 min past a slot start) are resolved in
+favour of the earlier slot to avoid inflating billable time. This matches the
+intent documented in DATA.md under wl_entries.ts.</p>
 </div>
 
 
@@ -13218,7 +13389,7 @@ tracking no longer exists the timer is cleared. No-ops if no timer is active.</p
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line336">line 336</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line108">line 108</a>
     </li></ul></dd>
     
 
@@ -13404,7 +13575,7 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line358">line 358</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line287">line 287</a>
     </li></ul></dd>
     
 
@@ -13471,7 +13642,10 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
 
 <div class="description">
     <p>Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
-Used for billing time estimates.</p>
+Used for billing time estimates — even a 1-second task costs one half-hour slot.</p>
+<p>Assumption: billing granularity is 30 minutes and the minimum billable unit is
+30 minutes. Changing this assumption requires updating both this function and
+any UI that displays billable totals (04-render.js renderBillableBar).</p>
 </div>
 
 
@@ -13564,7 +13738,7 @@ Used for billing time estimates.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line325">line 325</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line89">line 89</a>
     </li></ul></dd>
     
 
@@ -13724,7 +13898,7 @@ Prevents malformed user-supplied colour values from breaking layout or injecting
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line8">line 8</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line18">line 18</a>
     </li></ul></dd>
     
 
@@ -13835,7 +14009,7 @@ Prevents new entries from appearing to start before a prior entry's end time.</p
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line370">line 370</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line300">line 300</a>
     </li></ul></dd>
     
 
@@ -13947,7 +14121,7 @@ accidental data loss if save() is called before load() completes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line200">line 200</a>
+        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line124">line 124</a>
     </li></ul></dd>
     
 
@@ -16670,7 +16844,7 @@ across sessions, and updates the in-memory cache.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line302">line 302</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line309">line 309</a>
     </li></ul></dd>
     
 
@@ -18956,7 +19130,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line128">line 128</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line178">line 178</a>
     </li></ul></dd>
     
 
@@ -19111,7 +19285,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line103">line 103</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line148">line 148</a>
     </li></ul></dd>
     
 
@@ -19266,7 +19440,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line88">line 88</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line132">line 132</a>
     </li></ul></dd>
     
 
@@ -19421,7 +19595,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line113">line 113</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line162">line 162</a>
     </li></ul></dd>
     
 
@@ -19576,7 +19750,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line156">line 156</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line208">line 208</a>
     </li></ul></dd>
     
 
@@ -19732,7 +19906,7 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line144">line 144</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line195">line 195</a>
     </li></ul></dd>
     
 
@@ -19838,7 +20012,7 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line383">line 383</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line313">line 313</a>
     </li></ul></dd>
     
 
@@ -20283,7 +20457,7 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line393">line 393</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line323">line 323</a>
     </li></ul></dd>
     
 
@@ -20486,7 +20660,7 @@ download if the FSA handle is missing or permission is not granted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line338">line 338</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line345">line 345</a>
     </li></ul></dd>
     
 
@@ -20538,6 +20712,82 @@ download if the FSA handle is missing or permission is not granted.</p>
     
 
     
+        <h3 class="subsection-title">Type Definitions</h3>
+
+        
+                
+<h4 class="name" id="Migration">Migration</h4>
+
+
+
+
+<div class="description">
+    <p>Describes one key-rename migration.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Object</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="01b-migrate.js.html">01b-migrate.js</a>, <a href="01b-migrate.js.html#line17">line 17</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+            
+    
 
     
 </article>
@@ -20550,7 +20800,7 @@ download if the FSA handle is missing or permission is not granted.</p>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#MIGRATIONS">MIGRATIONS</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#checkReminders">checkReminders</a></li><li><a href="global.html#checkSnapshot">checkSnapshot</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#getAnthropicKey">getAnthropicKey</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#migrateStorage">migrateStorage</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#playWaterReminderSound">playWaterReminderSound</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setAnthropicKey">setAnthropicKey</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#todayHasUnexportedEntries">todayHasUnexportedEntries</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
 </nav>
 
 <br class="clear">
