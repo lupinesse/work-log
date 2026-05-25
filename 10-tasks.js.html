@@ -47,14 +47,22 @@ let _cpEditIdx = null; // index of checkpoint being edited
 
 /**
  * Loads plan tasks from localStorage into `planTasks`, filtering out invalid
- * entries via `validPlanTask`. Resets to empty array on parse error.
+ * entries via `validPlanTask`. Drops are reported via wlLog.warn so data-quality
+ * issues are visible in DevTools. Resets to empty array on parse error.
  */
 function loadPlan() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]');
-    planTasks = Array.isArray(raw) ? raw.filter(validPlanTask) : [];
+    const all = Array.isArray(raw) ? raw : [];
+    planTasks = all.filter(validPlanTask);
+    if (planTasks.length &lt; all.length)
+      wlLog.warn(`loadPlan: dropped ${all.length - planTasks.length} invalid task record(s)`, {
+        total: all.length,
+        kept: planTasks.length,
+      });
   } catch (e) {
     planTasks = [];
+    wlLog.error('loadPlan: failed to parse plan tasks from localStorage', e);
   }
 }
 /** Persists the current `planTasks` array to localStorage. */

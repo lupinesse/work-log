@@ -47,15 +47,23 @@ const notifiedBlocks = new Set();
 
 /**
  * Loads time blocks from localStorage into `blocks`, filtering invalid entries.
+ * Drops are reported via wlLog.warn so data-quality issues are visible in DevTools.
  * Applies a one-time migration to shift existing block slots by +2 when the
  * time-block grid start time changed from 08:00 to 07:00.
  */
 function loadBlocks() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
-    blocks = Array.isArray(raw) ? raw.filter(validBlock) : [];
+    const all = Array.isArray(raw) ? raw : [];
+    blocks = all.filter(validBlock);
+    if (blocks.length &lt; all.length)
+      wlLog.warn(`loadBlocks: dropped ${all.length - blocks.length} invalid block record(s)`, {
+        total: all.length,
+        kept: blocks.length,
+      });
   } catch (e) {
     blocks = [];
+    wlLog.error('loadBlocks: failed to parse time blocks from localStorage', e);
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {

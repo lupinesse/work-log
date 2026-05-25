@@ -956,7 +956,7 @@ No-ops if the input is empty.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1168">line 1168</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1176">line 1176</a>
     </li></ul></dd>
     
 
@@ -1420,7 +1420,7 @@ with <code>done</code> reset to false for a fresh day.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line747">line 747</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line755">line 755</a>
     </li></ul></dd>
     
 
@@ -2274,7 +2274,7 @@ No-ops when not viewing today.</li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line535">line 535</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line543">line 543</a>
     </li></ul></dd>
     
 
@@ -2502,7 +2502,7 @@ Kept as a no-op stub to avoid removing the call sites.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line337">line 337</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line346">line 346</a>
     </li></ul></dd>
     
 
@@ -4577,7 +4577,7 @@ day start/end times and total workday duration.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line263">line 263</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line272">line 272</a>
     </li></ul></dd>
     
 
@@ -7154,7 +7154,7 @@ The lookup is case-insensitive and trims whitespace.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line871">line 871</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line879">line 879</a>
     </li></ul></dd>
     
 
@@ -8852,7 +8852,9 @@ HTML-escaped and appended.</p>
 
 <div class="description">
     <p>Loads all persistent state from localStorage into module-level variables.
-Invalid records are silently dropped per-item rather than rejecting entire arrays.
+Invalid records are dropped per-item (rather than rejecting entire arrays)
+and any drops are reported via wlLog.warn so data-quality issues are visible
+in DevTools rather than silently disappearing.
 Falls back to the last snapshot if entries are missing from primary storage.</p>
 </div>
 
@@ -8897,7 +8899,7 @@ Falls back to the last snapshot if entries are missing from primary storage.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line89">line 89</a>
+        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line91">line 91</a>
     </li></ul></dd>
     
 
@@ -8942,6 +8944,7 @@ Falls back to the last snapshot if entries are missing from primary storage.</p>
 
 <div class="description">
     <p>Loads time blocks from localStorage into <code>blocks</code>, filtering invalid entries.
+Drops are reported via wlLog.warn so data-quality issues are visible in DevTools.
 Applies a one-time migration to shift existing block slots by +2 when the
 time-block grid start time changed from 08:00 to 07:00.</p>
 </div>
@@ -8987,7 +8990,7 @@ time-block grid start time changed from 08:00 to 07:00.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line25">line 25</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line26">line 26</a>
     </li></ul></dd>
     
 
@@ -9076,7 +9079,7 @@ Seeds localStorage with <code>EXPIRY_SEED</code> on first run.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line850">line 850</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line858">line 858</a>
     </li></ul></dd>
     
 
@@ -9121,7 +9124,8 @@ Seeds localStorage with <code>EXPIRY_SEED</code> on first run.</p>
 
 <div class="description">
     <p>Loads plan tasks from localStorage into <code>planTasks</code>, filtering out invalid
-entries via <code>validPlanTask</code>. Resets to empty array on parse error.</p>
+entries via <code>validPlanTask</code>. Drops are reported via wlLog.warn so data-quality
+issues are visible in DevTools. Resets to empty array on parse error.</p>
 </div>
 
 
@@ -9165,7 +9169,7 @@ entries via <code>validPlanTask</code>. Resets to empty array on parse error.</p
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line24">line 24</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line25">line 25</a>
     </li></ul></dd>
     
 
@@ -10020,7 +10024,7 @@ of <code>planTasks</code>. Calling again for the same block ID closes the picker
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line439">line 439</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line447">line 447</a>
     </li></ul></dd>
     
 
@@ -10182,7 +10186,7 @@ Calling again for the same task ID closes the picker.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1069">line 1069</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1077">line 1077</a>
     </li></ul></dd>
     
 
@@ -10361,7 +10365,7 @@ current expiry dates (one per line).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line880">line 880</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line888">line 888</a>
     </li></ul></dd>
     
 
@@ -10566,7 +10570,7 @@ that version was pending/blocked/upcoming or in-progress.</li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line679">line 679</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line687">line 687</a>
     </li></ul></dd>
     
 
@@ -11030,7 +11034,7 @@ to signal pomodoro completion. Silently skips if Web Audio is unavailable.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line198">line 198</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line207">line 207</a>
     </li></ul></dd>
     
 
@@ -11467,7 +11471,8 @@ Smaller gaps are used for higher segment counts to keep them visually distinct.<
 
 
 <div class="description">
-    <p>Reads and validates the pomodoro session log from localStorage.</p>
+    <p>Reads and validates the pomodoro session log from localStorage.
+Invalid records are dropped and reported via wlLog.warn.</p>
 </div>
 
 
@@ -11511,7 +11516,7 @@ Smaller gaps are used for higher segment counts to keep them visually distinct.<
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line154">line 154</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line155">line 155</a>
     </li></ul></dd>
     
 
@@ -11623,7 +11628,7 @@ current time. Hides the line when outside the grid's time range
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line606">line 606</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line614">line 614</a>
     </li></ul></dd>
     
 
@@ -12083,7 +12088,7 @@ there are no matching tasks.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line921">line 921</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line929">line 929</a>
     </li></ul></dd>
     
 
@@ -12620,7 +12625,7 @@ headers with counts. Also renders the completed-tasks section.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line43">line 43</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line51">line 51</a>
     </li></ul></dd>
     
 
@@ -12709,7 +12714,7 @@ Shows date/time, duration, and the task that was active during each session.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line167">line 167</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line176">line 176</a>
     </li></ul></dd>
     
 
@@ -12979,7 +12984,7 @@ moving existing blocks and dropping tasks from the plan list.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line76">line 76</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line84">line 84</a>
     </li></ul></dd>
     
 
@@ -14121,7 +14126,7 @@ accidental data loss if save() is called before load() completes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line124">line 124</a>
+        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line144">line 144</a>
     </li></ul></dd>
     
 
@@ -14209,7 +14214,7 @@ accidental data loss if save() is called before load() completes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line40">line 40</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line48">line 48</a>
     </li></ul></dd>
     
 
@@ -14388,7 +14393,7 @@ the modal. Invalid lines are surfaced in the feedback element but not saved.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line893">line 893</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line901">line 901</a>
     </li></ul></dd>
     
 
@@ -14638,7 +14643,7 @@ The key is stored case-insensitively.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line33">line 33</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line41">line 41</a>
     </li></ul></dd>
     
 
@@ -15442,7 +15447,7 @@ Pass null or an empty string to remove the block's emoji.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line514">line 514</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line522">line 522</a>
     </li></ul></dd>
     
 
@@ -15890,7 +15895,7 @@ Pass null or an empty string to remove the task's emoji.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1149">line 1149</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line1157">line 1157</a>
     </li></ul></dd>
     
 
@@ -16255,7 +16260,7 @@ Slot 0 = <code>TB_START:00</code>, slot 2 = <code>TB_START+1:00</code>, etc.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line50">line 50</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line58">line 58</a>
     </li></ul></dd>
     
 
@@ -17106,7 +17111,7 @@ empty string if there are no overlaps.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line402">line 402</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line410">line 410</a>
     </li></ul></dd>
     
 
@@ -17311,7 +17316,7 @@ elapsed time is counted from the scheduled start, not wall-clock now.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line629">line 629</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line637">line 637</a>
     </li></ul></dd>
     
 
@@ -17678,7 +17683,7 @@ Accepts either an &quot;HH:MM&quot; string or two separate (hours, minutes) argu
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line63">line 63</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line71">line 71</a>
     </li></ul></dd>
     
 
@@ -18585,7 +18590,7 @@ the current state (running / paused / done / ready).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line222">line 222</a>
+        <a href="08-pomodoro.js.html">08-pomodoro.js</a>, <a href="08-pomodoro.js.html#line231">line 231</a>
     </li></ul></dd>
     
 
