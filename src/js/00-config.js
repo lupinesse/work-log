@@ -40,7 +40,7 @@ const WEATHER_NAME = 'Helsinki';
  * Set to `''` to disable link generation.
  * @type {string}
  */
-const JIRA_BASE = 'https://lahitapiola.atlassian.net/browse';
+const JIRA_BASE = 'https://your-instance.atlassian.net/browse';
 
 // ---------------------------------------------------------------------------
 // Outlook calendar account labels
