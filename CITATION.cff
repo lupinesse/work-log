@@ -14,7 +14,7 @@ abstract: >
   three-state checkpoints, and an "I don't know what to do" random task picker.
 authors:
   - name: "Jenni Järvinen"
-    email: lupinesse@gmail.com
+    email: jenni.jaervinen@iki.fi
 keywords:
   - time-tracking
   - productivity
