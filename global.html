@@ -1420,7 +1420,7 @@ with <code>done</code> reset to false for a fresh day.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line755">line 755</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line759">line 759</a>
     </li></ul></dd>
     
 
@@ -2274,7 +2274,7 @@ No-ops when not viewing today.</li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line543">line 543</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line547">line 547</a>
     </li></ul></dd>
     
 
@@ -2775,7 +2775,7 @@ Kept as a no-op stub to avoid removing the call sites.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line206">line 206</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line212">line 212</a>
     </li></ul></dd>
     
 
@@ -3427,7 +3427,7 @@ should be aware that this may return the previous calendar day.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line47">line 47</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line57">line 57</a>
     </li></ul></dd>
     
 
@@ -4239,7 +4239,7 @@ The previously saved next-action note is restored if one exists for the active e
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line30">line 30</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line40">line 40</a>
     </li></ul></dd>
     
 
@@ -4284,6 +4284,14 @@ The previously saved next-action note is restored if one exists for the active e
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>escHtml('&lt;b>bold&lt;/b>')   // → '&amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt;'
+escHtml('a &amp; b')         // → 'a &amp;amp; b'
+escHtml('"quoted"')      // → '&amp;quot;quoted&amp;quot;'
+escHtml(42)              // → '42'</code></pre>
 
 
 
@@ -5435,7 +5443,7 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line66">line 66</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line84">line 84</a>
     </li></ul></dd>
     
 
@@ -5484,6 +5492,14 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>fmtElapsed(0)              // → '00:00'
+fmtElapsed(90 * 1000)      // → '01:30'
+fmtElapsed(3600 * 1000)    // → '01:00:00'
+fmtElapsed(5461 * 1000)    // → '01:31:01'</code></pre>
 
 
 
@@ -5908,7 +5924,7 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line56">line 56</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line69">line 69</a>
     </li></ul></dd>
     
 
@@ -5957,6 +5973,12 @@ data from the Open-Meteo API for the configured location (<a href="global.html#W
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>fmtTime(new Date('2026-05-25T09:05:00').getTime()) // → '09:05'
+fmtTime(new Date('2026-05-25T14:30:00').getTime()) // → '14:30'</code></pre>
 
 
 
@@ -7154,7 +7176,7 @@ The lookup is case-insensitive and trims whitespace.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line879">line 879</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line883">line 883</a>
     </li></ul></dd>
     
 
@@ -8990,7 +9012,7 @@ time-block grid start time changed from 08:00 to 07:00.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line26">line 26</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line30">line 30</a>
     </li></ul></dd>
     
 
@@ -9079,7 +9101,7 @@ Seeds localStorage with <code>EXPIRY_SEED</code> on first run.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line858">line 858</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line862">line 862</a>
     </li></ul></dd>
     
 
@@ -10024,7 +10046,7 @@ of <code>planTasks</code>. Calling again for the same block ID closes the picker
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line447">line 447</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line451">line 451</a>
     </li></ul></dd>
     
 
@@ -10365,7 +10387,7 @@ current expiry dates (one per line).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line888">line 888</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line892">line 892</a>
     </li></ul></dd>
     
 
@@ -10570,7 +10592,7 @@ that version was pending/blocked/upcoming or in-progress.</li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line687">line 687</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line691">line 691</a>
     </li></ul></dd>
     
 
@@ -11628,7 +11650,7 @@ current time. Hides the line when outside the grid's time range
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line614">line 614</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line618">line 618</a>
     </li></ul></dd>
     
 
@@ -12088,7 +12110,7 @@ there are no matching tasks.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line929">line 929</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line933">line 933</a>
     </li></ul></dd>
     
 
@@ -12984,7 +13006,7 @@ moving existing blocks and dropping tasks from the plan list.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line84">line 84</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -13394,7 +13416,7 @@ intent documented in DATA.md under wl_entries.ts.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line108">line 108</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line131">line 131</a>
     </li></ul></dd>
     
 
@@ -13743,7 +13765,7 @@ any UI that displays billable totals (04-render.js renderBillableBar).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line89">line 89</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line112">line 112</a>
     </li></ul></dd>
     
 
@@ -13792,6 +13814,14 @@ any UI that displays billable totals (04-render.js renderBillableBar).</p>
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>roundUp30(0)                    // → 1_800_000  (30 min — minimum)
+roundUp30(1)                    // → 1_800_000  (1 ms still costs one slot)
+roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
+roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)</code></pre>
 
 
 
@@ -13903,7 +13933,7 @@ Prevents malformed user-supplied colour values from breaking layout or injecting
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line18">line 18</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line23">line 23</a>
     </li></ul></dd>
     
 
@@ -13952,6 +13982,14 @@ Prevents malformed user-supplied colour values from breaking layout or injecting
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>safeCssColor('#7B61FF')      // → '#7B61FF'
+safeCssColor('hsl(200,60%,50%)') // → 'hsl(200,60%,50%)'
+safeCssColor('red')          // → '#888780'  (name blocked)
+safeCssColor('')             // → '#888780'</code></pre>
 
 
 
@@ -14083,6 +14121,10 @@ Prevents new entries from appearing to start before a prior entry's end time.</p
     <p>Persists entries, active timer, and categories to localStorage.
 Refuses to overwrite existing non-empty data with an empty array to guard against
 accidental data loss if save() is called before load() completes.</p>
+<p>Assumption: an empty <code>entries</code> array in memory while localStorage still holds
+data means save() was called before load() finished (e.g. a race during init),
+not that the user intentionally deleted everything. Intentional clearing goes
+through a dedicated wipe path that bypasses this guard.</p>
 </div>
 
 
@@ -14126,7 +14168,7 @@ accidental data loss if save() is called before load() completes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line144">line 144</a>
+        <a href="01-state.js.html">01-state.js</a>, <a href="01-state.js.html#line149">line 149</a>
     </li></ul></dd>
     
 
@@ -14214,7 +14256,7 @@ accidental data loss if save() is called before load() completes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line48">line 48</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line52">line 52</a>
     </li></ul></dd>
     
 
@@ -14393,7 +14435,7 @@ the modal. Invalid lines are surfaced in the feedback element but not saved.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line901">line 901</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line905">line 905</a>
     </li></ul></dd>
     
 
@@ -14691,6 +14733,11 @@ The key is stored case-insensitively.</p>
 30 minutes.  The snapshot contains both a human-readable plaintext summary
 and the raw entry/category arrays so data can be recovered after accidental
 clearing.  No-ops when there are no entries for today.</p>
+<p>Assumption: 30 minutes is an acceptable data-loss window for a personal work
+log used in a single browser tab. Browser crashes, accidental page reloads,
+and mis-clicks on &quot;clear data&quot; are the main risks; all are adequately covered
+by a 30-minute recovery point. If higher durability is needed, reduce the
+interval in the setInterval call in 07-lifecycle.js.</p>
 </div>
 
 
@@ -14734,7 +14781,7 @@ clearing.  No-ops when there are no entries for today.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line157">line 157</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line163">line 163</a>
     </li></ul></dd>
     
 
@@ -15447,7 +15494,7 @@ Pass null or an empty string to remove the block's emoji.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line522">line 522</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line526">line 526</a>
     </li></ul></dd>
     
 
@@ -16260,7 +16307,7 @@ Slot 0 = <code>TB_START:00</code>, slot 2 = <code>TB_START+1:00</code>, etc.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line58">line 58</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line62">line 62</a>
     </li></ul></dd>
     
 
@@ -17111,7 +17158,7 @@ empty string if there are no overlaps.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line410">line 410</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line414">line 414</a>
     </li></ul></dd>
     
 
@@ -17316,7 +17363,7 @@ elapsed time is counted from the scheduled start, not wall-clock now.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line637">line 637</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line641">line 641</a>
     </li></ul></dd>
     
 
@@ -17683,7 +17730,7 @@ Accepts either an &quot;HH:MM&quot; string or two separate (hours, minutes) argu
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line71">line 71</a>
+        <a href="11-timeblock.js.html">11-timeblock.js</a>, <a href="11-timeblock.js.html#line75">line 75</a>
     </li></ul></dd>
     
 
@@ -19135,7 +19182,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line178">line 178</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line210">line 210</a>
     </li></ul></dd>
     
 
@@ -19290,7 +19337,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line148">line 148</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line176">line 176</a>
     </li></ul></dd>
     
 
@@ -19445,7 +19492,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line132">line 132</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line160">line 160</a>
     </li></ul></dd>
     
 
@@ -19490,6 +19537,14 @@ When running, sets background and border to the hue computed by
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>validEntry({ id: '1', text: 'Write report', ts: 1234567890, date: '2026-05-25' }) // → true
+validEntry(null)                           // → false
+validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
+validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)</code></pre>
 
 
 
@@ -19600,7 +19655,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line162">line 162</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line194">line 194</a>
     </li></ul></dd>
     
 
@@ -19645,6 +19700,13 @@ When running, sets background and border to the hue computed by
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>validPlanTask({ id: 'pk1', text: 'Build form', date: '2026-05-25', status: 'todo' }) // → true
+validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
+validPlanTask(null) // → false</code></pre>
 
 
 
@@ -19755,7 +19817,7 @@ When running, sets background and border to the hue computed by
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line208">line 208</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line245">line 245</a>
     </li></ul></dd>
     
 
@@ -19911,7 +19973,7 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line195">line 195</a>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line232">line 232</a>
     </li></ul></dd>
     
 
@@ -19956,6 +20018,14 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>validTimer({ entryId: 'e1', startTs: 1234567890 })              // → true  (running)
+validTimer({ entryId: 'e1', paused: true, accumulatedMs: 900000 }) // → true  (paused)
+validTimer({ entryId: 'e1' })                                   // → false (neither running nor paused)
+validTimer(null)                                                 // → false</code></pre>
 
 
 

@@ -168,12 +168,17 @@ function load() {
  * Persists entries, active timer, and categories to localStorage.
  * Refuses to overwrite existing non-empty data with an empty array to guard against
  * accidental data loss if save() is called before load() completes.
+ *
+ * Assumption: an empty `entries` array in memory while localStorage still holds
+ * data means save() was called before load() finished (e.g. a race during init),
+ * not that the user intentionally deleted everything. Intentional clearing goes
+ * through a dedicated wipe path that bypasses this guard.
  */
 function save() {
   // Never overwrite real data with empty arrays
   const existing = localStorage.getItem(STORE_ENTRIES);
   if (!entries.length &amp;&amp; existing &amp;&amp; existing !== '[]') {
-    console.warn('save() blocked — refusing to overwrite existing entries with empty array');
+    wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
     return;
   }
   localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));

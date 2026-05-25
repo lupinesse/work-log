@@ -42,6 +42,11 @@
  * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
  * @param {string} c
  * @returns {string} A safe CSS colour string.
+ * @example
+ * safeCssColor('#7B61FF')      // → '#7B61FF'
+ * safeCssColor('hsl(200,60%,50%)') // → 'hsl(200,60%,50%)'
+ * safeCssColor('red')          // → '#888780'  (name blocked)
+ * safeCssColor('')             // → '#888780'
  */
 function safeCssColor(c) {
   // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
@@ -54,6 +59,11 @@ function safeCssColor(c) {
  * Escapes a string for safe insertion as HTML text content.
  * @param {string} s
  * @returns {string}
+ * @example
+ * escHtml('&lt;b>bold&lt;/b>')   // → '&amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt;'
+ * escHtml('a &amp; b')         // → 'a &amp;amp; b'
+ * escHtml('"quoted"')      // → '&amp;quot;quoted&amp;quot;'
+ * escHtml(42)              // → '42'
  */
 function escHtml(s) {
   return String(s)
@@ -80,6 +90,9 @@ function dk(d) {
  * Formats a Unix timestamp as HH:MM in 24-hour local time.
  * @param {number} ts - Unix timestamp in milliseconds.
  * @returns {string} e.g. '09:30'
+ * @example
+ * fmtTime(new Date('2026-05-25T09:05:00').getTime()) // → '09:05'
+ * fmtTime(new Date('2026-05-25T14:30:00').getTime()) // → '14:30'
  */
 function fmtTime(ts) {
   const d = new Date(ts);
@@ -90,6 +103,11 @@ function fmtTime(ts) {
  * Formats a duration in milliseconds as a compact time string.
  * @param {number} ms - Duration in milliseconds.
  * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
+ * @example
+ * fmtElapsed(0)              // → '00:00'
+ * fmtElapsed(90 * 1000)      // → '01:30'
+ * fmtElapsed(3600 * 1000)    // → '01:00:00'
+ * fmtElapsed(5461 * 1000)    // → '01:31:01'
  */
 function fmtElapsed(ms) {
   const s = Math.floor(ms / 1000);
@@ -113,6 +131,11 @@ function fmtElapsed(ms) {
  *
  * @param {number} ms - Duration in milliseconds.
  * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
+ * @example
+ * roundUp30(0)                    // → 1_800_000  (30 min — minimum)
+ * roundUp30(1)                    // → 1_800_000  (1 ms still costs one slot)
+ * roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
+ * roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)
  */
 function roundUp30(ms) {
   const SLOT = 30 * 60 * 1000;
@@ -156,6 +179,11 @@ function roundToNearest30(ts) {
  * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
  * @param {*} e - Candidate value parsed from JSON.
  * @returns {boolean}
+ * @example
+ * validEntry({ id: '1', text: 'Write report', ts: 1234567890, date: '2026-05-25' }) // → true
+ * validEntry(null)                           // → false
+ * validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
+ * validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)
  */
 function validEntry(e) {
   return !!(
@@ -186,6 +214,10 @@ function validCategory(c) {
  * Returns true if `t` is a well-formed plan task with a recognised status value.
  * @param {*} t - Candidate value parsed from JSON.
  * @returns {boolean}
+ * @example
+ * validPlanTask({ id: 'pk1', text: 'Build form', date: '2026-05-25', status: 'todo' }) // → true
+ * validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
+ * validPlanTask(null) // → false
  */
 function validPlanTask(t) {
   return !!(
@@ -219,6 +251,11 @@ function validBlock(b) {
  * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
  * @param {*} t - Candidate value parsed from JSON.
  * @returns {boolean}
+ * @example
+ * validTimer({ entryId: 'e1', startTs: 1234567890 })              // → true  (running)
+ * validTimer({ entryId: 'e1', paused: true, accumulatedMs: 900000 }) // → true  (paused)
+ * validTimer({ entryId: 'e1' })                                   // → false (neither running nor paused)
+ * validTimer(null)                                                 // → false
  */
 function validTimer(t) {
   if (!t || typeof t.entryId !== 'string') return false;
