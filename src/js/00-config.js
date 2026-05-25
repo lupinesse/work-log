@@ -1,34 +1,41 @@
 /* ── App configuration ──
  *
- * Edit the constants below to adapt the Work Log to your environment.
- * All values are compile-time constants included in the built script.js;
- * changing them requires re-running `npm run build` (or `node build.js`).
+ * Static defaults — used when the app is opened directly as a file,
+ * or when the local server is not running.
  *
- * These were previously scattered across 09-clock-weather.js and
- * 13-calendar.js — centralised here so you only need to edit one file.
+ * When the local server IS running, location values are overridden at
+ * startup by /api/config, which reads from your gitignored config.local.ps1.
+ * Edit config.local.ps1 (copy from config.local.example.ps1) to set your
+ * actual location without touching source code.
+ *
+ * JIRA_BASE and CAL_ACCOUNT_LABELS are still compile-time — edit them here
+ * and rebuild (`node build.js`) to change them.
  */
 
 // ---------------------------------------------------------------------------
-// Location — used for the Open-Meteo weather API call
+// Location — overridden at runtime by /api/config when the server is running
 // ---------------------------------------------------------------------------
 
 /**
  * Latitude of the work location (decimal degrees).
+ * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
-const WEATHER_LAT = 60.1887;
+let WEATHER_LAT = 60.1887;
 
 /**
  * Longitude of the work location (decimal degrees).
+ * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
-const WEATHER_LON = 24.927;
+let WEATHER_LON = 24.927;
 
 /**
  * Display name for the work location shown next to the weather widget.
+ * Default used when the server is not running; normally set via config.local.ps1.
  * @type {string}
  */
-const WEATHER_NAME = 'Helsinki';
+let WEATHER_NAME = 'Helsinki';
 
 // ---------------------------------------------------------------------------
 // Jira — base URL used to turn ticket keys (e.g. PROJ-123) into links

@@ -14,3 +14,9 @@ $NotionToken = ''
 # Notion database ID — the UUID from your database's URL
 # e.g. https://notion.so/your-workspace/YOUR-DATABASE-ID?v=...
 $NotionDatabaseId = ''
+
+# Weather widget location (Open-Meteo API)
+# Find your coordinates at: https://open-meteo.com/
+$WeatherLat  = 60.1887    # decimal degrees latitude
+$WeatherLon  = 24.927     # decimal degrees longitude
+$WeatherName = 'Helsinki' # display name shown in the widget

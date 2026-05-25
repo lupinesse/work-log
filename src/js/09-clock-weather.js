@@ -702,7 +702,19 @@ function fetchWeather() {
       document.getElementById('liveWeather').textContent = WEATHER_NAME;
     });
 }
-fetchWeather();
+// Load location from server config before the first weather fetch.
+// Falls back to the defaults in 00-config.js when the server is not running.
+fetch('/api/config')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((cfg) => {
+    if (!cfg) return;
+    if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
+    if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
+    if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
+  })
+  .catch(() => {})
+  .finally(() => fetchWeather());
+
 fetchNameday();
 fetchCalendarEvents();
 renderMoon();

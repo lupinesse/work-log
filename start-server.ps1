@@ -7,6 +7,9 @@ $NamedayApiToken  = ''
 $AnthropicApiKey  = ''
 $NotionToken      = ''
 $NotionDatabaseId = ''
+$WeatherLat       = 60.1887   # default: Helsinki
+$WeatherLon       = 24.927
+$WeatherName      = 'Helsinki'
 $configFile = Join-Path $root 'config.local.ps1'
 if (Test-Path $configFile) { . $configFile }
 
@@ -139,6 +142,13 @@ while ($listener.IsListening) {
     $res.Headers.Add('Access-Control-Allow-Origin', '*')
 
     try {
+        # Config endpoint — exposes non-secret runtime config to the browser app
+        if ($req.Url.LocalPath -eq '/api/config' -and $req.HttpMethod -eq 'GET') {
+            $cfg = "{`"weatherLat`":$WeatherLat,`"weatherLon`":$WeatherLon,`"weatherName`":`"$WeatherName`"}"
+            Send-Json $res $cfg 200
+            continue
+        }
+
         # Nameday proxy — forwards to nimipaivarajapinta.fi bypassing browser CORS
         if ($req.Url.LocalPath -like '/api/namedays*' -or $req.Url.LocalPath -like '/api/typesense*') {
             try {
