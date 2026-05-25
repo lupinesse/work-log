@@ -153,6 +153,12 @@ function todayHasUnexportedEntries() {
  * 30 minutes.  The snapshot contains both a human-readable plaintext summary
  * and the raw entry/category arrays so data can be recovered after accidental
  * clearing.  No-ops when there are no entries for today.
+ *
+ * Assumption: 30 minutes is an acceptable data-loss window for a personal work
+ * log used in a single browser tab. Browser crashes, accidental page reloads,
+ * and mis-clicks on "clear data" are the main risks; all are adequately covered
+ * by a 30-minute recovery point. If higher durability is needed, reduce the
+ * interval in the setInterval call in 07-lifecycle.js.
  */
 function saveSnapshot() {
   const todayKey = dk(new Date());
