@@ -1,5 +1,16 @@
 # Work Log Architecture
 
+<!-- Design certificate -->
+| Field | Value |
+|---|---|
+| Document version | 1.8 |
+| Covers app version | v1.8.x |
+| Last reviewed | 2026-05-26 |
+| Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
+| Status | **Approved** — reflects current implementation |
+
+---
+
 ## Overview
 
 Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (15 modules) and organized SCSS, bundled via build.js.
