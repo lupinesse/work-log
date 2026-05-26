@@ -455,6 +455,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     cycleSignifier,
     isEntryBillable,
     addLogNote,
+    openReflection,
+    getReflectionForDate,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically

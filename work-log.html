@@ -411,6 +411,35 @@
   </div>
 </div>
 
+<!-- Reflection overlay -->
+<div id="reflectionOverlay" class="reflection-overlay" role="dialog" aria-modal="true"
+     aria-label="End of day reflection" style="display:none">
+  <div class="reflection-card">
+    <div class="reflection-title">🌅 Day wrap-up &mdash; reflection</div>
+
+    <div class="refl-group">
+      <div class="refl-label">Focus quality</div>
+      <div class="refl-stars" id="reflFocusStars" data-field="focus"></div>
+      <div class="refl-hint" id="reflFocusHint"></div>
+    </div>
+
+    <div class="refl-group">
+      <div class="refl-label">Energy level</div>
+      <div class="refl-stars" id="reflEnergyStars" data-field="energy"></div>
+    </div>
+
+    <div class="refl-group">
+      <div class="refl-label">What took longer than expected? <span class="refl-opt">(optional)</span></div>
+      <input class="capture-input" id="reflNote" placeholder="One sentence&hellip;" />
+    </div>
+
+    <div class="refl-actions">
+      <button class="add-btn" id="reflSkip">Skip</button>
+      <button class="add-btn refl-save" id="reflSave">Save &amp; close day</button>
+    </div>
+  </div>
+</div>
+
 <!-- End of day modal -->
 <div class="eod-overlay" id="eodOverlay" role="dialog" aria-modal="true" aria-labelledby="eodModalTitle">
   <div class="eod-modal">

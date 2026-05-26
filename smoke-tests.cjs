@@ -2028,6 +2028,44 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Reflection ────────────────────────────────────────────────────────────
+  console.log('\nReflection');
+  {
+    const page = await freshPage(ctx);
+    await page.evaluate(() => window.__wl.openReflection());
+    assert(
+      'Reflection overlay opens',
+      await page.evaluate(
+        () => document.getElementById('reflectionOverlay').style.display !== 'none'
+      )
+    );
+    await page.click('#reflSkip');
+    assert(
+      'Reflection closes on skip',
+      await page.evaluate(
+        () => document.getElementById('reflectionOverlay').style.display === 'none'
+      )
+    );
+    // Save with ratings
+    await page.evaluate(() => window.__wl.openReflection());
+    await page.click('[data-el="reflFocusStars"][data-val="4"]');
+    await page.click('[data-el="reflEnergyStars"][data-val="3"]');
+    await page.click('#reflSave');
+    const today = dk(new Date());
+    const refl = await page.evaluate((d) => window.__wl.getReflectionForDate(d), today);
+    assert(
+      'Reflection saves focus rating',
+      refl && refl.focus === 4,
+      `got ${JSON.stringify(refl)}`
+    );
+    assert(
+      'Reflection saves energy rating',
+      refl && refl.energy === 3,
+      `got ${JSON.stringify(refl)}`
+    );
+    await page.close();
+  }
+
   // ── Daily Log ─────────────────────────────────────────────────────────────
   console.log('\nDaily Log');
   {
