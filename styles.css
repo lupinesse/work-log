@@ -5100,3 +5100,164 @@ body.emergency .emergency-screen {
     flex-direction: column;
   }
 }
+/* ── Migration modal ── */
+.migration-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+}
+
+.migration-card {
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  width: min(480px, 90vw);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+.migration-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.migration-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.migration-counter {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.prog-wrap {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg3);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.prog-fill {
+  height: 100%;
+  background: var(--info-text);
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.mig-item {
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.mig-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.mig-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mig-item-text {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mig-item-date {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.mig-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mig-btn {
+  flex: 1;
+  font-size: 12px;
+  padding: 8px 0;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border2);
+  background: var(--bg);
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font);
+  text-align: center;
+}
+
+.mig-btn:hover {
+  background: var(--bg2);
+}
+
+.mig-carry {
+  color: var(--info-text);
+  border-color: rgba(24, 95, 165, 0.3);
+}
+
+.mig-drop {
+  color: #d32f2f;
+  border-color: rgba(211, 47, 47, 0.3);
+}
+
+.mig-schedule {
+  color: #ef9f27;
+  border-color: rgba(239, 159, 39, 0.3);
+}
+
+.mig-done {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.mig-done-icon {
+  font-size: 28px;
+  color: #1d9e75;
+  margin-bottom: 6px;
+}
+
+.mig-done-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d9e75;
+}
+
+.mig-done-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 4px;
+}
+
+.mig-banner {
+  background: var(--info-bg);
+  color: var(--info-text);
+  font-size: 13px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(24, 95, 165, 0.2);
+}
+
+.mig-banner button {
+  background: none;
+  border: none;
+  color: var(--info-text);
+  cursor: pointer;
+  text-decoration: underline;
+  font-family: var(--font);
+  font-size: 13px;
+}

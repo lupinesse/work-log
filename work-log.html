@@ -600,6 +600,20 @@
   </div>
 </div>
 
+<!-- Migration overlay -->
+<div id="migrationOverlay" class="migration-overlay" role="dialog" aria-modal="true"
+     aria-label="Month migration" style="display:none">
+  <div class="migration-card">
+    <div class="migration-header">
+      <span class="migration-title" id="migrationTitle">Month close-out</span>
+      <span class="migration-counter" id="migrationCounter"></span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="migrationProgress" style="width:0%"></div></div>
+    <div id="migrationBody"></div>
+    <button class="add-btn" id="migrationClose" style="margin-top:14px;width:100%">Close</button>
+  </div>
+</div>
+
 <script src="script.js"></script>
 <div id="debugInfo">
   <span class="commit">Latest commit: a322f1f</span>

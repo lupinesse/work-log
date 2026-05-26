@@ -2140,6 +2140,58 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Migration ─────────────────────────────────────────────────────────────
+  console.log('\nMigration');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_plan_v1: [
+        { id: 'mig1', text: 'Unfinished task', tag: 'work', date: today, status: 'todo' },
+      ],
+    });
+
+    // migrationOverlay exists in DOM
+    const exists = await page.evaluate(() => document.getElementById('migrationOverlay') !== null);
+    assert('Migration overlay exists in DOM', exists);
+
+    // Opens with an open task
+    await page.evaluate(() => window.__wl.openMigration());
+    const visible = await page.evaluate(
+      () => document.getElementById('migrationOverlay').style.display !== 'none'
+    );
+    assert('Migration overlay opens', visible);
+
+    // Counter shows 0 / 1
+    const counter = await page.evaluate(
+      () => document.getElementById('migrationCounter').textContent
+    );
+    assert('Migration counter shows 0/1', counter.includes('0'), `got "${counter}"`);
+
+    // Task text rendered in body
+    const body = await page.evaluate(() => document.getElementById('migrationBody').innerHTML);
+    assert('Migration shows task text', body.includes('Unfinished task'), body);
+
+    // Carry forward resolves one item
+    await page.click('#migCarry');
+    const counter2 = await page.evaluate(
+      () => document.getElementById('migrationCounter').textContent
+    );
+    assert('Carry increments counter to 1/1', counter2.includes('1'), `got "${counter2}"`);
+
+    // Done screen shows after all resolved
+    const doneHtml = await page.evaluate(() => document.getElementById('migrationBody').innerHTML);
+    assert('Migration shows done screen', doneHtml.includes('Month closed'), doneHtml);
+
+    // Close button hides overlay
+    await page.click('#migrationClose');
+    const hidden = await page.evaluate(
+      () => document.getElementById('migrationOverlay').style.display === 'none'
+    );
+    assert('Migration closes on close button', hidden);
+
+    await page.close();
+  }
+
   // ── Monthly Log ───────────────────────────────────────────────────────────
   console.log('\nMonthly Log');
   {
