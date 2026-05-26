@@ -373,6 +373,7 @@ function render() {
   renderCompleted();
   renderTimeblock();
   if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
+  if (document.getElementById('monthlyLogSection')?.style.display !== 'none') renderMonthlyLog();
   renderTrackers();
 }
 

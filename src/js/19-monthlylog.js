@@ -1,0 +1,186 @@
+// ── 19-monthlylog.js — Monthly Log heatmap + task inventory ──
+
+let _mlYear = new Date().getFullYear();
+let _mlMonth = new Date().getMonth(); // 0-indexed
+let _mlActive = false;
+
+function _mlFmtDur(ms) {
+  const mins = Math.round(ms / 60000);
+  const h = Math.floor(mins / 60),
+    m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+}
+
+function mlDaysInMonth(y, m) {
+  return new Date(y, m + 1, 0).getDate();
+}
+
+/**
+ * Sums tracked milliseconds for all non-cancelled entries on a given day.
+ * @param {string} dateKey
+ * @returns {number} Total hours (as a float).
+ */
+function mlHoursForDay(dateKey) {
+  return (
+    entries
+      .filter((e) => e.date === dateKey && e.signifier !== 'cancelled' && e.tsEnd)
+      .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
+  );
+}
+
+function mlHeatColor(hours) {
+  if (!hours) return 'var(--bg3)';
+  if (hours < 2) return 'rgba(24,95,165,0.15)';
+  if (hours < 5) return 'rgba(24,95,165,0.40)';
+  if (hours < 7) return 'rgba(24,95,165,0.70)';
+  return '#185fa5';
+}
+
+/**
+ * Renders the monthly log view: navigation, heatmap, summary, task inventory.
+ */
+function renderMonthlyLog() {
+  const calEl = document.getElementById('mlCalendar');
+  const sumEl = document.getElementById('mlSummary');
+  const taskEl = document.getElementById('mlTasks');
+  if (!calEl) return;
+
+  const y = _mlYear,
+    m = _mlMonth;
+  const days = mlDaysInMonth(y, m);
+  const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+  const offset = (firstDow + 6) % 7; // shift to Mon-start
+
+  const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const monthName = new Date(y, m, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const emptyCells = Array(offset).fill('<div></div>').join('');
+  const dayCells = Array.from({ length: days }, (_, i) => {
+    const d = i + 1;
+    const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+    const hrs = mlHoursForDay(dateKey);
+    const refl = typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
+    const reflDot = refl
+      ? `<div class="ml-refl-dot" title="Focus: ${refl.focus}/5 · Energy: ${refl.energy}/5"></div>`
+      : '';
+    return `<div class="ml-cell" data-date="${dateKey}"
+                  title="${d} — ${hrs.toFixed(1)}h"
+                  style="background:${mlHeatColor(hrs)};position:relative">${reflDot}</div>`;
+  }).join('');
+
+  calEl.innerHTML = `
+    <div class="ml-nav">
+      <button class="ml-nav-btn" id="mlPrev">←</button>
+      <span class="ml-month-title">${monthName}</span>
+      <button class="ml-nav-btn" id="mlNext">→</button>
+    </div>
+    <div class="ml-grid">
+      ${dayLabels.map((d) => `<div class="ml-day-lbl">${d}</div>`).join('')}
+      ${emptyCells}
+      ${dayCells}
+    </div>
+    <div class="ml-legend">
+      ${[
+        [0, '0h'],
+        [2, '2h'],
+        [5, '5h'],
+        [7, '7h+'],
+      ]
+        .map(
+          ([v, l]) =>
+            `<div class="ml-legend-item">
+              <div class="ml-legend-swatch" style="background:${mlHeatColor(v + 0.1)}"></div>
+              <span>${l}</span>
+            </div>`
+        )
+        .join('')}
+    </div>`;
+
+  // Cell click → navigate to that day and show the main log
+  calEl.querySelectorAll('.ml-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      viewDate = new Date(cell.dataset.date + 'T12:00:00');
+      document.getElementById('monthlyLogSection').style.display = 'none';
+      document.getElementById('tabMonthlyLog').classList.remove('active');
+      _mlActive = false;
+      render();
+    });
+  });
+
+  // Month navigation
+  document.getElementById('mlPrev')?.addEventListener('click', () => {
+    _mlMonth--;
+    if (_mlMonth < 0) {
+      _mlMonth = 11;
+      _mlYear--;
+    }
+    renderMonthlyLog();
+  });
+  document.getElementById('mlNext')?.addEventListener('click', () => {
+    _mlMonth++;
+    if (_mlMonth > 11) {
+      _mlMonth = 0;
+      _mlYear++;
+    }
+    renderMonthlyLog();
+  });
+
+  // Summary panel
+  const monthEntries = entries.filter(
+    (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
+  );
+  const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+  const billableMs = monthEntries
+    .filter((e) => isEntryBillable(e))
+    .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+
+  const tagTotals = {};
+  monthEntries.forEach((e) => {
+    tagTotals[e.tag] = (tagTotals[e.tag] || 0) + (e.tsEnd - e.ts);
+  });
+  const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
+
+  sumEl.innerHTML = `
+    <div class="ml-sum-title">Summary</div>
+    <div class="ml-sum-row"><span>Total logged</span><span>${_mlFmtDur(totalMs)}</span></div>
+    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${_mlFmtDur(billableMs)}</span></div>
+    ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
+
+  // Task inventory
+  const monthTasks = planTasks.filter((t) => t.date.startsWith(monthPrefix));
+  const open = monthTasks.filter((t) => t.status !== 'done').length;
+  const done = monthTasks.filter((t) => t.status === 'done').length;
+  const migrated = monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length;
+
+  taskEl.innerHTML = `
+    <div class="ml-sum-title">Task inventory</div>
+    <div class="ml-sum-row"><span>Open</span><span class="ml-sum-amber">${open}</span></div>
+    <div class="ml-sum-row"><span>Done</span><span class="ml-sum-green">${done}</span></div>
+    <div class="ml-sum-row"><span>Migrated</span><span class="ml-sum-muted">${migrated}</span></div>
+    <button class="add-btn ml-migrate-btn" id="mlRunMigration">→ Run Migration</button>`;
+
+  document.getElementById('mlRunMigration')?.addEventListener('click', () => {
+    if (typeof openMigration === 'function') openMigration();
+  });
+}
+
+function initMonthlyLog() {
+  const btn = document.getElementById('tabMonthlyLog');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    _mlActive = !_mlActive;
+    const section = document.getElementById('monthlyLogSection');
+    if (section) section.style.display = _mlActive ? '' : 'none';
+    btn.classList.toggle('active', _mlActive);
+    if (_mlActive) {
+      // Sync to viewed month when opening
+      _mlYear = viewDate.getFullYear();
+      _mlMonth = viewDate.getMonth();
+      renderMonthlyLog();
+    }
+  });
+}

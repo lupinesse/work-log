@@ -463,6 +463,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     trackerDayStatus,
     saveTrackers,
     getTrackers: () => trackers,
+    renderMonthlyLog,
+    mlHoursForDay,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically

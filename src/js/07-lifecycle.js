@@ -125,6 +125,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
 });
 initRapid();
 initDailyLog();
+initMonthlyLog();
 initSprints();
 initTrackers();
 

@@ -462,6 +462,7 @@
 
 <div class="tab-row" id="mainTabRow">
   <button class="tab-btn" id="tabDailyLog" data-tab="dailylog">Daily Log</button>
+  <button class="tab-btn" id="tabMonthlyLog" data-tab="monthlylog">Monthly Log</button>
 </div>
 
 <section id="dailyLogSection" style="display:none">
@@ -469,6 +470,16 @@
   <div class="capture-row" id="dailyLogNoteRow">
     <input class="capture-input" id="dailyLogNoteInput" placeholder="Add a note to today&#39;s log&hellip;" />
     <button class="add-btn" id="dailyLogNoteBtn">+ Note</button>
+  </div>
+</section>
+
+<section id="monthlyLogSection" style="display:none">
+  <div class="ml-layout">
+    <div class="ml-calendar" id="mlCalendar"></div>
+    <div class="ml-sidebar">
+      <div class="ml-summary" id="mlSummary"></div>
+      <div class="ml-tasks" id="mlTasks"></div>
+    </div>
   </div>
 </section>
 

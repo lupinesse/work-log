@@ -2140,6 +2140,56 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Monthly Log ───────────────────────────────────────────────────────────
+  console.log('\nMonthly Log');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        {
+          id: 'ml1',
+          text: 'Monthly task',
+          tag: 'work',
+          ts: Date.now() - 3600000,
+          tsEnd: Date.now(),
+          date: today,
+        },
+      ],
+    });
+    // Tab click shows the section
+    await page.click('#tabMonthlyLog');
+    await page.waitForSelector('#monthlyLogSection:visible');
+    const tabActive = await page.evaluate(() =>
+      document.getElementById('tabMonthlyLog').classList.contains('active')
+    );
+    assert('Monthly Log tab has active class', tabActive);
+
+    // Heatmap grid renders
+    const cellCount = await page.evaluate(() => document.querySelectorAll('.ml-cell').length);
+    assert('Monthly Log heatmap cells rendered', cellCount >= 28, `got ${cellCount}`);
+
+    // Summary renders with total
+    const sumHtml = await page.evaluate(() => document.getElementById('mlSummary').innerHTML);
+    assert('Monthly Log summary renders', sumHtml.includes('Total logged'), sumHtml);
+
+    // Task inventory renders
+    const taskHtml = await page.evaluate(() => document.getElementById('mlTasks').innerHTML);
+    assert('Monthly Log task inventory renders', taskHtml.includes('Task inventory'), taskHtml);
+
+    // mlHoursForDay returns > 0 for today
+    const hrs = await page.evaluate((d) => window.__wl.mlHoursForDay(d), today);
+    assert('mlHoursForDay > 0 for today', hrs > 0, `got ${hrs}`);
+
+    // Second tab click hides the section
+    await page.click('#tabMonthlyLog');
+    const hidden = await page.evaluate(
+      () => document.getElementById('monthlyLogSection').style.display === 'none'
+    );
+    assert('Monthly Log section hides on second tab click', hidden);
+
+    await page.close();
+  }
+
   // ── Trackers ──────────────────────────────────────────────────────────────
   console.log('\nTrackers');
   {
