@@ -2140,6 +2140,53 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Trackers ──────────────────────────────────────────────────────────────
+  console.log('\nTrackers');
+  {
+    const page = await freshPage(ctx);
+    // Tracker section renders empty state
+    const emptyHtml = await page.evaluate(() => document.getElementById('trackerList').innerHTML);
+    assert('Trackers renders empty state', emptyHtml.includes('No trackers'), emptyHtml);
+
+    // + New button opens the form
+    await page.click('#trackerAddBtn');
+    const formVisible = await page.evaluate(
+      () => document.getElementById('trackerNewForm').style.display !== 'none'
+    );
+    assert('Tracker form opens on + New', formVisible);
+
+    // Cancel closes the form
+    await page.click('#trFormCancel');
+    const formHidden = await page.evaluate(
+      () => document.getElementById('trackerNewForm').style.display === 'none'
+    );
+    assert('Tracker form closes on cancel', formHidden);
+
+    // Add a tracker via JS API
+    await page.evaluate(() => {
+      window.__wl.getTrackers().push({
+        id: 'tr1',
+        name: 'Deep work',
+        targetMinutes: 60,
+        tags: ['work'],
+        color: '#378ADD',
+      });
+      window.__wl.saveTrackers();
+      window.__wl.renderTrackers();
+    });
+    const trackerHtml = await page.evaluate(() => document.getElementById('trackerList').innerHTML);
+    assert('Tracker card renders after adding', trackerHtml.includes('Deep work'), trackerHtml);
+    assert('Tracker target label renders', trackerHtml.includes('1h/day'), trackerHtml);
+
+    // trackerDayStatus returns 'miss' when no entries logged
+    const status = await page.evaluate(() =>
+      window.__wl.trackerDayStatus({ tags: ['work'], targetMinutes: 60 }, '2026-01-01')
+    );
+    assert('trackerDayStatus returns miss with no entries', status === 'miss', `got ${status}`);
+
+    await page.close();
+  }
+
   // ── Signifiers ────────────────────────────────────────────────────────────
   console.log('\nSignifiers');
   {

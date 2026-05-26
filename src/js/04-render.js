@@ -139,6 +139,7 @@ function render() {
     renderPlan();
     renderCompleted();
     renderTimeblock();
+    renderTrackers();
     return;
   }
 
@@ -372,6 +373,7 @@ function render() {
   renderCompleted();
   renderTimeblock();
   if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
+  renderTrackers();
 }
 
 /**

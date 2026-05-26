@@ -451,7 +451,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     getHook,
     saveHook,
     _showBridgeBanner: showBridgeBanner,
-    getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes }),
+    getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes, trackers }),
     cycleSignifier,
     isEntryBillable,
     addLogNote,
@@ -459,6 +459,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     getReflectionForDate,
     openSprintSetup,
     getSprintLog: () => sprintLog,
+    renderTrackers,
+    trackerDayStatus,
+    saveTrackers,
+    getTrackers: () => trackers,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically
