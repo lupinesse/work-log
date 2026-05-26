@@ -105,7 +105,6 @@ function renderMonthlyLog() {
     cell.addEventListener('click', () => {
       viewDate = new Date(cell.dataset.date + 'T12:00:00');
       document.getElementById('monthlyLogSection').style.display = 'none';
-      document.getElementById('tabMonthlyLog').classList.remove('active');
       _mlActive = false;
       render();
     });
@@ -169,18 +168,18 @@ function renderMonthlyLog() {
 }
 
 function initMonthlyLog() {
-  const btn = document.getElementById('tabMonthlyLog');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
+  // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
+  document.addEventListener('click', (e) => {
+    if (e.target.id !== 'tabMonthlyLog') return;
     _mlActive = !_mlActive;
     const section = document.getElementById('monthlyLogSection');
     if (section) section.style.display = _mlActive ? '' : 'none';
-    btn.classList.toggle('active', _mlActive);
     if (_mlActive) {
       // Sync to viewed month when opening
       _mlYear = viewDate.getFullYear();
       _mlMonth = viewDate.getMonth();
       renderMonthlyLog();
     }
+    render();
   });
 }

@@ -2116,9 +2116,9 @@ async function runTests() {
   console.log('\nRapid Logging');
   {
     const page = await freshPage(ctx);
-    await page.keyboard.press('Space');
+    await page.click('#rapidOpenBtn');
     assert(
-      'Rapid overlay opens on Space',
+      'Rapid overlay opens on button click',
       await page.evaluate(() => document.getElementById('rapidOverlay').style.display !== 'none')
     );
     await page.keyboard.press('Escape');
@@ -2127,7 +2127,7 @@ async function runTests() {
       await page.evaluate(() => document.getElementById('rapidOverlay').style.display === 'none')
     );
     // Log only — open again, fill, log
-    await page.keyboard.press('Space');
+    await page.click('#rapidOpenBtn');
     await page.waitForSelector('#rapidInput:visible');
     await page.fill('#rapidInput', 'quick task');
     await page.click('#rapidLogOnly');

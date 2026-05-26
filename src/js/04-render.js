@@ -127,8 +127,13 @@ function render() {
   const list = viewEntries();
   const tl = document.getElementById('timeline');
 
+  const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
+  const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
+  const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+
   if (!list.length) {
     tl.innerHTML =
+      logHeader +
       '<div class="empty-state">' +
       (isToday(viewDate)
         ? 'nothing logged yet.<br>start by typing what you just did above.'
@@ -142,8 +147,6 @@ function render() {
     renderTrackers();
     return;
   }
-
-  const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span></div>`;
   tl.innerHTML =
     logHeader +
     list

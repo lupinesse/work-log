@@ -1513,8 +1513,13 @@
     const list = viewEntries();
     const tl = document.getElementById('timeline');
 
+    const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
+    const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
+    const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+
     if (!list.length) {
       tl.innerHTML =
+        logHeader +
         '<div class="empty-state">' +
         (isToday(viewDate)
           ? 'nothing logged yet.<br>start by typing what you just did above.'
@@ -1528,8 +1533,6 @@
       renderTrackers();
       return;
     }
-
-    const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span></div>`;
     tl.innerHTML =
       logHeader +
       list
@@ -5207,12 +5210,12 @@
 
   const SIG_CYCLE = ['billable', 'event', 'flagged', 'migrated', 'cancelled', 'overtime'];
   const SIG_SYMBOL = {
-    billable: '●',
-    event: '○',
-    flagged: '★',
-    migrated: '→',
-    cancelled: '✗',
-    overtime: '!',
+    billable: '💰',
+    event: '📅',
+    flagged: '🚩',
+    migrated: '📤',
+    cancelled: '❌',
+    overtime: '⏰',
   };
   const SIG_TITLE = {
     billable: 'Billable',
@@ -8792,7 +8795,6 @@ Requirements:
   function closeRapid() {
     const overlay = document.getElementById('rapidOverlay');
     if (overlay) overlay.style.display = 'none';
-    document.getElementById('rapidInput')?.blur();
     _rapidOpen = false;
   }
 
@@ -8846,17 +8848,13 @@ Requirements:
   }
 
   function initRapid() {
-    document.addEventListener('keydown', (e) => {
-      if (e.code !== 'Space') return;
-      const tag = document.activeElement && document.activeElement.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
-      e.preventDefault();
-      _rapidOpen ? closeRapid() : openRapid();
-    });
-
+    // Escape to close
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && _rapidOpen) closeRapid();
     });
+
+    // Open button (✏️ next to dice in today's tasks)
+    document.getElementById('rapidOpenBtn')?.addEventListener('click', openRapid);
 
     document.getElementById('rapidClose')?.addEventListener('click', closeRapid);
     document.getElementById('rapidLogOnly')?.addEventListener('click', () => rapidCommit(false));
@@ -8987,14 +8985,14 @@ Requirements:
   }
 
   function initDailyLog() {
-    const btn = document.getElementById('tabDailyLog');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
+    // Buttons live inside tl.innerHTML (rebuilt on every render) — use delegation
+    document.addEventListener('click', (e) => {
+      if (e.target.id !== 'tabDailyLog') return;
       _dlActive = !_dlActive;
       const section = document.getElementById('dailyLogSection');
       if (section) section.style.display = _dlActive ? '' : 'none';
-      btn.classList.toggle('active', _dlActive);
       if (_dlActive) renderDailyLog();
+      render();
     });
   }
 
@@ -9107,7 +9105,6 @@ Requirements:
       cell.addEventListener('click', () => {
         viewDate = new Date(cell.dataset.date + 'T12:00:00');
         document.getElementById('monthlyLogSection').style.display = 'none';
-        document.getElementById('tabMonthlyLog').classList.remove('active');
         _mlActive = false;
         render();
       });
@@ -9171,19 +9168,19 @@ Requirements:
   }
 
   function initMonthlyLog() {
-    const btn = document.getElementById('tabMonthlyLog');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
+    // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
+    document.addEventListener('click', (e) => {
+      if (e.target.id !== 'tabMonthlyLog') return;
       _mlActive = !_mlActive;
       const section = document.getElementById('monthlyLogSection');
       if (section) section.style.display = _mlActive ? '' : 'none';
-      btn.classList.toggle('active', _mlActive);
       if (_mlActive) {
         // Sync to viewed month when opening
         _mlYear = viewDate.getFullYear();
         _mlMonth = viewDate.getMonth();
         renderMonthlyLog();
       }
+      render();
     });
   }
 

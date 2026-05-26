@@ -17,7 +17,6 @@ function openRapid() {
 function closeRapid() {
   const overlay = document.getElementById('rapidOverlay');
   if (overlay) overlay.style.display = 'none';
-  document.getElementById('rapidInput')?.blur();
   _rapidOpen = false;
 }
 
@@ -71,17 +70,13 @@ function rapidCommit(withTimer) {
 }
 
 function initRapid() {
-  document.addEventListener('keydown', (e) => {
-    if (e.code !== 'Space') return;
-    const tag = document.activeElement && document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
-    e.preventDefault();
-    _rapidOpen ? closeRapid() : openRapid();
-  });
-
+  // Escape to close
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && _rapidOpen) closeRapid();
   });
+
+  // Open button (✏️ next to dice in today's tasks)
+  document.getElementById('rapidOpenBtn')?.addEventListener('click', openRapid);
 
   document.getElementById('rapidClose')?.addEventListener('click', closeRapid);
   document.getElementById('rapidLogOnly')?.addEventListener('click', () => rapidCommit(false));

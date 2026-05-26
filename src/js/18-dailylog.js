@@ -107,13 +107,13 @@ function addLogNote() {
 }
 
 function initDailyLog() {
-  const btn = document.getElementById('tabDailyLog');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
+  // Buttons live inside tl.innerHTML (rebuilt on every render) — use delegation
+  document.addEventListener('click', (e) => {
+    if (e.target.id !== 'tabDailyLog') return;
     _dlActive = !_dlActive;
     const section = document.getElementById('dailyLogSection');
     if (section) section.style.display = _dlActive ? '' : 'none';
-    btn.classList.toggle('active', _dlActive);
     if (_dlActive) renderDailyLog();
+    render();
   });
 }

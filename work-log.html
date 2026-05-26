@@ -135,6 +135,7 @@
     <span class="plan-header-title">today's tasks</span>
     <span class="plan-count" id="planCount"></span>
     <button class="idkw-btn" id="idkwBtn" aria-label="Pick a random task" title="I don't know what to do — pick one for me">🎲</button>
+    <button class="idkw-btn" id="rapidOpenBtn" aria-label="Quick capture" title="Quick capture — log something fast">✏️</button>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="plan-body">
@@ -460,11 +461,6 @@
   </div>
 </div>
 
-<div class="tab-row" id="mainTabRow">
-  <button class="tab-btn" id="tabDailyLog" data-tab="dailylog">Daily Log</button>
-  <button class="tab-btn" id="tabMonthlyLog" data-tab="monthlylog">Monthly Log</button>
-</div>
-
 <section id="dailyLogSection" style="display:none">
   <div class="daily-log-feed" id="dailyLogFeed"></div>
   <div class="capture-row" id="dailyLogNoteRow">
@@ -582,7 +578,6 @@
   <div class="rapid-card">
     <div class="rapid-header">
       <span class="rapid-label">Quick capture</span>
-      <kbd>Space</kbd>
       <button class="rapid-close" id="rapidClose" aria-label="Close">✕</button>
     </div>
     <div class="capture-row">

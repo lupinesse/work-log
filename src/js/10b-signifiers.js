@@ -2,12 +2,12 @@
 
 const SIG_CYCLE = ['billable', 'event', 'flagged', 'migrated', 'cancelled', 'overtime'];
 const SIG_SYMBOL = {
-  billable: '●',
-  event: '○',
-  flagged: '★',
-  migrated: '→',
-  cancelled: '✗',
-  overtime: '!',
+  billable: '💰',
+  event: '📅',
+  flagged: '🚩',
+  migrated: '📤',
+  cancelled: '❌',
+  overtime: '⏰',
 };
 const SIG_TITLE = {
   billable: 'Billable',
