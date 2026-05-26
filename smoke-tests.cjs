@@ -2028,6 +2028,29 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Sprints ───────────────────────────────────────────────────────────────
+  console.log('\nSprints');
+  {
+    const page = await freshPage(ctx);
+    // Sprint setup opens on Sprint button click
+    await page.click('#sprintModeBtn');
+    assert(
+      'Sprint setup opens',
+      await page.evaluate(() => document.getElementById('sprintSetup').style.display !== 'none')
+    );
+    // Cancel closes it
+    await page.click('#sprintCancel');
+    assert(
+      'Sprint setup closes on cancel',
+      await page.evaluate(() => document.getElementById('sprintSetup').style.display === 'none')
+    );
+    // Duration buttons render (4 options)
+    await page.click('#sprintModeBtn');
+    const durCount = await page.evaluate(() => document.querySelectorAll('.sprint-dur-btn').length);
+    assert('Sprint durations rendered', durCount === 4, `got ${durCount}`);
+    await page.close();
+  }
+
   // ── Reflection ────────────────────────────────────────────────────────────
   console.log('\nReflection');
   {

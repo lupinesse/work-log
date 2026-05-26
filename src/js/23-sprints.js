@@ -1,0 +1,171 @@
+// ── 23-sprints.js — Sprint mode ──
+
+const STORE_SPRINTS = 'wl_sprints_v1';
+let sprintLog = [];
+
+let _sprintActive = false;
+let _sprintIntention = '';
+let _sprintDuration = 25; // minutes
+let _sprintEntryId = null;
+let _onSprintEnd = null;
+
+const SPRINT_DURATIONS = [15, 25, 45, 60];
+
+function loadSprintLog() {
+  try {
+    sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
+  } catch (e) {
+    sprintLog = [];
+  }
+}
+
+function saveSprintLog() {
+  localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
+}
+
+function openSprintSetup() {
+  const el = document.getElementById('sprintSetup');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('sprintIntention').value = '';
+  _sprintDuration = 25;
+  renderSprintDurations();
+  document.getElementById('sprintIntention').focus();
+}
+
+function renderSprintDurations() {
+  const el = document.getElementById('sprintDurations');
+  if (!el) return;
+  el.innerHTML = SPRINT_DURATIONS.map(
+    (d) =>
+      `<button class="add-btn sprint-dur-btn${d === _sprintDuration ? ' sprint-dur-active' : ''}"
+               data-dur="${d}">${d}m</button>`
+  ).join('');
+  el.querySelectorAll('.sprint-dur-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _sprintDuration = parseInt(btn.dataset.dur, 10);
+      renderSprintDurations();
+    });
+  });
+}
+
+function startSprint() {
+  _sprintIntention = document.getElementById('sprintIntention').value.trim();
+  if (!_sprintIntention) {
+    document.getElementById('sprintIntention').focus();
+    return;
+  }
+  document.getElementById('sprintSetup').style.display = 'none';
+  _sprintActive = true;
+
+  const entry = {
+    id: Date.now() + '',
+    text: _sprintIntention,
+    tag: selectedTag,
+    ts: safeRoundedStart(),
+    date: dk(new Date()),
+    _sprintDuration,
+  };
+  entries.push(entry);
+  _sprintEntryId = entry.id;
+  save();
+
+  if (activeTimer) stopTimer();
+  startTimer(entry.id);
+
+  const focusIntention = document.getElementById('sprintFocusIntention');
+  if (focusIntention) {
+    focusIntention.textContent = _sprintIntention;
+    focusIntention.style.display = '';
+  }
+
+  // Start pomodoro for the sprint duration
+  initPomo(_sprintDuration);
+  startPomo();
+  _onSprintEnd = showSprintReview;
+
+  render();
+}
+
+// Called from pomoDone() when the ring reaches 0
+function notifyPomodoroEnd() {
+  if (_onSprintEnd) {
+    const fn = _onSprintEnd;
+    _onSprintEnd = null;
+    fn();
+  }
+}
+
+function showSprintReview() {
+  stopTimer();
+  const el = document.getElementById('sprintReview');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('sprintReviewIntention').textContent = `"${_sprintIntention}"`;
+  document.getElementById('sprintReviewNote').value = '';
+
+  const outcomesEl = document.getElementById('sprintOutcomes');
+  outcomesEl.innerHTML = [
+    ['yes', '✓ Yes', '#1d9e75'],
+    ['partly', '◑ Partly', '#ef9f27'],
+    ['no', '✗ No', '#d32f2f'],
+  ]
+    .map(
+      ([val, label, color]) =>
+        `<button class="add-btn sprint-outcome-btn" data-outcome="${val}"
+               style="flex:1;color:${color};border-color:${color}44">${label}</button>`
+    )
+    .join('');
+
+  let _outcome = null;
+  outcomesEl.querySelectorAll('.sprint-outcome-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _outcome = btn.dataset.outcome;
+      outcomesEl
+        .querySelectorAll('.sprint-outcome-btn')
+        .forEach((b) => (b.style.fontWeight = b === btn ? '600' : ''));
+    });
+  });
+
+  document.getElementById('sprintReviewSave').onclick = () => {
+    if (!_outcome) {
+      alert('Please choose an outcome.');
+      return;
+    }
+    const note = document.getElementById('sprintReviewNote').value.trim();
+    loadSprintLog();
+    sprintLog.push({
+      id: _sprintEntryId,
+      intention: _sprintIntention,
+      duration: _sprintDuration,
+      outcome: _outcome,
+      note,
+      ts: Date.now(),
+    });
+    saveSprintLog();
+
+    const entry = entries.find((e) => e.id === _sprintEntryId);
+    if (entry) {
+      entry._sprintOutcome = _outcome;
+      save();
+    }
+
+    el.style.display = 'none';
+    _sprintActive = false;
+    const fi = document.getElementById('sprintFocusIntention');
+    if (fi) fi.style.display = 'none';
+    render();
+  };
+}
+
+function initSprints() {
+  document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
+  document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);
+  document.getElementById('sprintCancel')?.addEventListener('click', () => {
+    const el = document.getElementById('sprintSetup');
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('sprintIntention')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') startSprint();
+  });
+}

@@ -125,6 +125,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
 });
 initRapid();
 initDailyLog();
+initSprints();
 
 document.getElementById('prevDay').addEventListener('click', () => {
   viewDate = new Date(viewDate);

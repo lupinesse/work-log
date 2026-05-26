@@ -457,6 +457,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     addLogNote,
     openReflection,
     getReflectionForDate,
+    openSprintSetup,
+    getSprintLog: () => sprintLog,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically

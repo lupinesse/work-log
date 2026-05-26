@@ -106,6 +106,7 @@
     <div class="emergency-cps-label" aria-hidden="true">next steps</div>
     <div id="emergencyCps" role="list" aria-label="Task checkpoints"></div>
   </div>
+  <div id="sprintFocusIntention" class="sprint-focus-intention" style="display:none"></div>
   <div class="emergency-next-wrap">
     <label class="emergency-label" for="emergencyNext">smallest next action</label>
     <input class="emergency-next" id="emergencyNext" aria-label="Smallest next action" placeholder="what's the one thing to do right now?" />
@@ -486,6 +487,35 @@
   </div>
 </div>
 
+<!-- Sprint setup panel -->
+<div id="sprintSetup" style="display:none">
+  <div class="sprint-setup-card">
+    <div class="sprint-setup-title">&#9655; New sprint</div>
+    <div class="refl-label">What will you finish?</div>
+    <div class="capture-row">
+      <input class="capture-input" id="sprintIntention" placeholder="Describe the outcome, not the task" autocomplete="off" />
+    </div>
+    <div class="refl-label" style="margin-top:8px">Duration</div>
+    <div class="sprint-durations" id="sprintDurations"></div>
+    <div class="sprint-setup-actions">
+      <button class="add-btn" id="sprintCancel">Cancel</button>
+      <button class="add-btn refl-save" id="sprintStartBtn">&#9654; Start sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sprint review panel -->
+<div id="sprintReview" style="display:none">
+  <div class="sprint-review-card">
+    <div class="sprint-review-title">&#9678; Sprint review</div>
+    <div class="sprint-review-intention" id="sprintReviewIntention"></div>
+    <div class="refl-label">Did you finish what you set out to do?</div>
+    <div class="sprint-outcomes" id="sprintOutcomes"></div>
+    <input class="capture-input" id="sprintReviewNote" placeholder="What got in the way? (optional)" style="margin:10px 0" />
+    <button class="add-btn refl-save" id="sprintReviewSave">Save &amp; log entry</button>
+  </div>
+</div>
+
 <div class="pomo-section" role="region" aria-label="Pomodoro timer">
   <div class="pomo-header" id="pomoHeader">pomodoro</div>
   <div class="pomo-durations" role="group" aria-labelledby="pomoHeader">
@@ -508,6 +538,7 @@
   <div class="pomo-controls">
     <button class="pomo-btn pomo-start" id="pomoStart">start</button>
     <button class="pomo-btn" id="pomoReset">reset</button>
+    <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
   </div>
   <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
     🔔 time chime every
