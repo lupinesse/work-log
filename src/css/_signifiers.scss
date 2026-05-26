@@ -11,6 +11,10 @@
 .esig:hover {
   opacity: 0.7;
 }
+.sig-none {
+  color: var(--text3);
+  font-size: 16px;
+}
 
 /* Cancelled entry row */
 .entry.sig-cancelled-row {

@@ -5208,9 +5208,9 @@
   // ── 10b-signifiers.js ──
   // ── 10b-signifiers.js — Entry signifiers ──
 
-  const SIG_CYCLE = ['billable', 'event', 'flagged', 'migrated', 'cancelled', 'overtime'];
+  // null/undefined = no signifier (neutral). Cycle: none → event → … → overtime → none
+  const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
   const SIG_SYMBOL = {
-    billable: '💰',
     event: '📅',
     flagged: '🚩',
     migrated: '📤',
@@ -5218,7 +5218,6 @@
     overtime: '⏰',
   };
   const SIG_TITLE = {
-    billable: 'Billable',
     event: 'Meeting / event',
     flagged: 'Flagged for review',
     migrated: 'Migrated',
@@ -5227,25 +5226,25 @@
   };
 
   function sigSymbol(entry) {
-    return SIG_SYMBOL[entry.signifier] || '●';
+    return SIG_SYMBOL[entry.signifier] || '·';
   }
 
   function sigTitle(entry) {
-    return SIG_TITLE[entry.signifier] || 'Billable';
+    return SIG_TITLE[entry.signifier] || 'No signifier';
   }
 
   function cycleSignifier(entryId) {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) return;
-    const cur = entry.signifier || 'billable';
-    const idx = SIG_CYCLE.indexOf(cur);
-    entry.signifier = SIG_CYCLE[(idx + 1) % SIG_CYCLE.length];
+    const idx = SIG_CYCLE.indexOf(entry.signifier);
+    // -1 (none) → 0 (event); last item → null (back to none)
+    entry.signifier = idx + 1 < SIG_CYCLE.length ? SIG_CYCLE[idx + 1] : null;
     save();
     render();
   }
 
   function sigHtml(entry) {
-    return `<span class="esig sig-${entry.signifier || 'billable'}"
+    return `<span class="esig sig-${entry.signifier || 'none'}"
                data-entry-id="${escHtml(entry.id)}"
                title="${sigTitle(entry)}"
                role="button" tabindex="0"

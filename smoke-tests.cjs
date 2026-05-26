@@ -2299,19 +2299,19 @@ async function runTests() {
     await page.evaluate(() => window.__wl.cycleSignifier('sig1'));
     const sig = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
     assert('Signifier cycles on click', sig === 'event', `got ${JSON.stringify(sig)}`);
-    // Cycle through all six and confirm it wraps back to billable
+    // Cycle through all five and confirm it wraps back to null (neutral)
     await page.evaluate(() => {
       for (let i = 0; i < 5; i++) window.__wl.cycleSignifier('sig1');
     });
     const wrapped = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
     assert(
-      'Signifier wraps back to billable after 6 cycles',
-      wrapped === 'billable',
+      'Signifier wraps back to null after full cycle',
+      wrapped === null,
       `got ${JSON.stringify(wrapped)}`
     );
     // Cancelled entry excluded from isEntryBillable
     await page.evaluate(() => {
-      window.__wl.cycleSignifier('sig1'); // billable → event
+      window.__wl.cycleSignifier('sig1'); // null → event
       window.__wl.cycleSignifier('sig1'); // event → flagged
       window.__wl.cycleSignifier('sig1'); // flagged → migrated
       window.__wl.cycleSignifier('sig1'); // migrated → cancelled
