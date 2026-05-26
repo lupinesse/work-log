@@ -216,17 +216,23 @@ function checkSnapshot() {
 saveSnapshot();
 setInterval(saveSnapshot, 30 * 60 * 1000);
 
-wlLog.config({
-  version: '1.8.0',
-  date: dk(new Date()),
-  // Persistent state counts (from localStorage after load + migration)
-  entries: entries.length,
-  categories: categories.length,
-  planTasks: planTasks.length,
-  blocks: blocks.length,
-  // Runtime state
-  timer: activeTimer ? 'active' : 'idle',
-  snapshot: !!localStorage.getItem('wl_snapshot'),
-  // Environment: true when the PS API server responded (weather / calendar live)
-  apiServer: !!localStorage.getItem('wl_api_ok'),
-});
+// Deferred so planTasks/blocks are initialized before logging their counts.
+// planTasks is declared in 10-tasks.js which comes after this file in build order.
+setTimeout(
+  () =>
+    wlLog.config({
+      version: '1.8.0',
+      date: dk(new Date()),
+      // Persistent state counts (after load + migration have run)
+      entries: entries.length,
+      categories: categories.length,
+      planTasks: planTasks.length,
+      blocks: blocks.length,
+      // Runtime state
+      timer: activeTimer ? 'active' : 'idle',
+      snapshot: !!localStorage.getItem('wl_snapshot'),
+      // Environment: true when the PS API server responded (weather / calendar live)
+      apiServer: !!localStorage.getItem('wl_api_ok'),
+    }),
+  0
+);

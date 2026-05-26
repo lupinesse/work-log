@@ -144,6 +144,11 @@
    * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
    * @param {string} c
    * @returns {string} A safe CSS colour string.
+   * @example
+   * safeCssColor('#7B61FF')      // → '#7B61FF'
+   * safeCssColor('hsl(200,60%,50%)') // → 'hsl(200,60%,50%)'
+   * safeCssColor('red')          // → '#888780'  (name blocked)
+   * safeCssColor('')             // → '#888780'
    */
   function safeCssColor(c) {
     // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
@@ -156,6 +161,11 @@
    * Escapes a string for safe insertion as HTML text content.
    * @param {string} s
    * @returns {string}
+   * @example
+   * escHtml('<b>bold</b>')   // → '&lt;b&gt;bold&lt;/b&gt;'
+   * escHtml('a & b')         // → 'a &amp; b'
+   * escHtml('"quoted"')      // → '&quot;quoted&quot;'
+   * escHtml(42)              // → '42'
    */
   function escHtml(s) {
     return String(s)
@@ -182,6 +192,9 @@
    * Formats a Unix timestamp as HH:MM in 24-hour local time.
    * @param {number} ts - Unix timestamp in milliseconds.
    * @returns {string} e.g. '09:30'
+   * @example
+   * fmtTime(new Date('2026-05-25T09:05:00').getTime()) // → '09:05'
+   * fmtTime(new Date('2026-05-25T14:30:00').getTime()) // → '14:30'
    */
   function fmtTime(ts) {
     const d = new Date(ts);
@@ -192,6 +205,11 @@
    * Formats a duration in milliseconds as a compact time string.
    * @param {number} ms - Duration in milliseconds.
    * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
+   * @example
+   * fmtElapsed(0)              // → '00:00'
+   * fmtElapsed(90 * 1000)      // → '01:30'
+   * fmtElapsed(3600 * 1000)    // → '01:00:00'
+   * fmtElapsed(5461 * 1000)    // → '01:31:01'
    */
   function fmtElapsed(ms) {
     const s = Math.floor(ms / 1000);
@@ -215,6 +233,11 @@
    *
    * @param {number} ms - Duration in milliseconds.
    * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
+   * @example
+   * roundUp30(0)                    // → 1_800_000  (30 min — minimum)
+   * roundUp30(1)                    // → 1_800_000  (1 ms still costs one slot)
+   * roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
+   * roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)
    */
   function roundUp30(ms) {
     const SLOT = 30 * 60 * 1000;
@@ -258,6 +281,11 @@
    * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
    * @param {*} e - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validEntry({ id: '1', text: 'Write report', ts: 1234567890, date: '2026-05-25' }) // → true
+   * validEntry(null)                           // → false
+   * validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
+   * validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)
    */
   function validEntry(e) {
     return !!(
@@ -288,6 +316,10 @@
    * Returns true if `t` is a well-formed plan task with a recognised status value.
    * @param {*} t - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validPlanTask({ id: 'pk1', text: 'Build form', date: '2026-05-25', status: 'todo' }) // → true
+   * validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
+   * validPlanTask(null) // → false
    */
   function validPlanTask(t) {
     return !!(
@@ -321,6 +353,11 @@
    * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
    * @param {*} t - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validTimer({ entryId: 'e1', startTs: 1234567890 })              // → true  (running)
+   * validTimer({ entryId: 'e1', paused: true, accumulatedMs: 900000 }) // → true  (paused)
+   * validTimer({ entryId: 'e1' })                                   // → false (neither running nor paused)
+   * validTimer(null)                                                 // → false
    */
   function validTimer(t) {
     if (!t || typeof t.entryId !== 'string') return false;
@@ -446,26 +483,46 @@
 
   /**
    * Loads all persistent state from localStorage into module-level variables.
-   * Invalid records are silently dropped per-item rather than rejecting entire arrays.
+   * Invalid records are dropped per-item (rather than rejecting entire arrays)
+   * and any drops are reported via wlLog.warn so data-quality issues are visible
+   * in DevTools rather than silently disappearing.
    * Falls back to the last snapshot if entries are missing from primary storage.
    */
   function load() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
-      entries = Array.isArray(raw) ? raw.filter(validEntry) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      entries = all.filter(validEntry);
+      if (entries.length < all.length)
+        wlLog.warn(`load: dropped ${all.length - entries.length} invalid entry record(s)`, {
+          total: all.length,
+          kept: entries.length,
+        });
     } catch (e) {
       entries = [];
+      wlLog.error('load: failed to parse entries from localStorage', e);
     }
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
       activeTimer = raw && validTimer(raw) ? raw : null;
+      if (raw && !validTimer(raw)) wlLog.warn('load: discarded invalid timer state', raw);
     } catch (e) {
       activeTimer = null;
+      wlLog.error('load: failed to parse timer state', e);
     }
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
-      if (Array.isArray(raw) && raw.length) categories = raw.filter(validCategory);
-    } catch (e) {}
+      if (Array.isArray(raw) && raw.length) {
+        categories = raw.filter(validCategory);
+        if (categories.length < raw.length)
+          wlLog.warn(`load: dropped ${raw.length - categories.length} invalid category record(s)`, {
+            total: raw.length,
+            kept: categories.length,
+          });
+      }
+    } catch (e) {
+      wlLog.error('load: failed to parse categories', e);
+    }
     // Auto-restore from snapshot if entries are unexpectedly empty
     if (!entries.length) {
       try {
@@ -474,7 +531,7 @@
           entries = snap.entries.filter(validEntry);
           if (Array.isArray(snap.categories) && snap.categories.length)
             categories = snap.categories.filter(validCategory);
-          console.warn('Restored from snapshot — entries were missing from primary storage');
+          wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
         }
       } catch (e) {}
     }
@@ -483,12 +540,17 @@
    * Persists entries, active timer, and categories to localStorage.
    * Refuses to overwrite existing non-empty data with an empty array to guard against
    * accidental data loss if save() is called before load() completes.
+   *
+   * Assumption: an empty `entries` array in memory while localStorage still holds
+   * data means save() was called before load() finished (e.g. a race during init),
+   * not that the user intentionally deleted everything. Intentional clearing goes
+   * through a dedicated wipe path that bypasses this guard.
    */
   function save() {
     // Never overwrite real data with empty arrays
     const existing = localStorage.getItem(STORE_ENTRIES);
     if (!entries.length && existing && existing !== '[]') {
-      console.warn('save() blocked — refusing to overwrite existing entries with empty array');
+      wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
       return;
     }
     localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
@@ -1475,7 +1537,7 @@
 
           const billableEmoji = isEntryBillable(e) ? '💰' : '💸';
           return `
-        <div class="entry${isTiming ? ' is-timing' : ''}" data-id="${e.id}">
+        <div class="entry${isTiming ? ' is-timing' : ''}${e.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${e.id}">
           <div class="etime-col">
             <span class="etime-display" data-id="${e.id}">
               <span class="etime-start">${fmtTime(e.ts)}</span>
@@ -1490,6 +1552,7 @@
               </div>
             </div>
           </div>
+          ${sigHtml(e)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
             <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
@@ -1505,6 +1568,8 @@
         </div>`;
         })
         .join('');
+
+    bindSignifierClicks();
 
     /* time editor */
     tl.querySelectorAll('.etime-display').forEach((el) => {
@@ -1990,6 +2055,7 @@
    * @returns {boolean} True if the entry should be counted as billable.
    */
   function isEntryBillable(e) {
+    if (e.signifier === 'cancelled') return false;
     if (e.billable !== undefined) return e.billable;
     const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
     // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
@@ -2015,7 +2081,9 @@
     // Day start/end
     let dayStartTs = isViewingToday ? getDayStart() : null;
     if (!dayStartTs && dayEntries.length) dayStartTs = Math.min(...dayEntries.map((e) => e.ts));
-    const timedEntries = dayEntries.filter((e) => e.tsEnd && e.tsEnd > e.ts);
+    const timedEntries = dayEntries.filter(
+      (e) => e.tsEnd && e.tsEnd > e.ts && e.signifier !== 'cancelled'
+    );
     let dayEndTs = timedEntries.length ? Math.max(...timedEntries.map((e) => e.tsEnd)) : null;
     // Factor in the active timer's effective end so "Ended:" reflects live work
     if (activeTimer && isViewingToday) {
@@ -2704,6 +2772,12 @@
    * 30 minutes.  The snapshot contains both a human-readable plaintext summary
    * and the raw entry/category arrays so data can be recovered after accidental
    * clearing.  No-ops when there are no entries for today.
+   *
+   * Assumption: 30 minutes is an acceptable data-loss window for a personal work
+   * log used in a single browser tab. Browser crashes, accidental page reloads,
+   * and mis-clicks on "clear data" are the main risks; all are adequately covered
+   * by a 30-minute recovery point. If higher durability is needed, reduce the
+   * interval in the setInterval call in 07-lifecycle.js.
    */
   function saveSnapshot() {
     const todayKey = dk(new Date());
@@ -2761,14 +2835,26 @@
   saveSnapshot();
   setInterval(saveSnapshot, 30 * 60 * 1000);
 
-  wlLog.config({
-    version: '1.8.0',
-    date: dk(new Date()),
-    entries: entries.length,
-    categories: categories.length,
-    timer: activeTimer ? 'active' : 'idle',
-    snapshot: !!localStorage.getItem('wl_snapshot'),
-  });
+  // Deferred so planTasks/blocks are initialized before logging their counts.
+  // planTasks is declared in 10-tasks.js which comes after this file in build order.
+  setTimeout(
+    () =>
+      wlLog.config({
+        version: '1.8.0',
+        date: dk(new Date()),
+        // Persistent state counts (after load + migration have run)
+        entries: entries.length,
+        categories: categories.length,
+        planTasks: planTasks.length,
+        blocks: blocks.length,
+        // Runtime state
+        timer: activeTimer ? 'active' : 'idle',
+        snapshot: !!localStorage.getItem('wl_snapshot'),
+        // Environment: true when the PS API server responded (weather / calendar live)
+        apiServer: !!localStorage.getItem('wl_api_ok'),
+      }),
+    0
+  );
 
   // ── 08-pomodoro.js ──
   /* ── Pomodoro ── */
@@ -2922,13 +3008,22 @@
 
   /**
    * Reads and validates the pomodoro session log from localStorage.
+   * Invalid records are dropped and reported via wlLog.warn.
    * @returns {Array<{ts: number, mins: number, task: string|null}>} Session log entries.
    */
   function pomoGetLog() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-      return Array.isArray(raw) ? raw.filter(validPomoEntry) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      const valid = all.filter(validPomoEntry);
+      if (valid.length < all.length)
+        wlLog.warn(`pomoGetLog: dropped ${all.length - valid.length} invalid pomodoro record(s)`, {
+          total: all.length,
+          kept: valid.length,
+        });
+      return valid;
     } catch (e) {
+      wlLog.error('pomoGetLog: failed to parse pomodoro log', e);
       return [];
     }
   }
@@ -3831,8 +3926,13 @@
       if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
       if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
       if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
+      // Mark that the API server responded — read by wlLog.config() in 07-lifecycle.js
+      // to record which environment the app is running in.
+      localStorage.setItem('wl_api_ok', '1');
     })
-    .catch(() => {})
+    .catch(() => {
+      localStorage.removeItem('wl_api_ok');
+    })
     .finally(() => fetchWeather());
 
   fetchNameday();
@@ -3868,14 +3968,22 @@
 
   /**
    * Loads plan tasks from localStorage into `planTasks`, filtering out invalid
-   * entries via `validPlanTask`. Resets to empty array on parse error.
+   * entries via `validPlanTask`. Drops are reported via wlLog.warn so data-quality
+   * issues are visible in DevTools. Resets to empty array on parse error.
    */
   function loadPlan() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]');
-      planTasks = Array.isArray(raw) ? raw.filter(validPlanTask) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      planTasks = all.filter(validPlanTask);
+      if (planTasks.length < all.length)
+        wlLog.warn(`loadPlan: dropped ${all.length - planTasks.length} invalid task record(s)`, {
+          total: all.length,
+          kept: planTasks.length,
+        });
     } catch (e) {
       planTasks = [];
+      wlLog.error('loadPlan: failed to parse plan tasks from localStorage', e);
     }
   }
   /** Persists the current `planTasks` array to localStorage. */
@@ -5061,6 +5169,70 @@
     renderPlan();
   });
 
+  // ── 10b-signifiers.js ──
+  // ── 10b-signifiers.js — Entry signifiers ──
+
+  const SIG_CYCLE = ['billable', 'event', 'flagged', 'migrated', 'cancelled', 'overtime'];
+  const SIG_SYMBOL = {
+    billable: '●',
+    event: '○',
+    flagged: '★',
+    migrated: '→',
+    cancelled: '✗',
+    overtime: '!',
+  };
+  const SIG_TITLE = {
+    billable: 'Billable',
+    event: 'Meeting / event',
+    flagged: 'Flagged for review',
+    migrated: 'Migrated',
+    cancelled: 'Cancelled — excluded from totals',
+    overtime: 'Overtime',
+  };
+
+  function sigSymbol(entry) {
+    return SIG_SYMBOL[entry.signifier] || '●';
+  }
+
+  function sigTitle(entry) {
+    return SIG_TITLE[entry.signifier] || 'Billable';
+  }
+
+  function cycleSignifier(entryId) {
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const cur = entry.signifier || 'billable';
+    const idx = SIG_CYCLE.indexOf(cur);
+    entry.signifier = SIG_CYCLE[(idx + 1) % SIG_CYCLE.length];
+    save();
+    render();
+  }
+
+  function sigHtml(entry) {
+    return `<span class="esig sig-${entry.signifier || 'billable'}"
+               data-entry-id="${escHtml(entry.id)}"
+               title="${sigTitle(entry)}"
+               role="button" tabindex="0"
+               aria-label="Signifier: ${sigTitle(entry)}">
+    ${sigSymbol(entry)}
+  </span>`;
+  }
+
+  function bindSignifierClicks() {
+    document.querySelectorAll('.esig').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleSignifier(el.dataset.entryId);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          cycleSignifier(el.dataset.entryId);
+        }
+      });
+    });
+  }
+
   // ── 11-timeblock.js ──
   /* ── Timeblock ── */
   /**
@@ -5068,6 +5240,10 @@
    * @type {string}
    */
   const STORE_BLOCKS = 'wl_blocks_v1';
+  // Assumption: a standard workday starts no earlier than 07:00 and ends no later
+  // than 21:00. Tasks scheduled outside this window are rare enough that they do
+  // not need to appear in the visual grid. If the assumption changes, update
+  // TB_START / TB_END here — slots and pixel heights are derived automatically.
   const TB_START = 7; // 07:00
   const TB_END = 21; // 21:00
   const TB_SLOTS = (TB_END - TB_START) * 2; // 28 half-hour slots
@@ -5083,15 +5259,23 @@
 
   /**
    * Loads time blocks from localStorage into `blocks`, filtering invalid entries.
+   * Drops are reported via wlLog.warn so data-quality issues are visible in DevTools.
    * Applies a one-time migration to shift existing block slots by +2 when the
    * time-block grid start time changed from 08:00 to 07:00.
    */
   function loadBlocks() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
-      blocks = Array.isArray(raw) ? raw.filter(validBlock) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      blocks = all.filter(validBlock);
+      if (blocks.length < all.length)
+        wlLog.warn(`loadBlocks: dropped ${all.length - blocks.length} invalid block record(s)`, {
+          total: all.length,
+          kept: blocks.length,
+        });
     } catch (e) {
       blocks = [];
+      wlLog.error('loadBlocks: failed to parse time blocks from localStorage', e);
     }
     // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
     if (!localStorage.getItem('wl_tb_migrated_7')) {
@@ -6471,10 +6655,12 @@ Requirements:
   // Sync aria-expanded on toggling section headers.
   // Each section header's click listener was set up in other modules; we patch
   // aria-expanded by observing classList changes on the section wrappers.
+  // planHeader is excluded: it has no widget role (it contains a nested <button>
+  // so role="button" would be invalid), and aria-expanded is not allowed on a
+  // generic div — see also the keyboard-nav exclusion note above.
   (function syncAriaExpanded() {
     const pairs = [
       { sectionId: 'calSection', headerId: 'calHeader' },
-      { sectionId: 'planSection', headerId: 'planHeader' },
       { sectionId: 'upcomingSection', headerId: 'upcomingHeader' },
       { sectionId: 'pendingSection', headerId: 'pendingHeader' },
       { sectionId: 'completedSection', headerId: 'completedHeader' },
@@ -7904,6 +8090,8 @@ Requirements:
       saveHook,
       _showBridgeBanner: showBridgeBanner,
       getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
+      cycleSignifier,
+      isEntryBillable,
     };
     // Live viewDate getter/setter so tests can change the view date
     // and renderCompleted re-runs automatically

@@ -172,7 +172,7 @@ function render() {
 
         const billableEmoji = isEntryBillable(e) ? '💰' : '💸';
         return `
-        <div class="entry${isTiming ? ' is-timing' : ''}" data-id="${e.id}">
+        <div class="entry${isTiming ? ' is-timing' : ''}${e.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${e.id}">
           <div class="etime-col">
             <span class="etime-display" data-id="${e.id}">
               <span class="etime-start">${fmtTime(e.ts)}</span>
@@ -187,6 +187,7 @@ function render() {
               </div>
             </div>
           </div>
+          ${sigHtml(e)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
             <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
@@ -202,6 +203,8 @@ function render() {
         </div>`;
       })
       .join('');
+
+  bindSignifierClicks();
 
   /* time editor */
   tl.querySelectorAll('.etime-display').forEach((el) => {

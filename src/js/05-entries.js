@@ -61,6 +61,7 @@ function addEntry(withTimer) {
  * @returns {boolean} True if the entry should be counted as billable.
  */
 function isEntryBillable(e) {
+  if (e.signifier === 'cancelled') return false;
   if (e.billable !== undefined) return e.billable;
   const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
   // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
@@ -86,7 +87,9 @@ function exportTxt() {
   // Day start/end
   let dayStartTs = isViewingToday ? getDayStart() : null;
   if (!dayStartTs && dayEntries.length) dayStartTs = Math.min(...dayEntries.map((e) => e.ts));
-  const timedEntries = dayEntries.filter((e) => e.tsEnd && e.tsEnd > e.ts);
+  const timedEntries = dayEntries.filter(
+    (e) => e.tsEnd && e.tsEnd > e.ts && e.signifier !== 'cancelled'
+  );
   let dayEndTs = timedEntries.length ? Math.max(...timedEntries.map((e) => e.tsEnd)) : null;
   // Factor in the active timer's effective end so "Ended:" reflects live work
   if (activeTimer && isViewingToday) {

@@ -2028,6 +2028,40 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Signifiers ────────────────────────────────────────────────────────────
+  console.log('\nSignifiers');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [{ id: 'sig1', text: 'Test', tag: 'work', ts: Date.now(), date: today }],
+    });
+    await page.evaluate(() => window.__wl.cycleSignifier('sig1'));
+    const sig = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
+    assert('Signifier cycles on click', sig === 'event', `got ${JSON.stringify(sig)}`);
+    // Cycle through all six and confirm it wraps back to billable
+    await page.evaluate(() => {
+      for (let i = 0; i < 5; i++) window.__wl.cycleSignifier('sig1');
+    });
+    const wrapped = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
+    assert(
+      'Signifier wraps back to billable after 6 cycles',
+      wrapped === 'billable',
+      `got ${JSON.stringify(wrapped)}`
+    );
+    // Cancelled entry excluded from isEntryBillable
+    await page.evaluate(() => {
+      window.__wl.cycleSignifier('sig1'); // billable → event
+      window.__wl.cycleSignifier('sig1'); // event → flagged
+      window.__wl.cycleSignifier('sig1'); // flagged → migrated
+      window.__wl.cycleSignifier('sig1'); // migrated → cancelled
+    });
+    const isBill = await page.evaluate(() =>
+      window.__wl.isEntryBillable(window.__wl.getState().entries[0])
+    );
+    assert('Cancelled entry is not billable', isBill === false);
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();

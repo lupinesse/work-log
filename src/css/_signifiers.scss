@@ -1,0 +1,40 @@
+.esig {
+  font-size: 12px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--text3);
+  transition: color 0.1s;
+  font-family: var(--mono);
+  user-select: none;
+}
+.esig:hover {
+  color: var(--text);
+}
+.sig-billable {
+  color: #378add;
+}
+.sig-event {
+  color: #1d9e75;
+}
+.sig-flagged {
+  color: #ef9f27;
+}
+.sig-migrated {
+  color: var(--text3);
+}
+.sig-cancelled {
+  color: var(--text3);
+}
+.sig-overtime {
+  color: #d32f2f;
+}
+
+/* Cancelled entry row */
+.entry.sig-cancelled-row {
+  opacity: 0.4;
+}
+.entry.sig-cancelled-row .etext {
+  text-decoration: line-through;
+}
