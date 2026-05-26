@@ -484,6 +484,29 @@
   </div>
 </div>
 
+<div id="rapidOverlay" class="rapid-overlay" role="dialog" aria-modal="true"
+     aria-label="Quick capture" style="display:none">
+  <div class="rapid-card">
+    <div class="rapid-header">
+      <span class="rapid-label">Quick capture</span>
+      <kbd>Space</kbd>
+      <button class="rapid-close" id="rapidClose" aria-label="Close">✕</button>
+    </div>
+    <div class="capture-row">
+      <input class="capture-input" id="rapidInput"
+             placeholder="What are you working on?" autocomplete="off" />
+    </div>
+    <div class="rapid-cats" id="rapidCats"></div>
+    <div class="rapid-footer">
+      <span class="rapid-hint">Category optional — assign during review</span>
+      <div class="rapid-actions">
+        <button class="add-btn" id="rapidLogOnly">Log only</button>
+        <button class="add-btn rapid-start" id="rapidStart">&#9654; Start timer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="script.js"></script>
 <div id="debugInfo">
   <span class="commit">Latest commit: a322f1f</span>

@@ -123,6 +123,8 @@ document.getElementById('timerPause').addEventListener('click', () => {
   if (activeTimer && activeTimer.paused) resumeTimer();
   else pauseTimer();
 });
+initRapid();
+
 document.getElementById('prevDay').addEventListener('click', () => {
   viewDate = new Date(viewDate);
   viewDate.setDate(viewDate.getDate() - 1);

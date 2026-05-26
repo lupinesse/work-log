@@ -2028,6 +2028,34 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Rapid Logging ─────────────────────────────────────────────────────────
+  console.log('\nRapid Logging');
+  {
+    const page = await freshPage(ctx);
+    await page.keyboard.press('Space');
+    assert(
+      'Rapid overlay opens on Space',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display !== 'none')
+    );
+    await page.keyboard.press('Escape');
+    assert(
+      'Rapid overlay closes on Escape',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display === 'none')
+    );
+    // Log only — open again, fill, log
+    await page.keyboard.press('Space');
+    await page.waitForSelector('#rapidInput:visible');
+    await page.fill('#rapidInput', 'quick task');
+    await page.click('#rapidLogOnly');
+    const entryCount = await page.evaluate(() => window.__wl.getState().entries.length);
+    assert('Log only creates an entry', entryCount === 1, `got ${entryCount} entries`);
+    assert(
+      'Rapid overlay closes after log',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display === 'none')
+    );
+    await page.close();
+  }
+
   // ── Signifiers ────────────────────────────────────────────────────────────
   console.log('\nSignifiers');
   {

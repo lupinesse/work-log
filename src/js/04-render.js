@@ -190,7 +190,7 @@ function render() {
           ${sigHtml(e)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
+            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}${e._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
