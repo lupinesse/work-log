@@ -2028,6 +2028,29 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Daily Log ─────────────────────────────────────────────────────────────
+  console.log('\nDaily Log');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [{ id: 'dl1', text: 'Deep work', tag: 'work', ts: Date.now(), date: today }],
+    });
+    await page.click('#tabDailyLog');
+    await page.waitForSelector('#dailyLogSection:visible');
+    const html = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    assert('Daily Log renders entry', html.includes('Deep work'), 'entry text not found in feed');
+    // Add a note via the programmatic helper
+    await page.evaluate(() => {
+      document.getElementById('dailyLogNoteInput').value = 'remembered to call back';
+      window.__wl.addLogNote();
+    });
+    const noteHtml = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    assert('Daily Log renders note', noteHtml.includes('remembered to call back'));
+    const noteCount = await page.evaluate(() => window.__wl.getState().logNotes.length);
+    assert('Log note persisted to state', noteCount === 1, `got ${noteCount}`);
+    await page.close();
+  }
+
   // ── Rapid Logging ─────────────────────────────────────────────────────────
   console.log('\nRapid Logging');
   {

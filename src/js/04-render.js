@@ -371,6 +371,7 @@ function render() {
   renderPlan();
   renderCompleted();
   renderTimeblock();
+  if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
 }
 
 /**

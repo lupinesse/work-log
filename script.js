@@ -403,6 +403,7 @@
   const STORE_POMO_LOG = 'wl_pomoLog_v1';
   const STORE_CATS = 'wl_cats_v1';
   const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
+  const STORE_LOGNOTES = 'wl_lognotes_v1';
 
   // Lowercase task texts the user has dismissed from the recent-tasks list
   let qpHidden = (() => {
@@ -469,6 +470,7 @@
 
   let viewDate = new Date();
   let selectedTag = 'work';
+  let logNotes = [];
   let entries = [];
   let activeTimer = null;
   let timerInterval = null;
@@ -535,7 +537,22 @@
         }
       } catch (e) {}
     }
+    loadLogNotes();
   }
+
+  function loadLogNotes() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
+      logNotes = Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      logNotes = [];
+    }
+  }
+
+  function saveLogNotes() {
+    localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
+  }
+
   /**
    * Persists entries, active timer, and categories to localStorage.
    * Refuses to overwrite existing non-empty data with an empty array to guard against
@@ -1736,6 +1753,7 @@
     renderPlan();
     renderCompleted();
     renderTimeblock();
+    if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
   }
 
   /**
@@ -2743,6 +2761,7 @@
     else pauseTimer();
   });
   initRapid();
+  initDailyLog();
 
   document.getElementById('prevDay').addEventListener('click', () => {
     viewDate = new Date(viewDate);
@@ -8091,9 +8110,10 @@ Requirements:
       getHook,
       saveHook,
       _showBridgeBanner: showBridgeBanner,
-      getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
+      getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes }),
       cycleSignifier,
       isEntryBillable,
+      addLogNote,
     };
     // Live viewDate getter/setter so tests can change the view date
     // and renderCompleted re-runs automatically
@@ -8823,6 +8843,133 @@ Requirements:
 
     document.getElementById('rapidOverlay')?.addEventListener('click', (e) => {
       if (e.target === document.getElementById('rapidOverlay')) closeRapid();
+    });
+  }
+
+  // ── 18-dailylog.js ──
+  // ── 18-dailylog.js — Daily Log unified feed ──
+
+  let _dlActive = false;
+
+  function _fmtDur(ms) {
+    const mins = Math.round(ms / 60000);
+    const h = Math.floor(mins / 60),
+      m = mins % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  }
+
+  function buildDailyLogItems(dateKey) {
+    const items = [];
+
+    entries
+      .filter((e) => e.date === dateKey)
+      .forEach((e) => {
+        const cat = getCat(e.tag);
+        items.push({
+          ts: e.ts,
+          type: 'entry',
+          color: cat.color,
+          text: escHtml(e.text),
+          sub: `${escHtml(cat.label)} · ${e.tsEnd ? _fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
+        });
+      });
+
+    logNotes
+      .filter((n) => n.date === dateKey)
+      .forEach((n) => {
+        items.push({
+          ts: n.ts,
+          type: 'note',
+          color: 'var(--bg3)',
+          text: `<em>${escHtml(n.text)}</em>`,
+          sub: 'Note',
+        });
+      });
+
+    planTasks
+      .filter((t) => t.date === dateKey && Array.isArray(t.statusComments))
+      .forEach((t) => {
+        t.statusComments.forEach((c) => {
+          if (dk(new Date(c.ts)) === dateKey) {
+            items.push({
+              ts: c.ts,
+              type: 'task',
+              color: '#ef9f27',
+              text: `<span class="tl-task-name">${escHtml(t.text)}</span> — ${escHtml(c.text)}`,
+              sub: 'Task update',
+            });
+          }
+        });
+      });
+
+    return items.sort((a, b) => a.ts - b.ts);
+  }
+
+  function renderDailyLog() {
+    const el = document.getElementById('dailyLogFeed');
+    if (!el) return;
+
+    const dateKey = dk(viewDate);
+    const items = buildDailyLogItems(dateKey);
+
+    if (!items.length) {
+      el.innerHTML = `<div class="tl-empty">No entries or notes for this day yet.</div>`;
+    } else {
+      el.innerHTML = items
+        .map((item, i) => {
+          const time = new Date(item.ts);
+          const hh = String(time.getHours()).padStart(2, '0');
+          const mm = String(time.getMinutes()).padStart(2, '0');
+          return `
+        <div class="tl-row">
+          <span class="tl-time">${hh}:${mm}</span>
+          <div class="tl-dot-col">
+            <div class="tl-dot" style="background:${item.color}"></div>
+            ${i < items.length - 1 ? '<div class="tl-line"></div>' : ''}
+          </div>
+          <div class="tl-body">
+            <div class="tl-text">${item.text}</div>
+            <div class="tl-sub">${item.sub}</div>
+          </div>
+        </div>`;
+        })
+        .join('');
+    }
+
+    const noteRow = document.getElementById('dailyLogNoteRow');
+    if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
+
+    document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
+    document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addLogNote();
+    });
+  }
+
+  function addLogNote() {
+    const inp = document.getElementById('dailyLogNoteInput');
+    const text = inp ? inp.value.trim() : '';
+    if (!text) return;
+    logNotes.push({
+      id: Date.now() + '',
+      text,
+      ts: Date.now(),
+      date: dk(new Date()),
+      type: 'note',
+    });
+    saveLogNotes();
+    if (inp) inp.value = '';
+    renderDailyLog();
+  }
+
+  function initDailyLog() {
+    const btn = document.getElementById('tabDailyLog');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      _dlActive = !_dlActive;
+      const section = document.getElementById('dailyLogSection');
+      if (section) section.style.display = _dlActive ? '' : 'none';
+      btn.classList.toggle('active', _dlActive);
+      if (_dlActive) renderDailyLog();
     });
   }
 })();
