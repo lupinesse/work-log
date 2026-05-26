@@ -3,6 +3,9 @@ const STORE_TIMER = 'wl_timer_v1';
 const STORE_POMO_LOG = 'wl_pomoLog_v1';
 const STORE_CATS = 'wl_cats_v1';
 const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
+const STORE_LOGNOTES = 'wl_lognotes_v1';
+const STORE_TRACKERS = 'wl_trackers_v1';
+const STORE_MIGRATION = 'wl_migration_v1';
 
 // Lowercase task texts the user has dismissed from the recent-tasks list
 let qpHidden = (() => {
@@ -69,6 +72,8 @@ function nextDistinctColor() {
 
 let viewDate = new Date();
 let selectedTag = 'work';
+let logNotes = [];
+let trackers = [];
 let entries = [];
 let activeTimer = null;
 let timerInterval = null;
@@ -135,7 +140,23 @@ function load() {
       }
     } catch (e) {}
   }
+  loadLogNotes();
+  loadTrackers();
 }
+
+function loadLogNotes() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
+    logNotes = Array.isArray(raw) ? raw : [];
+  } catch (e) {
+    logNotes = [];
+  }
+}
+
+function saveLogNotes() {
+  localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
+}
+
 /**
  * Persists entries, active timer, and categories to localStorage.
  * Refuses to overwrite existing non-empty data with an empty array to guard against

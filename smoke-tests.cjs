@@ -2028,6 +2028,301 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Sprints ───────────────────────────────────────────────────────────────
+  console.log('\nSprints');
+  {
+    const page = await freshPage(ctx);
+    // Sprint setup opens on Sprint button click
+    await page.click('#sprintModeBtn');
+    assert(
+      'Sprint setup opens',
+      await page.evaluate(() => document.getElementById('sprintSetup').style.display !== 'none')
+    );
+    // Cancel closes it
+    await page.click('#sprintCancel');
+    assert(
+      'Sprint setup closes on cancel',
+      await page.evaluate(() => document.getElementById('sprintSetup').style.display === 'none')
+    );
+    // Duration buttons render (4 options)
+    await page.click('#sprintModeBtn');
+    const durCount = await page.evaluate(() => document.querySelectorAll('.sprint-dur-btn').length);
+    assert('Sprint durations rendered', durCount === 4, `got ${durCount}`);
+    await page.close();
+  }
+
+  // ── Reflection ────────────────────────────────────────────────────────────
+  console.log('\nReflection');
+  {
+    const page = await freshPage(ctx);
+    await page.evaluate(() => window.__wl.openReflection());
+    assert(
+      'Reflection overlay opens',
+      await page.evaluate(
+        () => document.getElementById('reflectionOverlay').style.display !== 'none'
+      )
+    );
+    await page.click('#reflSkip');
+    assert(
+      'Reflection closes on skip',
+      await page.evaluate(
+        () => document.getElementById('reflectionOverlay').style.display === 'none'
+      )
+    );
+    // Save with ratings
+    await page.evaluate(() => window.__wl.openReflection());
+    await page.click('[data-el="reflFocusStars"][data-val="4"]');
+    await page.click('[data-el="reflEnergyStars"][data-val="3"]');
+    await page.click('#reflSave');
+    const today = dk(new Date());
+    const refl = await page.evaluate((d) => window.__wl.getReflectionForDate(d), today);
+    assert(
+      'Reflection saves focus rating',
+      refl && refl.focus === 4,
+      `got ${JSON.stringify(refl)}`
+    );
+    assert(
+      'Reflection saves energy rating',
+      refl && refl.energy === 3,
+      `got ${JSON.stringify(refl)}`
+    );
+    await page.close();
+  }
+
+  // ── Daily Log ─────────────────────────────────────────────────────────────
+  console.log('\nDaily Log');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [{ id: 'dl1', text: 'Deep work', tag: 'work', ts: Date.now(), date: today }],
+    });
+    await page.click('#tabDailyLog');
+    await page.waitForSelector('#dailyLogSection:visible');
+    const html = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    assert('Daily Log renders entry', html.includes('Deep work'), 'entry text not found in feed');
+    // Add a note via the programmatic helper
+    await page.evaluate(() => {
+      document.getElementById('dailyLogNoteInput').value = 'remembered to call back';
+      window.__wl.addLogNote();
+    });
+    const noteHtml = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    assert('Daily Log renders note', noteHtml.includes('remembered to call back'));
+    const noteCount = await page.evaluate(() => window.__wl.getState().logNotes.length);
+    assert('Log note persisted to state', noteCount === 1, `got ${noteCount}`);
+    await page.close();
+  }
+
+  // ── Rapid Logging ─────────────────────────────────────────────────────────
+  console.log('\nRapid Logging');
+  {
+    const page = await freshPage(ctx);
+    await page.click('#rapidOpenBtn');
+    assert(
+      'Rapid overlay opens on button click',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display !== 'none')
+    );
+    await page.keyboard.press('Escape');
+    assert(
+      'Rapid overlay closes on Escape',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display === 'none')
+    );
+    // Log only — open again, fill, log
+    await page.click('#rapidOpenBtn');
+    await page.waitForSelector('#rapidInput:visible');
+    await page.fill('#rapidInput', 'quick task');
+    await page.click('#rapidLogOnly');
+    const entryCount = await page.evaluate(() => window.__wl.getState().entries.length);
+    assert('Log only creates an entry', entryCount === 1, `got ${entryCount} entries`);
+    assert(
+      'Rapid overlay closes after log',
+      await page.evaluate(() => document.getElementById('rapidOverlay').style.display === 'none')
+    );
+    await page.close();
+  }
+
+  // ── Migration ─────────────────────────────────────────────────────────────
+  console.log('\nMigration');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_plan_v1: [
+        { id: 'mig1', text: 'Unfinished task', tag: 'work', date: today, status: 'todo' },
+      ],
+    });
+
+    // migrationOverlay exists in DOM
+    const exists = await page.evaluate(() => document.getElementById('migrationOverlay') !== null);
+    assert('Migration overlay exists in DOM', exists);
+
+    // Opens with an open task
+    await page.evaluate(() => window.__wl.openMigration());
+    const visible = await page.evaluate(
+      () => document.getElementById('migrationOverlay').style.display !== 'none'
+    );
+    assert('Migration overlay opens', visible);
+
+    // Counter shows 0 / 1
+    const counter = await page.evaluate(
+      () => document.getElementById('migrationCounter').textContent
+    );
+    assert('Migration counter shows 0/1', counter.includes('0'), `got "${counter}"`);
+
+    // Task text rendered in body
+    const body = await page.evaluate(() => document.getElementById('migrationBody').innerHTML);
+    assert('Migration shows task text', body.includes('Unfinished task'), body);
+
+    // Carry forward resolves one item
+    await page.click('#migCarry');
+    const counter2 = await page.evaluate(
+      () => document.getElementById('migrationCounter').textContent
+    );
+    assert('Carry increments counter to 1/1', counter2.includes('1'), `got "${counter2}"`);
+
+    // Done screen shows after all resolved
+    const doneHtml = await page.evaluate(() => document.getElementById('migrationBody').innerHTML);
+    assert('Migration shows done screen', doneHtml.includes('Month closed'), doneHtml);
+
+    // Close button hides overlay
+    await page.click('#migrationClose');
+    const hidden = await page.evaluate(
+      () => document.getElementById('migrationOverlay').style.display === 'none'
+    );
+    assert('Migration closes on close button', hidden);
+
+    await page.close();
+  }
+
+  // ── Monthly Log ───────────────────────────────────────────────────────────
+  console.log('\nMonthly Log');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        {
+          id: 'ml1',
+          text: 'Monthly task',
+          tag: 'work',
+          ts: Date.now() - 3600000,
+          tsEnd: Date.now(),
+          date: today,
+        },
+      ],
+    });
+    // Tab click shows the section
+    await page.click('#tabMonthlyLog');
+    await page.waitForSelector('#monthlyLogSection:visible');
+    const tabActive = await page.evaluate(() =>
+      document.getElementById('tabMonthlyLog').classList.contains('active')
+    );
+    assert('Monthly Log tab has active class', tabActive);
+
+    // Heatmap grid renders
+    const cellCount = await page.evaluate(() => document.querySelectorAll('.ml-cell').length);
+    assert('Monthly Log heatmap cells rendered', cellCount >= 28, `got ${cellCount}`);
+
+    // Summary renders with total
+    const sumHtml = await page.evaluate(() => document.getElementById('mlSummary').innerHTML);
+    assert('Monthly Log summary renders', sumHtml.includes('Total logged'), sumHtml);
+
+    // Task inventory renders
+    const taskHtml = await page.evaluate(() => document.getElementById('mlTasks').innerHTML);
+    assert('Monthly Log task inventory renders', taskHtml.includes('Task inventory'), taskHtml);
+
+    // mlHoursForDay returns > 0 for today
+    const hrs = await page.evaluate((d) => window.__wl.mlHoursForDay(d), today);
+    assert('mlHoursForDay > 0 for today', hrs > 0, `got ${hrs}`);
+
+    // Second tab click hides the section
+    await page.click('#tabMonthlyLog');
+    const hidden = await page.evaluate(
+      () => document.getElementById('monthlyLogSection').style.display === 'none'
+    );
+    assert('Monthly Log section hides on second tab click', hidden);
+
+    await page.close();
+  }
+
+  // ── Trackers ──────────────────────────────────────────────────────────────
+  console.log('\nTrackers');
+  {
+    const page = await freshPage(ctx);
+    // Tracker section renders empty state
+    const emptyHtml = await page.evaluate(() => document.getElementById('trackerList').innerHTML);
+    assert('Trackers renders empty state', emptyHtml.includes('No trackers'), emptyHtml);
+
+    // + New button opens the form
+    await page.click('#trackerAddBtn');
+    const formVisible = await page.evaluate(
+      () => document.getElementById('trackerNewForm').style.display !== 'none'
+    );
+    assert('Tracker form opens on + New', formVisible);
+
+    // Cancel closes the form
+    await page.click('#trFormCancel');
+    const formHidden = await page.evaluate(
+      () => document.getElementById('trackerNewForm').style.display === 'none'
+    );
+    assert('Tracker form closes on cancel', formHidden);
+
+    // Add a tracker via JS API
+    await page.evaluate(() => {
+      window.__wl.getTrackers().push({
+        id: 'tr1',
+        name: 'Deep work',
+        targetMinutes: 60,
+        tags: ['work'],
+        color: '#378ADD',
+      });
+      window.__wl.saveTrackers();
+      window.__wl.renderTrackers();
+    });
+    const trackerHtml = await page.evaluate(() => document.getElementById('trackerList').innerHTML);
+    assert('Tracker card renders after adding', trackerHtml.includes('Deep work'), trackerHtml);
+    assert('Tracker target label renders', trackerHtml.includes('1h/day'), trackerHtml);
+
+    // trackerDayStatus returns 'miss' when no entries logged
+    const status = await page.evaluate(() =>
+      window.__wl.trackerDayStatus({ tags: ['work'], targetMinutes: 60 }, '2026-01-01')
+    );
+    assert('trackerDayStatus returns miss with no entries', status === 'miss', `got ${status}`);
+
+    await page.close();
+  }
+
+  // ── Signifiers ────────────────────────────────────────────────────────────
+  console.log('\nSignifiers');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [{ id: 'sig1', text: 'Test', tag: 'work', ts: Date.now(), date: today }],
+    });
+    await page.evaluate(() => window.__wl.cycleSignifier('sig1'));
+    const sig = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
+    assert('Signifier cycles on click', sig === 'event', `got ${JSON.stringify(sig)}`);
+    // Cycle through all five and confirm it wraps back to null (neutral)
+    await page.evaluate(() => {
+      for (let i = 0; i < 5; i++) window.__wl.cycleSignifier('sig1');
+    });
+    const wrapped = await page.evaluate(() => window.__wl.getState().entries[0].signifier);
+    assert(
+      'Signifier wraps back to null after full cycle',
+      wrapped === null,
+      `got ${JSON.stringify(wrapped)}`
+    );
+    // Cancelled entry excluded from isEntryBillable
+    await page.evaluate(() => {
+      window.__wl.cycleSignifier('sig1'); // null → event
+      window.__wl.cycleSignifier('sig1'); // event → flagged
+      window.__wl.cycleSignifier('sig1'); // flagged → migrated
+      window.__wl.cycleSignifier('sig1'); // migrated → cancelled
+    });
+    const isBill = await page.evaluate(() =>
+      window.__wl.isEntryBillable(window.__wl.getState().entries[0])
+    );
+    assert('Cancelled entry is not billable', isBill === false);
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();

@@ -127,8 +127,13 @@ function render() {
   const list = viewEntries();
   const tl = document.getElementById('timeline');
 
+  const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
+  const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
+  const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+
   if (!list.length) {
     tl.innerHTML =
+      logHeader +
       '<div class="empty-state">' +
       (isToday(viewDate)
         ? 'nothing logged yet.<br>start by typing what you just did above.'
@@ -139,10 +144,9 @@ function render() {
     renderPlan();
     renderCompleted();
     renderTimeblock();
+    renderTrackers();
     return;
   }
-
-  const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span></div>`;
   tl.innerHTML =
     logHeader +
     list
@@ -172,7 +176,7 @@ function render() {
 
         const billableEmoji = isEntryBillable(e) ? '💰' : '💸';
         return `
-        <div class="entry${isTiming ? ' is-timing' : ''}" data-id="${e.id}">
+        <div class="entry${isTiming ? ' is-timing' : ''}${e.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${e.id}">
           <div class="etime-col">
             <span class="etime-display" data-id="${e.id}">
               <span class="etime-start">${fmtTime(e.ts)}</span>
@@ -187,9 +191,10 @@ function render() {
               </div>
             </div>
           </div>
+          ${sigHtml(e)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
+            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}${e._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
@@ -202,6 +207,8 @@ function render() {
         </div>`;
       })
       .join('');
+
+  bindSignifierClicks();
 
   /* time editor */
   tl.querySelectorAll('.etime-display').forEach((el) => {
@@ -368,6 +375,9 @@ function render() {
   renderPlan();
   renderCompleted();
   renderTimeblock();
+  if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
+  if (document.getElementById('monthlyLogSection')?.style.display !== 'none') renderMonthlyLog();
+  renderTrackers();
 }
 
 /**

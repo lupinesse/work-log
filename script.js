@@ -144,6 +144,11 @@
    * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
    * @param {string} c
    * @returns {string} A safe CSS colour string.
+   * @example
+   * safeCssColor('#7B61FF')      // → '#7B61FF'
+   * safeCssColor('hsl(200,60%,50%)') // → 'hsl(200,60%,50%)'
+   * safeCssColor('red')          // → '#888780'  (name blocked)
+   * safeCssColor('')             // → '#888780'
    */
   function safeCssColor(c) {
     // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
@@ -156,6 +161,11 @@
    * Escapes a string for safe insertion as HTML text content.
    * @param {string} s
    * @returns {string}
+   * @example
+   * escHtml('<b>bold</b>')   // → '&lt;b&gt;bold&lt;/b&gt;'
+   * escHtml('a & b')         // → 'a &amp; b'
+   * escHtml('"quoted"')      // → '&quot;quoted&quot;'
+   * escHtml(42)              // → '42'
    */
   function escHtml(s) {
     return String(s)
@@ -182,6 +192,9 @@
    * Formats a Unix timestamp as HH:MM in 24-hour local time.
    * @param {number} ts - Unix timestamp in milliseconds.
    * @returns {string} e.g. '09:30'
+   * @example
+   * fmtTime(new Date('2026-05-25T09:05:00').getTime()) // → '09:05'
+   * fmtTime(new Date('2026-05-25T14:30:00').getTime()) // → '14:30'
    */
   function fmtTime(ts) {
     const d = new Date(ts);
@@ -192,6 +205,11 @@
    * Formats a duration in milliseconds as a compact time string.
    * @param {number} ms - Duration in milliseconds.
    * @returns {string} 'MM:SS' for durations under an hour; 'HH:MM:SS' otherwise.
+   * @example
+   * fmtElapsed(0)              // → '00:00'
+   * fmtElapsed(90 * 1000)      // → '01:30'
+   * fmtElapsed(3600 * 1000)    // → '01:00:00'
+   * fmtElapsed(5461 * 1000)    // → '01:31:01'
    */
   function fmtElapsed(ms) {
     const s = Math.floor(ms / 1000);
@@ -215,6 +233,11 @@
    *
    * @param {number} ms - Duration in milliseconds.
    * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
+   * @example
+   * roundUp30(0)                    // → 1_800_000  (30 min — minimum)
+   * roundUp30(1)                    // → 1_800_000  (1 ms still costs one slot)
+   * roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
+   * roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)
    */
   function roundUp30(ms) {
     const SLOT = 30 * 60 * 1000;
@@ -258,6 +281,11 @@
    * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
    * @param {*} e - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validEntry({ id: '1', text: 'Write report', ts: 1234567890, date: '2026-05-25' }) // → true
+   * validEntry(null)                           // → false
+   * validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
+   * validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)
    */
   function validEntry(e) {
     return !!(
@@ -288,6 +316,10 @@
    * Returns true if `t` is a well-formed plan task with a recognised status value.
    * @param {*} t - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validPlanTask({ id: 'pk1', text: 'Build form', date: '2026-05-25', status: 'todo' }) // → true
+   * validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
+   * validPlanTask(null) // → false
    */
   function validPlanTask(t) {
     return !!(
@@ -321,6 +353,11 @@
    * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
    * @param {*} t - Candidate value parsed from JSON.
    * @returns {boolean}
+   * @example
+   * validTimer({ entryId: 'e1', startTs: 1234567890 })              // → true  (running)
+   * validTimer({ entryId: 'e1', paused: true, accumulatedMs: 900000 }) // → true  (paused)
+   * validTimer({ entryId: 'e1' })                                   // → false (neither running nor paused)
+   * validTimer(null)                                                 // → false
    */
   function validTimer(t) {
     if (!t || typeof t.entryId !== 'string') return false;
@@ -366,6 +403,9 @@
   const STORE_POMO_LOG = 'wl_pomoLog_v1';
   const STORE_CATS = 'wl_cats_v1';
   const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
+  const STORE_LOGNOTES = 'wl_lognotes_v1';
+  const STORE_TRACKERS = 'wl_trackers_v1';
+  const STORE_MIGRATION = 'wl_migration_v1';
 
   // Lowercase task texts the user has dismissed from the recent-tasks list
   let qpHidden = (() => {
@@ -432,6 +472,8 @@
 
   let viewDate = new Date();
   let selectedTag = 'work';
+  let logNotes = [];
+  let trackers = [];
   let entries = [];
   let activeTimer = null;
   let timerInterval = null;
@@ -446,26 +488,46 @@
 
   /**
    * Loads all persistent state from localStorage into module-level variables.
-   * Invalid records are silently dropped per-item rather than rejecting entire arrays.
+   * Invalid records are dropped per-item (rather than rejecting entire arrays)
+   * and any drops are reported via wlLog.warn so data-quality issues are visible
+   * in DevTools rather than silently disappearing.
    * Falls back to the last snapshot if entries are missing from primary storage.
    */
   function load() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
-      entries = Array.isArray(raw) ? raw.filter(validEntry) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      entries = all.filter(validEntry);
+      if (entries.length < all.length)
+        wlLog.warn(`load: dropped ${all.length - entries.length} invalid entry record(s)`, {
+          total: all.length,
+          kept: entries.length,
+        });
     } catch (e) {
       entries = [];
+      wlLog.error('load: failed to parse entries from localStorage', e);
     }
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
       activeTimer = raw && validTimer(raw) ? raw : null;
+      if (raw && !validTimer(raw)) wlLog.warn('load: discarded invalid timer state', raw);
     } catch (e) {
       activeTimer = null;
+      wlLog.error('load: failed to parse timer state', e);
     }
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
-      if (Array.isArray(raw) && raw.length) categories = raw.filter(validCategory);
-    } catch (e) {}
+      if (Array.isArray(raw) && raw.length) {
+        categories = raw.filter(validCategory);
+        if (categories.length < raw.length)
+          wlLog.warn(`load: dropped ${raw.length - categories.length} invalid category record(s)`, {
+            total: raw.length,
+            kept: categories.length,
+          });
+      }
+    } catch (e) {
+      wlLog.error('load: failed to parse categories', e);
+    }
     // Auto-restore from snapshot if entries are unexpectedly empty
     if (!entries.length) {
       try {
@@ -474,21 +536,42 @@
           entries = snap.entries.filter(validEntry);
           if (Array.isArray(snap.categories) && snap.categories.length)
             categories = snap.categories.filter(validCategory);
-          console.warn('Restored from snapshot — entries were missing from primary storage');
+          wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
         }
       } catch (e) {}
     }
+    loadLogNotes();
+    loadTrackers();
   }
+
+  function loadLogNotes() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
+      logNotes = Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      logNotes = [];
+    }
+  }
+
+  function saveLogNotes() {
+    localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
+  }
+
   /**
    * Persists entries, active timer, and categories to localStorage.
    * Refuses to overwrite existing non-empty data with an empty array to guard against
    * accidental data loss if save() is called before load() completes.
+   *
+   * Assumption: an empty `entries` array in memory while localStorage still holds
+   * data means save() was called before load() finished (e.g. a race during init),
+   * not that the user intentionally deleted everything. Intentional clearing goes
+   * through a dedicated wipe path that bypasses this guard.
    */
   function save() {
     // Never overwrite real data with empty arrays
     const existing = localStorage.getItem(STORE_ENTRIES);
     if (!entries.length && existing && existing !== '[]') {
-      console.warn('save() blocked — refusing to overwrite existing entries with empty array');
+      wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
       return;
     }
     localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
@@ -1430,8 +1513,13 @@
     const list = viewEntries();
     const tl = document.getElementById('timeline');
 
+    const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
+    const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
+    const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+
     if (!list.length) {
       tl.innerHTML =
+        logHeader +
         '<div class="empty-state">' +
         (isToday(viewDate)
           ? 'nothing logged yet.<br>start by typing what you just did above.'
@@ -1442,10 +1530,9 @@
       renderPlan();
       renderCompleted();
       renderTimeblock();
+      renderTrackers();
       return;
     }
-
-    const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span></div>`;
     tl.innerHTML =
       logHeader +
       list
@@ -1475,7 +1562,7 @@
 
           const billableEmoji = isEntryBillable(e) ? '💰' : '💸';
           return `
-        <div class="entry${isTiming ? ' is-timing' : ''}" data-id="${e.id}">
+        <div class="entry${isTiming ? ' is-timing' : ''}${e.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${e.id}">
           <div class="etime-col">
             <span class="etime-display" data-id="${e.id}">
               <span class="etime-start">${fmtTime(e.ts)}</span>
@@ -1490,9 +1577,10 @@
               </div>
             </div>
           </div>
+          ${sigHtml(e)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}</div>
+            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}${e._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
             <button class="etag-btn" data-id="${e.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(e.tag))} &#9660;
@@ -1505,6 +1593,8 @@
         </div>`;
         })
         .join('');
+
+    bindSignifierClicks();
 
     /* time editor */
     tl.querySelectorAll('.etime-display').forEach((el) => {
@@ -1671,6 +1761,9 @@
     renderPlan();
     renderCompleted();
     renderTimeblock();
+    if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
+    if (document.getElementById('monthlyLogSection')?.style.display !== 'none') renderMonthlyLog();
+    renderTrackers();
   }
 
   /**
@@ -1990,6 +2083,7 @@
    * @returns {boolean} True if the entry should be counted as billable.
    */
   function isEntryBillable(e) {
+    if (e.signifier === 'cancelled') return false;
     if (e.billable !== undefined) return e.billable;
     const t = planTasks.find((t) => t.text.toLowerCase().trim() === e.text.toLowerCase().trim());
     // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
@@ -2015,7 +2109,9 @@
     // Day start/end
     let dayStartTs = isViewingToday ? getDayStart() : null;
     if (!dayStartTs && dayEntries.length) dayStartTs = Math.min(...dayEntries.map((e) => e.ts));
-    const timedEntries = dayEntries.filter((e) => e.tsEnd && e.tsEnd > e.ts);
+    const timedEntries = dayEntries.filter(
+      (e) => e.tsEnd && e.tsEnd > e.ts && e.signifier !== 'cancelled'
+    );
     let dayEndTs = timedEntries.length ? Math.max(...timedEntries.map((e) => e.tsEnd)) : null;
     // Factor in the active timer's effective end so "Ended:" reflects live work
     if (activeTimer && isViewingToday) {
@@ -2674,6 +2770,13 @@
     if (activeTimer && activeTimer.paused) resumeTimer();
     else pauseTimer();
   });
+  initRapid();
+  initDailyLog();
+  initMonthlyLog();
+  initMigration();
+  initSprints();
+  initTrackers();
+
   document.getElementById('prevDay').addEventListener('click', () => {
     viewDate = new Date(viewDate);
     viewDate.setDate(viewDate.getDate() - 1);
@@ -2704,6 +2807,12 @@
    * 30 minutes.  The snapshot contains both a human-readable plaintext summary
    * and the raw entry/category arrays so data can be recovered after accidental
    * clearing.  No-ops when there are no entries for today.
+   *
+   * Assumption: 30 minutes is an acceptable data-loss window for a personal work
+   * log used in a single browser tab. Browser crashes, accidental page reloads,
+   * and mis-clicks on "clear data" are the main risks; all are adequately covered
+   * by a 30-minute recovery point. If higher durability is needed, reduce the
+   * interval in the setInterval call in 07-lifecycle.js.
    */
   function saveSnapshot() {
     const todayKey = dk(new Date());
@@ -2761,14 +2870,26 @@
   saveSnapshot();
   setInterval(saveSnapshot, 30 * 60 * 1000);
 
-  wlLog.config({
-    version: '1.8.0',
-    date: dk(new Date()),
-    entries: entries.length,
-    categories: categories.length,
-    timer: activeTimer ? 'active' : 'idle',
-    snapshot: !!localStorage.getItem('wl_snapshot'),
-  });
+  // Deferred so planTasks/blocks are initialized before logging their counts.
+  // planTasks is declared in 10-tasks.js which comes after this file in build order.
+  setTimeout(
+    () =>
+      wlLog.config({
+        version: '1.8.0',
+        date: dk(new Date()),
+        // Persistent state counts (after load + migration have run)
+        entries: entries.length,
+        categories: categories.length,
+        planTasks: planTasks.length,
+        blocks: blocks.length,
+        // Runtime state
+        timer: activeTimer ? 'active' : 'idle',
+        snapshot: !!localStorage.getItem('wl_snapshot'),
+        // Environment: true when the PS API server responded (weather / calendar live)
+        apiServer: !!localStorage.getItem('wl_api_ok'),
+      }),
+    0
+  );
 
   // ── 08-pomodoro.js ──
   /* ── Pomodoro ── */
@@ -2918,17 +3039,27 @@
     log.unshift({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
     localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
     renderPomoLog();
+    if (typeof notifyPomodoroEnd === 'function') notifyPomodoroEnd();
   }
 
   /**
    * Reads and validates the pomodoro session log from localStorage.
+   * Invalid records are dropped and reported via wlLog.warn.
    * @returns {Array<{ts: number, mins: number, task: string|null}>} Session log entries.
    */
   function pomoGetLog() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-      return Array.isArray(raw) ? raw.filter(validPomoEntry) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      const valid = all.filter(validPomoEntry);
+      if (valid.length < all.length)
+        wlLog.warn(`pomoGetLog: dropped ${all.length - valid.length} invalid pomodoro record(s)`, {
+          total: all.length,
+          kept: valid.length,
+        });
+      return valid;
     } catch (e) {
+      wlLog.error('pomoGetLog: failed to parse pomodoro log', e);
       return [];
     }
   }
@@ -3831,8 +3962,13 @@
       if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
       if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
       if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
+      // Mark that the API server responded — read by wlLog.config() in 07-lifecycle.js
+      // to record which environment the app is running in.
+      localStorage.setItem('wl_api_ok', '1');
     })
-    .catch(() => {})
+    .catch(() => {
+      localStorage.removeItem('wl_api_ok');
+    })
     .finally(() => fetchWeather());
 
   fetchNameday();
@@ -3868,14 +4004,22 @@
 
   /**
    * Loads plan tasks from localStorage into `planTasks`, filtering out invalid
-   * entries via `validPlanTask`. Resets to empty array on parse error.
+   * entries via `validPlanTask`. Drops are reported via wlLog.warn so data-quality
+   * issues are visible in DevTools. Resets to empty array on parse error.
    */
   function loadPlan() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]');
-      planTasks = Array.isArray(raw) ? raw.filter(validPlanTask) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      planTasks = all.filter(validPlanTask);
+      if (planTasks.length < all.length)
+        wlLog.warn(`loadPlan: dropped ${all.length - planTasks.length} invalid task record(s)`, {
+          total: all.length,
+          kept: planTasks.length,
+        });
     } catch (e) {
       planTasks = [];
+      wlLog.error('loadPlan: failed to parse plan tasks from localStorage', e);
     }
   }
   /** Persists the current `planTasks` array to localStorage. */
@@ -5061,6 +5205,69 @@
     renderPlan();
   });
 
+  // ── 10b-signifiers.js ──
+  // ── 10b-signifiers.js — Entry signifiers ──
+
+  // null/undefined = no signifier (neutral). Cycle: none → event → … → overtime → none
+  const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
+  const SIG_SYMBOL = {
+    event: '📅',
+    flagged: '🚩',
+    migrated: '📤',
+    cancelled: '❌',
+    overtime: '⏰',
+  };
+  const SIG_TITLE = {
+    event: 'Meeting / event',
+    flagged: 'Flagged for review',
+    migrated: 'Migrated',
+    cancelled: 'Cancelled — excluded from totals',
+    overtime: 'Overtime',
+  };
+
+  function sigSymbol(entry) {
+    return SIG_SYMBOL[entry.signifier] || '·';
+  }
+
+  function sigTitle(entry) {
+    return SIG_TITLE[entry.signifier] || 'No signifier';
+  }
+
+  function cycleSignifier(entryId) {
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const idx = SIG_CYCLE.indexOf(entry.signifier);
+    // -1 (none) → 0 (event); last item → null (back to none)
+    entry.signifier = idx + 1 < SIG_CYCLE.length ? SIG_CYCLE[idx + 1] : null;
+    save();
+    render();
+  }
+
+  function sigHtml(entry) {
+    return `<span class="esig sig-${entry.signifier || 'none'}"
+               data-entry-id="${escHtml(entry.id)}"
+               title="${sigTitle(entry)}"
+               role="button" tabindex="0"
+               aria-label="Signifier: ${sigTitle(entry)}">
+    ${sigSymbol(entry)}
+  </span>`;
+  }
+
+  function bindSignifierClicks() {
+    document.querySelectorAll('.esig').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleSignifier(el.dataset.entryId);
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          cycleSignifier(el.dataset.entryId);
+        }
+      });
+    });
+  }
+
   // ── 11-timeblock.js ──
   /* ── Timeblock ── */
   /**
@@ -5068,6 +5275,10 @@
    * @type {string}
    */
   const STORE_BLOCKS = 'wl_blocks_v1';
+  // Assumption: a standard workday starts no earlier than 07:00 and ends no later
+  // than 21:00. Tasks scheduled outside this window are rare enough that they do
+  // not need to appear in the visual grid. If the assumption changes, update
+  // TB_START / TB_END here — slots and pixel heights are derived automatically.
   const TB_START = 7; // 07:00
   const TB_END = 21; // 21:00
   const TB_SLOTS = (TB_END - TB_START) * 2; // 28 half-hour slots
@@ -5083,15 +5294,23 @@
 
   /**
    * Loads time blocks from localStorage into `blocks`, filtering invalid entries.
+   * Drops are reported via wlLog.warn so data-quality issues are visible in DevTools.
    * Applies a one-time migration to shift existing block slots by +2 when the
    * time-block grid start time changed from 08:00 to 07:00.
    */
   function loadBlocks() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
-      blocks = Array.isArray(raw) ? raw.filter(validBlock) : [];
+      const all = Array.isArray(raw) ? raw : [];
+      blocks = all.filter(validBlock);
+      if (blocks.length < all.length)
+        wlLog.warn(`loadBlocks: dropped ${all.length - blocks.length} invalid block record(s)`, {
+          total: all.length,
+          kept: blocks.length,
+        });
     } catch (e) {
       blocks = [];
+      wlLog.error('loadBlocks: failed to parse time blocks from localStorage', e);
     }
     // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
     if (!localStorage.getItem('wl_tb_migrated_7')) {
@@ -6471,10 +6690,12 @@ Requirements:
   // Sync aria-expanded on toggling section headers.
   // Each section header's click listener was set up in other modules; we patch
   // aria-expanded by observing classList changes on the section wrappers.
+  // planHeader is excluded: it has no widget role (it contains a nested <button>
+  // so role="button" would be invalid), and aria-expanded is not allowed on a
+  // generic div — see also the keyboard-nav exclusion note above.
   (function syncAriaExpanded() {
     const pairs = [
       { sectionId: 'calSection', headerId: 'calHeader' },
-      { sectionId: 'planSection', headerId: 'planHeader' },
       { sectionId: 'upcomingSection', headerId: 'upcomingHeader' },
       { sectionId: 'pendingSection', headerId: 'pendingHeader' },
       { sectionId: 'completedSection', headerId: 'completedHeader' },
@@ -7353,6 +7574,7 @@ Requirements:
     triggerPortableDeploy();
     document.getElementById('eodOverlay').classList.remove('show');
     renderPlan();
+    openReflection();
   });
 
   /**
@@ -7903,7 +8125,22 @@ Requirements:
       getHook,
       saveHook,
       _showBridgeBanner: showBridgeBanner,
-      getState: () => ({ entries, categories, planTasks, blocks, activeTimer }),
+      getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes, trackers }),
+      cycleSignifier,
+      isEntryBillable,
+      addLogNote,
+      openReflection,
+      getReflectionForDate,
+      openSprintSetup,
+      getSprintLog: () => sprintLog,
+      renderTrackers,
+      trackerDayStatus,
+      saveTrackers,
+      getTrackers: () => trackers,
+      renderMonthlyLog,
+      mlHoursForDay,
+      openMigration,
+      getMigrationRecord,
     };
     // Live viewDate getter/setter so tests can change the view date
     // and renderCompleted re-runs automatically
@@ -8536,4 +8773,1083 @@ Requirements:
 
   // Expose for the URL-bookmarking form so it shares the same auth path
   window._wlNotion = { callClaudeWithNotion, getAnthropicKey, setAnthropicKey };
+
+  // ── 16-rapid.js ──
+  // ── 16-rapid.js — Rapid Logging overlay ──
+
+  let _rapidOpen = false;
+  let _rapidCat = null; // selected category id, null = inherit last used
+
+  function openRapid() {
+    const overlay = document.getElementById('rapidOverlay');
+    if (!overlay) return;
+    _rapidOpen = true;
+    overlay.style.display = 'flex';
+    renderRapidCats();
+    const inp = document.getElementById('rapidInput');
+    inp.value = '';
+    inp.focus();
+  }
+
+  function closeRapid() {
+    const overlay = document.getElementById('rapidOverlay');
+    if (overlay) overlay.style.display = 'none';
+    _rapidOpen = false;
+  }
+
+  function renderRapidCats() {
+    const el = document.getElementById('rapidCats');
+    if (!el) return;
+    el.innerHTML = categories
+      .map(
+        (c) =>
+          `<button class="qp-chip rapid-cat-btn${_rapidCat === c.id ? ' active' : ''}"
+               data-id="${escHtml(c.id)}"
+               style="border-color:${c.color}44;color:${c.color};background:${c.color}11">
+         ${escHtml(c.label)}
+       </button>`
+      )
+      .join('');
+    el.querySelectorAll('.rapid-cat-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        _rapidCat = _rapidCat === btn.dataset.id ? null : btn.dataset.id;
+        renderRapidCats();
+      });
+    });
+  }
+
+  function rapidCommit(withTimer) {
+    const inp = document.getElementById('rapidInput');
+    const text = inp.value.trim();
+    if (!text) {
+      inp.focus();
+      return;
+    }
+
+    const entry = {
+      id: Date.now() + '',
+      text,
+      tag: _rapidCat || selectedTag || (categories[0] && categories[0].id) || 'other',
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+    };
+    if (!_rapidCat) entry._uncategorised = true;
+
+    entries.push(entry);
+    save();
+    closeRapid();
+    render();
+
+    if (withTimer) {
+      if (activeTimer) stopTimer();
+      startTimer(entry.id);
+    }
+  }
+
+  function initRapid() {
+    // Escape to close
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && _rapidOpen) closeRapid();
+    });
+
+    // Open button (✏️ next to dice in today's tasks)
+    document.getElementById('rapidOpenBtn')?.addEventListener('click', openRapid);
+
+    document.getElementById('rapidClose')?.addEventListener('click', closeRapid);
+    document.getElementById('rapidLogOnly')?.addEventListener('click', () => rapidCommit(false));
+    document.getElementById('rapidStart')?.addEventListener('click', () => rapidCommit(true));
+
+    document.getElementById('rapidInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') rapidCommit(true);
+    });
+
+    document.getElementById('rapidOverlay')?.addEventListener('click', (e) => {
+      if (e.target === document.getElementById('rapidOverlay')) closeRapid();
+    });
+  }
+
+  // ── 18-dailylog.js ──
+  // ── 18-dailylog.js — Daily Log unified feed ──
+
+  let _dlActive = false;
+
+  function _fmtDur(ms) {
+    const mins = Math.round(ms / 60000);
+    const h = Math.floor(mins / 60),
+      m = mins % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  }
+
+  function buildDailyLogItems(dateKey) {
+    const items = [];
+
+    entries
+      .filter((e) => e.date === dateKey)
+      .forEach((e) => {
+        const cat = getCat(e.tag);
+        items.push({
+          ts: e.ts,
+          type: 'entry',
+          color: cat.color,
+          text: escHtml(e.text),
+          sub: `${escHtml(cat.label)} · ${e.tsEnd ? _fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
+        });
+      });
+
+    logNotes
+      .filter((n) => n.date === dateKey)
+      .forEach((n) => {
+        items.push({
+          ts: n.ts,
+          type: 'note',
+          color: 'var(--bg3)',
+          text: `<em>${escHtml(n.text)}</em>`,
+          sub: 'Note',
+        });
+      });
+
+    planTasks
+      .filter((t) => t.date === dateKey && Array.isArray(t.statusComments))
+      .forEach((t) => {
+        t.statusComments.forEach((c) => {
+          if (dk(new Date(c.ts)) === dateKey) {
+            items.push({
+              ts: c.ts,
+              type: 'task',
+              color: '#ef9f27',
+              text: `<span class="tl-task-name">${escHtml(t.text)}</span> — ${escHtml(c.text)}`,
+              sub: 'Task update',
+            });
+          }
+        });
+      });
+
+    return items.sort((a, b) => a.ts - b.ts);
+  }
+
+  function renderDailyLog() {
+    const el = document.getElementById('dailyLogFeed');
+    if (!el) return;
+
+    const dateKey = dk(viewDate);
+    const items = buildDailyLogItems(dateKey);
+
+    if (!items.length) {
+      el.innerHTML = `<div class="tl-empty">No entries or notes for this day yet.</div>`;
+    } else {
+      el.innerHTML = items
+        .map((item, i) => {
+          const time = new Date(item.ts);
+          const hh = String(time.getHours()).padStart(2, '0');
+          const mm = String(time.getMinutes()).padStart(2, '0');
+          return `
+        <div class="tl-row">
+          <span class="tl-time">${hh}:${mm}</span>
+          <div class="tl-dot-col">
+            <div class="tl-dot" style="background:${item.color}"></div>
+            ${i < items.length - 1 ? '<div class="tl-line"></div>' : ''}
+          </div>
+          <div class="tl-body">
+            <div class="tl-text">${item.text}</div>
+            <div class="tl-sub">${item.sub}</div>
+          </div>
+        </div>`;
+        })
+        .join('');
+    }
+
+    const noteRow = document.getElementById('dailyLogNoteRow');
+    if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
+
+    document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
+    document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addLogNote();
+    });
+  }
+
+  function addLogNote() {
+    const inp = document.getElementById('dailyLogNoteInput');
+    const text = inp ? inp.value.trim() : '';
+    if (!text) return;
+    logNotes.push({
+      id: Date.now() + '',
+      text,
+      ts: Date.now(),
+      date: dk(new Date()),
+      type: 'note',
+    });
+    saveLogNotes();
+    if (inp) inp.value = '';
+    renderDailyLog();
+  }
+
+  function initDailyLog() {
+    // Buttons live inside tl.innerHTML (rebuilt on every render) — use delegation
+    document.addEventListener('click', (e) => {
+      if (e.target.id !== 'tabDailyLog') return;
+      _dlActive = !_dlActive;
+      const section = document.getElementById('dailyLogSection');
+      if (section) section.style.display = _dlActive ? '' : 'none';
+      if (_dlActive) renderDailyLog();
+      render();
+    });
+  }
+
+  // ── 19-monthlylog.js ──
+  // ── 19-monthlylog.js — Monthly Log heatmap + task inventory ──
+
+  let _mlYear = new Date().getFullYear();
+  let _mlMonth = new Date().getMonth(); // 0-indexed
+  let _mlActive = false;
+
+  function _mlFmtDur(ms) {
+    const mins = Math.round(ms / 60000);
+    const h = Math.floor(mins / 60),
+      m = mins % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  }
+
+  function mlDaysInMonth(y, m) {
+    return new Date(y, m + 1, 0).getDate();
+  }
+
+  /**
+   * Sums tracked milliseconds for all non-cancelled entries on a given day.
+   * @param {string} dateKey
+   * @returns {number} Total hours (as a float).
+   */
+  function mlHoursForDay(dateKey) {
+    return (
+      entries
+        .filter((e) => e.date === dateKey && e.signifier !== 'cancelled' && e.tsEnd)
+        .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
+    );
+  }
+
+  function mlHeatColor(hours) {
+    if (!hours) return 'var(--bg3)';
+    if (hours < 2) return 'rgba(24,95,165,0.15)';
+    if (hours < 5) return 'rgba(24,95,165,0.40)';
+    if (hours < 7) return 'rgba(24,95,165,0.70)';
+    return '#185fa5';
+  }
+
+  /**
+   * Renders the monthly log view: navigation, heatmap, summary, task inventory.
+   */
+  function renderMonthlyLog() {
+    const calEl = document.getElementById('mlCalendar');
+    const sumEl = document.getElementById('mlSummary');
+    const taskEl = document.getElementById('mlTasks');
+    if (!calEl) return;
+
+    const y = _mlYear,
+      m = _mlMonth;
+    const days = mlDaysInMonth(y, m);
+    const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+    const offset = (firstDow + 6) % 7; // shift to Mon-start
+
+    const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+    const monthName = new Date(y, m, 1).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+
+    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const emptyCells = Array(offset).fill('<div></div>').join('');
+    const dayCells = Array.from({ length: days }, (_, i) => {
+      const d = i + 1;
+      const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+      const hrs = mlHoursForDay(dateKey);
+      const refl =
+        typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
+      const reflDot = refl
+        ? `<div class="ml-refl-dot" title="Focus: ${refl.focus}/5 · Energy: ${refl.energy}/5"></div>`
+        : '';
+      return `<div class="ml-cell" data-date="${dateKey}"
+                  title="${d} — ${hrs.toFixed(1)}h"
+                  style="background:${mlHeatColor(hrs)};position:relative">${reflDot}</div>`;
+    }).join('');
+
+    calEl.innerHTML = `
+    <div class="ml-nav">
+      <button class="ml-nav-btn" id="mlPrev">←</button>
+      <span class="ml-month-title">${monthName}</span>
+      <button class="ml-nav-btn" id="mlNext">→</button>
+    </div>
+    <div class="ml-grid">
+      ${dayLabels.map((d) => `<div class="ml-day-lbl">${d}</div>`).join('')}
+      ${emptyCells}
+      ${dayCells}
+    </div>
+    <div class="ml-legend">
+      ${[
+        [0, '0h'],
+        [2, '2h'],
+        [5, '5h'],
+        [7, '7h+'],
+      ]
+        .map(
+          ([v, l]) =>
+            `<div class="ml-legend-item">
+              <div class="ml-legend-swatch" style="background:${mlHeatColor(v + 0.1)}"></div>
+              <span>${l}</span>
+            </div>`
+        )
+        .join('')}
+    </div>`;
+
+    // Cell click → navigate to that day and show the main log
+    calEl.querySelectorAll('.ml-cell').forEach((cell) => {
+      cell.addEventListener('click', () => {
+        viewDate = new Date(cell.dataset.date + 'T12:00:00');
+        document.getElementById('monthlyLogSection').style.display = 'none';
+        _mlActive = false;
+        render();
+      });
+    });
+
+    // Month navigation
+    document.getElementById('mlPrev')?.addEventListener('click', () => {
+      _mlMonth--;
+      if (_mlMonth < 0) {
+        _mlMonth = 11;
+        _mlYear--;
+      }
+      renderMonthlyLog();
+    });
+    document.getElementById('mlNext')?.addEventListener('click', () => {
+      _mlMonth++;
+      if (_mlMonth > 11) {
+        _mlMonth = 0;
+        _mlYear++;
+      }
+      renderMonthlyLog();
+    });
+
+    // Summary panel
+    const monthEntries = entries.filter(
+      (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
+    );
+    const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+    const billableMs = monthEntries
+      .filter((e) => isEntryBillable(e))
+      .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+
+    const tagTotals = {};
+    monthEntries.forEach((e) => {
+      tagTotals[e.tag] = (tagTotals[e.tag] || 0) + (e.tsEnd - e.ts);
+    });
+    const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
+
+    sumEl.innerHTML = `
+    <div class="ml-sum-title">Summary</div>
+    <div class="ml-sum-row"><span>Total logged</span><span>${_mlFmtDur(totalMs)}</span></div>
+    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${_mlFmtDur(billableMs)}</span></div>
+    ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
+
+    // Task inventory
+    const monthTasks = planTasks.filter((t) => t.date.startsWith(monthPrefix));
+    const open = monthTasks.filter((t) => t.status !== 'done').length;
+    const done = monthTasks.filter((t) => t.status === 'done').length;
+    const migrated = monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length;
+
+    taskEl.innerHTML = `
+    <div class="ml-sum-title">Task inventory</div>
+    <div class="ml-sum-row"><span>Open</span><span class="ml-sum-amber">${open}</span></div>
+    <div class="ml-sum-row"><span>Done</span><span class="ml-sum-green">${done}</span></div>
+    <div class="ml-sum-row"><span>Migrated</span><span class="ml-sum-muted">${migrated}</span></div>
+    <button class="add-btn ml-migrate-btn" id="mlRunMigration">→ Run Migration</button>`;
+
+    document.getElementById('mlRunMigration')?.addEventListener('click', () => {
+      if (typeof openMigration === 'function') openMigration();
+    });
+  }
+
+  function initMonthlyLog() {
+    // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
+    document.addEventListener('click', (e) => {
+      if (e.target.id !== 'tabMonthlyLog') return;
+      _mlActive = !_mlActive;
+      const section = document.getElementById('monthlyLogSection');
+      if (section) section.style.display = _mlActive ? '' : 'none';
+      if (_mlActive) {
+        // Sync to viewed month when opening
+        _mlYear = viewDate.getFullYear();
+        _mlMonth = viewDate.getMonth();
+        renderMonthlyLog();
+      }
+      render();
+    });
+  }
+
+  // ── 20-migration.js ──
+  // ── 20-migration.js — Monthly Migration close-out flow ──
+
+  let _migItems = [];
+  let _migIdx = 0;
+
+  function getMigrationRecord() {
+    try {
+      return JSON.parse(localStorage.getItem(STORE_MIGRATION) || '{}');
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveMigrationRecord(rec) {
+    localStorage.setItem(STORE_MIGRATION, JSON.stringify(rec));
+  }
+
+  /**
+   * Opens the migration modal and populates it with open (unresolved) tasks
+   * for the current month.  Alerts if there is nothing to migrate.
+   */
+  function openMigration() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+
+    _migItems = planTasks.filter(
+      (t) => t.date.startsWith(prefix) && t.status !== 'done' && !t._migrated
+    );
+    _migIdx = 0;
+
+    if (!_migItems.length) {
+      alert('No open tasks to migrate — month is already clean!');
+      return;
+    }
+
+    const overlay = document.getElementById('migrationOverlay');
+    if (!overlay) return;
+
+    document.getElementById('migrationTitle').textContent =
+      new Date(y, m, 1).toLocaleString('default', { month: 'long', year: 'numeric' }) +
+      ' close-out';
+    overlay.style.display = 'flex';
+    renderMigrationStep();
+  }
+
+  function closeMigration() {
+    const overlay = document.getElementById('migrationOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  /**
+   * Renders the current migration step (or the "done" screen when all resolved).
+   */
+  function renderMigrationStep() {
+    const total = _migItems.length;
+    const counter = document.getElementById('migrationCounter');
+    const prog = document.getElementById('migrationProgress');
+    const body = document.getElementById('migrationBody');
+    if (!body) return;
+
+    if (counter) counter.textContent = `${_migIdx} / ${total} resolved`;
+    if (prog) prog.style.width = `${(_migIdx / total) * 100}%`;
+
+    if (_migIdx >= total) {
+      body.innerHTML = `
+      <div class="mig-done">
+        <div class="mig-done-icon">✓</div>
+        <div class="mig-done-title">Month closed</div>
+        <div class="mig-done-sub">${total} item${total === 1 ? '' : 's'} resolved</div>
+      </div>`;
+      return;
+    }
+
+    const item = _migItems[_migIdx];
+    const cat = getCat(item.tag);
+    body.innerHTML = `
+    <div class="mig-item">
+      <div class="mig-item-header">
+        <span class="mig-dot" style="background:${cat.color}"></span>
+        <span class="mig-item-text">${escHtml(item.text)}</span>
+      </div>
+      <div class="mig-item-date">Added ${item.date}</div>
+    </div>
+    <div class="mig-actions">
+      <button class="mig-btn mig-carry"    id="migCarry">→ Carry forward</button>
+      <button class="mig-btn mig-schedule" id="migSchedule">📅 Schedule</button>
+      <button class="mig-btn mig-drop"     id="migDrop">✗ Drop</button>
+    </div>
+    <div id="migDateRow" style="display:none;gap:8px;margin-top:8px;align-items:center">
+      <input type="date" class="capture-input" id="migDatePicker"
+             style="flex:1" />
+      <button class="add-btn" id="migDateConfirm">Confirm date</button>
+    </div>`;
+
+    document.getElementById('migCarry').addEventListener('click', () => {
+      carryMigTask(_migItems[_migIdx]);
+      _migIdx++;
+      renderMigrationStep();
+    });
+    document.getElementById('migSchedule').addEventListener('click', () => {
+      const row = document.getElementById('migDateRow');
+      if (row) row.style.display = 'flex';
+    });
+    document.getElementById('migDateConfirm').addEventListener('click', () => {
+      const d = document.getElementById('migDatePicker').value;
+      if (!d) return;
+      scheduleMigTask(_migItems[_migIdx], d);
+      _migIdx++;
+      renderMigrationStep();
+    });
+    document.getElementById('migDrop').addEventListener('click', () => {
+      dropMigTask(_migItems[_migIdx]);
+      _migIdx++;
+      renderMigrationStep();
+    });
+  }
+
+  /**
+   * Duplicates the task into next month (first day) and marks original as migrated.
+   * @param {Object} task
+   */
+  function carryMigTask(task) {
+    const nextMonth = new Date();
+    nextMonth.setDate(1);
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    const targetDate = dk(nextMonth);
+    const newTask = {
+      ...task,
+      id: Date.now() + Math.random().toString(36).slice(2),
+      date: targetDate,
+      _migrated: false,
+    };
+    task._migrated = true;
+    planTasks.push(newTask);
+    savePlan();
+  }
+
+  /**
+   * Reschedules the task to the given date and marks it as migrated.
+   * @param {Object} task
+   * @param {string} dateStr - YYYY-MM-DD
+   */
+  function scheduleMigTask(task, dateStr) {
+    task.date = dateStr;
+    task._migrated = true;
+    savePlan();
+  }
+
+  /**
+   * Archives (drops) the task by marking it done and migrated.
+   * @param {Object} task
+   */
+  function dropMigTask(task) {
+    task._migrated = true;
+    task.status = 'done';
+    task.completedAt = Date.now();
+    savePlan();
+  }
+
+  /**
+   * Initialises the migration overlay: wires close button and optionally shows
+   * a last-day-of-month banner once per month.
+   */
+  function initMigration() {
+    document.getElementById('migrationClose')?.addEventListener('click', closeMigration);
+
+    // Auto-prompt on last day of month (once per month)
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const isLastDay = now.getDate() === lastDay;
+    const rec = getMigrationRecord();
+    const monthKey = dk(now).slice(0, 7); // YYYY-MM
+
+    if (isLastDay && !rec[monthKey]) {
+      setTimeout(() => {
+        const banner = document.createElement('div');
+        banner.className = 'mig-banner';
+        banner.id = 'migBanner';
+        banner.innerHTML = `📋 Last day of the month — <button id="migBannerBtn">run Migration</button> to close out open tasks.`;
+        document.body.prepend(banner);
+        document.getElementById('migBannerBtn')?.addEventListener('click', () => {
+          banner.remove();
+          rec[monthKey] = true;
+          saveMigrationRecord(rec);
+          openMigration();
+        });
+      }, 2000);
+    }
+  }
+
+  // ── 21-reflection.js ──
+  // ── 21-reflection.js — End-of-day reflection ──
+
+  const STORE_REFLECTION = 'wl_reflection_v1';
+  const FOCUS_LABELS = [
+    '',
+    'Very scattered',
+    'Mostly distracted',
+    'Some drift',
+    'Good focus',
+    'Deep flow state',
+  ];
+
+  let _reflData = {};
+  let _reflFocus = 0;
+  let _reflEnergy = 0;
+
+  function loadReflection() {
+    try {
+      _reflData = JSON.parse(localStorage.getItem(STORE_REFLECTION) || '{}');
+    } catch (e) {
+      _reflData = {};
+    }
+  }
+
+  function saveReflection() {
+    localStorage.setItem(STORE_REFLECTION, JSON.stringify(_reflData));
+  }
+
+  function openReflection(onComplete) {
+    loadReflection();
+    _reflFocus = 0;
+    _reflEnergy = 0;
+    const noteEl = document.getElementById('reflNote');
+    if (noteEl) noteEl.value = '';
+    renderReflStars('reflFocusStars', _reflFocus);
+    renderReflStars('reflEnergyStars', _reflEnergy);
+    const overlay = document.getElementById('reflectionOverlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    document.getElementById('reflSkip').onclick = () => {
+      if (overlay) overlay.style.display = 'none';
+      if (onComplete) onComplete();
+    };
+    document.getElementById('reflSave').onclick = () => {
+      const dateKey = dk(new Date());
+      _reflData[dateKey] = {
+        focus: _reflFocus,
+        energy: _reflEnergy,
+        note: document.getElementById('reflNote').value.trim(),
+      };
+      saveReflection();
+      if (overlay) overlay.style.display = 'none';
+      if (onComplete) onComplete();
+    };
+  }
+
+  function renderReflStars(elId, current) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.innerHTML = [1, 2, 3, 4, 5]
+      .map(
+        (n) =>
+          `<span class="refl-star${n <= current ? ' on' : ''}" data-val="${n}" data-el="${elId}">★</span>`
+      )
+      .join('');
+    el.querySelectorAll('.refl-star').forEach((star) => {
+      star.addEventListener('click', () => {
+        const val = parseInt(star.dataset.val, 10);
+        if (star.dataset.el === 'reflFocusStars') {
+          _reflFocus = val;
+          renderReflStars('reflFocusStars', _reflFocus);
+          const hint = document.getElementById('reflFocusHint');
+          if (hint) hint.textContent = FOCUS_LABELS[val] || '';
+        } else {
+          _reflEnergy = val;
+          renderReflStars('reflEnergyStars', _reflEnergy);
+        }
+      });
+    });
+  }
+
+  function getReflectionForDate(dateKey) {
+    loadReflection();
+    return _reflData[dateKey] || null;
+  }
+
+  // ── 22-trackers.js ──
+  // ── 22-trackers.js — Custom time-goal progress trackers ──
+
+  function loadTrackers() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
+      trackers = Array.isArray(raw) ? raw : [];
+    } catch (e) {
+      trackers = [];
+    }
+  }
+
+  function saveTrackers() {
+    localStorage.setItem(STORE_TRACKERS, JSON.stringify(trackers));
+  }
+
+  /**
+   * Returns 'hit' | 'partial' | 'miss' for a given tracker on a given day.
+   * @param {Object} tracker - Tracker object with tags and targetMinutes.
+   * @param {string} dateKey - YYYY-MM-DD date key.
+   * @returns {'hit'|'partial'|'miss'}
+   */
+  function trackerDayStatus(tracker, dateKey) {
+    const ms = entries
+      .filter(
+        (e) =>
+          e.date === dateKey &&
+          tracker.tags.includes(e.tag) &&
+          e.tsEnd &&
+          e.signifier !== 'cancelled'
+      )
+      .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+    const mins = ms / 60000;
+    if (mins >= tracker.targetMinutes) return 'hit';
+    if (mins >= tracker.targetMinutes * 0.5) return 'partial';
+    return 'miss';
+  }
+
+  /**
+   * Calculates the current consecutive "hit" streak for a tracker, ending today.
+   * @param {Object} tracker
+   * @returns {number} Number of consecutive hit days.
+   */
+  function trackerStreak(tracker) {
+    let streak = 0;
+    const d = new Date();
+    for (let i = 0; i < 60; i++) {
+      const dateKey = dk(d);
+      if (trackerDayStatus(tracker, dateKey) === 'hit') {
+        streak++;
+        d.setDate(d.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  /**
+   * Renders all tracker cards into #trackerList.
+   * Shows a 28-day grid, streak, and hit count for each tracker.
+   */
+  function renderTrackers() {
+    const el = document.getElementById('trackerList');
+    if (!el) return;
+
+    if (!trackers.length) {
+      el.innerHTML = '<div class="plan-empty">No trackers yet — click + New above.</div>';
+      return;
+    }
+
+    // Last 28 days (oldest → newest)
+    const days = Array.from({ length: 28 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (27 - i));
+      return dk(d);
+    });
+
+    el.innerHTML = trackers
+      .map((t) => {
+        const streak = trackerStreak(t);
+        const cells = days
+          .map((dateKey) => {
+            const status = trackerDayStatus(t, dateKey);
+            const bg =
+              status === 'hit' ? t.color : status === 'partial' ? t.color + '55' : 'var(--bg3)';
+            return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}"></div>`;
+          })
+          .join('');
+        const hitCount = days.filter((d) => trackerDayStatus(t, d) === 'hit').length;
+        const targetLabel =
+          t.targetMinutes >= 60 ? `${t.targetMinutes / 60}h/day` : `${t.targetMinutes}m/day`;
+
+        return `
+      <div class="tracker-card">
+        <div class="tracker-card-head">
+          <span class="edot" style="background:${t.color}"></span>
+          <span class="tracker-name">${escHtml(t.name)}</span>
+          <span class="tracker-target">${targetLabel}</span>
+          ${streak ? `<span class="tracker-streak">🔥 ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
+          <button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">✕</button>
+        </div>
+        <div class="tr-grid">${cells}</div>
+        <div class="tracker-footer"><span>${hitCount}/28 days hit</span></div>
+      </div>`;
+      })
+      .join('');
+
+    document.querySelectorAll('.tracker-delete').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        trackers = trackers.filter((t) => t.id !== btn.dataset.id);
+        saveTrackers();
+        renderTrackers();
+      });
+    });
+  }
+
+  let _trackerFormOpen = false;
+
+  /** Renders the new-tracker form inside #trackerNewForm. */
+  function openTrackerForm() {
+    const formEl = document.getElementById('trackerNewForm');
+    if (!formEl) return;
+    _trackerFormOpen = true;
+    formEl.style.display = '';
+    const defaultColor = categories[0] ? categories[0].color : '#378ADD';
+    formEl.innerHTML = `
+    <div class="tr-form">
+      <div class="tr-form-row">
+        <label class="tr-form-lbl" for="trFormName">Name</label>
+        <input class="capture-input tr-form-name" id="trFormName"
+               placeholder="e.g. Deep work" autocomplete="off" />
+      </div>
+      <div class="tr-form-row">
+        <label class="tr-form-lbl" for="trFormMins">Daily target (minutes)</label>
+        <input class="capture-input" id="trFormMins" type="number"
+               min="5" max="480" value="60" style="width:80px" />
+      </div>
+      <div class="tr-form-row">
+        <label class="tr-form-lbl">Categories to count</label>
+        <div class="tr-form-tags" id="trFormTags">
+          ${categories
+            .map(
+              (c) =>
+                `<label class="tr-tag-check">
+              <input type="checkbox" value="${escHtml(c.id)}" />
+              <span class="qp-chip" style="border-color:${c.color}44;color:${c.color};background:${c.color}11">${escHtml(c.label)}</span>
+            </label>`
+            )
+            .join('')}
+        </div>
+      </div>
+      <div class="tr-form-row">
+        <label class="tr-form-lbl" for="trFormColor">Colour</label>
+        <input type="color" id="trFormColor" value="${defaultColor}"
+               style="width:40px;height:28px;cursor:pointer;border:none;background:none;padding:0" />
+      </div>
+      <div class="tr-form-actions">
+        <button class="add-btn" id="trFormCancel">Cancel</button>
+        <button class="add-btn refl-save" id="trFormSave">Add tracker</button>
+      </div>
+    </div>`;
+
+    document.getElementById('trFormCancel').addEventListener('click', closeTrackerForm);
+    document.getElementById('trFormSave').addEventListener('click', saveTrackerForm);
+    document.getElementById('trFormName').focus();
+    document.getElementById('trFormName').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveTrackerForm();
+      if (e.key === 'Escape') closeTrackerForm();
+    });
+  }
+
+  function closeTrackerForm() {
+    const formEl = document.getElementById('trackerNewForm');
+    if (formEl) formEl.style.display = 'none';
+    _trackerFormOpen = false;
+  }
+
+  function saveTrackerForm() {
+    const name = (document.getElementById('trFormName')?.value || '').trim();
+    if (!name) {
+      document.getElementById('trFormName')?.focus();
+      return;
+    }
+    const minsRaw = parseInt(document.getElementById('trFormMins')?.value || '60', 10);
+    const targetMinutes = isNaN(minsRaw) || minsRaw < 1 ? 60 : minsRaw;
+    const color = document.getElementById('trFormColor')?.value || '#378ADD';
+    const tags = [...document.querySelectorAll('#trFormTags input[type=checkbox]:checked')].map(
+      (cb) => cb.value
+    );
+    if (!tags.length) {
+      alert('Please select at least one category.');
+      return;
+    }
+    trackers.push({
+      id: Date.now() + '',
+      name,
+      targetMinutes,
+      tags,
+      color,
+    });
+    saveTrackers();
+    closeTrackerForm();
+    renderTrackers();
+  }
+
+  function initTrackers() {
+    renderTrackers();
+    document.getElementById('trackerAddBtn')?.addEventListener('click', () => {
+      if (_trackerFormOpen) {
+        closeTrackerForm();
+      } else {
+        openTrackerForm();
+      }
+    });
+  }
+
+  // ── 23-sprints.js ──
+  // ── 23-sprints.js — Sprint mode ──
+
+  const STORE_SPRINTS = 'wl_sprints_v1';
+  let sprintLog = [];
+
+  let _sprintActive = false;
+  let _sprintIntention = '';
+  let _sprintDuration = 25; // minutes
+  let _sprintEntryId = null;
+  let _onSprintEnd = null;
+
+  const SPRINT_DURATIONS = [15, 25, 45, 60];
+
+  function loadSprintLog() {
+    try {
+      sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
+    } catch (e) {
+      sprintLog = [];
+    }
+  }
+
+  function saveSprintLog() {
+    localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
+  }
+
+  function openSprintSetup() {
+    const el = document.getElementById('sprintSetup');
+    if (!el) return;
+    el.style.display = '';
+    document.getElementById('sprintIntention').value = '';
+    _sprintDuration = 25;
+    renderSprintDurations();
+    document.getElementById('sprintIntention').focus();
+  }
+
+  function renderSprintDurations() {
+    const el = document.getElementById('sprintDurations');
+    if (!el) return;
+    el.innerHTML = SPRINT_DURATIONS.map(
+      (d) =>
+        `<button class="add-btn sprint-dur-btn${d === _sprintDuration ? ' sprint-dur-active' : ''}"
+               data-dur="${d}">${d}m</button>`
+    ).join('');
+    el.querySelectorAll('.sprint-dur-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        _sprintDuration = parseInt(btn.dataset.dur, 10);
+        renderSprintDurations();
+      });
+    });
+  }
+
+  function startSprint() {
+    _sprintIntention = document.getElementById('sprintIntention').value.trim();
+    if (!_sprintIntention) {
+      document.getElementById('sprintIntention').focus();
+      return;
+    }
+    document.getElementById('sprintSetup').style.display = 'none';
+    _sprintActive = true;
+
+    const entry = {
+      id: Date.now() + '',
+      text: _sprintIntention,
+      tag: selectedTag,
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+      _sprintDuration,
+    };
+    entries.push(entry);
+    _sprintEntryId = entry.id;
+    save();
+
+    if (activeTimer) stopTimer();
+    startTimer(entry.id);
+
+    const focusIntention = document.getElementById('sprintFocusIntention');
+    if (focusIntention) {
+      focusIntention.textContent = _sprintIntention;
+      focusIntention.style.display = '';
+    }
+
+    // Start pomodoro for the sprint duration
+    initPomo(_sprintDuration);
+    startPomo();
+    _onSprintEnd = showSprintReview;
+
+    render();
+  }
+
+  // Called from pomoDone() when the ring reaches 0
+  function notifyPomodoroEnd() {
+    if (_onSprintEnd) {
+      const fn = _onSprintEnd;
+      _onSprintEnd = null;
+      fn();
+    }
+  }
+
+  function showSprintReview() {
+    stopTimer();
+    const el = document.getElementById('sprintReview');
+    if (!el) return;
+    el.style.display = '';
+    document.getElementById('sprintReviewIntention').textContent = `"${_sprintIntention}"`;
+    document.getElementById('sprintReviewNote').value = '';
+
+    const outcomesEl = document.getElementById('sprintOutcomes');
+    outcomesEl.innerHTML = [
+      ['yes', '✓ Yes', '#1d9e75'],
+      ['partly', '◑ Partly', '#ef9f27'],
+      ['no', '✗ No', '#d32f2f'],
+    ]
+      .map(
+        ([val, label, color]) =>
+          `<button class="add-btn sprint-outcome-btn" data-outcome="${val}"
+               style="flex:1;color:${color};border-color:${color}44">${label}</button>`
+      )
+      .join('');
+
+    let _outcome = null;
+    outcomesEl.querySelectorAll('.sprint-outcome-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        _outcome = btn.dataset.outcome;
+        outcomesEl
+          .querySelectorAll('.sprint-outcome-btn')
+          .forEach((b) => (b.style.fontWeight = b === btn ? '600' : ''));
+      });
+    });
+
+    document.getElementById('sprintReviewSave').onclick = () => {
+      if (!_outcome) {
+        alert('Please choose an outcome.');
+        return;
+      }
+      const note = document.getElementById('sprintReviewNote').value.trim();
+      loadSprintLog();
+      sprintLog.push({
+        id: _sprintEntryId,
+        intention: _sprintIntention,
+        duration: _sprintDuration,
+        outcome: _outcome,
+        note,
+        ts: Date.now(),
+      });
+      saveSprintLog();
+
+      const entry = entries.find((e) => e.id === _sprintEntryId);
+      if (entry) {
+        entry._sprintOutcome = _outcome;
+        save();
+      }
+
+      el.style.display = 'none';
+      _sprintActive = false;
+      const fi = document.getElementById('sprintFocusIntention');
+      if (fi) fi.style.display = 'none';
+      render();
+    };
+  }
+
+  function initSprints() {
+    document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
+    document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);
+    document.getElementById('sprintCancel')?.addEventListener('click', () => {
+      const el = document.getElementById('sprintSetup');
+      if (el) el.style.display = 'none';
+    });
+    document.getElementById('sprintIntention')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') startSprint();
+    });
+  }
 })();

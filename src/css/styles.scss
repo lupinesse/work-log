@@ -14,3 +14,11 @@
 @use 'focus'; // export marker, emergency mode, focus-mode checkpoints, handoff
 @use 'modals'; // EOD modal, iteration expiry, EOD task notes, morning handoff
 @use 'features'; // pomodoro, park capture, parked thoughts, IDKW, calendar, jira ticket links, debug info
+@use 'signifiers'; // entry signifier symbols (●○★→✗!)
+@use 'rapid'; // rapid logging overlay (Space key)
+@use 'dailylog'; // daily log feed + tab chrome
+@use 'reflection'; // end-of-day focus + energy rating
+@use 'sprints'; // sprint mode — intention + pomodoro + review
+@use 'trackers'; // custom time-goal progress grids
+@use 'monthlylog'; // monthly heatmap + task inventory
+@use 'migration'; // end-of-month close-out flow

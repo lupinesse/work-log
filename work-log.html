@@ -106,6 +106,7 @@
     <div class="emergency-cps-label" aria-hidden="true">next steps</div>
     <div id="emergencyCps" role="list" aria-label="Task checkpoints"></div>
   </div>
+  <div id="sprintFocusIntention" class="sprint-focus-intention" style="display:none"></div>
   <div class="emergency-next-wrap">
     <label class="emergency-label" for="emergencyNext">smallest next action</label>
     <input class="emergency-next" id="emergencyNext" aria-label="Smallest next action" placeholder="what's the one thing to do right now?" />
@@ -134,6 +135,7 @@
     <span class="plan-header-title">today's tasks</span>
     <span class="plan-count" id="planCount"></span>
     <button class="idkw-btn" id="idkwBtn" aria-label="Pick a random task" title="I don't know what to do — pick one for me">🎲</button>
+    <button class="idkw-btn" id="rapidOpenBtn" aria-label="Quick capture" title="Quick capture — log something fast">✏️</button>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="plan-body">
@@ -411,6 +413,35 @@
   </div>
 </div>
 
+<!-- Reflection overlay -->
+<div id="reflectionOverlay" class="reflection-overlay" role="dialog" aria-modal="true"
+     aria-label="End of day reflection" style="display:none">
+  <div class="reflection-card">
+    <div class="reflection-title">🌅 Day wrap-up &mdash; reflection</div>
+
+    <div class="refl-group">
+      <div class="refl-label">Focus quality</div>
+      <div class="refl-stars" id="reflFocusStars" data-field="focus"></div>
+      <div class="refl-hint" id="reflFocusHint"></div>
+    </div>
+
+    <div class="refl-group">
+      <div class="refl-label">Energy level</div>
+      <div class="refl-stars" id="reflEnergyStars" data-field="energy"></div>
+    </div>
+
+    <div class="refl-group">
+      <div class="refl-label">What took longer than expected? <span class="refl-opt">(optional)</span></div>
+      <input class="capture-input" id="reflNote" placeholder="One sentence&hellip;" />
+    </div>
+
+    <div class="refl-actions">
+      <button class="add-btn" id="reflSkip">Skip</button>
+      <button class="add-btn refl-save" id="reflSave">Save &amp; close day</button>
+    </div>
+  </div>
+</div>
+
 <!-- End of day modal -->
 <div class="eod-overlay" id="eodOverlay" role="dialog" aria-modal="true" aria-labelledby="eodModalTitle">
   <div class="eod-modal">
@@ -430,6 +461,24 @@
   </div>
 </div>
 
+<section id="dailyLogSection" style="display:none">
+  <div class="daily-log-feed" id="dailyLogFeed"></div>
+  <div class="capture-row" id="dailyLogNoteRow">
+    <input class="capture-input" id="dailyLogNoteInput" placeholder="Add a note to today&#39;s log&hellip;" />
+    <button class="add-btn" id="dailyLogNoteBtn">+ Note</button>
+  </div>
+</section>
+
+<section id="monthlyLogSection" style="display:none">
+  <div class="ml-layout">
+    <div class="ml-calendar" id="mlCalendar"></div>
+    <div class="ml-sidebar">
+      <div class="ml-summary" id="mlSummary"></div>
+      <div class="ml-tasks" id="mlTasks"></div>
+    </div>
+  </div>
+</section>
+
 <div class="tb-section" id="tbSection">
   <div class="tb-header" id="tbHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="tbBody">
     <div class="tb-header-left">
@@ -442,6 +491,35 @@
     <div class="tb-grid-wrap">
       <div class="tb-grid" id="tbGrid"></div>
     </div>
+  </div>
+</div>
+
+<!-- Sprint setup panel -->
+<div id="sprintSetup" style="display:none">
+  <div class="sprint-setup-card">
+    <div class="sprint-setup-title">&#9655; New sprint</div>
+    <div class="refl-label">What will you finish?</div>
+    <div class="capture-row">
+      <input class="capture-input" id="sprintIntention" placeholder="Describe the outcome, not the task" autocomplete="off" />
+    </div>
+    <div class="refl-label" style="margin-top:8px">Duration</div>
+    <div class="sprint-durations" id="sprintDurations"></div>
+    <div class="sprint-setup-actions">
+      <button class="add-btn" id="sprintCancel">Cancel</button>
+      <button class="add-btn refl-save" id="sprintStartBtn">&#9654; Start sprint</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sprint review panel -->
+<div id="sprintReview" style="display:none">
+  <div class="sprint-review-card">
+    <div class="sprint-review-title">&#9678; Sprint review</div>
+    <div class="sprint-review-intention" id="sprintReviewIntention"></div>
+    <div class="refl-label">Did you finish what you set out to do?</div>
+    <div class="sprint-outcomes" id="sprintOutcomes"></div>
+    <input class="capture-input" id="sprintReviewNote" placeholder="What got in the way? (optional)" style="margin:10px 0" />
+    <button class="add-btn refl-save" id="sprintReviewSave">Save &amp; log entry</button>
   </div>
 </div>
 
@@ -467,6 +545,7 @@
   <div class="pomo-controls">
     <button class="pomo-btn pomo-start" id="pomoStart">start</button>
     <button class="pomo-btn" id="pomoReset">reset</button>
+    <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
   </div>
   <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
     🔔 time chime every
@@ -481,6 +560,52 @@
   <div class="pomo-log">
     <div class="pomo-log-title">session log</div>
     <div id="pomoLog"></div>
+  </div>
+</div>
+
+<!-- Trackers section -->
+<section id="trackersSection">
+  <div class="section-header" id="trackerHeader">
+    <span>Trackers</span>
+    <button class="add-btn" id="trackerAddBtn" style="font-size:11px">+ New</button>
+  </div>
+  <div id="trackerList"></div>
+  <div id="trackerNewForm" style="display:none"></div>
+</section>
+
+<div id="rapidOverlay" class="rapid-overlay" role="dialog" aria-modal="true"
+     aria-label="Quick capture" style="display:none">
+  <div class="rapid-card">
+    <div class="rapid-header">
+      <span class="rapid-label">Quick capture</span>
+      <button class="rapid-close" id="rapidClose" aria-label="Close">✕</button>
+    </div>
+    <div class="capture-row">
+      <input class="capture-input" id="rapidInput"
+             placeholder="What are you working on?" autocomplete="off" />
+    </div>
+    <div class="rapid-cats" id="rapidCats"></div>
+    <div class="rapid-footer">
+      <span class="rapid-hint">Category optional — assign during review</span>
+      <div class="rapid-actions">
+        <button class="add-btn" id="rapidLogOnly">Log only</button>
+        <button class="add-btn rapid-start" id="rapidStart">&#9654; Start timer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Migration overlay -->
+<div id="migrationOverlay" class="migration-overlay" role="dialog" aria-modal="true"
+     aria-label="Month migration" style="display:none">
+  <div class="migration-card">
+    <div class="migration-header">
+      <span class="migration-title" id="migrationTitle">Month close-out</span>
+      <span class="migration-counter" id="migrationCounter"></span>
+    </div>
+    <div class="prog-wrap"><div class="prog-fill" id="migrationProgress" style="width:0%"></div></div>
+    <div id="migrationBody"></div>
+    <button class="add-btn" id="migrationClose" style="margin-top:14px;width:100%">Close</button>
   </div>
 </div>
 
