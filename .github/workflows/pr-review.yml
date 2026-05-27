@@ -1,0 +1,68 @@
+name: Claude PR Review
+
+# Posts an automated adversarial code review as a PR comment on every push.
+# Uses the /pr-review skill, which reads the diff written to pr.diff and
+# audits changed files against the project's CLAUDE.md quality standard.
+#
+# Required secrets:
+#   ANTHROPIC_API_KEY — set in Settings > Secrets and variables > Actions
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read       # checkout
+      pull-requests: write # post review comment
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # Full history so git diff can compare against the base branch
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Write diff to pr.diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Run PR review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "/pr-review" \
+            --allowedTools "Read" "Grep" "Glob" \
+                           "Bash(git log:*)" "Bash(git diff:*)" \
+                           "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
+            > review-output.txt 2>&1
+          echo "Review complete ($(wc -l < review-output.txt) lines)"
+
+      - name: Post review as PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            cat review-output.txt
+            echo ""
+            echo "---"
+            echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
+          } > comment-body.txt
+
+          gh pr comment "$PR_NUMBER" --body-file comment-body.txt
