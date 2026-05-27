@@ -1,38 +1,95 @@
+// ── Quick Capture modal — QC_FinalV3 (click-first, two-state design) ──
+// Card has two visible states controlled by the .qc-is-running class on
+// #rapidOverlay: idle (no running strip) and running (strip + pulsing dot).
+
+// ── Overlay backdrop ─────────────────────────────────────────────────────────
+
 .rapid-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 900;
 }
 
+// ── Card shell ───────────────────────────────────────────────────────────────
+
 .rapid-card {
   background: var(--bg);
   border: 0.5px solid var(--border2);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  width: min(440px, 90vw);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  width: min(600px, 95vw);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.rapid-header {
+// ── Header ───────────────────────────────────────────────────────────────────
+
+.qc-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 0.5px solid var(--border);
 }
 
-.rapid-label {
+.qc-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text3);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
+  color: var(--text3);
   flex: 1;
 }
 
+// Status dot — grey idle, red + pulsing when running
+.qc-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.qc-is-running .qc-status-dot {
+  background: #ef4444;
+  animation: qc-pulse 2s infinite;
+}
+
+@keyframes qc-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+
+  70% {
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.qc-kbd {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--text3);
+  border: 0.5px solid var(--border2);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: var(--bg2);
+  line-height: 1.5;
+}
+
+// Reused by rapid-close button in header
 .rapid-close {
   background: none;
   border: none;
@@ -41,38 +98,275 @@
   font-size: 16px;
   padding: 0;
   line-height: 1;
+  transition: color 0.1s;
 }
+
+.rapid-close:hover {
+  color: var(--text);
+}
+
+// ── Running strip ─────────────────────────────────────────────────────────────
+// Visible only when a timer is active. Shows current task + elapsed + stop btn.
+
+.qc-running-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.06);
+  border-bottom: 0.5px solid rgba(239, 68, 68, 0.18);
+}
+
+.qc-run-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  flex-shrink: 0;
+  animation: qc-pulse 2s infinite;
+}
+
+.qc-run-task {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qc-run-task a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.qc-run-task a:hover {
+  text-decoration: underline;
+}
+
+.qc-run-elapsed {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+.qc-run-stop {
+  background: none;
+  border: 0.5px solid rgba(239, 68, 68, 0.4);
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: #ef4444;
+  cursor: pointer;
+  font-family: var(--font);
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.qc-run-stop:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+// ── Search / filter input ─────────────────────────────────────────────────────
+
+.qc-search-row {
+  padding: 10px 16px 0;
+}
+
+.qc-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: var(--bg2);
+  color: var(--text);
+  outline: none;
+  transition:
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.qc-search-input::placeholder {
+  color: var(--text3);
+}
+
+.qc-search-input:focus {
+  border-color: var(--info-text);
+  background: var(--bg);
+}
+
+// ── Category filter chips ─────────────────────────────────────────────────────
 
 .rapid-cats {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 5px;
+  padding: 8px 16px 4px;
 }
 
-.rapid-cat-btn.active {
+.qc-cat-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 0.5px solid var(--border2);
+  border-radius: 99px;
+  background: var(--bg);
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font);
+  transition:
+    background 0.1s,
+    border-color 0.1s,
+    color 0.1s;
+}
+
+.qc-cat-chip:hover {
+  background: var(--bg2);
+}
+
+.qc-cat-chip.active {
+  background: var(--info-bg);
+  border-color: transparent;
+  color: var(--info-text);
   font-weight: 600;
 }
 
-.rapid-footer {
+.qc-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// ── Task list ─────────────────────────────────────────────────────────────────
+
+.qc-task-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding-top: 4px;
+}
+
+// Group label (IN PROGRESS / TO-DO / RECENT)
+.qc-group-hdr {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 8px 16px 4px;
+}
+
+// Individual task row — action button revealed on hover
+.qc-task-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.08s;
 }
 
-.rapid-hint {
-  font-size: 11px;
-  color: var(--text3);
+.qc-task-row:hover {
+  background: var(--bg2);
 }
 
-.rapid-actions {
-  display: flex;
-  gap: 6px;
+.qc-task-row:hover .qc-task-action-btn {
+  opacity: 1;
 }
 
-.rapid-start {
+// Active row (currently-running entry)
+.qc-task-row--active {
+  background: rgba(29, 158, 117, 0.06);
+}
+
+.qc-task-row--active .qc-task-action-btn {
+  opacity: 1;
   color: #1d9e75;
-  border-color: rgba(29, 158, 117, 0.4);
+  border-color: rgba(29, 158, 117, 0.35);
+}
+
+.qc-task-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.qc-task-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Hover-reveal action button (▸ start / ▸ switch / ■ now)
+.qc-task-action-btn {
+  opacity: 0;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text2);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    opacity 0.1s,
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
+}
+
+.qc-task-action-btn:hover {
+  background: var(--info-bg);
+  border-color: transparent;
+  color: var(--info-text);
+  opacity: 1;
+}
+
+.qc-empty {
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--text3);
+  font-style: italic;
+  text-align: center;
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+
+.qc-footer {
+  padding: 10px 16px 14px;
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  justify-content: center;
+}
+
+.qc-log-only-btn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  transition:
+    color 0.1s,
+    background 0.1s;
+}
+
+.qc-log-only-btn:hover {
+  color: var(--text2);
+  background: var(--bg2);
 }

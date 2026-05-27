@@ -41,16 +41,17 @@ jobs:
           git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
           echo "Diff size: $(wc -l < pr.diff) lines"
 
-      - name: Check API key is present
+      - name: Check auth is present
         id: key-check
         env:
-          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -z "$KEY" ]; then
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANTHROPIC_API_KEY secret is not set — skipping automated review. Add it in Settings → Secrets and variables → Actions."
-          else
+          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping automated review."
           fi
 
       - name: Run PR review

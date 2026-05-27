@@ -1903,6 +1903,127 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Quick Capture — filter chips ─────────────────────────────────────────
+  console.log('\nQuick Capture — filter chips');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        {
+          id: 'qcf1',
+          text: 'Work task',
+          tag: 'work',
+          ts: Date.now() - 60000,
+          date: today,
+          tsEnd: Date.now() - 1000,
+        },
+        {
+          id: 'qcf2',
+          text: 'Other task',
+          tag: 'other',
+          ts: Date.now() - 30000,
+          date: today,
+          tsEnd: Date.now() - 500,
+        },
+      ],
+    });
+    await page.click('#rapidOpenBtn');
+    await page.waitForSelector('#rapidCats .qc-cat-chip');
+    // Click the chip for the 'work' category
+    await page.evaluate(() => {
+      for (const chip of document.querySelectorAll('#rapidCats .qc-cat-chip')) {
+        if (chip.dataset.cat === 'work') {
+          chip.click();
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(50);
+    const listHtml = await page.evaluate(() => document.getElementById('qcTaskList').innerHTML);
+    assert(
+      'Filter chip shows only matching category tasks',
+      listHtml.includes('Work task') && !listHtml.includes('Other task'),
+      listHtml
+    );
+    // Click 'All' chip resets filter
+    await page.evaluate(() => {
+      for (const chip of document.querySelectorAll('#rapidCats .qc-cat-chip')) {
+        if (chip.dataset.cat === '') {
+          chip.click();
+          break;
+        }
+      }
+    });
+    await page.waitForTimeout(50);
+    const allHtml = await page.evaluate(() => document.getElementById('qcTaskList').innerHTML);
+    assert(
+      'All chip restores full task list',
+      allHtml.includes('Work task') && allHtml.includes('Other task'),
+      allHtml
+    );
+    await page.close();
+  }
+
+  // ── Quick Capture — running strip ────────────────────────────────────────
+  console.log('\nQuick Capture — running strip');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'qcr1', text: 'Active work', tag: 'work', ts: Date.now() - 120000, date: today },
+      ],
+    });
+    // Start the timer programmatically then open the overlay
+    await page.evaluate(() => window.__wl.startTimer('qcr1'));
+    await page.click('#rapidOpenBtn');
+    await page.waitForSelector('#rapidOverlay:visible');
+    const stripVisible = await page.evaluate(
+      () => document.getElementById('qcRunningStrip').style.display !== 'none'
+    );
+    assert('Running strip visible when timer is active', stripVisible);
+    const taskName = await page.evaluate(() =>
+      document.getElementById('qcRunTask').textContent.trim()
+    );
+    assert(
+      'Running strip shows active task name',
+      taskName.includes('Active work'),
+      `got "${taskName}"`
+    );
+    const isRunningClass = await page.evaluate(() =>
+      document.getElementById('rapidOverlay').classList.contains('qc-is-running')
+    );
+    assert('Overlay carries qc-is-running class while timer active', isRunningClass);
+    await page.close();
+  }
+
+  // ── Quick Capture — task-row start ───────────────────────────────────────
+  console.log('\nQuick Capture — task-row start');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_plan_v1: [{ id: 'qcp1', text: 'Plan me', tag: 'work', date: today, status: 'todo' }],
+    });
+    await page.click('#rapidOpenBtn');
+    await page.waitForSelector('#qcTaskList .qc-task-action-btn');
+    // Click the action button on the plan task row
+    await page.evaluate(() => {
+      const btn = document.querySelector('#qcTaskList .qc-task-action-btn');
+      if (btn) btn.click();
+    });
+    await page.waitForTimeout(50);
+    const overlayHidden = await page.evaluate(
+      () => document.getElementById('rapidOverlay').style.display === 'none'
+    );
+    assert('Overlay closes after starting task from row', overlayHidden);
+    const state = await page.evaluate(() => window.__wl.getState());
+    assert(
+      'Timer starts after task-row click',
+      !!state.activeTimer,
+      `activeTimer: ${JSON.stringify(state.activeTimer)}`
+    );
+    await page.close();
+  }
+
   // ── Migration ─────────────────────────────────────────────────────────────
   console.log('\nMigration');
   {
