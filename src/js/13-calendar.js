@@ -58,6 +58,22 @@ function renderCalStrip(meetings) {
   const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
   if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
+  // Populate the collapsed-state next-meeting summary
+  const nextInfoEl = document.getElementById('calNextInfo');
+  if (nextInfoEl) {
+    const nextMeeting = meetings.find((ev) => new Date(ev.end) > now);
+    if (nextMeeting) {
+      const start = new Date(nextMeeting.start);
+      const timeStr = fmtTime(start);
+      const maxLen = 28;
+      const subject = nextMeeting.subject || '';
+      const title = subject.length > maxLen ? subject.slice(0, maxLen) + '…' : subject;
+      nextInfoEl.textContent = `${timeStr} · ${title}`;
+    } else {
+      nextInfoEl.textContent = '';
+    }
+  }
+
   el.innerHTML = meetings
     .map((ev, idx) => {
       const start = new Date(ev.start);

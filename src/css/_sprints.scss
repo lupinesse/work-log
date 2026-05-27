@@ -7,6 +7,7 @@
   padding: 16px;
   margin-bottom: 12px;
 }
+
 .sprint-setup-title,
 .sprint-review-title {
   font-size: 13px;
@@ -14,19 +15,23 @@
   color: var(--info-text);
   margin-bottom: 12px;
 }
+
 .sprint-durations {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
+
 .sprint-dur-btn {
   font-size: 12px;
 }
+
 .sprint-dur-active {
   background: var(--info-bg) !important;
   color: var(--info-text) !important;
   border-color: var(--info-text) !important;
 }
+
 .sprint-setup-actions {
   display: flex;
   justify-content: flex-end;
@@ -35,20 +40,24 @@
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
+
 .sprint-review-intention {
   font-size: 13px;
   color: var(--text3);
   font-style: italic;
   margin-bottom: 12px;
 }
+
 .sprint-outcomes {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
 }
+
 .sprint-outcome-btn {
   flex: 1;
 }
+
 .sprint-focus-intention {
   font-size: 13px;
   color: var(--text2);
@@ -58,6 +67,7 @@
   margin-bottom: 10px;
   border-left: 3px solid var(--info-text);
 }
+
 .pomo-btn.sprint-mode {
   color: var(--info-text);
   border-color: rgba(24, 95, 165, 0.4);

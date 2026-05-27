@@ -490,7 +490,6 @@ body {
   line-height: 1.6;
   white-space: pre-wrap;
   margin-right: 32px;
-  word-break: break-word;
   overflow-wrap: break-word;
 }
 
@@ -625,6 +624,27 @@ body {
   margin-bottom: 6px;
 }
 
+/* Settings toggle — opens the manage row */
+.cat-settings-btn {
+  background: none;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 7px;
+  flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.cat-settings-btn:hover,
+.cat-settings-btn.open {
+  color: var(--text2);
+  border-color: var(--border);
+  background: var(--bg2);
+}
+
 .cat-dot-preview {
   width: 10px;
   height: 10px;
@@ -655,10 +675,14 @@ body {
 }
 
 .cat-manage-row {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   margin-bottom: 14px;
+}
+
+.cat-manage-row.open {
+  display: flex;
 }
 
 .cat-manage-btn {
@@ -903,6 +927,13 @@ body {
 }
 
 /* Timeline */
+#timeline {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
 .empty-state {
   text-align: center;
   padding: 2rem 1rem;
@@ -915,7 +946,7 @@ body {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  padding: 9px 0;
+  padding: 9px 12px;
   border-bottom: 0.5px solid var(--border);
 }
 
@@ -1071,7 +1102,7 @@ body {
 .etext {
   font-size: 14px;
   line-height: 1.45;
-  word-break: break-word;
+  overflow-wrap: break-word;
   cursor: pointer;
 }
 
@@ -1101,7 +1132,6 @@ body {
   gap: 8px;
   padding: 8px 12px;
   background: var(--bg2);
-  margin-bottom: 10px;
   cursor: default;
   user-select: none;
 }
@@ -1123,7 +1153,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin: 2px 0 0 0;
+  margin: 2px 0 0;
 }
 
 .etag-btn:hover {
@@ -1242,16 +1272,22 @@ body {
 
 /* Bar chart */
 .chart-section {
-  margin-top: 18px;
-  border-top: 0.5px solid var(--border);
-  padding-top: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 14px;
 }
 
 .chart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  background: var(--bg2);
+  padding: 8px 12px;
+}
+
+.chart-body {
+  padding: 10px 12px 8px;
 }
 
 .chart-title {
@@ -1762,7 +1798,7 @@ body {
   background: var(--bg2);
 }
 
-/* Child indentation lives inside plan-left, not on the item — keeps columns aligned */
+/* stylelint-disable-next-line block-no-empty -- intentionally empty; kept for specificity anchor */
 .plan-status {
   font-size: 11px;
   font-family: var(--font);
@@ -1775,7 +1811,6 @@ body {
   width: 92px;
   min-width: 92px;
   appearance: none;
-  -webkit-appearance: none;
   background-repeat: no-repeat;
   background-position: right 5px center;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -2635,7 +2670,7 @@ body {
 
 .completed-section {
   margin-bottom: 14px;
-  border: 0.5px solid var(--border);
+  border: 0.5px solid rgba(29, 158, 117, 0.25);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -2644,26 +2679,33 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  background: rgba(29, 158, 117, 0.07);
   cursor: pointer;
   user-select: none;
 }
 
 .completed-header:hover {
-  background: var(--bg2);
+  background: rgba(29, 158, 117, 0.13);
 }
 
 .completed-title {
   font-size: 11px;
-  color: var(--text3);
+  color: #1d9e75;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   flex: 1;
 }
 
+.completed-title::before {
+  content: "✓ ";
+  opacity: 0.75;
+}
+
 .completed-count {
   font-size: 11px;
-  color: var(--text3);
+  color: #1d9e75;
+  opacity: 0.85;
 }
 
 .completed-toggle {
@@ -2728,15 +2770,17 @@ body {
 
 /* ── Timeblock ── */
 .tb-section {
-  margin-top: 18px;
-  border-top: 0.5px solid var(--border);
-  padding-top: 14px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .tb-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   padding: 8px 12px;
   background: var(--bg2);
   margin-bottom: 10px;
@@ -2747,14 +2791,16 @@ body {
 .tb-header::before {
   content: "🗓";
   font-size: 13px;
-  margin-right: 2px;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .tb-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  justify-content: space-between;
 }
 
 .tb-title {
@@ -2901,7 +2947,7 @@ body {
   font-size: 10px;
   opacity: 0;
   transition: opacity 0.1s;
-  color: currentColor;
+  color: currentcolor;
   padding: 0;
 }
 
@@ -2925,7 +2971,7 @@ body {
   padding: 0;
   opacity: 0.2;
   transition: opacity 0.1s;
-  color: currentColor;
+  color: currentcolor;
   font-family: var(--font);
 }
 
@@ -3013,7 +3059,7 @@ body {
 
 @keyframes tb-live-pulse {
   0%, 100% {
-    border-left-color: currentColor;
+    border-left-color: currentcolor;
   }
   50% {
     border-left-color: transparent;
@@ -3102,7 +3148,6 @@ body {
 
 #newdayExpanded {
   white-space: pre-wrap;
-  word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.5;
 }
@@ -3817,10 +3862,11 @@ body.emergency .emergency-screen {
 
 /* ── Pomodoro ── */
 .pomo-section {
-  margin-top: 24px;
-  border-top: 0.5px solid var(--border);
-  padding-top: 20px;
-  padding-bottom: 8px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .pomo-header {
@@ -3828,7 +3874,7 @@ body.emergency .emergency-screen {
   color: var(--text3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 14px;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3836,6 +3882,10 @@ body.emergency .emergency-screen {
   user-select: none;
   padding: 8px 12px;
   background: var(--bg2);
+}
+
+.pomo-body {
+  padding: 14px 14px 8px;
 }
 
 .pomo-toggle {
@@ -4215,6 +4265,23 @@ body.emergency .emergency-screen {
 }
 
 /* ── Calendar meeting section ── */
+/* Next-meeting summary shown in the collapsed header */
+.cal-next-info {
+  display: none;
+  font-size: 11px;
+  color: var(--text2);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+  opacity: 0.8;
+}
+
+.plan-section.collapsed .cal-next-info {
+  display: inline;
+}
+
 #calSection .plan-header-title::before {
   content: "📅";
   margin-right: 6px;
@@ -4627,7 +4694,7 @@ body.emergency .emergency-screen {
   background: none;
   border: 0.5px solid var(--border2);
   border-radius: var(--radius);
-  padding: 4px 12px;
+  padding: 3px 10px;
   font-size: 12px;
   color: var(--text2);
   cursor: pointer;
@@ -4636,12 +4703,13 @@ body.emergency .emergency-screen {
 }
 
 .tab-btn:hover {
-  background: var(--bg2);
+  background: var(--bg3);
+  color: var(--text2);
 }
 
 .tab-btn.active {
-  background: var(--bg2);
-  color: var(--text);
+  background: var(--bg3);
+  color: var(--text2);
   border-color: var(--border);
 }
 
@@ -4992,7 +5060,7 @@ body.emergency .emergency-screen {
 
 .tr-tag-check input[type=checkbox]:checked + .qp-chip {
   font-weight: 600;
-  outline: 2px solid currentColor;
+  outline: 2px solid currentcolor;
   outline-offset: 1px;
 }
 
@@ -5152,7 +5220,7 @@ body.emergency .emergency-screen {
   text-align: center;
 }
 
-@media (max-width: 600px) {
+@media (width <= 600px) {
   .ml-layout {
     flex-direction: column;
   }

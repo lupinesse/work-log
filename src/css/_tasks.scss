@@ -1,4 +1,5 @@
 /* ── Today's tasks ── */
+
 /* ── Jira CSV importer ── */
 #jiraSection .plan-header-title::before {
   content: '⊕';
@@ -6,6 +7,7 @@
   color: #5dcaa5;
   opacity: 0.9;
 }
+
 .jira-drop {
   border: 1.5px dashed var(--border2);
   border-radius: var(--radius);
@@ -15,10 +17,12 @@
   transition: background 0.15s;
   margin-bottom: 8px;
 }
+
 .jira-drop:hover,
 .jira-drop.over {
   background: var(--bg2);
 }
+
 .jira-drop-title {
   display: block;
   font-size: 13px;
@@ -26,16 +30,19 @@
   color: var(--text2);
   margin-bottom: 3px;
 }
+
 .jira-drop-sub {
   font-size: 11px;
   color: var(--text3);
 }
+
 .jira-cat-panel {
   border: 0.5px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 10px;
 }
+
 .jira-cat-hdr {
   font-size: 10px;
   font-weight: 500;
@@ -46,6 +53,7 @@
   background: var(--bg2);
   border-bottom: 0.5px solid var(--border);
 }
+
 .jira-cat-row {
   display: flex;
   align-items: center;
@@ -53,15 +61,18 @@
   padding: 6px 12px;
   border-bottom: 0.5px solid var(--border);
 }
+
 .jira-cat-row:last-child {
   border-bottom: none;
 }
+
 .jira-cat-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+
 .jira-cat-label {
   flex: 1;
   font-size: 12px;
@@ -70,6 +81,7 @@
   white-space: nowrap;
   color: var(--text2);
 }
+
 .jira-badge {
   font-size: 10px;
   padding: 2px 6px;
@@ -77,40 +89,49 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
 .jira-badge-new {
   background: #faeeda;
   color: #854f0b;
 }
+
 .jira-badge-existing {
   background: var(--bg3);
   color: var(--text3);
 }
+
 .jira-badge-dup {
   background: var(--bg3);
   color: var(--text3);
 }
+
 .jira-badge-status-todo {
   background: var(--bg3);
   color: var(--text3);
 }
+
 .jira-badge-status-inprogress {
   background: var(--info-bg);
   color: var(--info-text);
 }
+
 .jira-badge-status-blocked {
   background: rgba(198, 40, 40, 0.12);
   color: #c62828;
 }
+
 .jira-badge-status-pending {
   background: #faeeda;
   color: #854f0b;
 }
+
 .jira-task-rows {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
 }
+
 .jira-task-row {
   display: flex;
   align-items: center;
@@ -120,19 +141,23 @@
   border: 0.5px solid var(--border);
   cursor: pointer;
 }
+
 .jira-task-row:hover {
   background: var(--bg2);
 }
+
 .jira-task-row.dup,
 .jira-task-row.done {
   opacity: 0.38;
 }
+
 .jira-task-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+
 .jira-task-key {
   font-size: 11px;
   font-weight: 500;
@@ -140,6 +165,7 @@
   flex-shrink: 0;
   min-width: 84px;
 }
+
 .jira-task-title {
   flex: 1;
   font-size: 12px;
@@ -148,21 +174,25 @@
   white-space: nowrap;
   color: var(--text2);
 }
+
 .jira-task-row.dup .jira-task-title,
 .jira-task-row.done .jira-task-title {
   text-decoration: line-through;
 }
+
 .jira-sel-row {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
+
 .jira-count {
   font-size: 11px;
   color: var(--text3);
   flex: 1;
 }
+
 .jira-msg.ok {
   color: #1d9e75;
 }
@@ -173,6 +203,7 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
+
 .plan-header {
   display: flex;
   align-items: center;
@@ -182,6 +213,7 @@
   cursor: pointer;
   user-select: none;
 }
+
 .plan-header-title {
   font-size: 11px;
   font-weight: 400;
@@ -190,38 +222,46 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
 #planSection .plan-header-title::before {
   content: '◉';
   margin-right: 6px;
   color: #5dcaa5;
   opacity: 0.85;
 }
+
 .plan-count {
   font-size: 11px;
   color: var(--text3);
 }
+
 .plan-toggle {
   font-size: 11px;
   color: var(--text3);
   transition: transform 0.2s;
 }
+
 .plan-section.collapsed .plan-toggle {
   transform: rotate(-90deg);
 }
+
 .plan-body {
   padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+
 .plan-section.collapsed .plan-body {
   display: none;
 }
+
 .plan-add-row {
   display: flex;
   gap: 6px;
   margin-bottom: 2px;
 }
+
 .plan-input {
   flex: 1;
   font-size: 13px;
@@ -233,12 +273,15 @@
   color: var(--text);
   outline: none;
 }
+
 .plan-input:focus {
   border-color: var(--info-text);
 }
+
 .plan-input::placeholder {
   color: var(--text3);
 }
+
 .plan-add-btn {
   font-size: 12px;
   padding: 5px 12px;
@@ -250,9 +293,11 @@
   font-family: var(--font);
   white-space: nowrap;
 }
+
 .plan-add-btn:hover {
   background: var(--bg2);
 }
+
 .plan-item {
   display: flex;
   align-items: flex-start;
@@ -260,46 +305,57 @@
   padding: 6px 4px;
   border-radius: var(--radius);
 }
+
 .plan-item:hover {
   background: var(--bg2);
 }
+
 .plan-item.done .plan-text {
   text-decoration: line-through;
   color: #888884;
 }
+
 @media (prefers-color-scheme: dark) {
   .plan-item.done .plan-text {
     color: #555553;
   }
 }
+
 .plan-item.done .plan-cat-line {
   opacity: 0.5;
 }
+
 @keyframes plan-active-pulse {
   0%,
   100% {
     background: rgba(186, 117, 23, 0.08);
   }
+
   50% {
     background: rgba(186, 117, 23, 0.2);
   }
 }
+
 .plan-item.active-timer {
   animation: plan-active-pulse 2s ease-in-out infinite;
   border-left: 3px solid #ef9f27;
   padding-left: 6px;
   border-radius: var(--radius);
 }
+
 .plan-item.active-timer .plan-text {
   color: #fac775;
 }
+
 .plan-item.active-timer:hover {
   animation: none;
   background: var(--bg2);
 }
-/* Child indentation lives inside plan-left, not on the item — keeps columns aligned */
+
+/* stylelint-disable-next-line block-no-empty -- intentionally empty; kept for specificity anchor */
 .plan-item.plan-child {
 }
+
 .plan-status {
   font-size: 11px;
   font-family: var(--font);
@@ -312,49 +368,57 @@
   width: 92px;
   min-width: 92px;
   appearance: none;
-  -webkit-appearance: none;
   background-repeat: no-repeat;
   background-position: right 5px center;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   padding-right: 18px;
   margin-right: 8px;
 }
+
 .plan-status.todo {
   background-color: var(--bg2);
   color: var(--text3);
   border-color: var(--border2);
 }
+
 .plan-status.inprogress {
   background-color: #ffb830;
   color: #1a0800;
   border-color: #c07820;
   font-weight: 600;
 }
+
 .plan-status.done-st {
   background-color: #0a3d1f;
   color: #5dcaa5;
   border-color: #1d9e75;
 }
+
 .plan-status.upcoming {
   background-color: rgba(29, 158, 117, 0.12);
   color: #1d9e75;
   border-color: rgba(29, 158, 117, 0.4);
 }
+
 .upcoming-section {
   border-color: rgba(29, 158, 117, 0.25);
 }
+
 .upcoming-section .plan-header {
   background: linear-gradient(90deg, rgba(29, 158, 117, 0.08) 0%, transparent 100%);
 }
+
 .upcoming-section .plan-header-title::before {
   content: '🔜';
   margin-right: 6px;
 }
+
 .plan-status.pending {
   background-color: rgba(123, 97, 255, 0.15);
   color: #9b7dff;
   border-color: rgba(123, 97, 255, 0.5);
 }
+
 .plan-status.blocked {
   background-color: rgba(198, 40, 40, 0.15);
   color: #f17070;
@@ -369,6 +433,7 @@
   padding-top: 3px;
   flex-wrap: wrap;
 }
+
 .plan-comment-text {
   font-size: 11px;
   color: var(--text3);
@@ -379,12 +444,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .plan-comment-ts {
   font-size: 10px;
   color: var(--text3);
   flex-shrink: 0;
   font-style: italic;
 }
+
 .plan-comment-input {
   flex: 1;
   font-size: 11px;
@@ -397,9 +464,11 @@
   outline: none;
   min-width: 80px;
 }
+
 .plan-comment-input:focus {
   border-color: var(--info-text);
 }
+
 .plan-comment-ok {
   font-size: 13px;
   background: none;
@@ -409,6 +478,7 @@
   padding: 0 3px;
   flex-shrink: 0;
 }
+
 .plan-comment-skip {
   font-size: 11px;
   background: none;
@@ -419,6 +489,7 @@
   font-family: var(--font);
   flex-shrink: 0;
 }
+
 .plan-comment-edit {
   font-size: 11px;
   background: none;
@@ -430,12 +501,15 @@
   flex-shrink: 0;
   transition: opacity 0.1s;
 }
+
 .plan-item:hover .plan-comment-edit {
   opacity: 0.7;
 }
+
 .plan-comment-edit:hover {
   opacity: 1 !important;
 }
+
 .plan-comment-history-toggle {
   font-size: 10px;
   background: none;
@@ -451,11 +525,13 @@
     opacity 0.1s,
     background 0.1s;
 }
+
 .plan-comment-history-toggle:hover {
   opacity: 1;
   background: var(--bg2);
   color: var(--text2);
 }
+
 .plan-comment-history {
   width: 100%;
   margin-top: 4px;
@@ -467,6 +543,7 @@
   flex-direction: column;
   gap: 3px;
 }
+
 .plan-comment-history-item {
   display: flex;
   align-items: center;
@@ -474,6 +551,7 @@
   font-size: 11px;
   color: var(--text3);
 }
+
 .plan-comment-history-badge {
   font-size: 9px;
   padding: 1px 6px;
@@ -484,22 +562,26 @@
   flex-shrink: 0;
   font-weight: 500;
 }
+
 .plan-comment-history-badge.pending {
   background: rgba(123, 97, 255, 0.12);
   color: #9b7dff;
   border-color: rgba(123, 97, 255, 0.4);
 }
+
 .plan-comment-history-badge.blocked {
   background: rgba(198, 40, 40, 0.12);
   color: #f17070;
   border-color: rgba(198, 40, 40, 0.4);
 }
+
 .plan-comment-history-ts {
   font-family: var(--mono);
   font-size: 10px;
   color: var(--text3);
   flex-shrink: 0;
 }
+
 .plan-comment-history-text {
   font-style: italic;
   flex: 1;
@@ -508,6 +590,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .plan-comment-history-dur {
   font-size: 10px;
   color: var(--text3);
@@ -519,9 +602,11 @@
 .pending-section {
   border-color: rgba(198, 40, 40, 0.25);
 }
+
 .pending-section .plan-header {
   background: linear-gradient(90deg, rgba(123, 97, 255, 0.06), rgba(198, 40, 40, 0.06));
 }
+
 /* Pending/blocked section accent */
 .pending-section .plan-header-title::before {
   content: '◐';
@@ -529,6 +614,7 @@
   color: #c9a05f;
   opacity: 0.85;
 }
+
 .plan-left {
   display: flex;
   flex-direction: column;
@@ -537,11 +623,13 @@
   flex: 1;
   padding: 0 8px;
 }
+
 .plan-top {
   display: flex;
   align-items: center;
   gap: 6px;
 }
+
 /* Actions as proper flex column */
 .plan-actions {
   flex-shrink: 0;
@@ -553,13 +641,16 @@
   opacity: 0;
   transition: opacity 0.1s;
 }
+
 .plan-item:hover .plan-actions {
   opacity: 1;
 }
+
 .pcat-add-row {
   width: 100%;
   margin-top: 3px;
 }
+
 .pcat-add-btn {
   font-size: 11px;
   padding: 2px 9px;
@@ -570,19 +661,23 @@
   color: var(--text3);
   font-family: var(--font);
 }
+
 .pcat-add-btn:hover {
   background: var(--bg2);
   border-style: solid;
   color: var(--text2);
 }
+
 .pcat-add-form {
   display: none;
   align-items: center;
   gap: 4px;
 }
+
 .pcat-add-form.open {
   display: flex;
 }
+
 .pcat-add-input {
   flex: 1;
   font-size: 11px;
@@ -595,6 +690,7 @@
   outline: none;
   min-width: 0;
 }
+
 .pcat-add-ok {
   font-size: 13px;
   background: none;
@@ -603,6 +699,7 @@
   color: #1d9e75;
   padding: 0 2px;
 }
+
 .pcat-add-cancel2 {
   font-size: 13px;
   background: none;
@@ -611,6 +708,7 @@
   color: var(--text3);
   padding: 0 2px;
 }
+
 .plan-cat-line {
   display: flex;
   align-items: center;
@@ -620,46 +718,56 @@
   border-radius: 3px;
   width: fit-content;
 }
+
 .plan-cat-line:hover {
   background: var(--bg3);
 }
+
 .plan-cat-chevron {
   font-size: 9px;
   color: var(--text3);
 }
+
 .plan-cat-picker {
   display: none;
   flex-wrap: wrap;
   gap: 4px;
   margin-top: 4px;
 }
+
 .plan-cat-picker.open {
   display: flex;
 }
+
 .plan-cat-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+
 .plan-cat-name {
   font-size: 11px;
   color: var(--text3);
 }
+
 .plan-meta {
   font-size: 11px;
   color: var(--text3);
   flex-shrink: 0;
   white-space: nowrap;
 }
+
 .plan-item:hover {
   background: var(--bg2);
 }
+
 .plan-text {
   font-size: 12px;
   font-weight: 600;
   color: #383836;
 }
+
 @media (prefers-color-scheme: dark) {
   .plan-text {
     color: #cbcbc9;
@@ -671,10 +779,12 @@
   font-size: 12px;
   font-weight: 600;
 }
+
 .pending-section .plan-cat-name {
   font-size: 10px;
   font-family: var(--font);
 }
+
 .pending-section .plan-comment-text {
   font-size: 11px;
 }
@@ -692,13 +802,16 @@
   padding: 0 1px;
   font-family: var(--font);
 }
+
 .plan-comment-bubble:hover {
   opacity: 1;
 }
+
 .plan-comment-bubble-empty {
   opacity: 0.3;
   cursor: pointer;
 }
+
 .plan-comment-bubble-empty:hover {
   opacity: 0.65;
 }
@@ -713,6 +826,7 @@
   white-space: nowrap;
   align-self: center;
 }
+
 .plan-log-btn {
   font-size: 11px;
   padding: 2px 8px;
@@ -724,11 +838,13 @@
   font-family: var(--font);
   white-space: nowrap;
 }
+
 .plan-log-btn:hover {
   background: var(--info-bg);
   color: var(--info-text);
   border-color: transparent;
 }
+
 .plan-edit-btn {
   font-size: 12px;
   background: none;
@@ -739,9 +855,11 @@
   line-height: 1;
   flex-shrink: 0;
 }
+
 .plan-edit-btn:hover {
   color: var(--text);
 }
+
 .plan-del-btn {
   font-size: 14px;
   background: none;
@@ -752,9 +870,11 @@
   line-height: 1;
   flex-shrink: 0;
 }
+
 .plan-del-btn:hover {
   color: var(--text);
 }
+
 .bill-btn {
   background: none;
   border: none;
@@ -765,10 +885,12 @@
   flex-shrink: 0;
   opacity: 0.85;
 }
+
 .bill-btn:hover {
   opacity: 1;
   transform: scale(1.15);
 }
+
 /* Bill button sits between the status select and the task name.
      align-self:flex-start keeps its top edge flush with the status dropdown's
      top edge, even when the task row wraps to multiple lines. */
@@ -776,6 +898,7 @@
   align-self: flex-start;
   margin: 2px 4px 0 2px;
 }
+
 .prio-btn {
   background: none;
   border: none;
@@ -790,18 +913,22 @@
     opacity 0.15s,
     transform 0.15s;
 }
+
 .prio-btn:hover {
   opacity: 1;
   transform: scale(1.15);
 }
+
 .prio-btn.prio-high {
   opacity: 1;
   color: #e5b41c;
 }
+
 .prio-btn.prio-low {
   opacity: 0.7;
   color: var(--text2);
 }
+
 .notion-task-btn {
   background: none;
   border: none;
@@ -815,14 +942,17 @@
     opacity 0.15s,
     transform 0.15s;
 }
+
 .notion-task-btn:hover {
   opacity: 1;
   transform: scale(1.15);
 }
+
 .notion-task-btn:disabled {
   cursor: wait;
   opacity: 0.3;
 }
+
 .notion-task-btn.notion-sent {
   opacity: 0.9;
   color: #7b61ff;

@@ -3,17 +3,20 @@
   margin-bottom: 14px;
   position: relative;
 }
+
 .qp-label {
   font-size: 11px;
   color: var(--text3);
   margin-bottom: 6px;
 }
+
 .qp-list {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   align-items: center;
 }
+
 .qp-item {
   font-size: 12px;
   padding: 3px 4px 3px 10px;
@@ -33,16 +36,19 @@
     color 0.1s,
     border-color 0.1s;
 }
+
 .qp-item-text {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
 }
+
 .qp-item:hover {
   background: var(--info-bg);
   color: var(--info-text);
   border-color: transparent;
 }
+
 .qp-remove {
   background: none;
   border: none;
@@ -59,13 +65,16 @@
   font-family: var(--font);
   border-radius: 99px;
 }
+
 .qp-item:hover .qp-remove {
   opacity: 0.55;
 }
+
 .qp-remove:hover {
   opacity: 1 !important;
   color: #f17070;
 }
+
 .qp-restore {
   font-size: 11px;
   color: var(--text3);
@@ -80,6 +89,7 @@
     opacity 0.1s,
     color 0.1s;
 }
+
 .qp-restore:hover {
   opacity: 1;
   color: var(--text2);
@@ -92,12 +102,38 @@
   gap: 8px;
   margin-bottom: 6px;
 }
+
+/* Settings toggle — opens the manage row */
+.cat-settings-btn {
+  background: none;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 4px 7px;
+  flex-shrink: 0;
+  transition:
+    color 0.1s,
+    border-color 0.1s,
+    background 0.1s;
+}
+
+.cat-settings-btn:hover,
+.cat-settings-btn.open {
+  color: var(--text2);
+  border-color: var(--border);
+  background: var(--bg2);
+}
+
 .cat-dot-preview {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
 }
+
 .cat-select {
   flex: 1;
   font-size: 14px;
@@ -115,15 +151,22 @@
   background-position: right 10px center;
   padding-right: 28px;
 }
+
 .cat-select:focus {
   border-color: var(--info-text);
 }
+
 .cat-manage-row {
-  display: flex;
+  display: none;
   align-items: center;
   gap: 6px;
   margin-bottom: 14px;
 }
+
+.cat-manage-row.open {
+  display: flex;
+}
+
 .cat-manage-btn {
   font-size: 12px;
   padding: 3px 10px;
@@ -134,21 +177,26 @@
   color: var(--text3);
   font-family: var(--font);
 }
+
 .cat-manage-btn:hover {
   background: var(--bg2);
   color: var(--text2);
 }
+
 .cat-manage-btn.danger:hover {
   color: #c62828;
   border-color: #c62828;
 }
+
 .cat-manage-btn.add {
   margin-left: auto;
   border-style: dashed;
 }
+
 .cat-manage-btn.add:hover {
   border-style: solid;
 }
+
 .plan-emoji-btn {
   font-size: 14px;
   cursor: pointer;
@@ -162,10 +210,12 @@
   border: none;
   font-family: var(--font);
 }
+
 .plan-emoji-btn:hover {
   opacity: 1;
   background: var(--bg3);
 }
+
 .plan-emoji-btn.has-emoji {
   opacity: 1;
 }
@@ -180,6 +230,7 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   width: 240px;
 }
+
 .emoji-picker-input {
   width: 100%;
   box-sizing: border-box;
@@ -193,6 +244,7 @@
   font-family: var(--font);
   outline: none;
 }
+
 .emoji-picker-grid {
   display: flex;
   flex-wrap: wrap;
@@ -200,6 +252,7 @@
   max-height: 140px;
   overflow-y: auto;
 }
+
 .emoji-picker-grid button {
   font-size: 18px;
   padding: 3px 4px;
@@ -209,9 +262,11 @@
   border-radius: 4px;
   line-height: 1;
 }
+
 .emoji-picker-grid button:hover {
   background: var(--bg3);
 }
+
 .emoji-picker-clear {
   margin-top: 8px;
   font-size: 11px;
@@ -222,9 +277,11 @@
   font-family: var(--font);
   padding: 2px 0;
 }
+
 .emoji-picker-clear:hover {
   color: var(--text2);
 }
+
 .cat-color-swatch {
   display: inline-block;
   width: 14px;
@@ -237,15 +294,18 @@
   box-sizing: border-box;
   transition: transform 0.1s;
 }
+
 .cat-color-swatch:hover {
   transform: scale(1.25);
 }
+
 .cat-inline-edit {
   display: flex;
   align-items: center;
   gap: 5px;
   flex: 1;
 }
+
 .cat-inline-input {
   flex: 1;
   font-size: 13px;
@@ -257,6 +317,7 @@
   color: var(--text);
   outline: none;
 }
+
 .cat-inline-ok {
   background: none;
   border: none;
@@ -265,6 +326,7 @@
   color: #1d9e75;
   padding: 0 3px;
 }
+
 .cat-inline-cancel {
   background: none;
   border: none;
@@ -273,18 +335,22 @@
   color: var(--text3);
   padding: 0 3px;
 }
+
 .cat-inline-ok:hover {
   opacity: 0.7;
 }
+
 .cat-inline-cancel:hover {
   color: var(--text);
 }
+
 /* keep tag-edit-* for inline cat-picker in entries */
 .tag-edit-wrap {
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
+
 .tag-edit-input {
   font-size: 12px;
   font-family: var(--font);
@@ -296,6 +362,7 @@
   color: var(--text);
   outline: none;
 }
+
 .tag-edit-ok {
   background: none;
   border: none;
@@ -305,6 +372,7 @@
   padding: 0 2px;
   line-height: 1;
 }
+
 .tag-edit-cancel {
   background: none;
   border: none;
@@ -314,12 +382,15 @@
   padding: 0 2px;
   line-height: 1;
 }
+
 .tag-edit-ok:hover {
   opacity: 0.7;
 }
+
 .tag-edit-cancel:hover {
   color: var(--text);
 }
+
 .tag-add {
   padding: 4px 10px;
   border-radius: 99px;
@@ -330,6 +401,7 @@
   color: var(--text3);
   font-family: var(--font);
 }
+
 .tag-add:hover {
   background: var(--bg2);
   color: var(--text2);

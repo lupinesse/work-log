@@ -3,6 +3,10 @@
 let _migItems = [];
 let _migIdx = 0;
 
+/**
+ * Returns the migration completion record (map of YYYY-MM → boolean).
+ * @returns {Object}
+ */
 function getMigrationRecord() {
   try {
     return JSON.parse(localStorage.getItem(STORE_MIGRATION) || '{}');
@@ -11,6 +15,10 @@ function getMigrationRecord() {
   }
 }
 
+/**
+ * Persists the migration completion record to localStorage.
+ * @param {Object} rec - Map of YYYY-MM → boolean.
+ */
 function saveMigrationRecord(rec) {
   localStorage.setItem(STORE_MIGRATION, JSON.stringify(rec));
 }
@@ -44,6 +52,7 @@ function openMigration() {
   renderMigrationStep();
 }
 
+/** Closes the migration overlay. */
 function closeMigration() {
   const overlay = document.getElementById('migrationOverlay');
   if (overlay) overlay.style.display = 'none';

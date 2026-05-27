@@ -106,13 +106,6 @@ function exportTxt() {
     const d = new Date(ts);
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   };
-  const fmtDurMs = (ms) => {
-    const mins = Math.round(ms / 60000),
-      h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-  };
-
   // Group by category, then by task (preserving first-seen order)
   const catOrder = [];
   const catGrouped = {};
@@ -138,11 +131,11 @@ function exportTxt() {
   const lines = [];
   catOrder.forEach((catKey) => {
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
-    const catTimeStr = totalMs > 0 ? fmtDurMs(totalMs) : '--';
+    const catTimeStr = totalMs > 0 ? fmtDurLong(totalMs) : '--';
     lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
     taskOrder.forEach((taskKey) => {
       const { label, totalMs: tMs, hasTime } = tasks[taskKey];
-      const taskTimeStr = hasTime ? fmtDurMs(tMs) : '--';
+      const taskTimeStr = hasTime ? fmtDurLong(tMs) : '--';
       lines.push(`    ${taskTimeStr} - ${label}`);
     });
   });
@@ -159,11 +152,11 @@ function exportTxt() {
     const startStr = fmtTsHM(dayStartTs);
     const endStr = dayEndTs ? fmtTsHM(dayEndTs) : '--:--';
     header.push(`Started: ${startStr}  |  Ended: ${endStr}`);
-    if (dayEndTs) header.push(`Workday: ${fmtDurMs(dayEndTs - dayStartTs)}`);
+    if (dayEndTs) header.push(`Workday: ${fmtDurLong(dayEndTs - dayStartTs)}`);
   }
   if (totalTrackedMs > 0) {
     header.push(
-      `Total tracked: ${fmtDurMs(totalTrackedMs)}  |  💰 Billable: ${fmtDurMs(billableMs)}  |  💸 Non-billable: ${fmtDurMs(nonBillableMs)}`
+      `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Non-billable: ${fmtDurLong(nonBillableMs)}`
     );
   }
   header.push('---');

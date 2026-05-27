@@ -297,16 +297,9 @@ function exportForDate(dateKey) {
     const d = new Date(ts);
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   };
-  const fmtDurMsL = (ms) => {
-    const mins = Math.round(ms / 60000),
-      h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-  };
-
   const lines = order.map((key) => {
     const { label, tag, totalMs, hasTime } = grouped[key];
-    const timeStr = hasTime ? fmtDurMsL(totalMs) : '--';
+    const timeStr = hasTime ? fmtDurLong(totalMs) : '--';
     return `${timeStr} - ${label} - ${getCatLabel(tag)}`;
   });
 
@@ -317,7 +310,7 @@ function exportForDate(dateKey) {
   if (dayStartTs) {
     const endStr = dayEndTs ? fmtTsHM(dayEndTs) : '--:--';
     header.push(`Started: ${fmtTsHM(dayStartTs)}  |  Ended: ${endStr}`);
-    if (dayEndTs) header.push(`Workday: ${fmtDurMsL(dayEndTs - dayStartTs)}`);
+    if (dayEndTs) header.push(`Workday: ${fmtDurLong(dayEndTs - dayStartTs)}`);
   }
   header.push('---');
 

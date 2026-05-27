@@ -116,6 +116,25 @@ function fmtDur(ms) {
   return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 }
 
+/**
+ * Formats a duration in milliseconds as a human-readable string using the
+ * long "min" suffix.  Used in plaintext exports where readability matters more
+ * than compactness.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} e.g. '1h 30min', '45min', '2h'
+ * @example
+ * fmtDurLong(0)                 // → '0min'
+ * fmtDurLong(45 * 60 * 1000)    // → '45min'
+ * fmtDurLong(90 * 60 * 1000)    // → '1h 30min'
+ * fmtDurLong(120 * 60 * 1000)   // → '2h'
+ */
+function fmtDurLong(ms) {
+  const mins = Math.round(ms / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
+}
+
 /* ── Billing time rounding ── */
 
 /**
@@ -323,6 +342,7 @@ if (typeof module !== 'undefined') {
     fmtTime,
     fmtElapsed,
     fmtDur,
+    fmtDurLong,
     roundUp30,
     roundToNearest30,
     validEntry,

@@ -7,6 +7,7 @@
   justify-content: center;
   z-index: 900;
 }
+
 .rapid-card {
   background: var(--bg);
   border: 0.5px solid var(--border2);
@@ -15,12 +16,14 @@
   width: min(440px, 90vw);
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
 }
+
 .rapid-header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
 }
+
 .rapid-label {
   font-size: 11px;
   font-weight: 600;
@@ -29,6 +32,7 @@
   letter-spacing: 0.06em;
   flex: 1;
 }
+
 .rapid-close {
   background: none;
   border: none;
@@ -38,15 +42,18 @@
   padding: 0;
   line-height: 1;
 }
+
 .rapid-cats {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 12px;
 }
+
 .rapid-cat-btn.active {
   font-weight: 600;
 }
+
 .rapid-footer {
   display: flex;
   align-items: center;
@@ -54,14 +61,17 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
 .rapid-hint {
   font-size: 11px;
   color: var(--text3);
 }
+
 .rapid-actions {
   display: flex;
   gap: 6px;
 }
+
 .rapid-start {
   color: #1d9e75;
   border-color: rgba(29, 158, 117, 0.4);

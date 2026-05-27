@@ -4,13 +4,6 @@ let _mlYear = new Date().getFullYear();
 let _mlMonth = new Date().getMonth(); // 0-indexed
 let _mlActive = false;
 
-function _mlFmtDur(ms) {
-  const mins = Math.round(ms / 60000);
-  const h = Math.floor(mins / 60),
-    m = mins % 60;
-  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-}
-
 function mlDaysInMonth(y, m) {
   return new Date(y, m + 1, 0).getDate();
 }
@@ -145,8 +138,8 @@ function renderMonthlyLog() {
 
   sumEl.innerHTML = `
     <div class="ml-sum-title">Summary</div>
-    <div class="ml-sum-row"><span>Total logged</span><span>${_mlFmtDur(totalMs)}</span></div>
-    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${_mlFmtDur(billableMs)}</span></div>
+    <div class="ml-sum-row"><span>Total logged</span><span>${fmtDur(totalMs)}</span></div>
+    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${fmtDur(billableMs)}</span></div>
     ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
 
   // Task inventory

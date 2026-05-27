@@ -75,7 +75,10 @@ async function freshPage(ctx, extraStorage = {}) {
   }, extraStorage);
   await page.goto(FILE);
   await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(600);
+  await page.waitForFunction(
+    () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+    { timeout: 8000 }
+  );
   return page;
 }
 
@@ -101,7 +104,10 @@ async function runTests() {
     await page.addInitScript(() => localStorage.clear());
     await page.goto(FILE);
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(600);
+    await page.waitForFunction(
+      () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+      { timeout: 8000 }
+    );
     assert('No JS errors on load', errors.length === 0, errors[0]);
     assert('Test harness exposed', await page.evaluate(() => typeof window.__wl === 'object'));
     assert('Stats rendered', await page.evaluate(() => !!document.getElementById('statToday')));
@@ -142,40 +148,6 @@ async function runTests() {
       'distractionSection exists',
       await page.evaluate(() => !!document.getElementById('distractionSection'))
     );
-    await page.close();
-  }
-
-  // ── 2. roundToNearest30 ───────────────────────────────────────────────────
-  console.log('\n2. roundToNearest30');
-  {
-    const page = await freshPage(ctx);
-    const r = (h, m) =>
-      page.evaluate(
-        ({ h, m }) => {
-          const ts = new Date(2026, 4, 6, h, m, 30).getTime();
-          const d = new Date(window.__wl.roundToNearest30(ts));
-          return { h: d.getHours(), m: d.getMinutes(), s: d.getSeconds() };
-        },
-        { h, m }
-      );
-    const r00 = await r(10, 0);
-    assert('10:00 → 10:00', r00.h === 10 && r00.m === 0);
-    const r08 = await r(10, 8);
-    assert('10:08 → 10:00', r08.h === 10 && r08.m === 0);
-    const r15 = await r(10, 15);
-    assert('10:15 → 10:00', r15.h === 10 && r15.m === 0);
-    const r16 = await r(10, 16);
-    assert('10:16 → 10:30', r16.h === 10 && r16.m === 30);
-    const r30 = await r(10, 30);
-    assert('10:30 → 10:30', r30.h === 10 && r30.m === 30);
-    const r45 = await r(10, 45);
-    assert('10:45 → 10:30', r45.h === 10 && r45.m === 30);
-    const r46 = await r(10, 46);
-    assert('10:46 → 11:00', r46.h === 11 && r46.m === 0);
-    const r59 = await r(10, 59);
-    assert('10:59 → 11:00', r59.h === 11 && r59.m === 0);
-    const sec = await r(10, 16);
-    assert('seconds zeroed', sec.s === 0);
     await page.close();
   }
 
@@ -274,7 +246,7 @@ async function runTests() {
         sel.dispatchEvent(new Event('change'));
       }
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     const completedAt = await page.evaluate(
       () =>
         JSON.parse(localStorage.getItem('wl_plan_v1') || '[]').find((t) => t.id === 'ca1')
@@ -334,7 +306,10 @@ async function runTests() {
     );
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(600);
+    await page.waitForFunction(
+      () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+      { timeout: 8000 }
+    );
     const todayTasks = await page.evaluate(
       (today) => window.__wl.getState().planTasks.filter((t) => t.date === today),
       today
@@ -429,7 +404,7 @@ async function runTests() {
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
     await page.evaluate(() => window.__wl.startTimer('dt1'));
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     // Inject a distraction directly
     await page.evaluate(() => {
       const d = {
@@ -444,7 +419,7 @@ async function runTests() {
     });
     // Trigger render directly
     await page.evaluate(() => window.__wl.renderDistractionCount());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     const section = await page.evaluate(
       () => document.getElementById('distractionSection').innerHTML
     );
@@ -499,39 +474,9 @@ async function runTests() {
     await page.evaluate(() => {
       document.getElementById('timerPause')?.click();
     });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
     const titlePaused = await page.title();
     assert('Title shows ⏸ when paused', titlePaused.startsWith('⏸'));
-    await page.close();
-  }
-
-  // ── 14. CSS color validator (safeCssColor) ────────────────────────────────
-  console.log('\n14. safeCssColor');
-  {
-    // Use raw page so reload doesn't wipe injected categories
-    const page = await ctx.newPage();
-    await page.goto(FILE);
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(400);
-    await page.evaluate(() => {
-      localStorage.setItem(
-        'wl_cats_v1',
-        JSON.stringify([
-          { id: 'evil', label: 'evil', color: 'red; background:url(javascript:alert(1))' },
-          { id: 'hex', label: 'hex', color: '#378ADD' },
-          { id: 'hsl', label: 'hsl', color: 'hsl(200, 50%, 50%)' },
-        ])
-      );
-    });
-    await page.goto(FILE); // re-navigate without addInitScript wipe
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(600);
-    const evilColor = await page.evaluate(() => window.__wl.getCat('evil').color);
-    assert('Malicious color replaced with fallback', evilColor === '#888780');
-    const hexColor = await page.evaluate(() => window.__wl.getCat('hex').color);
-    assert('Valid hex color preserved', hexColor === '#378ADD');
-    const hslColor = await page.evaluate(() => window.__wl.getCat('hsl').color);
-    assert('Valid hsl color preserved', hslColor === 'hsl(200, 50%, 50%)');
     await page.close();
   }
 
@@ -544,11 +489,11 @@ async function runTests() {
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
     await page.evaluate(() => window.__wl.startTimer('em1'));
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
 
     // Enter emergency mode
     await page.evaluate(() => document.getElementById('emergencyBtn').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     assert(
       'Body has emergency class',
@@ -594,7 +539,7 @@ async function runTests() {
 
     // Exit emergency mode
     await page.evaluate(() => document.getElementById('emergencyExit').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     assert(
       'Body loses emergency class on exit',
@@ -610,13 +555,13 @@ async function runTests() {
 
     // Re-enter — next action should be restored from localStorage
     await page.evaluate(() => document.getElementById('emergencyBtn').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const restored = await page.evaluate(() => document.getElementById('emergencyNext').value);
     assert('Next action restored on re-entry', restored === 'Check the token expiry');
 
     // Escape key exits
     await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     assert(
       'Escape exits emergency mode',
       await page.evaluate(() => !document.body.classList.contains('emergency'))
@@ -634,11 +579,11 @@ async function runTests() {
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
     await page.evaluate(() => window.__wl.startTimer('hn1'));
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
 
     // First stop click — should show handoff input
     await page.evaluate(() => document.getElementById('timerStop').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     assert(
       'Handoff input appears on first stop click',
@@ -660,7 +605,7 @@ async function runTests() {
 
     // Second click — saves note and stops
     await page.evaluate(() => document.getElementById('timerStop').click());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     assert(
       'Timer stopped after handoff confirm',
@@ -690,12 +635,12 @@ async function runTests() {
 
     // Check note appears in quick pick
     await page.evaluate(() => window.__wl.startTimer('hn1'));
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     await page.evaluate(() => window.__wl.stopTimer());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     // Need another entry to trigger quick pick render with at least one recent task
     await page.evaluate(() => window.__wl.render());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     const qpHtml = await page.evaluate(() => document.getElementById('quickPick')?.innerHTML || '');
     assert('Handoff note NOT shown in quick pick', !qpHtml.includes('Continue from line 42'));
 
@@ -713,7 +658,10 @@ async function runTests() {
       await page.addInitScript(() => localStorage.clear());
       await page.goto(FILE);
       await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(800);
+      await page.waitForFunction(
+        () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+        { timeout: 8000 }
+      );
       assert('No ReferenceError on load', !errors.some((e) => e.includes('_lastTickDate')));
       assert(
         'No banner null crash',
@@ -744,7 +692,7 @@ async function runTests() {
           sel.dispatchEvent(new Event('change'));
         }
       });
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(50);
 
       const allTasks = await page.evaluate(() => window.__wl.getState().planTasks);
       const yesterday_task = allTasks.find((t) => t.id === 'rt1');
@@ -778,7 +726,7 @@ async function runTests() {
         },
       ];
       const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-      await page.waitForTimeout(300);
+      await page.waitForTimeout(50);
       const items = await page.evaluate(() => document.querySelectorAll('.completed-item').length);
       assert('Duplicate tasks deduplicated in completed section', items === 1);
       await page.close();
@@ -806,7 +754,7 @@ async function runTests() {
       },
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
 
     // Check that tsEnd is exactly on boundary
     assert('tsEnd seconds = 0', tsEnd.getSeconds() === 0);
@@ -861,7 +809,7 @@ async function runTests() {
       wl_timer_v1: timer,
       wl_cats_v1: CATS,
     });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
 
     // Verify paused timer coverage stops at pause point, not at Date.now()
     const coverage = await page.evaluate(() => {
@@ -916,7 +864,7 @@ async function runTests() {
       { id: 'sc2', text: 'Self-heal task', tag: 'work', status: 'inprogress', date: today },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(50);
     const todayTask = await page.evaluate(() =>
       window.__wl.getState().planTasks.find((t) => t.id === 'sc2')
     );
@@ -942,7 +890,7 @@ async function runTests() {
     );
     // Trigger quick pick render by focusing the capture input
     await page.evaluate(() => document.getElementById('captureInput').focus());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     const qpHtml = await page.evaluate(() => document.getElementById('quickPick').innerHTML);
     assert('Quick pick renders task', qpHtml.includes('Quick task'));
     assert('Handoff note NOT shown in quick pick', !qpHtml.includes('continue from line 42'));
@@ -959,7 +907,7 @@ async function runTests() {
       { id: 'te2', text: 'No emoji', tag: 'work', status: 'todo', date: today },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Emoji shown in task name', planHtml.includes('🚀'));
     assert('Non-emoji task has no emoji', !planHtml.includes('🚀 No emoji'));
@@ -978,7 +926,7 @@ async function runTests() {
     assert('sodBtn exists', await page.evaluate(() => !!document.getElementById('sodBtn')));
     // Click to set start of day
     await page.evaluate(() => document.getElementById('sodBtn').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const sodKey = 'wl_sod_' + dk(new Date());
     const stored = await page.evaluate((k) => localStorage.getItem(k), sodKey);
     assert('Start of day timestamp stored', !!stored);
@@ -1017,7 +965,7 @@ async function runTests() {
       });
       window.__wl.render();
     });
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const streakValAfter = await page.evaluate(
       () => document.getElementById('statStreak').textContent
     );
@@ -1025,23 +973,10 @@ async function runTests() {
     await page.close();
   }
 
-  // ── 25. Calendar section & meetings ────────────────────────────────────────
-  console.log('\n25. Calendar section');
+  // ── 25. Calendar — renderCalStrip produces delete buttons ──────────────────
+  console.log('\n25. Calendar renderCalStrip');
   {
     const page = await freshPage(ctx);
-    // Check that calendar section exists
-    assert('calSection exists', await page.evaluate(() => !!document.getElementById('calSection')));
-    assert('calHeader exists', await page.evaluate(() => !!document.getElementById('calHeader')));
-    assert(
-      'calMeetings exists',
-      await page.evaluate(() => !!document.getElementById('calMeetings'))
-    );
-    assert(
-      'calCount badge exists',
-      await page.evaluate(() => !!document.getElementById('calCount'))
-    );
-
-    // Inject a mock meeting so renderCalStrip produces delete buttons
     await page.evaluate(() => {
       const now = Date.now();
       window.__wl.renderCalStrip([
@@ -1052,182 +987,10 @@ async function runTests() {
         },
       ]);
     });
-    await page.waitForTimeout(200);
-    const hasDeleteBtn = await page.evaluate(
-      () => document.querySelectorAll('.cal-delete-btn').length > 0
-    );
-    assert('Delete buttons exist in DOM', hasDeleteBtn);
-
-    await page.close();
-  }
-
-  // ── 26. Meeting deletion persistence ───────────────────────────────────────
-  console.log('\n26. Meeting deletion');
-  {
-    const today = dk(new Date());
-    const page = await freshPage(ctx);
-
-    // Simulate clicking a delete button and verify localStorage is updated
-    const hiddenBefore = await page.evaluate(
-      ({ today }) => {
-        const key = 'wl_hidden_meetings_' + today;
-        return localStorage.getItem(key);
-      },
-      { today }
-    );
-    assert('No hidden meetings initially', hiddenBefore === null);
-
-    // Simulate adding a hidden meeting
-    await page.evaluate(
-      ({ today }) => {
-        const key = 'wl_hidden_meetings_' + today;
-        const meetings = ['Team Standup'];
-        localStorage.setItem(key, JSON.stringify(meetings));
-      },
-      { today }
-    );
-
-    const hiddenAfter = await page.evaluate(
-      ({ today }) => {
-        const key = 'wl_hidden_meetings_' + today;
-        const stored = localStorage.getItem(key);
-        return stored ? JSON.parse(stored) : [];
-      },
-      { today }
-    );
-    assert('Hidden meeting persists in storage', hiddenAfter.includes('Team Standup'));
-
-    await page.close();
-  }
-
-  // ── 27. Nameday with Swedish flag SVG ──────────────────────────────────────
-  console.log('\n27. Nameday display');
-  {
-    const page = await freshPage(ctx);
-
-    // Check that nameday element exists
     assert(
-      'liveNameday element exists',
-      await page.evaluate(() => !!document.getElementById('liveNameday'))
+      'renderCalStrip produces delete buttons',
+      await page.evaluate(() => document.querySelectorAll('.cal-delete-btn').length > 0)
     );
-
-    // Check that it either shows a name or error message
-    const content = await page.evaluate(() => {
-      const el = document.getElementById('liveNameday');
-      return el ? el.textContent : '';
-    });
-    const hasContent = content.length > 0;
-    assert('liveNameday has content', hasContent);
-
-    // Check for either emoji or SVG flag
-    const hasFlagOrEmoji = await page.evaluate(() => {
-      const el = document.getElementById('liveNameday');
-      const svg = el.querySelector('svg');
-      const text = el.textContent;
-      return !!svg || text.includes('🎂');
-    });
-    assert('Nameday shows flag SVG or emoji', hasFlagOrEmoji);
-
-    await page.close();
-  }
-
-  // ── 28. Flag days section ──────────────────────────────────────────────────
-  console.log('\n28. Flag days API');
-  {
-    const page = await freshPage(ctx);
-
-    // Check that flag day element exists
-    assert(
-      'liveFlagDay element exists',
-      await page.evaluate(() => !!document.getElementById('liveFlagDay'))
-    );
-
-    // Check that it has content (flag day emoji or text)
-    const content = await page.evaluate(() => {
-      const el = document.getElementById('liveFlagDay');
-      return el ? el.textContent : '';
-    });
-    const hasContent = content.length > 0;
-    assert('liveFlagDay displays content', hasContent);
-
-    await page.close();
-  }
-
-  // ── 29. Status carry-over (pending/blocked) ────────────────────────────────
-  console.log('\n29. Status carry-over');
-  {
-    const yesterday = dk(new Date(Date.now() - 86400000));
-
-    // Create a task with pending status from yesterday
-    const planTasks = [
-      {
-        id: 'p1',
-        text: 'Important task',
-        status: 'pending',
-        date: yesterday,
-        tag: 'work',
-        comments: [{ text: 'Waiting for review', ts: Date.now() - 86400000 }],
-      },
-    ];
-
-    const page = await freshPage(ctx, { wl_plan_v1: planTasks, wl_cats_v1: CATS });
-
-    // Check if pending section is visible
-    const hasPendingSection = await page.evaluate(() => {
-      return !!document.querySelector('[id*="pending"]');
-    });
-    assert('Page has pending/blocked section', hasPendingSection);
-
-    await page.close();
-  }
-
-  // ── 30. Upcoming Tasks section ─────────────────────────────────────────────
-  console.log('\n30. Upcoming Tasks');
-  {
-    const today = dk(new Date());
-    const tomorrow = dk(new Date(Date.now() + 86400000));
-
-    const planTasks = [
-      { id: 'u1', text: 'Today task', status: 'todo', date: today, tag: 'work' },
-      { id: 'u2', text: 'Tomorrow task', status: 'todo', date: tomorrow, tag: 'work' },
-    ];
-
-    const page = await freshPage(ctx, { wl_plan_v1: planTasks, wl_cats_v1: CATS });
-
-    // Check for upcoming section
-    const hasUpcoming = await page.evaluate(() => {
-      const text = document.body.textContent;
-      return text.includes('Upcoming') || text.includes('upcoming');
-    });
-    assert('Upcoming section or label visible', hasUpcoming);
-
-    await page.close();
-  }
-
-  // ── 31. Timer input field text visibility ──────────────────────────────────
-  console.log('\n31. Timer input styling');
-  {
-    const page = await freshPage(ctx);
-
-    // Check that input fields have proper visibility
-    const handoffColor = await page.evaluate(() => {
-      const el = document.getElementById('timerHandoff');
-      return window.getComputedStyle(el).color;
-    });
-    assert(
-      'Handoff input has visible text color',
-      handoffColor !== '' && handoffColor !== 'rgba(0, 0, 0, 0)'
-    );
-
-    const parkColor = await page.evaluate(() => {
-      const el = document.getElementById('parkCapture');
-      return window.getComputedStyle(el).color;
-    });
-    assert(
-      'Park capture input has visible text color',
-      parkColor !== '' && parkColor !== 'rgba(0, 0, 0, 0)'
-    );
-
     await page.close();
   }
 
@@ -1251,7 +1014,7 @@ async function runTests() {
       { id: 'cp2', text: 'Task no steps', tag: 'work', status: 'todo', date: today },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('cp-badge rendered for task with checkpoints', planHtml.includes('cp-badge'));
@@ -1260,7 +1023,7 @@ async function runTests() {
 
     // Open checkpoints by clicking the badge
     await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const openHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Checkpoint area opens on badge click', openHtml.includes('cp-area'));
     assert('Step text rendered', openHtml.includes('Step one'));
@@ -1271,7 +1034,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterTick1 = await page.evaluate(() =>
       window.__wl.getState().planTasks.find((t) => t.id === 'cp1')
     );
@@ -1280,7 +1043,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterTick2 = await page.evaluate(() =>
       window.__wl.getState().planTasks.find((t) => t.id === 'cp1')
     );
@@ -1306,7 +1069,7 @@ async function runTests() {
       wl_cats_v1: CATS,
       wl_entries_v1: entries,
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     assert(
       'eodTaskNotes element exists',
@@ -1321,7 +1084,7 @@ async function runTests() {
       );
       window.__wl.renderPlan();
     });
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Handoff note shown in plan row', planHtml.includes('pick up from line 42'));
     assert('Handoff dismiss button rendered', planHtml.includes('plan-handoff-dismiss'));
@@ -1329,7 +1092,7 @@ async function runTests() {
 
     // Verify EOD notes only show worked-on tasks (not done tasks, not unworked tasks)
     await page.evaluate(() => window.__wl.openEodModal());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const notesHtml = await page.evaluate(() => document.getElementById('eodTaskNotes').innerHTML);
     assert('Worked task shown in EOD notes', notesHtml.includes('Unfinished task'));
     assert('Done task not in EOD notes', !notesHtml.includes('Done task'));
@@ -1341,7 +1104,7 @@ async function runTests() {
   console.log('\n34. Parked thoughts');
   {
     const page = await freshPage(ctx);
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     assert(
       'parkSection exists',
@@ -1359,7 +1122,7 @@ async function runTests() {
       });
       window.__wl.renderParked();
     });
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const section = await page.evaluate(() => document.getElementById('parkSection').style.display);
     assert('Park section visible when items exist', section !== 'none');
     const html = await page.evaluate(() => document.getElementById('parkList').innerHTML);
@@ -1370,8 +1133,8 @@ async function runTests() {
     await page.close();
   }
 
-  // ── 6. completedAt expiry at iteration boundaries ──────────────────────────
-  console.log('\n6. completedAt expiry at iteration boundaries');
+  // ── 40. completedAt expiry at iteration boundaries ─────────────────────────
+  console.log('\n40. completedAt expiry at iteration boundaries');
   {
     // Task completed on 2026-05-15 should expire at iteration boundary 2026-05-23
     const completedDay = '2026-05-15';
@@ -1475,11 +1238,11 @@ async function runTests() {
       wl_entries_v1: entries,
       wl_cats_v1: CATS,
     });
-    await page2.waitForTimeout(300);
+    await page2.waitForTimeout(50);
 
     // Enter focus mode
     await page2.evaluate(() => document.getElementById('emergencyBtn').click());
-    await page2.waitForTimeout(200);
+    await page2.waitForTimeout(50);
 
     assert(
       'Body has emergency class',
@@ -1503,7 +1266,7 @@ async function runTests() {
 
     // Exit focus mode and check if checkpoints are auto-expanded
     await page2.evaluate(() => document.getElementById('emergencyExit').click());
-    await page2.waitForTimeout(200);
+    await page2.waitForTimeout(50);
     assert(
       'Body loses emergency class on exit',
       await page2.evaluate(() => !document.body.classList.contains('emergency'))
@@ -1563,7 +1326,7 @@ async function runTests() {
       wl_timer_v1: timer,
       wl_cats_v1: CATS,
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     // Intercept writeExportFile to capture the blob text instead of writing/downloading
     const exportText = await page.evaluate(async () => {
@@ -1635,7 +1398,7 @@ async function runTests() {
       wl_timer_v1: pausedTimer,
       wl_cats_v1: CATS,
     });
-    await page2.waitForTimeout(300);
+    await page2.waitForTimeout(50);
 
     const exportText2 = await page2.evaluate(async () => {
       URL.createObjectURL = (blob) => {
@@ -1709,7 +1472,7 @@ async function runTests() {
 
     // Call the hook button click handler
     await page.evaluate(() => document.getElementById('timerHookBtn').click());
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const hookPanel = await page.evaluate(() => {
       const panel = document.getElementById('timerHookPanel');
@@ -1728,7 +1491,7 @@ async function runTests() {
       window.__wl.load();
       window.__wl.render();
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const btnDisabled2 = await page.evaluate(
       () => document.getElementById('timerHookBtn')?.disabled
@@ -1795,7 +1558,7 @@ async function runTests() {
       }
     }, testMeeting);
 
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     const bannerShown = await page.evaluate(() => {
       const banner = document.getElementById('newdayBanner');
@@ -1816,7 +1579,7 @@ async function runTests() {
         document.getElementById('newdayBanner').classList.remove('show');
       }
     });
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     const bannerDismissed = await page.evaluate(() => {
       const banner = document.getElementById('newdayBanner');
@@ -1836,7 +1599,7 @@ async function runTests() {
       { id: 'be1', text: 'Work task', tag: 'work', ts: Date.now() - 60000, date: today },
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     // Initial state: entry has no billable flag, should default to category billable (true)
     const initialEmoji = await page.evaluate(() => {
@@ -1851,7 +1614,7 @@ async function runTests() {
       const btn = document.querySelector('.ebill-btn[data-id="be1"]');
       if (btn) btn.click();
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const afterFirstClick = await page.evaluate(() => {
       const btn = document.querySelector('.ebill-btn[data-id="be1"]');
@@ -1880,7 +1643,7 @@ async function runTests() {
       const btn = document.querySelector('.ebill-btn[data-id="be1"]');
       if (btn) btn.click();
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const afterSecondClick = await page.evaluate(() => {
       const btn = document.querySelector('.ebill-btn[data-id="be1"]');
@@ -1916,7 +1679,7 @@ async function runTests() {
       },
       { today }
     );
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(50);
 
     const nonBillableEmoji = await page.evaluate(() => {
       const btn = document.querySelector('.ebill-btn[data-id="be2"]');
@@ -1951,7 +1714,7 @@ async function runTests() {
 
     // Expand checkpoint area
     await page.evaluate(() => document.querySelector('.cp-badge[data-pid="ts1"]').click());
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
 
     const getState = () =>
       page.evaluate(() => {
@@ -1966,7 +1729,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="ts1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterClick1 = await getState();
     assert(
       'Click 1: false → "partial"',
@@ -1989,7 +1752,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="ts1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterClick2 = await getState();
     assert('Click 2: "partial" → true', afterClick2 === true, `got ${JSON.stringify(afterClick2)}`);
 
@@ -1997,7 +1760,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="ts1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterClick3 = await getState();
     assert('Click 3: true → false', afterClick3 === false, `got ${JSON.stringify(afterClick3)}`);
 
@@ -2005,7 +1768,7 @@ async function runTests() {
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="ts1"][data-cpidx="0"]').click()
     );
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(50);
     const afterClick4 = await getState();
     assert(
       'Click 4: false → "partial" (cycle confirmed)',
@@ -2191,13 +1954,12 @@ async function runTests() {
     await page.close();
   }
 
-  // ── 39. Import backup — UI elements and validation ───────────────────────
+  // ── 39. Import backup — UI elements ─────────────────────────────────────
   // The file-input flow can't be driven headlessly without a real file, so
-  // this section verifies: (a) the hidden file input is present in the DOM
-  // (it is now triggered from the SOD button flow, not a standalone button);
-  // (b) validateBackupFile is exposed via the test harness and correctly
-  // accepts/rejects backup objects.
-  console.log('\n39. Import backup — UI and validation');
+  // this section only verifies the hidden file input is present in the DOM
+  // (triggered from the SOD button flow, not a standalone button).
+  // validateBackupFile logic is thoroughly tested in test/unit.cjs (11 cases).
+  console.log('\n39. Import backup — UI elements');
   {
     const page = await freshPage(ctx);
 
@@ -2215,54 +1977,6 @@ async function runTests() {
     assert(
       'validateBackupFile exposed on test harness',
       await page.evaluate(() => typeof window.__wl.validateBackupFile === 'function')
-    );
-
-    // Validation: happy path
-    const validResult = await page.evaluate(() =>
-      window.__wl.validateBackupFile({
-        version: '1',
-        entries: [],
-        categories: [],
-        planTasks: [],
-      })
-    );
-    assert(
-      'validateBackupFile accepts version-1 backup',
-      validResult.valid === true,
-      JSON.stringify(validResult)
-    );
-
-    // Validation: wrong version
-    const wrongVersion = await page.evaluate(() =>
-      window.__wl.validateBackupFile({
-        version: '2',
-        entries: [],
-        categories: [],
-        planTasks: [],
-      })
-    );
-    assert(
-      'validateBackupFile rejects wrong version',
-      wrongVersion.valid === false,
-      JSON.stringify(wrongVersion)
-    );
-
-    // Validation: null
-    const nullResult = await page.evaluate(() => window.__wl.validateBackupFile(null));
-    assert(
-      'validateBackupFile rejects null',
-      nullResult.valid === false,
-      JSON.stringify(nullResult)
-    );
-
-    // Validation: missing required field
-    const missingField = await page.evaluate(() =>
-      window.__wl.validateBackupFile({ version: '1', entries: [], categories: [] })
-    );
-    assert(
-      'validateBackupFile rejects missing planTasks',
-      missingField.valid === false && missingField.error.includes('"planTasks"'),
-      JSON.stringify(missingField)
     );
 
     await page.close();

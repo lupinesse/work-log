@@ -3,6 +3,7 @@
 let _rapidOpen = false;
 let _rapidCat = null; // selected category id, null = inherit last used
 
+/** Opens the rapid-log overlay and focuses the capture input. */
 function openRapid() {
   const overlay = document.getElementById('rapidOverlay');
   if (!overlay) return;
@@ -14,12 +15,14 @@ function openRapid() {
   inp.focus();
 }
 
+/** Closes the rapid-log overlay. */
 function closeRapid() {
   const overlay = document.getElementById('rapidOverlay');
   if (overlay) overlay.style.display = 'none';
   _rapidOpen = false;
 }
 
+/** Renders the category chip strip inside the rapid overlay. */
 function renderRapidCats() {
   const el = document.getElementById('rapidCats');
   if (!el) return;
@@ -41,6 +44,12 @@ function renderRapidCats() {
   });
 }
 
+/**
+ * Commits a new entry from the rapid-log input.
+ * Marks the entry `_uncategorised` when no category chip is selected so the
+ * review callout can surface it later.
+ * @param {boolean} withTimer - If true, starts the timer on the new entry.
+ */
 function rapidCommit(withTimer) {
   const inp = document.getElementById('rapidInput');
   const text = inp.value.trim();
@@ -69,6 +78,7 @@ function rapidCommit(withTimer) {
   }
 }
 
+/** Registers all event listeners for the rapid-log overlay. Called once on DOMContentLoaded. */
 function initRapid() {
   // Escape to close
   document.addEventListener('keydown', (e) => {

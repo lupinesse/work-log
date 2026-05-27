@@ -222,10 +222,7 @@ function saveSnapshot() {
     const { label, tag, totalMs, hasTime } = grouped[key];
     let timeStr;
     if (hasTime) {
-      const mins = Math.round(totalMs / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      timeStr = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
+      timeStr = fmtDurLong(totalMs);
     } else {
       timeStr = '--';
     }

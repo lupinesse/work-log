@@ -1,0 +1,53 @@
+name: Weekly QA Review
+
+# Runs the /qa-review skill once a week and commits the dated report
+# to docs/qa-reports/ so quality is tracked over time.
+
+on:
+  schedule:
+    # 09:00 UTC every Monday. GitHub runners use UTC — adjust for your timezone.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {} # also allow manual runs from the Actions tab
+
+jobs:
+  qa-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to commit the report back to the repo
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run QA review
+        env:
+          # Add this in: Settings > Secrets and variables > Actions.
+          # Alternatively use CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "/qa-review" \
+            --allowedTools "Read" "Grep" "Glob" "Write" \
+                           "Bash(git log:*)" "Bash(git branch:*)" \
+                           "Bash(git tag:*)" "Bash(git status:*)" \
+                           "Bash(git remote:*)" "Bash(git rev-parse:*)" \
+                           "Bash(ls:*)" "Bash(find:*)" "Bash(cat:*)" \
+                           "Bash(head:*)" "Bash(test:*)" "Bash(wc:*)"
+
+      - name: Commit the report
+        run: |
+          git config user.name "qa-review-bot"
+          git config user.email "qa-review-bot@users.noreply.github.com"
+          if [ -n "$(git status --porcelain docs/qa-reports/)" ]; then
+            git add docs/qa-reports/
+            git commit -m "Add weekly QA review report"
+            git push
+          else
+            echo "No new report to commit."
+          fi

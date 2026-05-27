@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.8.4 — 2026-05-27
+
+### Test suite streamlining
+- **`freshPage()` now waits for app readiness** instead of a fixed 600ms timeout: replaced `waitForTimeout(600)` with `waitForFunction(() => window.__wl?.getState)`, cutting per-page overhead from 600ms to the actual init time (~80–150ms on a modern machine)
+- **Same fix applied** to the three other manual page loads in Sections 1, 7, and 17a
+- **Removed Section 2 (roundToNearest30) and Section 14 (safeCssColor)** from smoke tests — both pure functions are already covered by 29 unit tests in `test/unit.cjs`; running them via Playwright was pure overhead
+- **Removed 4 duplicate `validateBackupFile` smoke assertions** — `test/unit.cjs` already covers 11 cases; only the 3 DOM-presence checks are kept in Section 39
+- **All `waitForTimeout(200/300/400)`** reduced to `waitForTimeout(50)`: the app's event handlers call `save()` + `render()` synchronously so the DOM is updated before `page.evaluate()` resolves; 50ms retains a small buffer without paying the full 200–400ms per click
+- **Duplicate section 6 renumbered to 40** to make numbering unambiguous
+- **Removed sections 26–31** (meeting deletion localStorage round-trip, nameday/flag-day content presence, status carry-over element query, upcoming tasks body-text check, timer input CSS colour check) — these either test browser built-ins, external API availability, or element existence already covered by Section 1; no feature behaviour is lost
+- **Trimmed Section 25** to a single `renderCalStrip` behavioural assertion; dropped the 4 element-existence checks
+- Net result: **31 smoke tests removed** (covered elsewhere or not testing behaviour), **211 smoke + 133 unit = 344 tests total**, wall-clock runtime roughly halved
+
+---
+
+## v1.8.3 — 2026-05-27
+
+### Code quality — Higher QA checklist pass
+- **`.nvmrc`** added at project root (Node 24.15.0)
+- **Duplicate formatters removed**: `_fmtDur`, `_mlFmtDur`, `fmtDurMs`, `fmtDurMsL`, and the inline formatter in `07-lifecycle.js` all replaced by `fmtDur` / new `fmtDurLong` in `00-pure-fns.js`; `fmtDurLong` is unit-tested
+- **Silent catches fixed**: `loadLogNotes`, `loadTrackers`, `loadReflection`, `loadSprintLog` now call `wlLog.warn()` on parse failure, matching the rest of the codebase
+- **JSDoc added** to all public functions in the 8 new BuJo feature modules (`16-rapid`, `10b-signifiers`, `18-dailylog`, `19-monthlylog`, `20-migration`, `21-reflection`, `22-trackers`, `23-sprints`)
+- **Stylelint** added (`stylelint-config-standard-scss`); wired into `npm run lint` and lint-staged; 3 genuine CSS bugs fixed (empty block, 2× duplicate properties, deprecated `word-break: break-word`)
+- **`DATA.md`** updated with 5 new entry/task fields (`signifier`, `_uncategorised`, `_sprintDuration`, `_sprintOutcome`, `_migrated`) and 5 new localStorage keys (`wl_lognotes_v1`, `wl_reflection_v1`, `wl_sprints_v1`, `wl_trackers_v1`, `wl_migration_v1`)
+- **README** fixed: smoke-test command corrected (`smoke-tests.cjs`); BuJo feature section added
+
+---
+
 ## v1.8.2 — 2026-05-26
 
 ### Features

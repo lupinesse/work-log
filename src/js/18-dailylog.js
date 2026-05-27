@@ -2,13 +2,12 @@
 
 let _dlActive = false;
 
-function _fmtDur(ms) {
-  const mins = Math.round(ms / 60000);
-  const h = Math.floor(mins / 60),
-    m = mins % 60;
-  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-}
-
+/**
+ * Builds a chronologically sorted array of feed items for the Daily Log view.
+ * Merges time entries, log notes, and task status comments for the given day.
+ * @param {string} dateKey - YYYY-MM-DD date string.
+ * @returns {Array<{ts: number, type: string, color: string, text: string, sub: string}>}
+ */
 function buildDailyLogItems(dateKey) {
   const items = [];
 
@@ -21,7 +20,7 @@ function buildDailyLogItems(dateKey) {
         type: 'entry',
         color: cat.color,
         text: escHtml(e.text),
-        sub: `${escHtml(cat.label)} · ${e.tsEnd ? _fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
+        sub: `${escHtml(cat.label)} · ${e.tsEnd ? fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
       });
     });
 
@@ -56,6 +55,7 @@ function buildDailyLogItems(dateKey) {
   return items.sort((a, b) => a.ts - b.ts);
 }
 
+/** Renders the Daily Log feed for the currently viewed date. */
 function renderDailyLog() {
   const el = document.getElementById('dailyLogFeed');
   if (!el) return;
@@ -96,6 +96,7 @@ function renderDailyLog() {
   });
 }
 
+/** Reads the note input, appends a note to logNotes, persists, and re-renders. */
 function addLogNote() {
   const inp = document.getElementById('dailyLogNoteInput');
   const text = inp ? inp.value.trim() : '';
@@ -106,6 +107,7 @@ function addLogNote() {
   renderDailyLog();
 }
 
+/** Registers the tab-click delegation listener. Called once on DOMContentLoaded. */
 function initDailyLog() {
   // Buttons live inside tl.innerHTML (rebuilt on every render) — use delegation
   document.addEventListener('click', (e) => {

@@ -6,6 +6,7 @@ function loadTrackers() {
     trackers = Array.isArray(raw) ? raw : [];
   } catch (e) {
     trackers = [];
+    wlLog.warn('loadTrackers: failed to parse trackers from localStorage', e);
   }
 }
 

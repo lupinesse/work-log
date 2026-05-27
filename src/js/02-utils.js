@@ -37,6 +37,8 @@ function addCategory() {
 
 let editingCatId = null;
 let addingNewCat = false;
+/** Controls whether the epic manage row (rename/delete/add) is expanded. */
+let catManageOpen = false;
 
 function renderTagRow() {
   const row = document.getElementById('tagRow');
@@ -65,6 +67,9 @@ function renderTagRow() {
         <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 non-billable' : '💰 billable'}</button>`;
   }
 
+  // The manage row is open when explicitly toggled, or when an inline edit is active.
+  const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
+
   row.innerHTML = `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${selCat.color}">
@@ -79,14 +84,26 @@ function renderTagRow() {
           )
           .join('')}
         </select>
+        <button class="cat-settings-btn${manageRowOpen ? ' open' : ''}"
+                id="catSettingsBtn"
+                title="Manage epic (rename, delete, add)"
+                aria-label="Manage epic settings"
+                aria-expanded="${manageRowOpen}">⚙</button>
       </div>
-      <div class="cat-manage-row" id="catManageRow">${manageHtml}</div>`;
+      <div class="cat-manage-row${manageRowOpen ? ' open' : ''}" id="catManageRow">${manageHtml}</div>`;
 
   // Select change
   document.getElementById('catSelect').addEventListener('change', (e) => {
     selectedTag = e.target.value;
     editingCatId = null;
     addingNewCat = false;
+    renderTagRow();
+  });
+
+  // Settings toggle — opens/closes the manage row (disabled while an inline edit is active)
+  document.getElementById('catSettingsBtn')?.addEventListener('click', () => {
+    if (editingCatId || addingNewCat) return;
+    catManageOpen = !catManageOpen;
     renderTagRow();
   });
 
@@ -139,6 +156,7 @@ function renderTagRow() {
       const cat = categories.find((c) => c.id === id);
       if (cat) cat.label = label;
       editingCatId = null;
+      catManageOpen = false;
       save();
       renderTagRow();
       render();
@@ -165,6 +183,7 @@ function renderTagRow() {
   if (editCancel)
     editCancel.addEventListener('click', () => {
       editingCatId = null;
+      catManageOpen = false;
       renderTagRow();
     });
 
@@ -224,6 +243,7 @@ function renderTagRow() {
       categories.push({ id, label, color });
       selectedTag = id;
       addingNewCat = false;
+      catManageOpen = false;
       document.getElementById('captureInput').value = '';
       save();
       renderTagRow();
@@ -248,6 +268,7 @@ function renderTagRow() {
   if (newCancel)
     newCancel.addEventListener('click', () => {
       addingNewCat = false;
+      catManageOpen = false;
       renderTagRow();
     });
 }

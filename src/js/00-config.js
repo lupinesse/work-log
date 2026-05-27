@@ -8,8 +8,10 @@
  * Edit config.local.ps1 (copy from config.local.example.ps1) to set your
  * actual location without touching source code.
  *
- * JIRA_BASE and CAL_ACCOUNT_LABELS are still compile-time — edit them here
- * and rebuild (`node build.js`) to change them.
+ * JIRA_BASE can be overridden without editing this file:
+ *   1. Copy src/js/00-config.local.example.js → src/js/00-config.local.js
+ *   2. Set your real Jira instance URL in that file.
+ *   3. Run `npm run build`.  That file is gitignored and will never be committed.
  */
 
 // ---------------------------------------------------------------------------
@@ -45,9 +47,11 @@ let WEATHER_NAME = 'Helsinki';
  * Base URL for Jira ticket links. Ticket keys found in task names are
  * converted to `<a href="${JIRA_BASE}/${key}">` anchors.
  * Set to `''` to disable link generation.
+ * Override in src/js/00-config.local.js (gitignored) — copy from
+ * src/js/00-config.local.example.js and set your real instance URL.
  * @type {string}
  */
-const JIRA_BASE = 'https://your-instance.atlassian.net/browse';
+let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
 
 // ---------------------------------------------------------------------------
 // Outlook calendar account labels

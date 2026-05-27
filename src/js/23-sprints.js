@@ -11,18 +11,22 @@ let _onSprintEnd = null;
 
 const SPRINT_DURATIONS = [15, 25, 45, 60];
 
+/** Loads sprint history from localStorage into `sprintLog`. */
 function loadSprintLog() {
   try {
     sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
   } catch (e) {
     sprintLog = [];
+    wlLog.warn('loadSprintLog: failed to parse sprint log from localStorage', e);
   }
 }
 
+/** Persists `sprintLog` to localStorage. */
 function saveSprintLog() {
   localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
 }
 
+/** Shows the sprint setup panel and resets the form. */
 function openSprintSetup() {
   const el = document.getElementById('sprintSetup');
   if (!el) return;
@@ -33,6 +37,7 @@ function openSprintSetup() {
   document.getElementById('sprintIntention').focus();
 }
 
+/** Renders the duration chip row, marking the selected duration active. */
 function renderSprintDurations() {
   const el = document.getElementById('sprintDurations');
   if (!el) return;
@@ -49,6 +54,11 @@ function renderSprintDurations() {
   });
 }
 
+/**
+ * Commits a new sprint: creates a log entry, starts the timer, and starts
+ * the Pomodoro for `_sprintDuration` minutes.  Sets `_onSprintEnd` so the
+ * review is shown when the ring reaches zero.
+ */
 function startSprint() {
   _sprintIntention = document.getElementById('sprintIntention').value.trim();
   if (!_sprintIntention) {
@@ -87,7 +97,10 @@ function startSprint() {
   render();
 }
 
-// Called from pomoDone() when the ring reaches 0
+/**
+ * Called from `pomoDone()` when the Pomodoro ring reaches zero.
+ * Fires the registered `_onSprintEnd` callback if one is set.
+ */
 function notifyPomodoroEnd() {
   if (_onSprintEnd) {
     const fn = _onSprintEnd;
@@ -96,6 +109,10 @@ function notifyPomodoroEnd() {
   }
 }
 
+/**
+ * Stops the timer and renders the sprint review panel, allowing the user to
+ * record an outcome (yes / partly / no) and optional note.
+ */
 function showSprintReview() {
   stopTimer();
   const el = document.getElementById('sprintReview');
@@ -158,6 +175,7 @@ function showSprintReview() {
   };
 }
 
+/** Registers all sprint UI event listeners. Called once on DOMContentLoaded. */
 function initSprints() {
   document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
   document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);

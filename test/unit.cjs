@@ -32,6 +32,7 @@ const {
   fmtTime,
   fmtElapsed,
   fmtDur,
+  fmtDurLong,
   roundUp30,
   roundToNearest30,
   validEntry,
@@ -138,6 +139,16 @@ describe('fmtDur', () => {
   it('formats 1h 30m as 1h 30m', () => assert.equal(fmtDur(90 * 60_000), '1h 30m'));
   it('formats 2h 0m as 2h (no trailing 0m)', () => assert.equal(fmtDur(120 * 60_000), '2h'));
   it('rounds partial minutes', () => assert.equal(fmtDur(89 * 60_000 + 30_000), '1h 30m'));
+});
+
+// ── fmtDurLong ────────────────────────────────────────────────────────────────
+describe('fmtDurLong', () => {
+  it('formats 0ms as 0min', () => assert.equal(fmtDurLong(0), '0min'));
+  it('formats 45 min as 45min', () => assert.equal(fmtDurLong(45 * 60_000), '45min'));
+  it('formats exactly 1h as 1h (no min suffix)', () => assert.equal(fmtDurLong(60 * 60_000), '1h'));
+  it('formats 1h 30m as 1h 30min', () => assert.equal(fmtDurLong(90 * 60_000), '1h 30min'));
+  it('formats 2h 0m as 2h (no trailing 0min)', () => assert.equal(fmtDurLong(120 * 60_000), '2h'));
+  it('rounds partial minutes', () => assert.equal(fmtDurLong(89 * 60_000 + 30_000), '1h 30min'));
 });
 
 // ── roundUp30 ─────────────────────────────────────────────────────────────────

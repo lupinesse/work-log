@@ -19,10 +19,12 @@
     background 0.3s,
     border-color 0.3s;
 }
+
 .timer-bar.paused {
   background: #2a2206;
   border-color: #ba7517;
 }
+
 .timer-pulse {
   width: 8px;
   height: 8px;
@@ -32,21 +34,25 @@
   animation: pulse 1.2s ease-in-out infinite;
   transition: background 0.3s;
 }
+
 .timer-bar.paused .timer-pulse {
   background: #ba7517;
   animation: none;
 }
+
 @keyframes pulse {
   0%,
   100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.4;
     transform: scale(0.7);
   }
 }
+
 .timer-task {
   font-size: 13px;
   font-weight: 500;
@@ -57,9 +63,11 @@
   text-overflow: ellipsis;
   transition: color 0.3s;
 }
+
 .timer-bar.paused .timer-task {
   color: #fac775;
 }
+
 .timer-elapsed {
   font-size: 16px;
   font-weight: 500;
@@ -70,9 +78,11 @@
   text-align: right;
   transition: color 0.3s;
 }
+
 .timer-bar.paused .timer-elapsed {
   color: #ef9f27;
 }
+
 .timer-paused-lbl {
   font-size: 10px;
   color: #ef9f27;
@@ -81,9 +91,11 @@
   flex-shrink: 0;
   display: none;
 }
+
 .timer-bar.paused .timer-paused-lbl {
   display: block;
 }
+
 .timer-pause,
 .timer-stop {
   background: none;
@@ -99,26 +111,33 @@
     border-color 0.3s,
     color 0.3s;
 }
+
 .timer-bar.paused .timer-pause {
   border-color: #ba7517;
   color: #ef9f27;
 }
+
 .timer-pause:hover {
   background: rgba(29, 158, 117, 0.15);
 }
+
 .timer-bar.paused .timer-pause:hover {
   background: rgba(186, 117, 23, 0.15);
 }
+
 .timer-stop:hover {
   background: rgba(29, 158, 117, 0.15);
 }
+
 .timer-bar.paused .timer-stop {
   border-color: #ba7517;
   color: #ef9f27;
 }
+
 .timer-bar.paused .timer-stop:hover {
   background: rgba(186, 117, 23, 0.15);
 }
+
 .timer-distract {
   font-size: 11px;
   padding: 2px 10px;
@@ -130,6 +149,7 @@
   font-family: var(--font);
   white-space: nowrap;
 }
+
 .timer-distract:hover {
   background: rgba(196, 181, 253, 0.12);
 }
@@ -146,12 +166,15 @@
   white-space: nowrap;
   font-family: var(--font);
 }
+
 .timer-btn:hover {
   background: var(--bg2);
 }
+
 .timer-btn:active {
   transform: scale(0.97);
 }
+
 .timer-btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -161,6 +184,7 @@
 .entry.is-timing .etime-start {
   color: #1d9e75;
 }
+
 .entry.is-timing .edot {
   animation: pulse 1.2s ease-in-out infinite;
 }
@@ -171,6 +195,7 @@
   gap: 8px;
   margin-bottom: 10px;
 }
+
 .capture-input {
   flex: 1;
   border: 0.5px solid var(--border2);
@@ -183,13 +208,16 @@
   outline: none;
   transition: border-color 0.15s;
 }
+
 .capture-input:focus {
   border-color: var(--info-text);
   box-shadow: 0 0 0 2px var(--info-bg);
 }
+
 .capture-input::placeholder {
   color: var(--text3);
 }
+
 .add-btn {
   background: var(--bg);
   border: 0.5px solid var(--border2);
@@ -201,9 +229,11 @@
   white-space: nowrap;
   font-family: var(--font);
 }
+
 .add-btn:hover {
   background: var(--bg2);
 }
+
 .add-btn:active {
   transform: scale(0.97);
 }
@@ -221,13 +251,16 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+
 .timer-hook-btn:hover {
   background: rgba(123, 97, 255, 0.12);
 }
+
 .timer-hook-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
 .timer-hook-panel {
   position: fixed;
   top: 50%;
@@ -241,6 +274,7 @@
   z-index: 1000;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
+
 .timer-hook-panel::before {
   content: '';
   position: fixed;
@@ -248,15 +282,16 @@
   background: rgba(0, 0, 0, 0.2);
   z-index: -1;
 }
+
 .timer-hook-content {
   font-size: 13px;
   color: var(--text);
   line-height: 1.6;
   white-space: pre-wrap;
   margin-right: 32px;
-  word-break: break-word;
   overflow-wrap: break-word;
 }
+
 .timer-hook-close {
   position: absolute;
   top: 8px;
@@ -269,9 +304,11 @@
   padding: 2px 6px;
   line-height: 1;
 }
+
 .timer-hook-close:hover {
   color: var(--text);
 }
+
 .timer-hook-regen {
   background: none;
   border: 0.5px solid var(--border2);
@@ -282,6 +319,7 @@
   cursor: pointer;
   font-family: var(--font);
 }
+
 .timer-hook-regen:hover {
   color: var(--text);
   background: var(--bg3);

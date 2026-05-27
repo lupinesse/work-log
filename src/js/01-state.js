@@ -152,6 +152,7 @@ function loadLogNotes() {
     logNotes = Array.isArray(raw) ? raw : [];
   } catch (e) {
     logNotes = [];
+    wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', e);
   }
 }
 

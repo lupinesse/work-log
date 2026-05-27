@@ -1,4 +1,5 @@
 /* ── Export ── */
+
 /* ── Emergency Mode ── */
 body.emergency #analyticsSection,
 body.emergency .stats,
@@ -35,6 +36,7 @@ body.emergency .pomo-section {
   width: 100%;
   max-width: 280px;
 }
+
 body.emergency .pomo-log,
 body.emergency .pomo-chime {
   display: none !important;
@@ -46,6 +48,7 @@ body.emergency .pomo-chime {
   max-width: 480px;
   text-align: left;
 }
+
 .emergency-cps-label {
   font-size: 11px;
   text-transform: uppercase;
@@ -53,6 +56,7 @@ body.emergency .pomo-chime {
   color: var(--text3);
   margin-bottom: 7px;
 }
+
 .emergency-cp-row {
   display: flex;
   align-items: center;
@@ -60,9 +64,11 @@ body.emergency .pomo-chime {
   padding: 5px 0;
   border-bottom: 0.5px solid var(--border);
 }
+
 .emergency-cp-row:last-child {
   border-bottom: none;
 }
+
 .emergency-cp-check {
   width: 15px;
   height: 15px;
@@ -77,21 +83,25 @@ body.emergency .pomo-chime {
   font-size: 10px;
   color: transparent;
 }
+
 .emergency-cp-check.cp-done {
   background: #1d9e75;
   border-color: #1d9e75;
   color: #fff;
 }
+
 .emergency-cp-text {
   font-size: 13px;
   color: var(--text2);
   flex: 1;
   line-height: 1.4;
 }
+
 .emergency-cp-text.cp-done {
   text-decoration: line-through;
   color: var(--text3);
 }
+
 .emergency-cps-empty {
   font-size: 12px;
   color: var(--text3);
@@ -110,6 +120,7 @@ body.emergency .pomo-chime {
   padding: 32px 24px;
   text-align: center;
 }
+
 body.emergency .emergency-screen {
   display: flex;
 }
@@ -121,6 +132,7 @@ body.emergency .emergency-screen {
   max-width: 600px;
   line-height: 1.4;
 }
+
 .emergency-label {
   font-size: 11px;
   text-transform: uppercase;
@@ -128,10 +140,12 @@ body.emergency .emergency-screen {
   color: var(--text3);
   margin-bottom: 6px;
 }
+
 .emergency-next-wrap {
   width: 100%;
   max-width: 480px;
 }
+
 .emergency-next {
   width: 100%;
   font-size: 15px;
@@ -145,12 +159,15 @@ body.emergency .emergency-screen {
   box-sizing: border-box;
   text-align: center;
 }
+
 .emergency-next:focus {
   border-color: #1d9e75;
 }
+
 .emergency-next::placeholder {
   color: var(--text3);
 }
+
 .emergency-exit {
   font-size: 12px;
   color: var(--text3);
@@ -162,9 +179,11 @@ body.emergency .emergency-screen {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
 .emergency-exit:hover {
   color: var(--text2);
 }
+
 .emergency-btn {
   font-size: 13px;
   padding: 5px 16px;
@@ -175,6 +194,7 @@ body.emergency .emergency-screen {
   cursor: pointer;
   font-family: var(--font);
 }
+
 .emergency-btn:hover {
   background: rgba(29, 158, 117, 0.12);
 }
@@ -192,12 +212,15 @@ body.emergency .emergency-screen {
   font-family: var(--font);
   outline: none;
 }
+
 .timer-handoff::placeholder {
   color: rgba(255, 255, 255, 0.5);
 }
+
 .timer-handoff.show {
   display: block;
 }
+
 .timer-handoff-lbl {
   display: none;
   font-size: 11px;
@@ -205,6 +228,7 @@ body.emergency .emergency-screen {
   white-space: nowrap;
   flex-shrink: 0;
 }
+
 .timer-handoff-lbl.show {
   display: block;
 }
@@ -233,6 +257,7 @@ body.emergency .emergency-screen {
   font-family: var(--font);
   flex-shrink: 0;
 }
+
 .emergency-btn-trigger:hover {
   background: rgba(123, 97, 255, 0.12);
 }
@@ -242,18 +267,21 @@ body.emergency .emergency-screen {
   border-top: 0.5px solid var(--border);
   padding-top: 14px;
 }
+
 .export-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
+
 .export-title {
   font-size: 11px;
   color: var(--text3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
 .eod-btn {
   font-size: 12px;
   padding: 4px 14px;
@@ -264,6 +292,7 @@ body.emergency .emergency-screen {
   color: #d4537e;
   font-family: var(--font);
 }
+
 .eod-btn:hover {
   background: #2a0a10;
 }

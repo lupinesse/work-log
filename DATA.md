@@ -18,6 +18,10 @@ Each key is documented below with its data type, shape, and lifetime.
 | `tsEnd` | number? | End timestamp (ms); absent while timer is running |
 | `date` | string | ISO date `YYYY-MM-DD` of the entry's start day |
 | `billable` | boolean? | Override; absent = inherit from plan task or category |
+| `signifier` | string? | One of `'event'` \| `'flagged'` \| `'migrated'` \| `'cancelled'` \| `'overtime'`; absent = no signifier |
+| `_uncategorised` | boolean? | `true` when logged via Rapid Logging without selecting a category |
+| `_sprintDuration` | number? | Planned sprint duration in minutes; set only on entries created by Sprint mode |
+| `_sprintOutcome` | string? | Sprint review result: `'yes'` \| `'partly'` \| `'no'`; set after sprint review |
 
 Lifetime: persistent; never auto-deleted. Export trims nothing.
 
@@ -71,6 +75,7 @@ Array of plan task objects:
 | `parentId` | string? | ID of parent task if this is a child/subtask |
 | `checkpoints` | array? | Array of `{ text: string, done: boolean \| 'partial' }` |
 | `statusComments` | array? | Array of `{ text: string, ts: number }` status-change notes |
+| `_migrated` | boolean? | `true` once the task has been processed by the Migration flow |
 
 **Checkpoint `done` states:**
 - `false` — not started
@@ -212,6 +217,83 @@ Lifetime: cached until user clicks ↻ regenerate.
 JSON array of `YYYY-MM-DD` strings (sorted ascending). Completed tasks are
 visible in the Completed section until the next expiry date after their
 completion day. Seeded from `EXPIRY_SEED` in `src/js/11-timeblock.js` on first load.
+
+---
+
+## BuJo features
+
+### `wl_lognotes_v1`
+Array of free-form log note objects (Daily Log tab):
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique ID (`Date.now() + ''`) |
+| `text` | string | Note text as typed |
+| `ts` | number | Capture timestamp (ms) |
+| `date` | string | `YYYY-MM-DD` |
+| `type` | string | Always `'note'` |
+
+Lifetime: persistent; notes are never auto-deleted.
+
+---
+
+### `wl_reflection_v1`
+Object keyed by `YYYY-MM-DD`:
+
+```json
+{ "2026-05-26": { "focus": 4, "energy": 3, "note": "Auth bug took longer than expected" } }
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `focus` | number | Focus quality rating 1–5 (0 = skipped) |
+| `energy` | number | Energy level rating 1–5 (0 = skipped) |
+| `note` | string | Optional one-sentence note |
+
+Lifetime: persistent.
+
+---
+
+### `wl_sprints_v1`
+Array of completed sprint records:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Matching `wl_entries_v1` entry ID |
+| `intention` | string | Declared outcome at sprint start |
+| `duration` | number | Planned duration in minutes |
+| `outcome` | string | `'yes'` \| `'partly'` \| `'no'` |
+| `note` | string | Optional obstacle note |
+| `ts` | number | Completion timestamp (ms) |
+
+Lifetime: persistent; sprint records are never auto-deleted.
+
+---
+
+### `wl_trackers_v1`
+Array of custom tracker objects:
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Unique ID |
+| `name` | string | Tracker display name |
+| `targetMinutes` | number | Daily target in minutes |
+| `tags` | string[] | Category IDs that count toward this tracker |
+| `color` | string | CSS hex colour for the grid cells |
+
+Lifetime: persistent.
+
+---
+
+### `wl_migration_v1`
+Object keyed by `YYYY-MM` month strings; value is `true` once the migration
+banner has been dismissed for that month:
+
+```json
+{ "2026-05": true }
+```
+
+Prevents the last-day-of-month banner from re-appearing after dismissal.
 
 ---
 

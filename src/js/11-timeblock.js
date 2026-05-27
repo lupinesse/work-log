@@ -973,7 +973,7 @@ function renderCompleted() {
     return;
   }
 
-  document.getElementById('completedCount').textContent = deduped.length;
+  document.getElementById('completedCount').textContent = `${deduped.length} completed`;
   sec.classList.toggle('collapsed', completedCollapsed);
 
   document.getElementById('completedBody').innerHTML = deduped

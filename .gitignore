@@ -1,7 +1,9 @@
 node_modules/
 dist/
 portable/
-docs/
+# Ignore generated JSDoc HTML output but keep the qa-reports directory
+docs/*
+!docs/qa-reports/
 .portable-dest
 .DS_Store
 *.local
@@ -12,6 +14,9 @@ test-results.txt
 lint-out.json
 verify-*.png
 *.png
+
+# Personal JS config overrides — never commit
+src/js/00-config.local.js
 
 # Personal data — never commit
 timesheets/

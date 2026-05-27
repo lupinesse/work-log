@@ -62,6 +62,16 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 ### Export & review
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
+- **Reflection** — end-of-day focus-quality and energy ratings with an optional note
+
+### Bullet Journal (BuJo) features
+- **Rapid logging** — `✏️` button opens a floating capture panel; `Enter` starts the timer immediately
+- **Signifiers** — clickable symbol on each entry cycles through meeting / flagged / migrated / cancelled / overtime; cancelled entries are excluded from totals
+- **Daily Log** — tab view merging time entries, log notes, and task updates in a single chronological feed
+- **Monthly Log** — heatmap of hours per day with intensity colouring; monthly summary and task inventory
+- **Migration** — end-of-month close-out flow: carry forward, reschedule, or drop each open task
+- **Trackers** — custom 28-day progress grids with a daily target and streak counter
+- **Sprints** — intention-first focus sessions: declare an outcome, run a Pomodoro, then record yes / partly / no
 
 ### Info widgets
 - **Weather** — current conditions, rain forecast, sunrise/sunset (Helsinki)
@@ -73,7 +83,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 A smoke test suite is included. Requires Node.js.
 
 ```
-node smoke-tests.js
+node smoke-tests.cjs
 ```
 
 Or double-click `run-tests.bat` on Windows.

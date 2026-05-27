@@ -14,18 +14,27 @@ let _reflData = {};
 let _reflFocus = 0;
 let _reflEnergy = 0;
 
+/** Loads reflection data from localStorage into `_reflData`. */
 function loadReflection() {
   try {
     _reflData = JSON.parse(localStorage.getItem(STORE_REFLECTION) || '{}');
   } catch (e) {
     _reflData = {};
+    wlLog.warn('loadReflection: failed to parse reflection data from localStorage', e);
   }
 }
 
+/** Persists the current `_reflData` map to localStorage. */
 function saveReflection() {
   localStorage.setItem(STORE_REFLECTION, JSON.stringify(_reflData));
 }
 
+/**
+ * Opens the end-of-day reflection overlay.
+ * Resets star ratings to 0, attaches Save/Skip handlers that call `onComplete`
+ * when dismissed.
+ * @param {Function} [onComplete] - Callback invoked after Save or Skip.
+ */
 function openReflection(onComplete) {
   loadReflection();
   _reflFocus = 0;
@@ -54,6 +63,11 @@ function openReflection(onComplete) {
   };
 }
 
+/**
+ * Renders a 1–5 star row inside `elId`, marking stars up to `current` as active.
+ * @param {string} elId - ID of the container element.
+ * @param {number} current - Currently selected value (0 = none selected).
+ */
 function renderReflStars(elId, current) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -79,6 +93,11 @@ function renderReflStars(elId, current) {
   });
 }
 
+/**
+ * Returns the stored reflection record for a given day, or null if none exists.
+ * @param {string} dateKey - YYYY-MM-DD date string.
+ * @returns {{ focus: number, energy: number, note: string }|null}
+ */
 function getReflectionForDate(dateKey) {
   loadReflection();
   return _reflData[dateKey] || null;

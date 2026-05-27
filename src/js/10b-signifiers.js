@@ -17,14 +17,29 @@ const SIG_TITLE = {
   overtime: 'Overtime',
 };
 
+/**
+ * Returns the display symbol for an entry's signifier (or '·' for none).
+ * @param {Object} entry - Log entry object.
+ * @returns {string} Emoji or '·'.
+ */
 function sigSymbol(entry) {
   return SIG_SYMBOL[entry.signifier] || '·';
 }
 
+/**
+ * Returns the accessible title string for an entry's signifier.
+ * @param {Object} entry - Log entry object.
+ * @returns {string}
+ */
 function sigTitle(entry) {
   return SIG_TITLE[entry.signifier] || 'No signifier';
 }
 
+/**
+ * Advances an entry's signifier one step through SIG_CYCLE and persists the change.
+ * Wraps from the last value back to null (no signifier).
+ * @param {string} entryId - ID of the entry to update.
+ */
 function cycleSignifier(entryId) {
   const entry = entries.find((e) => e.id === entryId);
   if (!entry) return;
@@ -35,6 +50,11 @@ function cycleSignifier(entryId) {
   render();
 }
 
+/**
+ * Returns the HTML string for the clickable signifier widget on one entry row.
+ * @param {Object} entry - Log entry object.
+ * @returns {string} HTML string for a `<span>` button.
+ */
 function sigHtml(entry) {
   return `<span class="esig sig-${entry.signifier || 'none'}"
                data-entry-id="${escHtml(entry.id)}"
@@ -45,6 +65,7 @@ function sigHtml(entry) {
   </span>`;
 }
 
+/** Attaches click and keyboard listeners to all `.esig` elements after a render. */
 function bindSignifierClicks() {
   document.querySelectorAll('.esig').forEach((el) => {
     el.addEventListener('click', (e) => {

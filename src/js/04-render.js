@@ -498,7 +498,7 @@ function renderChart(list) {
     </div>`;
 
   if (!timed.length) {
-    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">time tracked</span>${toggleHtml}</div><div class="chart-empty">add end times to entries to see the chart</div></div>`;
+    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">time tracked</span>${toggleHtml}</div><div class="chart-body"><div class="chart-empty">add end times to entries to see the chart</div></div></div>`;
     el.querySelectorAll('.chart-tog').forEach((b) =>
       b.addEventListener('click', () => {
         chartMode = b.dataset.mode;
@@ -572,7 +572,7 @@ function renderChart(list) {
   const billMs = timed.filter((e) => isEntryBillable(e)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
   const nonBillMs = timed.reduce((s, e) => s + (e.tsEnd - e.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div>`;
+  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
   el.querySelectorAll('.chart-tog').forEach((b) =>
     b.addEventListener('click', () => {
       chartMode = b.dataset.mode;

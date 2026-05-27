@@ -10,8 +10,10 @@
    * Edit config.local.ps1 (copy from config.local.example.ps1) to set your
    * actual location without touching source code.
    *
-   * JIRA_BASE and CAL_ACCOUNT_LABELS are still compile-time — edit them here
-   * and rebuild (`node build.js`) to change them.
+   * JIRA_BASE can be overridden without editing this file:
+   *   1. Copy src/js/00-config.local.example.js → src/js/00-config.local.js
+   *   2. Set your real Jira instance URL in that file.
+   *   3. Run `npm run build`.  That file is gitignored and will never be committed.
    */
 
   // ---------------------------------------------------------------------------
@@ -47,9 +49,11 @@
    * Base URL for Jira ticket links. Ticket keys found in task names are
    * converted to `<a href="${JIRA_BASE}/${key}">` anchors.
    * Set to `''` to disable link generation.
+   * Override in src/js/00-config.local.js (gitignored) — copy from
+   * src/js/00-config.local.example.js and set your real instance URL.
    * @type {string}
    */
-  const JIRA_BASE = 'https://your-instance.atlassian.net/browse';
+  let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
 
   // ---------------------------------------------------------------------------
   // Outlook calendar account labels
@@ -70,6 +74,16 @@
     // acme: 'Acme Corp',
     // contractor: 'My Contractor',
   };
+
+  // ── 00-config.local.js ──
+  /* ── Local config overrides ──
+   * This file is gitignored and will never be committed to the repository.
+   * It overrides compile-time defaults set in 00-config.js.
+   * Rebuild after editing: `npm run build`
+   */
+
+  // Reassign — declared as `let` in 00-config.js so this override works.
+  JIRA_BASE = 'https://lahitapiola.atlassian.net/browse';
 
   // ── 00-logger.js ──
   // Structured logger — prefix [WL:LEVEL] makes log lines easy to filter in DevTools.
@@ -244,6 +258,25 @@
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  }
+
+  /**
+   * Formats a duration in milliseconds as a human-readable string using the
+   * long "min" suffix.  Used in plaintext exports where readability matters more
+   * than compactness.
+   * @param {number} ms - Duration in milliseconds.
+   * @returns {string} e.g. '1h 30min', '45min', '2h'
+   * @example
+   * fmtDurLong(0)                 // → '0min'
+   * fmtDurLong(45 * 60 * 1000)    // → '45min'
+   * fmtDurLong(90 * 60 * 1000)    // → '1h 30min'
+   * fmtDurLong(120 * 60 * 1000)   // → '2h'
+   */
+  function fmtDurLong(ms) {
+    const mins = Math.round(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
   }
 
   /* ── Billing time rounding ── */
@@ -453,6 +486,7 @@
       fmtTime,
       fmtElapsed,
       fmtDur,
+      fmtDurLong,
       roundUp30,
       roundToNearest30,
       validEntry,
@@ -620,6 +654,7 @@
       logNotes = Array.isArray(raw) ? raw : [];
     } catch (e) {
       logNotes = [];
+      wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', e);
     }
   }
 
@@ -793,6 +828,8 @@
 
   let editingCatId = null;
   let addingNewCat = false;
+  /** Controls whether the epic manage row (rename/delete/add) is expanded. */
+  let catManageOpen = false;
 
   function renderTagRow() {
     const row = document.getElementById('tagRow');
@@ -821,6 +858,9 @@
         <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 non-billable' : '💰 billable'}</button>`;
     }
 
+    // The manage row is open when explicitly toggled, or when an inline edit is active.
+    const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
+
     row.innerHTML = `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${selCat.color}">
@@ -835,14 +875,26 @@
           )
           .join('')}
         </select>
+        <button class="cat-settings-btn${manageRowOpen ? ' open' : ''}"
+                id="catSettingsBtn"
+                title="Manage epic (rename, delete, add)"
+                aria-label="Manage epic settings"
+                aria-expanded="${manageRowOpen}">⚙</button>
       </div>
-      <div class="cat-manage-row" id="catManageRow">${manageHtml}</div>`;
+      <div class="cat-manage-row${manageRowOpen ? ' open' : ''}" id="catManageRow">${manageHtml}</div>`;
 
     // Select change
     document.getElementById('catSelect').addEventListener('change', (e) => {
       selectedTag = e.target.value;
       editingCatId = null;
       addingNewCat = false;
+      renderTagRow();
+    });
+
+    // Settings toggle — opens/closes the manage row (disabled while an inline edit is active)
+    document.getElementById('catSettingsBtn')?.addEventListener('click', () => {
+      if (editingCatId || addingNewCat) return;
+      catManageOpen = !catManageOpen;
       renderTagRow();
     });
 
@@ -895,6 +947,7 @@
         const cat = categories.find((c) => c.id === id);
         if (cat) cat.label = label;
         editingCatId = null;
+        catManageOpen = false;
         save();
         renderTagRow();
         render();
@@ -921,6 +974,7 @@
     if (editCancel)
       editCancel.addEventListener('click', () => {
         editingCatId = null;
+        catManageOpen = false;
         renderTagRow();
       });
 
@@ -980,6 +1034,7 @@
         categories.push({ id, label, color });
         selectedTag = id;
         addingNewCat = false;
+        catManageOpen = false;
         document.getElementById('captureInput').value = '';
         save();
         renderTagRow();
@@ -1004,6 +1059,7 @@
     if (newCancel)
       newCancel.addEventListener('click', () => {
         addingNewCat = false;
+        catManageOpen = false;
         renderTagRow();
       });
   }
@@ -1993,7 +2049,7 @@
     </div>`;
 
     if (!timed.length) {
-      el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">time tracked</span>${toggleHtml}</div><div class="chart-empty">add end times to entries to see the chart</div></div>`;
+      el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">time tracked</span>${toggleHtml}</div><div class="chart-body"><div class="chart-empty">add end times to entries to see the chart</div></div></div>`;
       el.querySelectorAll('.chart-tog').forEach((b) =>
         b.addEventListener('click', () => {
           chartMode = b.dataset.mode;
@@ -2069,7 +2125,7 @@
       .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
     const nonBillMs = timed.reduce((s, e) => s + (e.tsEnd - e.ts), 0) - billMs;
     const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div>`;
+    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
     el.querySelectorAll('.chart-tog').forEach((b) =>
       b.addEventListener('click', () => {
         chartMode = b.dataset.mode;
@@ -2233,13 +2289,6 @@
       const d = new Date(ts);
       return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     };
-    const fmtDurMs = (ms) => {
-      const mins = Math.round(ms / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-    };
-
     // Group by category, then by task (preserving first-seen order)
     const catOrder = [];
     const catGrouped = {};
@@ -2265,11 +2314,11 @@
     const lines = [];
     catOrder.forEach((catKey) => {
       const { totalMs, tasks, taskOrder } = catGrouped[catKey];
-      const catTimeStr = totalMs > 0 ? fmtDurMs(totalMs) : '--';
+      const catTimeStr = totalMs > 0 ? fmtDurLong(totalMs) : '--';
       lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
       taskOrder.forEach((taskKey) => {
         const { label, totalMs: tMs, hasTime } = tasks[taskKey];
-        const taskTimeStr = hasTime ? fmtDurMs(tMs) : '--';
+        const taskTimeStr = hasTime ? fmtDurLong(tMs) : '--';
         lines.push(`    ${taskTimeStr} - ${label}`);
       });
     });
@@ -2286,11 +2335,11 @@
       const startStr = fmtTsHM(dayStartTs);
       const endStr = dayEndTs ? fmtTsHM(dayEndTs) : '--:--';
       header.push(`Started: ${startStr}  |  Ended: ${endStr}`);
-      if (dayEndTs) header.push(`Workday: ${fmtDurMs(dayEndTs - dayStartTs)}`);
+      if (dayEndTs) header.push(`Workday: ${fmtDurLong(dayEndTs - dayStartTs)}`);
     }
     if (totalTrackedMs > 0) {
       header.push(
-        `Total tracked: ${fmtDurMs(totalTrackedMs)}  |  💰 Billable: ${fmtDurMs(billableMs)}  |  💸 Non-billable: ${fmtDurMs(nonBillableMs)}`
+        `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Non-billable: ${fmtDurLong(nonBillableMs)}`
       );
     }
     header.push('---');
@@ -3084,10 +3133,7 @@
       const { label, tag, totalMs, hasTime } = grouped[key];
       let timeStr;
       if (hasTime) {
-        const mins = Math.round(totalMs / 60000),
-          h = Math.floor(mins / 60),
-          m = mins % 60;
-        timeStr = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
+        timeStr = fmtDurLong(totalMs);
       } else {
         timeStr = '--';
       }
@@ -3428,16 +3474,9 @@
       const d = new Date(ts);
       return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
     };
-    const fmtDurMsL = (ms) => {
-      const mins = Math.round(ms / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
-    };
-
     const lines = order.map((key) => {
       const { label, tag, totalMs, hasTime } = grouped[key];
-      const timeStr = hasTime ? fmtDurMsL(totalMs) : '--';
+      const timeStr = hasTime ? fmtDurLong(totalMs) : '--';
       return `${timeStr} - ${label} - ${getCatLabel(tag)}`;
     });
 
@@ -3448,7 +3487,7 @@
     if (dayStartTs) {
       const endStr = dayEndTs ? fmtTsHM(dayEndTs) : '--:--';
       header.push(`Started: ${fmtTsHM(dayStartTs)}  |  Ended: ${endStr}`);
-      if (dayEndTs) header.push(`Workday: ${fmtDurMsL(dayEndTs - dayStartTs)}`);
+      if (dayEndTs) header.push(`Workday: ${fmtDurLong(dayEndTs - dayStartTs)}`);
     }
     header.push('---');
 
@@ -5370,14 +5409,29 @@
     overtime: 'Overtime',
   };
 
+  /**
+   * Returns the display symbol for an entry's signifier (or '·' for none).
+   * @param {Object} entry - Log entry object.
+   * @returns {string} Emoji or '·'.
+   */
   function sigSymbol(entry) {
     return SIG_SYMBOL[entry.signifier] || '·';
   }
 
+  /**
+   * Returns the accessible title string for an entry's signifier.
+   * @param {Object} entry - Log entry object.
+   * @returns {string}
+   */
   function sigTitle(entry) {
     return SIG_TITLE[entry.signifier] || 'No signifier';
   }
 
+  /**
+   * Advances an entry's signifier one step through SIG_CYCLE and persists the change.
+   * Wraps from the last value back to null (no signifier).
+   * @param {string} entryId - ID of the entry to update.
+   */
   function cycleSignifier(entryId) {
     const entry = entries.find((e) => e.id === entryId);
     if (!entry) return;
@@ -5388,6 +5442,11 @@
     render();
   }
 
+  /**
+   * Returns the HTML string for the clickable signifier widget on one entry row.
+   * @param {Object} entry - Log entry object.
+   * @returns {string} HTML string for a `<span>` button.
+   */
   function sigHtml(entry) {
     return `<span class="esig sig-${entry.signifier || 'none'}"
                data-entry-id="${escHtml(entry.id)}"
@@ -5398,6 +5457,7 @@
   </span>`;
   }
 
+  /** Attaches click and keyboard listeners to all `.esig` elements after a render. */
   function bindSignifierClicks() {
     document.querySelectorAll('.esig').forEach((el) => {
       el.addEventListener('click', (e) => {
@@ -6393,7 +6453,7 @@
       return;
     }
 
-    document.getElementById('completedCount').textContent = deduped.length;
+    document.getElementById('completedCount').textContent = `${deduped.length} completed`;
     sec.classList.toggle('collapsed', completedCollapsed);
 
     document.getElementById('completedBody').innerHTML = deduped
@@ -7892,6 +7952,22 @@ Requirements:
     const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
     if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
+    // Populate the collapsed-state next-meeting summary
+    const nextInfoEl = document.getElementById('calNextInfo');
+    if (nextInfoEl) {
+      const nextMeeting = meetings.find((ev) => new Date(ev.end) > now);
+      if (nextMeeting) {
+        const start = new Date(nextMeeting.start);
+        const timeStr = fmtTime(start);
+        const maxLen = 28;
+        const subject = nextMeeting.subject || '';
+        const title = subject.length > maxLen ? subject.slice(0, maxLen) + '…' : subject;
+        nextInfoEl.textContent = `${timeStr} · ${title}`;
+      } else {
+        nextInfoEl.textContent = '';
+      }
+    }
+
     el.innerHTML = meetings
       .map((ev, idx) => {
         const start = new Date(ev.start);
@@ -8937,6 +9013,7 @@ Requirements:
   let _rapidOpen = false;
   let _rapidCat = null; // selected category id, null = inherit last used
 
+  /** Opens the rapid-log overlay and focuses the capture input. */
   function openRapid() {
     const overlay = document.getElementById('rapidOverlay');
     if (!overlay) return;
@@ -8948,12 +9025,14 @@ Requirements:
     inp.focus();
   }
 
+  /** Closes the rapid-log overlay. */
   function closeRapid() {
     const overlay = document.getElementById('rapidOverlay');
     if (overlay) overlay.style.display = 'none';
     _rapidOpen = false;
   }
 
+  /** Renders the category chip strip inside the rapid overlay. */
   function renderRapidCats() {
     const el = document.getElementById('rapidCats');
     if (!el) return;
@@ -8975,6 +9054,12 @@ Requirements:
     });
   }
 
+  /**
+   * Commits a new entry from the rapid-log input.
+   * Marks the entry `_uncategorised` when no category chip is selected so the
+   * review callout can surface it later.
+   * @param {boolean} withTimer - If true, starts the timer on the new entry.
+   */
   function rapidCommit(withTimer) {
     const inp = document.getElementById('rapidInput');
     const text = inp.value.trim();
@@ -9003,6 +9088,7 @@ Requirements:
     }
   }
 
+  /** Registers all event listeners for the rapid-log overlay. Called once on DOMContentLoaded. */
   function initRapid() {
     // Escape to close
     document.addEventListener('keydown', (e) => {
@@ -9030,13 +9116,12 @@ Requirements:
 
   let _dlActive = false;
 
-  function _fmtDur(ms) {
-    const mins = Math.round(ms / 60000);
-    const h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-  }
-
+  /**
+   * Builds a chronologically sorted array of feed items for the Daily Log view.
+   * Merges time entries, log notes, and task status comments for the given day.
+   * @param {string} dateKey - YYYY-MM-DD date string.
+   * @returns {Array<{ts: number, type: string, color: string, text: string, sub: string}>}
+   */
   function buildDailyLogItems(dateKey) {
     const items = [];
 
@@ -9049,7 +9134,7 @@ Requirements:
           type: 'entry',
           color: cat.color,
           text: escHtml(e.text),
-          sub: `${escHtml(cat.label)} · ${e.tsEnd ? _fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
+          sub: `${escHtml(cat.label)} · ${e.tsEnd ? fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
         });
       });
 
@@ -9084,6 +9169,7 @@ Requirements:
     return items.sort((a, b) => a.ts - b.ts);
   }
 
+  /** Renders the Daily Log feed for the currently viewed date. */
   function renderDailyLog() {
     const el = document.getElementById('dailyLogFeed');
     if (!el) return;
@@ -9124,6 +9210,7 @@ Requirements:
     });
   }
 
+  /** Reads the note input, appends a note to logNotes, persists, and re-renders. */
   function addLogNote() {
     const inp = document.getElementById('dailyLogNoteInput');
     const text = inp ? inp.value.trim() : '';
@@ -9140,6 +9227,7 @@ Requirements:
     renderDailyLog();
   }
 
+  /** Registers the tab-click delegation listener. Called once on DOMContentLoaded. */
   function initDailyLog() {
     // Buttons live inside tl.innerHTML (rebuilt on every render) — use delegation
     document.addEventListener('click', (e) => {
@@ -9158,13 +9246,6 @@ Requirements:
   let _mlYear = new Date().getFullYear();
   let _mlMonth = new Date().getMonth(); // 0-indexed
   let _mlActive = false;
-
-  function _mlFmtDur(ms) {
-    const mins = Math.round(ms / 60000);
-    const h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-  }
 
   function mlDaysInMonth(y, m) {
     return new Date(y, m + 1, 0).getDate();
@@ -9301,8 +9382,8 @@ Requirements:
 
     sumEl.innerHTML = `
     <div class="ml-sum-title">Summary</div>
-    <div class="ml-sum-row"><span>Total logged</span><span>${_mlFmtDur(totalMs)}</span></div>
-    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${_mlFmtDur(billableMs)}</span></div>
+    <div class="ml-sum-row"><span>Total logged</span><span>${fmtDur(totalMs)}</span></div>
+    <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${fmtDur(billableMs)}</span></div>
     ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
 
     // Task inventory
@@ -9346,6 +9427,10 @@ Requirements:
   let _migItems = [];
   let _migIdx = 0;
 
+  /**
+   * Returns the migration completion record (map of YYYY-MM → boolean).
+   * @returns {Object}
+   */
   function getMigrationRecord() {
     try {
       return JSON.parse(localStorage.getItem(STORE_MIGRATION) || '{}');
@@ -9354,6 +9439,10 @@ Requirements:
     }
   }
 
+  /**
+   * Persists the migration completion record to localStorage.
+   * @param {Object} rec - Map of YYYY-MM → boolean.
+   */
   function saveMigrationRecord(rec) {
     localStorage.setItem(STORE_MIGRATION, JSON.stringify(rec));
   }
@@ -9388,6 +9477,7 @@ Requirements:
     renderMigrationStep();
   }
 
+  /** Closes the migration overlay. */
   function closeMigration() {
     const overlay = document.getElementById('migrationOverlay');
     if (overlay) overlay.style.display = 'none';
@@ -9550,18 +9640,27 @@ Requirements:
   let _reflFocus = 0;
   let _reflEnergy = 0;
 
+  /** Loads reflection data from localStorage into `_reflData`. */
   function loadReflection() {
     try {
       _reflData = JSON.parse(localStorage.getItem(STORE_REFLECTION) || '{}');
     } catch (e) {
       _reflData = {};
+      wlLog.warn('loadReflection: failed to parse reflection data from localStorage', e);
     }
   }
 
+  /** Persists the current `_reflData` map to localStorage. */
   function saveReflection() {
     localStorage.setItem(STORE_REFLECTION, JSON.stringify(_reflData));
   }
 
+  /**
+   * Opens the end-of-day reflection overlay.
+   * Resets star ratings to 0, attaches Save/Skip handlers that call `onComplete`
+   * when dismissed.
+   * @param {Function} [onComplete] - Callback invoked after Save or Skip.
+   */
   function openReflection(onComplete) {
     loadReflection();
     _reflFocus = 0;
@@ -9590,6 +9689,11 @@ Requirements:
     };
   }
 
+  /**
+   * Renders a 1–5 star row inside `elId`, marking stars up to `current` as active.
+   * @param {string} elId - ID of the container element.
+   * @param {number} current - Currently selected value (0 = none selected).
+   */
   function renderReflStars(elId, current) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -9615,6 +9719,11 @@ Requirements:
     });
   }
 
+  /**
+   * Returns the stored reflection record for a given day, or null if none exists.
+   * @param {string} dateKey - YYYY-MM-DD date string.
+   * @returns {{ focus: number, energy: number, note: string }|null}
+   */
   function getReflectionForDate(dateKey) {
     loadReflection();
     return _reflData[dateKey] || null;
@@ -9629,6 +9738,7 @@ Requirements:
       trackers = Array.isArray(raw) ? raw : [];
     } catch (e) {
       trackers = [];
+      wlLog.warn('loadTrackers: failed to parse trackers from localStorage', e);
     }
   }
 
@@ -9851,18 +9961,22 @@ Requirements:
 
   const SPRINT_DURATIONS = [15, 25, 45, 60];
 
+  /** Loads sprint history from localStorage into `sprintLog`. */
   function loadSprintLog() {
     try {
       sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
     } catch (e) {
       sprintLog = [];
+      wlLog.warn('loadSprintLog: failed to parse sprint log from localStorage', e);
     }
   }
 
+  /** Persists `sprintLog` to localStorage. */
   function saveSprintLog() {
     localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
   }
 
+  /** Shows the sprint setup panel and resets the form. */
   function openSprintSetup() {
     const el = document.getElementById('sprintSetup');
     if (!el) return;
@@ -9873,6 +9987,7 @@ Requirements:
     document.getElementById('sprintIntention').focus();
   }
 
+  /** Renders the duration chip row, marking the selected duration active. */
   function renderSprintDurations() {
     const el = document.getElementById('sprintDurations');
     if (!el) return;
@@ -9889,6 +10004,11 @@ Requirements:
     });
   }
 
+  /**
+   * Commits a new sprint: creates a log entry, starts the timer, and starts
+   * the Pomodoro for `_sprintDuration` minutes.  Sets `_onSprintEnd` so the
+   * review is shown when the ring reaches zero.
+   */
   function startSprint() {
     _sprintIntention = document.getElementById('sprintIntention').value.trim();
     if (!_sprintIntention) {
@@ -9927,7 +10047,10 @@ Requirements:
     render();
   }
 
-  // Called from pomoDone() when the ring reaches 0
+  /**
+   * Called from `pomoDone()` when the Pomodoro ring reaches zero.
+   * Fires the registered `_onSprintEnd` callback if one is set.
+   */
   function notifyPomodoroEnd() {
     if (_onSprintEnd) {
       const fn = _onSprintEnd;
@@ -9936,6 +10059,10 @@ Requirements:
     }
   }
 
+  /**
+   * Stops the timer and renders the sprint review panel, allowing the user to
+   * record an outcome (yes / partly / no) and optional note.
+   */
   function showSprintReview() {
     stopTimer();
     const el = document.getElementById('sprintReview');
@@ -9998,6 +10125,7 @@ Requirements:
     };
   }
 
+  /** Registers all sprint UI event listeners. Called once on DOMContentLoaded. */
   function initSprints() {
     document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
     document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);
