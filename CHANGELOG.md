@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.8.5 — 2026-05-27
+
+### Quick Capture modal — QC_FinalV3 redesign
+
+- **Two-state modal** replaces the original rapid-log overlay: idle state shows a grouped task list with hover-reveal ▸ start buttons; running state surfaces a pulsing red strip with the current task name, elapsed time, and a ■ stop button
+- **Click-first interaction**: tasks from today's plan and time log appear grouped as In progress / To-do / Recent — click a row to start or switch the timer without typing
+- **Filter chips** narrow the task list by category; an "All" chip resets the filter
+- **Log without tracking** commits typed text as a time entry with no timer; empty input redirects focus to the ad-hoc log row
+- **`_qcRenderTaskList` refactored**: split into three single-purpose functions — `_qcBuildTaskGroups` (data), `_qcTaskListHtml` (HTML rendering), `_qcBindTaskListEvents` (event binding) — satisfying the single-responsibility rule in CLAUDE.md
+- **Smoke tests added** for filter chips (category narrowing + All-chip reset), running strip (visibility, task name, CSS class), and task-row start (timer start + overlay close)
+
+---
+
 ## v1.8.4 — 2026-05-27
 
 ### Test suite streamlining

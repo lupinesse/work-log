@@ -80,11 +80,6 @@ function renderRow(t) {
   const status = t.status || 'todo';
   const tag = t.tag || 'other';
   const cat = getCat(tag);
-  const loggedMins = entries
-    .filter((e) => e.date === viewKey && e.text.toLowerCase() === t.text.toLowerCase() && e.tsEnd)
-    .reduce((sum, e) => sum + Math.round((e.tsEnd - e.ts) / 60000), 0);
-  const timeSpent = loggedMins > 0 ? fmtDur(loggedMins * 60000) : '';
-
   if (editingPlanId === t.id) {
     return `<div class="plan-item" data-pid="${t.id}">
         <select class="plan-status ${status === 'done' ? 'done-st' : status}" data-pid="${t.id}">${statusOpts(status)}</select>
@@ -302,7 +297,6 @@ function renderRow(t) {
 function renderPlan() {
   /* ── 1. Filter and count tasks for the current view date ── */
   const viewKey = dk(viewDate);
-  const todayKey = dk(new Date());
   const allViewTasks = planTasks.filter((t) => t.date === viewKey);
   const mainTasks = allViewTasks.filter(
     (t) =>

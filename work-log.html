@@ -653,22 +653,49 @@
 <div id="rapidOverlay" class="rapid-overlay" role="dialog" aria-modal="true"
      aria-label="Quick capture" style="display:none">
   <div class="rapid-card">
-    <div class="rapid-header">
-      <span class="rapid-label">Quick capture</span>
+
+    <!-- ── Header ─────────────────────────────────────────────────────── -->
+    <div class="qc-header">
+      <span class="qc-heading">
+        <span class="qc-status-dot" aria-hidden="true"></span>
+        Quick capture
+      </span>
+      <kbd class="qc-kbd">Esc</kbd>
       <button class="rapid-close" id="rapidClose" aria-label="Close">✕</button>
     </div>
-    <div class="capture-row">
-      <input class="capture-input" id="rapidInput"
-             placeholder="What are you working on?" autocomplete="off" />
+
+    <!-- ── Running strip (hidden when idle) ───────────────────────────── -->
+    <div class="qc-running-strip" id="qcRunningStrip" style="display:none"
+         aria-label="Currently tracking">
+      <span class="qc-run-dot" aria-hidden="true"></span>
+      <span class="qc-run-task" id="qcRunTask"></span>
+      <span class="qc-run-elapsed" id="qcRunElapsed" aria-live="off"></span>
+      <button class="qc-run-stop" id="qcRunStop" aria-label="Stop current timer">■ stop</button>
     </div>
-    <div class="rapid-cats" id="rapidCats"></div>
-    <div class="rapid-footer">
-      <span class="rapid-hint">Category optional — assign during review</span>
-      <div class="rapid-actions">
-        <button class="add-btn" id="rapidLogOnly">Log only</button>
-        <button class="add-btn rapid-start" id="rapidStart">&#9654; Start timer</button>
-      </div>
+
+    <!-- ── Search / filter input ──────────────────────────────────────── -->
+    <div class="qc-search-row">
+      <input class="qc-search-input" id="rapidInput"
+             placeholder="Filter tasks or type to log…"
+             autocomplete="off"
+             aria-label="Filter tasks, or type a description to log" />
     </div>
+
+    <!-- ── Category filter chips ──────────────────────────────────────── -->
+    <div class="rapid-cats" id="rapidCats" role="group" aria-label="Filter by category"></div>
+
+    <!-- ── Task list ──────────────────────────────────────────────────── -->
+    <div class="qc-task-list" id="qcTaskList" role="listbox"
+         aria-label="Tasks — click a row to start or switch"></div>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────── -->
+    <div class="qc-footer">
+      <button class="qc-log-only-btn" id="rapidLogOnly"
+              aria-label="Log without starting timer">
+        + Log without tracking
+      </button>
+    </div>
+
   </div>
 </div>
 
