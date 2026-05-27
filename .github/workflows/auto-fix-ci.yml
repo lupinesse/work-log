@@ -1,0 +1,186 @@
+name: Auto-fix CI failures
+
+# Triggers after the CI workflow completes. If it failed on a PR branch,
+# Claude diagnoses the logs, fixes the source, verifies with build/lint/test,
+# and pushes a commit. A loop-guard skips runs where the last commit already
+# starts with "auto-fix:" to prevent infinite retry cycles.
+#
+# Required secrets:
+#   ANTHROPIC_API_KEY — set in Settings > Secrets and variables > Actions
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  auto-fix:
+    # Only act on PR runs that failed, never on direct pushes to main
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_branch != 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # push fix commit to PR branch
+      pull-requests: write   # post diagnosis comment
+      actions: read          # download logs from the failed CI run
+
+    steps:
+      - name: Find PR number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR=$(gh api \
+            "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/pulls" \
+            --jq '.[0].number // empty')
+          if [ -z "$PR" ]; then
+            echo "No PR associated with this run — skipping"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=$PR" >> "$GITHUB_OUTPUT"
+            echo "found=true"  >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out PR branch
+        if: steps.pr.outputs.found == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          # GITHUB_TOKEN has contents:write — sufficient for same-repo PRs
+          token: ${{ github.token }}
+
+      - name: Loop-guard — skip if last commit was already an auto-fix
+        if: steps.pr.outputs.found == 'true'
+        id: guard
+        run: |
+          LAST=$(git log -1 --format="%s")
+          if [[ "$LAST" == auto-fix:* ]]; then
+            echo "Last commit is already an auto-fix — skipping to break retry loop"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Node.js
+        if: steps.pr.outputs.found == 'true' && steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.pr.outputs.found == 'true' && steps.guard.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Install Playwright browsers
+        if: steps.pr.outputs.found == 'true' && steps.guard.outputs.skip != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Collect failure logs
+        if: steps.pr.outputs.found == 'true' && steps.guard.outputs.skip != 'true'
+        id: logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # Fetch logs for every failed job in the triggering run
+          gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
+            --jq '.jobs[] | select(.conclusion == "failure") | .id' \
+          | while read -r JOB_ID; do
+              echo "=== Failed job $JOB_ID ===" >> ci-failure.log
+              gh api "repos/${{ github.repository }}/actions/jobs/$JOB_ID/logs" \
+                >> ci-failure.log 2>/dev/null || true
+            done
+
+          BYTES=$(wc -c < ci-failure.log 2>/dev/null || echo 0)
+          echo "Collected ${BYTES} bytes of failure logs"
+          echo "has_logs=$( [ "$BYTES" -gt 20 ] && echo true || echo false )" >> "$GITHUB_OUTPUT"
+
+      - name: Install Claude Code
+        if: >
+          steps.pr.outputs.found == 'true' &&
+          steps.guard.outputs.skip != 'true' &&
+          steps.logs.outputs.has_logs == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude auto-fix
+        if: >
+          steps.pr.outputs.found == 'true' &&
+          steps.guard.outputs.skip != 'true' &&
+          steps.logs.outputs.has_logs == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GIT_AUTHOR_NAME: "Claude Code"
+          GIT_AUTHOR_EMAIL: "noreply@anthropic.com"
+          GIT_COMMITTER_NAME: "Claude Code"
+          GIT_COMMITTER_EMAIL: "noreply@anthropic.com"
+        run: |
+          claude -p "/ci-fix" \
+            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
+                           "Bash(npm run build)" \
+                           "Bash(npm run lint)" \
+                           "Bash(npm test)" \
+                           "Bash(git add:*)" \
+                           "Bash(git commit:*)" \
+                           "Bash(git log:*)" \
+                           "Bash(git diff:*)" \
+                           "Bash(git status:*)" \
+                           "Bash(cat:*)" \
+                           "Bash(wc:*)" \
+            > fix-output.txt 2>&1 || true
+          echo "Claude run complete ($(wc -l < fix-output.txt) output lines)"
+
+      - name: Push fix commit (if Claude made one)
+        if: >
+          steps.pr.outputs.found == 'true' &&
+          steps.guard.outputs.skip != 'true' &&
+          steps.logs.outputs.has_logs == 'true'
+        id: push
+        env:
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          NEW=$(git log --oneline "origin/$BRANCH..$BRANCH" 2>/dev/null | wc -l)
+          if [ "$NEW" -gt 0 ]; then
+            git push origin "HEAD:$BRANCH"
+            echo "pushed=true"  >> "$GITHUB_OUTPUT"
+            echo "Pushed $NEW new commit(s) to $BRANCH"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "No new commits to push"
+          fi
+
+      - name: Post diagnosis comment on PR
+        if: steps.pr.outputs.found == 'true' && steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          if [ "${{ steps.push.outputs.pushed }}" = "true" ]; then
+            HEADER="🔧 **CI auto-fix applied** — I found and pushed a fix to this branch. CI will re-run shortly."
+          elif [ "${{ steps.logs.outputs.has_logs }}" != "true" ]; then
+            HEADER="⚠️ **CI failed but no logs were available** — I couldn't attempt a fix. Please check the CI run manually."
+          else
+            HEADER="⚠️ **CI auto-fix attempted — no fix committed** — I couldn't resolve this failure automatically. See the diagnosis below."
+          fi
+
+          {
+            echo "$HEADER"
+            echo ""
+            if [ -f fix-output.txt ]; then
+              echo "<details><summary>Claude's diagnosis and fix attempt</summary>"
+              echo ""
+              echo '```'
+              tail -200 fix-output.txt
+              echo '```'
+              echo ""
+              echo "</details>"
+            fi
+            echo ""
+            echo "---"
+            echo "*Auto-fix by [Claude Code](https://claude.ai/claude-code) · CI run \`${{ github.event.workflow_run.id }}\`*"
+          } > comment.txt
+
+          gh pr comment "$PR_NUMBER" --body-file comment.txt
