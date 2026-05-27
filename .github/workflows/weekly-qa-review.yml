@@ -28,8 +28,10 @@ jobs:
 
       - name: Run QA review
         env:
-          # Add this in: Settings > Secrets and variables > Actions.
-          # Alternatively use CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`.
+          # Set CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) to use your
+          # Claude Code subscription at no extra cost. Falls back to ANTHROPIC_API_KEY
+          # (pay-per-token) if the OAuth token is not set.
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           claude -p "/qa-review" \
