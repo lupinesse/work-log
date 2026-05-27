@@ -134,7 +134,7 @@ function render() {
 
   const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
-  const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+  const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
   // Empty state: render sub-components (plan, timeblock) and bail out early
   if (!list.length) {

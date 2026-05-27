@@ -161,12 +161,22 @@ body {
   text-align: center;
 }
 
+/* Analytics section */
+#analyticsSection .plan-header-title::before {
+  content: "🏆";
+  margin-right: 6px;
+}
+
+#analyticsSection .analytics-body {
+  padding-top: 4px;
+}
+
 /* Stats */
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
 }
 
 .stat {
@@ -1088,9 +1098,17 @@ body {
 .timelog-header {
   display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg2);
   margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 0.5px solid var(--border);
+  cursor: default;
+  user-select: none;
+}
+
+.timelog-header .plan-header-title::before {
+  content: "⏱";
+  margin-right: 6px;
 }
 
 .etag-btn {
@@ -2719,9 +2737,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg2);
   margin-bottom: 10px;
   cursor: pointer;
   user-select: none;
+}
+
+.tb-header::before {
+  content: "🗓";
+  font-size: 13px;
+  margin-right: 2px;
+  opacity: 0.7;
 }
 
 .tb-header-left {
@@ -3082,6 +3109,7 @@ body {
 
 /* ── Export ── */
 /* ── Emergency Mode ── */
+body.emergency #analyticsSection,
 body.emergency .stats,
 body.emergency .header,
 body.emergency #planSection,
@@ -3098,7 +3126,8 @@ body.emergency .export-section,
 body.emergency #newdayBanner,
 body.emergency #tagRow,
 body.emergency #timeline,
-body.emergency #jiraSection {
+body.emergency #jiraSection,
+body.emergency #parkSection {
   display: none !important;
 }
 
@@ -3800,6 +3829,26 @@ body.emergency .emergency-screen {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  padding: 8px 12px;
+  background: var(--bg2);
+}
+
+.pomo-toggle {
+  font-size: 11px;
+  transition: transform 0.2s;
+}
+
+.pomo-section.collapsed .pomo-toggle {
+  transform: rotate(-90deg);
+}
+
+.pomo-section.collapsed .pomo-body {
+  display: none;
 }
 
 .pomo-durations {
@@ -4064,6 +4113,28 @@ body.emergency .emergency-screen {
   font-size: 11px;
   color: #378add;
   font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+
+.park-toggle {
+  margin-left: auto;
+  font-size: 10px;
+  color: #378add;
+  transition: transform 0.2s;
+  opacity: 0.7;
+}
+
+.park-section.collapsed .park-toggle {
+  transform: rotate(-90deg);
+}
+
+.park-body {
+  overflow: hidden;
+}
+
+.park-section.collapsed .park-body {
+  display: none;
 }
 
 .park-badge {

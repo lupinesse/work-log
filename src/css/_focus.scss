@@ -1,5 +1,6 @@
 /* ── Export ── */
 /* ── Emergency Mode ── */
+body.emergency #analyticsSection,
 body.emergency .stats,
 body.emergency .header,
 body.emergency #planSection,
@@ -16,7 +17,8 @@ body.emergency .export-section,
 body.emergency #newdayBanner,
 body.emergency #tagRow,
 body.emergency #timeline,
-body.emergency #jiraSection {
+body.emergency #jiraSection,
+body.emergency #parkSection {
   display: none !important;
 }
 

@@ -128,6 +128,23 @@ function checkPomoWeeklyClear() {
   localStorage.setItem('wl_pomo_week', currentWeekKey);
 }
 
+/* ── Section collapse handlers ── */
+
+// Analytics section (streak + task count tiles)
+document.getElementById('analyticsHeader').addEventListener('click', () => {
+  document.getElementById('analyticsSection').classList.toggle('collapsed');
+});
+
+// Parked thoughts
+document.getElementById('parkHeader').addEventListener('click', () => {
+  document.getElementById('parkSection').classList.toggle('collapsed');
+});
+
+// Pomodoro
+document.getElementById('pomoHeader').addEventListener('click', () => {
+  document.getElementById('pomoSection').classList.toggle('collapsed');
+});
+
 /* ── Event listeners ── */
 
 // Backup restore: the hidden file input is triggered from the SOD button flow.

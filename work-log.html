@@ -7,39 +7,6 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.open-meteo.com https://api.anthropic.com http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <link rel="stylesheet" href="styles.css">
-<style>
-.notion-form { padding: 8px 0 4px; display: flex; flex-direction: column; gap: 7px; }
-.notion-row { display: flex; gap: 6px; align-items: center; }
-.notion-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.notion-url-input { flex: 1; }
-.notion-select {
-  width: 100%;
-  padding: 5px 8px;
-  background: var(--bg2);
-  color: var(--text2);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 12px;
-  font-family: var(--font);
-  outline: none;
-  cursor: pointer;
-}
-.notion-select:focus { border-color: var(--accent, #7b61ff); }
-.notion-save-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-.notion-pin {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text3);
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-.notion-pin input { cursor: pointer; accent-color: var(--accent, #7b61ff); }
-.notion-msg-ok  { color: var(--green,  #1a6b3a); font-size: 11px; }
-.notion-msg-err { color: var(--red,    #8b1f1f); font-size: 11px; }
-</style>
 </head>
 <body>
 
@@ -114,10 +81,19 @@
   <button class="emergency-exit" id="emergencyExit">exit focus mode</button>
 </div>
 
-<div class="stats" role="region" aria-label="Summary statistics">
-  <div class="stat"><div class="stat-val" id="statToday" aria-live="polite">0</div><div class="stat-lbl">tasks today</div><div class="stat-sub" id="statTodaySub"></div></div>
-  <div class="stat"><div class="stat-val" id="statWeek" aria-live="polite">0</div><div class="stat-lbl">epics this week</div><div class="stat-sub" id="statWeekSub"></div></div>
-  <div class="stat"><div class="stat-val" id="statStreak" aria-live="polite">0</div><div class="stat-lbl">day streak</div><div class="stat-sub" id="statStreakSub"></div></div>
+<!-- Analytics section (streak, task count, epic count) -->
+<div class="analytics-section plan-section" id="analyticsSection">
+  <div class="plan-header analytics-header" id="analyticsHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="analyticsBody">
+    <span class="plan-header-title">analytics</span>
+    <span class="plan-toggle" aria-hidden="true">&#9660;</span>
+  </div>
+  <div class="plan-body analytics-body" id="analyticsBody">
+    <div class="stats" role="region" aria-label="Summary statistics">
+      <div class="stat"><div class="stat-val" id="statToday" aria-live="polite">0</div><div class="stat-lbl">tasks today</div><div class="stat-sub" id="statTodaySub"></div></div>
+      <div class="stat"><div class="stat-val" id="statWeek" aria-live="polite">0</div><div class="stat-lbl">epics this week</div><div class="stat-sub" id="statWeekSub"></div></div>
+      <div class="stat"><div class="stat-val" id="statStreak" aria-live="polite">0</div><div class="stat-lbl">day streak</div><div class="stat-sub" id="statStreakSub"></div></div>
+    </div>
+  </div>
 </div>
 
 <!-- Calendar meeting strip -->
@@ -147,9 +123,27 @@
   </div>
 </div>
 
+<!-- Time log — capture input, recent tasks, tag row, entry list, chart -->
+<div class="capture-row">
+  <input class="capture-input" id="captureInput" aria-label="What did you just do?" placeholder="what did you just do? (Enter to log)" autocomplete="off" />
+  <button class="add-btn" id="addBtn">+ log</button>
+  <button class="timer-btn" id="timerBtn" aria-label="Start timer">&#9654; start</button>
+</div>
+
+<div id="quickPick"></div>
+
+<div class="tag-row" id="tagRow"></div>
+
+<div id="timeline"></div>
+<div id="chart"></div>
+<div id="distractionSection" style="margin-top:10px"></div>
+
 <div id="parkSection" style="display:none" class="park-section">
-  <div class="park-header">💭 parked thoughts <span class="park-badge" id="parkBadge">0</span></div>
-  <div id="parkList"></div>
+  <div class="park-header" id="parkHeader" role="button" tabindex="0">
+    💭 parked thoughts <span class="park-badge" id="parkBadge">0</span>
+    <span class="park-toggle" aria-hidden="true">&#9660;</span>
+  </div>
+  <div id="parkList" class="park-body"></div>
 </div>
 
 <div id="newdayBanner" class="newday-banner" aria-live="polite" aria-atomic="false">
@@ -194,200 +188,6 @@
   </div>
   <div class="completed-body" id="completedBody"></div>
 </div>
-
-<div class="plan-section collapsed" id="jiraSection">
-  <div class="plan-header" id="jiraHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="jiraBody">
-    <span class="plan-header-title">import from jira</span>
-    <span class="plan-toggle" aria-hidden="true">&#9660;</span>
-  </div>
-  <div class="plan-body" id="jiraBody">
-    <div class="jira-drop" id="jiraDrop">
-      <input type="file" id="jiraFileIn" aria-label="Jira CSV export file" accept=".csv,text/csv" style="display:none">
-      <strong class="jira-drop-title">Drop Jira CSV export here, or click to browse</strong>
-      <span class="jira-drop-sub">Jira → select issues → Export CSV (all fields)</span>
-    </div>
-    <div class="jira-task-rows" id="jiraTaskRows" style="display:none"></div>
-    <div class="jira-sel-row" id="jiraSelRow" style="display:none">
-      <span class="jira-count" id="jiraCount"></span>
-      <button class="export-btn" id="jiraSelAll">all</button>
-      <button class="export-btn" id="jiraSelNone">none</button>
-      <button class="plan-add-btn" id="jiraImportBtn">⊕ add to today</button>
-      <span class="jira-msg" id="jiraMsg"></span>
-    </div>
-  </div>
-</div>
-
-<div class="plan-section collapsed" id="notionLinksSection">
-  <div class="plan-header" id="notionLinksHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="notionLinksBody">
-    <span class="plan-header-title">add link to notion</span>
-    <span class="plan-toggle" aria-hidden="true">&#9660;</span>
-  </div>
-  <div class="plan-body" id="notionLinksBody">
-    <div class="notion-form">
-      <div class="notion-row">
-        <input class="plan-input notion-url-input" id="notionUrl" placeholder="https://…" autocomplete="off" />
-        <button class="export-btn" id="notionFetchBtn">fetch title</button>
-      </div>
-      <div class="notion-row">
-        <input class="plan-input" id="notionName" placeholder="name / title" autocomplete="off" />
-      </div>
-      <div class="notion-row-2col">
-        <select class="notion-select" id="notionProject" aria-label="Notion project">
-          <option value="">— project —</option>
-          <!-- Add your own Notion page URLs here, e.g.:
-          <option value="https://www.notion.so/your-page-id">Project name</option>
-          -->
-        </select>
-        <select class="notion-select" id="notionType" aria-label="Link type">
-          <option value="Doc">Doc</option>
-          <option value="Reference">Reference</option>
-          <option value="Tool">Tool</option>
-          <option value="Article">Article</option>
-          <option value="Template">Template</option>
-          <option value="Video">Video</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="notion-save-row">
-        <label class="notion-pin">
-          <input type="checkbox" id="notionPinned" /> pin
-        </label>
-        <button class="plan-add-btn" id="notionSaveBtn">⊕ save to notion</button>
-        <span id="notionMsg"></span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-(function () {
-  const RESOURCES_DS = 'collection://8b52a260-bacd-47ff-9852-0c4ace5d95b6';
-
-  document.getElementById('notionLinksHeader').addEventListener('click', () => {
-    document.getElementById('notionLinksSection').classList.toggle('collapsed');
-  });
-
-  document.getElementById('notionUrl').addEventListener('input', function () {
-    const nameEl = document.getElementById('notionName');
-    if (!nameEl.value.trim() && this.value.trim()) {
-      try { nameEl.value = new URL(this.value.trim()).hostname.replace('www.', ''); } catch {}
-    }
-  });
-
-  document.getElementById('notionFetchBtn').addEventListener('click', async function () {
-    const url = document.getElementById('notionUrl').value.trim();
-    if (!url) return;
-    this.textContent = '…';
-    this.disabled = true;
-    try {
-      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
-      if (!key) throw new Error('Anthropic API key not set');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 80,
-          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-          messages: [{ role: 'user', content: 'Reply with ONLY the page title of ' + url + ' — nothing else.' }]
-        })
-      });
-      const data = await res.json();
-      const title = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-      if (title) document.getElementById('notionName').value = title;
-    } catch {}
-    this.textContent = 'fetch title';
-    this.disabled = false;
-  });
-
-  document.getElementById('notionSaveBtn').addEventListener('click', async function () {
-    const url    = document.getElementById('notionUrl').value.trim();
-    const name   = document.getElementById('notionName').value.trim();
-    const proj   = document.getElementById('notionProject').value;
-    const type   = document.getElementById('notionType').value;
-    const pinned = document.getElementById('notionPinned').checked;
-    const msg    = document.getElementById('notionMsg');
-
-    if (!url || !name) { setMsg(msg, 'URL and name required', false); return; }
-
-    this.disabled = true;
-    this.textContent = 'saving…';
-    msg.textContent = '';
-
-    const projLine = proj ? `\n- Project relation to page URL "${proj}"` : '';
-    const prompt =
-      `Create a page in Notion Resources database (data source ID: ${RESOURCES_DS}):\n` +
-      `- Name: "${name.replace(/"/g, "'")}"\n` +
-      `- URL: "${url}"\n` +
-      `- Type: "${type}"\n` +
-      `- Pinned: "${pinned ? '__YES__' : '__NO__'}"${projLine}\n` +
-      `Reply with only OK: <page_url> on success.`;
-
-    try {
-      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
-      if (!key) throw new Error('Anthropic API key not set');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-          'anthropic-beta': 'mcp-client-2025-04-04',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          mcp_servers: [{ type: 'url', url: 'https://mcp.notion.com/mcp', name: 'notion' }],
-          messages: [{ role: 'user', content: prompt }]
-        })
-      });
-      if (!res.ok) throw new Error('API ' + res.status);
-      const data = await res.json();
-      const reply = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-      if (reply.toLowerCase().includes('ok') || reply.toLowerCase().includes('creat')) {
-        setMsg(msg, '✓ saved', true);
-        document.getElementById('notionUrl').value = '';
-        document.getElementById('notionName').value = '';
-        document.getElementById('notionProject').value = '';
-        document.getElementById('notionType').value = 'Doc';
-        document.getElementById('notionPinned').checked = false;
-      } else {
-        throw new Error('unexpected response');
-      }
-    } catch (e) {
-      setMsg(msg, '✗ failed: ' + e.message, false);
-    }
-    this.disabled = false;
-    this.textContent = '⊕ save to notion';
-  });
-
-  function setMsg(el, text, ok) {
-    el.textContent = text;
-    el.className = ok ? 'notion-msg-ok' : 'notion-msg-err';
-    if (ok) setTimeout(() => { el.textContent = ''; }, 4000);
-  }
-})();
-</script>
-
-<div class="capture-row">
-  <input class="capture-input" id="captureInput" aria-label="What did you just do?" placeholder="what did you just do? (Enter to log)" autocomplete="off" />
-  <button class="add-btn" id="addBtn">+ log</button>
-  <button class="timer-btn" id="timerBtn" aria-label="Start timer">&#9654; start</button>
-</div>
-
-<div id="quickPick"></div>
-
-<div class="tag-row" id="tagRow"></div>
-
-<div id="timeline"></div>
-<div id="chart"></div>
-<div id="distractionSection" style="margin-top:10px"></div>
 
 <!-- Hidden file input for backup restore — triggered from the Start of Day flow -->
 <input type="file" id="backupFileInput" accept=".json" style="display:none"
@@ -527,43 +327,49 @@
   </div>
 </div>
 
-<div class="pomo-section" role="region" aria-label="Pomodoro timer">
-  <div class="pomo-header" id="pomoHeader">pomodoro</div>
-  <div class="pomo-durations" role="group" aria-labelledby="pomoHeader">
-    <button class="pomo-dur active" data-min="5">5 min</button>
-    <button class="pomo-dur" data-min="10">10 min</button>
-    <button class="pomo-dur" data-min="20">20 min</button>
+<!-- Pomodoro timer (collapsible) -->
+<div class="pomo-section" id="pomoSection" role="region" aria-label="Pomodoro timer">
+  <div class="pomo-header" id="pomoHeader" role="button" tabindex="0">
+    ⏱ pomodoro
+    <span class="pomo-toggle" aria-hidden="true">&#9660;</span>
   </div>
-  <div class="pomo-ring-wrap">
-    <svg id="pomoSvg" class="pomo-svg" viewBox="0 0 200 200">
-      <circle class="pomo-bg"     cx="100" cy="100" r="90"/>
-      <!-- segments inserted by JS between bg and hole -->
-      <circle class="pomo-hole"   cx="100" cy="100" r="52" id="pomoHole"/>
-      <circle class="pomo-border" cx="100" cy="100" r="90"/>
-    </svg>
-    <div class="pomo-center">
-      <div class="pomo-time" id="pomoTime">05:00</div>
-      <div class="pomo-status" id="pomoStatus">ready</div>
+  <div class="pomo-body" id="pomoBody">
+    <div class="pomo-durations" role="group" aria-labelledby="pomoHeader">
+      <button class="pomo-dur active" data-min="5">5 min</button>
+      <button class="pomo-dur" data-min="10">10 min</button>
+      <button class="pomo-dur" data-min="20">20 min</button>
     </div>
-  </div>
-  <div class="pomo-controls">
-    <button class="pomo-btn pomo-start" id="pomoStart">start</button>
-    <button class="pomo-btn" id="pomoReset">reset</button>
-    <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
-  </div>
-  <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
-    🔔 time chime every
-    <select id="chimeIntervalSel" aria-label="Time chime interval" style="font-size:11px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);border-radius:var(--radius);padding:2px 6px;font-family:var(--font)">
-      <option value="0">off</option>
-      <option value="15">15 min</option>
-      <option value="30" selected>30 min</option>
-      <option value="45">45 min</option>
-      <option value="60">60 min</option>
-    </select>
-  </div>
-  <div class="pomo-log">
-    <div class="pomo-log-title">session log</div>
-    <div id="pomoLog"></div>
+    <div class="pomo-ring-wrap">
+      <svg id="pomoSvg" class="pomo-svg" viewBox="0 0 200 200">
+        <circle class="pomo-bg"     cx="100" cy="100" r="90"/>
+        <!-- segments inserted by JS between bg and hole -->
+        <circle class="pomo-hole"   cx="100" cy="100" r="52" id="pomoHole"/>
+        <circle class="pomo-border" cx="100" cy="100" r="90"/>
+      </svg>
+      <div class="pomo-center">
+        <div class="pomo-time" id="pomoTime">05:00</div>
+        <div class="pomo-status" id="pomoStatus">ready</div>
+      </div>
+    </div>
+    <div class="pomo-controls">
+      <button class="pomo-btn pomo-start" id="pomoStart">start</button>
+      <button class="pomo-btn" id="pomoReset">reset</button>
+      <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
+    </div>
+    <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
+      🔔 time chime every
+      <select id="chimeIntervalSel" aria-label="Time chime interval" style="font-size:11px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);border-radius:var(--radius);padding:2px 6px;font-family:var(--font)">
+        <option value="0">off</option>
+        <option value="15">15 min</option>
+        <option value="30" selected>30 min</option>
+        <option value="45">45 min</option>
+        <option value="60">60 min</option>
+      </select>
+    </div>
+    <div class="pomo-log">
+      <div class="pomo-log-title">session log</div>
+      <div id="pomoLog"></div>
+    </div>
   </div>
 </div>
 
@@ -576,6 +382,222 @@
   <div id="trackerList"></div>
   <div id="trackerNewForm" style="display:none"></div>
 </section>
+
+<!-- Import from Jira (moved to bottom) -->
+<div class="plan-section collapsed" id="jiraSection">
+  <div class="plan-header" id="jiraHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="jiraBody">
+    <span class="plan-header-title">import from jira</span>
+    <span class="plan-toggle" aria-hidden="true">&#9660;</span>
+  </div>
+  <div class="plan-body" id="jiraBody">
+    <div class="jira-drop" id="jiraDrop">
+      <input type="file" id="jiraFileIn" aria-label="Jira CSV export file" accept=".csv,text/csv" style="display:none">
+      <strong class="jira-drop-title">Drop Jira CSV export here, or click to browse</strong>
+      <span class="jira-drop-sub">Jira → select issues → Export CSV (all fields)</span>
+    </div>
+    <div class="jira-task-rows" id="jiraTaskRows" style="display:none"></div>
+    <div class="jira-sel-row" id="jiraSelRow" style="display:none">
+      <span class="jira-count" id="jiraCount"></span>
+      <button class="export-btn" id="jiraSelAll">all</button>
+      <button class="export-btn" id="jiraSelNone">none</button>
+      <button class="plan-add-btn" id="jiraImportBtn">⊕ add to today</button>
+      <span class="jira-msg" id="jiraMsg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Add link to Notion (moved to bottom) -->
+<div class="plan-section collapsed" id="notionLinksSection">
+  <div class="plan-header" id="notionLinksHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="notionLinksBody">
+    <span class="plan-header-title">add link to notion</span>
+    <span class="plan-toggle" aria-hidden="true">&#9660;</span>
+  </div>
+  <div class="plan-body" id="notionLinksBody">
+    <div class="notion-form">
+      <div class="notion-row">
+        <input class="plan-input notion-url-input" id="notionUrl" placeholder="https://…" autocomplete="off" />
+        <button class="export-btn" id="notionFetchBtn">fetch title</button>
+      </div>
+      <div class="notion-row">
+        <input class="plan-input" id="notionName" placeholder="name / title" autocomplete="off" />
+      </div>
+      <div class="notion-row-2col">
+        <select class="notion-select" id="notionProject" aria-label="Notion project">
+          <option value="">— project —</option>
+          <!-- Add your own Notion page URLs here, e.g.:
+          <option value="https://www.notion.so/your-page-id">Project name</option>
+          -->
+        </select>
+        <select class="notion-select" id="notionType" aria-label="Link type">
+          <option value="Doc">Doc</option>
+          <option value="Reference">Reference</option>
+          <option value="Tool">Tool</option>
+          <option value="Article">Article</option>
+          <option value="Template">Template</option>
+          <option value="Video">Video</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="notion-save-row">
+        <label class="notion-pin">
+          <input type="checkbox" id="notionPinned" /> pin
+        </label>
+        <button class="plan-add-btn" id="notionSaveBtn">⊕ save to notion</button>
+        <span id="notionMsg"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.notion-form { padding: 8px 0 4px; display: flex; flex-direction: column; gap: 7px; }
+.notion-row { display: flex; gap: 6px; align-items: center; }
+.notion-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.notion-url-input { flex: 1; }
+.notion-select {
+  width: 100%;
+  padding: 5px 8px;
+  background: var(--bg2);
+  color: var(--text2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font);
+  outline: none;
+  cursor: pointer;
+}
+.notion-select:focus { border-color: var(--accent, #7b61ff); }
+.notion-save-row { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.notion-pin {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text3);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.notion-pin input { cursor: pointer; accent-color: var(--accent, #7b61ff); }
+.notion-msg-ok  { color: var(--green,  #1a6b3a); font-size: 11px; }
+.notion-msg-err { color: var(--red,    #8b1f1f); font-size: 11px; }
+</style>
+
+<script>
+(function () {
+  const RESOURCES_DS = 'collection://8b52a260-bacd-47ff-9852-0c4ace5d95b6';
+
+  document.getElementById('notionLinksHeader').addEventListener('click', () => {
+    document.getElementById('notionLinksSection').classList.toggle('collapsed');
+  });
+
+  document.getElementById('notionUrl').addEventListener('input', function () {
+    const nameEl = document.getElementById('notionName');
+    if (!nameEl.value.trim() && this.value.trim()) {
+      try { nameEl.value = new URL(this.value.trim()).hostname.replace('www.', ''); } catch {}
+    }
+  });
+
+  document.getElementById('notionFetchBtn').addEventListener('click', async function () {
+    const url = document.getElementById('notionUrl').value.trim();
+    if (!url) return;
+    this.textContent = '…';
+    this.disabled = true;
+    try {
+      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
+      if (!key) throw new Error('Anthropic API key not set');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 80,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: 'Reply with ONLY the page title of ' + url + ' — nothing else.' }]
+        })
+      });
+      const data = await res.json();
+      const title = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      if (title) document.getElementById('notionName').value = title;
+    } catch {}
+    this.textContent = 'fetch title';
+    this.disabled = false;
+  });
+
+  document.getElementById('notionSaveBtn').addEventListener('click', async function () {
+    const url    = document.getElementById('notionUrl').value.trim();
+    const name   = document.getElementById('notionName').value.trim();
+    const proj   = document.getElementById('notionProject').value;
+    const type   = document.getElementById('notionType').value;
+    const pinned = document.getElementById('notionPinned').checked;
+    const msg    = document.getElementById('notionMsg');
+
+    if (!url || !name) { setMsg(msg, 'URL and name required', false); return; }
+
+    this.disabled = true;
+    this.textContent = 'saving…';
+    msg.textContent = '';
+
+    const projLine = proj ? `\n- Project relation to page URL "${proj}"` : '';
+    const prompt =
+      `Create a page in Notion Resources database (data source ID: ${RESOURCES_DS}):\n` +
+      `- Name: "${name.replace(/"/g, "'")}"\n` +
+      `- URL: "${url}"\n` +
+      `- Type: "${type}"\n` +
+      `- Pinned: "${pinned ? '__YES__' : '__NO__'}"${projLine}\n` +
+      `Reply with only OK: <page_url> on success.`;
+
+    try {
+      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
+      if (!key) throw new Error('Anthropic API key not set');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'anthropic-beta': 'mcp-client-2025-04-04',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          mcp_servers: [{ type: 'url', url: 'https://mcp.notion.com/mcp', name: 'notion' }],
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      if (!res.ok) throw new Error('API ' + res.status);
+      const data = await res.json();
+      const reply = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      if (reply.toLowerCase().includes('ok') || reply.toLowerCase().includes('creat')) {
+        setMsg(msg, '✓ saved', true);
+        document.getElementById('notionUrl').value = '';
+        document.getElementById('notionName').value = '';
+        document.getElementById('notionProject').value = '';
+        document.getElementById('notionType').value = 'Doc';
+        document.getElementById('notionPinned').checked = false;
+      } else {
+        throw new Error('unexpected response');
+      }
+    } catch (e) {
+      setMsg(msg, '✗ failed: ' + e.message, false);
+    }
+    this.disabled = false;
+    this.textContent = '⊕ save to notion';
+  });
+
+  function setMsg(el, text, ok) {
+    el.textContent = text;
+    el.className = ok ? 'notion-msg-ok' : 'notion-msg-err';
+    if (ok) setTimeout(() => { el.textContent = ''; }, 4000);
+  }
+})();
+</script>
 
 <div id="rapidOverlay" class="rapid-overlay" role="dialog" aria-modal="true"
      aria-label="Quick capture" style="display:none">

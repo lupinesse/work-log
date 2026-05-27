@@ -96,12 +96,21 @@
   text-align: center;
 }
 
+/* Analytics section */
+#analyticsSection .plan-header-title::before {
+  content: '🏆';
+  margin-right: 6px;
+}
+#analyticsSection .analytics-body {
+  padding-top: 4px;
+}
+
 /* Stats */
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-bottom: 14px;
+  margin-bottom: 4px;
 }
 .stat {
   background: var(--bg2);

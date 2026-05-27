@@ -1629,7 +1629,7 @@
 
     const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
     const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
-    const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+    const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
     // Empty state: render sub-components (plan, timeblock) and bail out early
     if (!list.length) {
@@ -2989,6 +2989,23 @@
     }
     localStorage.setItem('wl_pomo_week', currentWeekKey);
   }
+
+  /* ── Section collapse handlers ── */
+
+  // Analytics section (streak + task count tiles)
+  document.getElementById('analyticsHeader').addEventListener('click', () => {
+    document.getElementById('analyticsSection').classList.toggle('collapsed');
+  });
+
+  // Parked thoughts
+  document.getElementById('parkHeader').addEventListener('click', () => {
+    document.getElementById('parkSection').classList.toggle('collapsed');
+  });
+
+  // Pomodoro
+  document.getElementById('pomoHeader').addEventListener('click', () => {
+    document.getElementById('pomoSection').classList.toggle('collapsed');
+  });
 
   /* ── Event listeners ── */
 
@@ -6827,6 +6844,7 @@ Requirements:
   // generic div — see also the keyboard-nav exclusion note above.
   (function syncAriaExpanded() {
     const pairs = [
+      { sectionId: 'analyticsSection', headerId: 'analyticsHeader' },
       { sectionId: 'calSection', headerId: 'calHeader' },
       { sectionId: 'upcomingSection', headerId: 'upcomingHeader' },
       { sectionId: 'pendingSection', headerId: 'pendingHeader' },
@@ -6834,6 +6852,7 @@ Requirements:
       { sectionId: 'jiraSection', headerId: 'jiraHeader' },
       { sectionId: 'notionLinksSection', headerId: 'notionLinksHeader' },
       { sectionId: 'tbSection', headerId: 'tbHeader' },
+      { sectionId: 'pomoSection', headerId: 'pomoHeader' },
     ];
     pairs.forEach(({ sectionId, headerId }) => {
       const section = document.getElementById(sectionId);

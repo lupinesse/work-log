@@ -167,9 +167,16 @@
 .timelog-header {
   display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg2);
   margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 0.5px solid var(--border);
+  cursor: default;
+  user-select: none;
+}
+.timelog-header .plan-header-title::before {
+  content: '⏱';
+  margin-right: 6px;
 }
 .etag-btn {
   font-size: 11px;

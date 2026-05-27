@@ -354,6 +354,7 @@ function a11yHeaderKeydown(el) {
 // generic div — see also the keyboard-nav exclusion note above.
 (function syncAriaExpanded() {
   const pairs = [
+    { sectionId: 'analyticsSection', headerId: 'analyticsHeader' },
     { sectionId: 'calSection', headerId: 'calHeader' },
     { sectionId: 'upcomingSection', headerId: 'upcomingHeader' },
     { sectionId: 'pendingSection', headerId: 'pendingHeader' },
@@ -361,6 +362,7 @@ function a11yHeaderKeydown(el) {
     { sectionId: 'jiraSection', headerId: 'jiraHeader' },
     { sectionId: 'notionLinksSection', headerId: 'notionLinksHeader' },
     { sectionId: 'tbSection', headerId: 'tbHeader' },
+    { sectionId: 'pomoSection', headerId: 'pomoHeader' },
   ];
   pairs.forEach(({ sectionId, headerId }) => {
     const section = document.getElementById(sectionId);
