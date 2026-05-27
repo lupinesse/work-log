@@ -11,7 +11,11 @@ let _onSprintEnd = null;
 
 const SPRINT_DURATIONS = [15, 25, 45, 60];
 
-/** Loads sprint history from localStorage into `sprintLog`. */
+/**
+ * Loads sprint history from localStorage into the module-level `sprintLog` array.
+ * Falls back to an empty array and logs a warning on parse failure.
+ * @returns {void}
+ */
 function loadSprintLog() {
   try {
     sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
@@ -21,12 +25,19 @@ function loadSprintLog() {
   }
 }
 
-/** Persists `sprintLog` to localStorage. */
+/**
+ * Persists the current `sprintLog` array to localStorage.
+ * @returns {void}
+ */
 function saveSprintLog() {
   localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
 }
 
-/** Shows the sprint setup panel and resets the form. */
+/**
+ * Shows the sprint setup panel, clears the intention input, resets the
+ * duration selection to 25 minutes, and focuses the intention field.
+ * @returns {void}
+ */
 function openSprintSetup() {
   const el = document.getElementById('sprintSetup');
   if (!el) return;
@@ -37,7 +48,11 @@ function openSprintSetup() {
   document.getElementById('sprintIntention').focus();
 }
 
-/** Renders the duration chip row, marking the selected duration active. */
+/**
+ * Renders the duration chip row inside #sprintDurations, marking the
+ * currently selected duration active. Attaches click listeners to each chip.
+ * @returns {void}
+ */
 function renderSprintDurations() {
   const el = document.getElementById('sprintDurations');
   if (!el) return;
@@ -55,9 +70,11 @@ function renderSprintDurations() {
 }
 
 /**
- * Commits a new sprint: creates a log entry, starts the timer, and starts
- * the Pomodoro for `_sprintDuration` minutes.  Sets `_onSprintEnd` so the
- * review is shown when the ring reaches zero.
+ * Commits a new sprint: reads the intention from the input, creates a time-log
+ * entry, starts the main timer, starts the Pomodoro for `_sprintDuration`
+ * minutes, and sets `_onSprintEnd` so the review panel is shown when the ring
+ * reaches zero. No-ops with a focus call if the intention field is empty.
+ * @returns {void}
  */
 function startSprint() {
   _sprintIntention = document.getElementById('sprintIntention').value.trim();
@@ -99,7 +116,9 @@ function startSprint() {
 
 /**
  * Called from `pomoDone()` when the Pomodoro ring reaches zero.
- * Fires the registered `_onSprintEnd` callback if one is set.
+ * Fires the registered `_onSprintEnd` callback if one is set, then clears it
+ * so it cannot fire twice.
+ * @returns {void}
  */
 function notifyPomodoroEnd() {
   if (_onSprintEnd) {
@@ -110,8 +129,11 @@ function notifyPomodoroEnd() {
 }
 
 /**
- * Stops the timer and renders the sprint review panel, allowing the user to
- * record an outcome (yes / partly / no) and optional note.
+ * Stops the main timer and renders the sprint review panel inside #sprintReview.
+ * Populates the intention label, wires outcome buttons (yes / partly / no),
+ * and on save: appends the sprint to `sprintLog`, tags the entry with the
+ * outcome, persists both, hides the panel, and triggers a full render.
+ * @returns {void}
  */
 function showSprintReview() {
   stopTimer();
@@ -175,7 +197,12 @@ function showSprintReview() {
   };
 }
 
-/** Registers all sprint UI event listeners. Called once on DOMContentLoaded. */
+/**
+ * Registers all sprint UI event listeners: the sprint mode button, start,
+ * cancel, and Enter-key shortcut on the intention input.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
 function initSprints() {
   document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
   document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);

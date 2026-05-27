@@ -9247,6 +9247,12 @@ Requirements:
   let _mlMonth = new Date().getMonth(); // 0-indexed
   let _mlActive = false;
 
+  /**
+   * Returns the number of days in a given month.
+   * @param {number} y - Full year (e.g. 2026).
+   * @param {number} m - Month index, 0-based (0 = January).
+   * @returns {number} Day count (28–31).
+   */
   function mlDaysInMonth(y, m) {
     return new Date(y, m + 1, 0).getDate();
   }
@@ -9264,6 +9270,13 @@ Requirements:
     );
   }
 
+  /**
+   * Maps a logged-hours value to a CSS colour for the heatmap grid.
+   * Thresholds: 0h → bg3 (empty), <2h → faint blue, <5h → mid blue,
+   * <7h → strong blue, ≥7h → solid blue.
+   * @param {number} hours - Total logged hours for a single day.
+   * @returns {string} A CSS colour value (variable or rgba/hex string).
+   */
   function mlHeatColor(hours) {
     if (!hours) return 'var(--bg3)';
     if (hours < 2) return 'rgba(24,95,165,0.15)';
@@ -9404,6 +9417,14 @@ Requirements:
     });
   }
 
+  /**
+   * Bootstraps the Monthly Log feature.
+   * Uses event delegation on `document` to handle clicks on the tab button
+   * (which is rebuilt by render() and cannot be bound directly). Toggles the
+   * section visibility and syncs the heatmap to the currently viewed month.
+   * Called once on DOMContentLoaded.
+   * @returns {void}
+   */
   function initMonthlyLog() {
     // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
     document.addEventListener('click', (e) => {
@@ -9732,6 +9753,11 @@ Requirements:
   // ── 22-trackers.js ──
   // ── 22-trackers.js — Custom time-goal progress trackers ──
 
+  /**
+   * Loads the trackers array from localStorage into the module-level `trackers` variable.
+   * Falls back to an empty array and logs a warning on parse failure.
+   * @returns {void}
+   */
   function loadTrackers() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
@@ -9742,6 +9768,10 @@ Requirements:
     }
   }
 
+  /**
+   * Persists the current `trackers` array to localStorage.
+   * @returns {void}
+   */
   function saveTrackers() {
     localStorage.setItem(STORE_TRACKERS, JSON.stringify(trackers));
   }
@@ -9770,8 +9800,9 @@ Requirements:
 
   /**
    * Calculates the current consecutive "hit" streak for a tracker, ending today.
-   * @param {Object} tracker
-   * @returns {number} Number of consecutive hit days.
+   * Walks backwards day-by-day (up to 60 days) and stops at the first non-hit day.
+   * @param {Object} tracker - Tracker object with `tags` and `targetMinutes`.
+   * @returns {number} Number of consecutive hit days ending today.
    */
   function trackerStreak(tracker) {
     let streak = 0;
@@ -9790,7 +9821,9 @@ Requirements:
 
   /**
    * Renders all tracker cards into #trackerList.
-   * Shows a 28-day grid, streak, and hit count for each tracker.
+   * Each card shows a 28-day hit/partial/miss grid, current streak, and total hit count.
+   * Attaches delete-button listeners after render.
+   * @returns {void}
    */
   function renderTrackers() {
     const el = document.getElementById('trackerList');
@@ -9849,7 +9882,12 @@ Requirements:
 
   let _trackerFormOpen = false;
 
-  /** Renders the new-tracker form inside #trackerNewForm. */
+  /**
+   * Shows and populates the new-tracker form inside #trackerNewForm.
+   * Pre-fills the colour picker with the first category's colour.
+   * Attaches Save / Cancel / keyboard listeners.
+   * @returns {void}
+   */
   function openTrackerForm() {
     const formEl = document.getElementById('trackerNewForm');
     if (!formEl) return;
@@ -9902,12 +9940,22 @@ Requirements:
     });
   }
 
+  /**
+   * Hides the new-tracker form and resets the open-state flag.
+   * @returns {void}
+   */
   function closeTrackerForm() {
     const formEl = document.getElementById('trackerNewForm');
     if (formEl) formEl.style.display = 'none';
     _trackerFormOpen = false;
   }
 
+  /**
+   * Reads the new-tracker form, validates inputs, pushes the tracker to the
+   * `trackers` array, persists it, and re-renders. Shows an alert if no category
+   * is selected; focuses the name field if the name is empty.
+   * @returns {void}
+   */
   function saveTrackerForm() {
     const name = (document.getElementById('trFormName')?.value || '').trim();
     if (!name) {
@@ -9936,6 +9984,12 @@ Requirements:
     renderTrackers();
   }
 
+  /**
+   * Bootstraps the Trackers feature: performs the initial render and wires up
+   * the "+ New" button to toggle the tracker form open/closed.
+   * Called once on DOMContentLoaded.
+   * @returns {void}
+   */
   function initTrackers() {
     renderTrackers();
     document.getElementById('trackerAddBtn')?.addEventListener('click', () => {
@@ -9961,7 +10015,11 @@ Requirements:
 
   const SPRINT_DURATIONS = [15, 25, 45, 60];
 
-  /** Loads sprint history from localStorage into `sprintLog`. */
+  /**
+   * Loads sprint history from localStorage into the module-level `sprintLog` array.
+   * Falls back to an empty array and logs a warning on parse failure.
+   * @returns {void}
+   */
   function loadSprintLog() {
     try {
       sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
@@ -9971,12 +10029,19 @@ Requirements:
     }
   }
 
-  /** Persists `sprintLog` to localStorage. */
+  /**
+   * Persists the current `sprintLog` array to localStorage.
+   * @returns {void}
+   */
   function saveSprintLog() {
     localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
   }
 
-  /** Shows the sprint setup panel and resets the form. */
+  /**
+   * Shows the sprint setup panel, clears the intention input, resets the
+   * duration selection to 25 minutes, and focuses the intention field.
+   * @returns {void}
+   */
   function openSprintSetup() {
     const el = document.getElementById('sprintSetup');
     if (!el) return;
@@ -9987,7 +10052,11 @@ Requirements:
     document.getElementById('sprintIntention').focus();
   }
 
-  /** Renders the duration chip row, marking the selected duration active. */
+  /**
+   * Renders the duration chip row inside #sprintDurations, marking the
+   * currently selected duration active. Attaches click listeners to each chip.
+   * @returns {void}
+   */
   function renderSprintDurations() {
     const el = document.getElementById('sprintDurations');
     if (!el) return;
@@ -10005,9 +10074,11 @@ Requirements:
   }
 
   /**
-   * Commits a new sprint: creates a log entry, starts the timer, and starts
-   * the Pomodoro for `_sprintDuration` minutes.  Sets `_onSprintEnd` so the
-   * review is shown when the ring reaches zero.
+   * Commits a new sprint: reads the intention from the input, creates a time-log
+   * entry, starts the main timer, starts the Pomodoro for `_sprintDuration`
+   * minutes, and sets `_onSprintEnd` so the review panel is shown when the ring
+   * reaches zero. No-ops with a focus call if the intention field is empty.
+   * @returns {void}
    */
   function startSprint() {
     _sprintIntention = document.getElementById('sprintIntention').value.trim();
@@ -10049,7 +10120,9 @@ Requirements:
 
   /**
    * Called from `pomoDone()` when the Pomodoro ring reaches zero.
-   * Fires the registered `_onSprintEnd` callback if one is set.
+   * Fires the registered `_onSprintEnd` callback if one is set, then clears it
+   * so it cannot fire twice.
+   * @returns {void}
    */
   function notifyPomodoroEnd() {
     if (_onSprintEnd) {
@@ -10060,8 +10133,11 @@ Requirements:
   }
 
   /**
-   * Stops the timer and renders the sprint review panel, allowing the user to
-   * record an outcome (yes / partly / no) and optional note.
+   * Stops the main timer and renders the sprint review panel inside #sprintReview.
+   * Populates the intention label, wires outcome buttons (yes / partly / no),
+   * and on save: appends the sprint to `sprintLog`, tags the entry with the
+   * outcome, persists both, hides the panel, and triggers a full render.
+   * @returns {void}
    */
   function showSprintReview() {
     stopTimer();
@@ -10125,7 +10201,12 @@ Requirements:
     };
   }
 
-  /** Registers all sprint UI event listeners. Called once on DOMContentLoaded. */
+  /**
+   * Registers all sprint UI event listeners: the sprint mode button, start,
+   * cancel, and Enter-key shortcut on the intention input.
+   * Called once on DOMContentLoaded.
+   * @returns {void}
+   */
   function initSprints() {
     document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
     document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);
