@@ -171,6 +171,7 @@ initMonthlyLog();
 initMigration();
 initSprints();
 initTrackers();
+initBannerControls();
 
 document.getElementById('prevDay').addEventListener('click', () => {
   viewDate = new Date(viewDate);

@@ -295,6 +295,27 @@ function updateTimerBarColor() {
 }
 
 /**
+ * Updates the SVG arc on the timer circle to reflect elapsed time relative to
+ * the hyperfocus threshold. The arc fills 0→100% of the circle circumference
+ * (2πr ≈ 150.8 px for r=24) as elapsed time goes from 0 to HYPERFOCUS_MINS.
+ * @param {number} elapsedMs - Elapsed time in milliseconds.
+ */
+function updateTimerArc(elapsedMs) {
+  const arc = document.getElementById('tbTickerArc');
+  if (!arc) return;
+  const circumference = 2 * Math.PI * 24; // r=24 → ≈150.796
+  const fraction = Math.min(elapsedMs / (HYPERFOCUS_MINS * 60 * 1000), 1);
+  const drawn = fraction * circumference;
+  arc.setAttribute('stroke-dasharray', `${drawn.toFixed(2)} ${circumference.toFixed(2)}`);
+  // Colour: green → red (mirrors timerBarColor hue)
+  const t = fraction;
+  const hue = Math.round(158 - 153 * t);
+  const sat = Math.round(69 + 3 * t);
+  const lit = Math.round(51 + 6 * t);
+  arc.setAttribute('stroke', `hsl(${hue},${sat}%,${lit}%)`);
+}
+
+/**
  * Called every second by the timer interval. Updates the timer bar text,
  * the live time-block element, the tab title/favicon, the bar colour, and
  * checks whether a chime should fire. Also refreshes the focus-mode overlay
@@ -307,8 +328,10 @@ function tickTimer() {
     const entry = entries.find((e) => e.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
     document.getElementById('timerBar').style.display = 'flex';
-    document.getElementById('timerTask').textContent = entry ? entry.text : '…';
+    // Use innerHTML so Jira ticket links are rendered inside the title row
+    document.getElementById('timerTask').innerHTML = entry ? jiraTicketHtml(entry.text) : '…';
     document.getElementById('timerElapsed').textContent = fmtElapsed(elapsed);
+    updateTimerArc(elapsed);
     updateLiveBlock();
     updateTabAndFavicon();
     updateTimerBarColor();
@@ -386,3 +409,147 @@ setInterval(() => {
     /* renderChart may not be ready on very first tick */
   }
 }, CHART_REFRESH_MS);
+
+/* ── Banner controls (mood dropdown, note input, utility pills) ── */
+
+/**
+ * Logs a quick note appended to the currently-active timer entry's text.
+ * The note is saved as a separate time entry with tag inherited from the
+ * active task; this keeps the data model simple and preserves timestamps.
+ * No-ops when there is no active timer or the note is empty.
+ */
+function commitBannerNote() {
+  const inp = document.getElementById('tbNoteInput');
+  if (!inp) return;
+  const note = inp.value.trim();
+  if (!note || !activeTimer) return;
+
+  const src = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = {
+    id: Date.now() + '',
+    text: note,
+    tag: src ? src.tag : categories[0] ? categories[0].id : 'other',
+    ts: safeRoundedStart(),
+    date: dk(new Date()),
+  };
+  entries.push(entry);
+  save();
+  inp.value = '';
+  render();
+}
+
+/**
+ * Logs a short well-known activity (break / lunch / meeting) as a new entry
+ * while keeping the active timer running. The active timer is NOT stopped so
+ * the user can resume without friction.
+ * @param {'break'|'lunch'|'meeting'} kind - Activity type.
+ */
+function logUtilEntry(kind) {
+  const labelMap = { break: '☕ Break', lunch: '🥪 Lunch', meeting: '📅 Meeting' };
+  const tagMap = { break: 'other', lunch: 'other', meeting: 'meeting' };
+  const text = labelMap[kind] || kind;
+  const tag = tagMap[kind] || (categories[0] ? categories[0].id : 'other');
+
+  const entry = {
+    id: Date.now() + '',
+    text,
+    tag,
+    ts: safeRoundedStart(),
+    date: dk(new Date()),
+  };
+  entries.push(entry);
+  save();
+  render();
+}
+
+/**
+ * Handles a mood selection from the banner dropdown. Records a distraction or
+ * parked thought as an entry (for distracted/parked moods), triggers the hook
+ * panel for 'interesting', and sets focus mode for 'focus'. Closes the panel
+ * afterwards.
+ * @param {string} mood - One of 'distracted' | 'parked' | 'focus' | 'interesting'.
+ * @param {string} icon - Emoji icon for the mood.
+ */
+function handleMoodSelect(mood, icon) {
+  const btnLabel = document.getElementById('tbMoodLabel');
+  const btnIcon = document.getElementById('tbMoodIcon');
+  if (btnLabel) btnLabel.textContent = mood;
+  if (btnIcon) btnIcon.textContent = icon;
+
+  // Close panel
+  const panel = document.getElementById('tbMoodPanel');
+  const btn = document.getElementById('tbMoodBtn');
+  if (panel) panel.style.display = 'none';
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+
+  if (mood === 'distracted') {
+    // Re-use the existing distract button's handler by clicking it
+    const distractBtn = document.getElementById('timerDistract');
+    if (distractBtn) distractBtn.click();
+  } else if (mood === 'parked') {
+    // Show the park capture input
+    const pb = document.getElementById('timerParkBtn');
+    if (pb) pb.click();
+  } else if (mood === 'interesting') {
+    const hookBtn = document.getElementById('timerHookBtn');
+    if (hookBtn && !hookBtn.disabled) hookBtn.click();
+  } else if (mood === 'focus') {
+    const emergBtn = document.getElementById('emergencyBtn');
+    if (emergBtn) emergBtn.click();
+  }
+}
+
+/**
+ * Binds all interactive controls on the V5 timer banner:
+ * mood dropdown, quick-note input, and Break / Lunch / Meeting utility pills.
+ * Called once from `07-lifecycle.js` after DOMContentLoaded is guaranteed.
+ */
+function initBannerControls() {
+  // ── Mood dropdown ──
+  const moodBtn = document.getElementById('tbMoodBtn');
+  const moodPanel = document.getElementById('tbMoodPanel');
+
+  if (moodBtn && moodPanel) {
+    moodBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = moodPanel.style.display !== 'none';
+      moodPanel.style.display = open ? 'none' : 'block';
+      moodBtn.setAttribute('aria-expanded', String(!open));
+    });
+
+    moodPanel.querySelectorAll('.tb-mood-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        handleMoodSelect(item.dataset.mood, item.dataset.icon);
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (!moodBtn.contains(e.target) && !moodPanel.contains(e.target)) {
+        moodPanel.style.display = 'none';
+        moodBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+  }
+
+  // ── Quick-note input ──
+  const noteInput = document.getElementById('tbNoteInput');
+  if (noteInput) {
+    noteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitBannerNote();
+      }
+      // Prevent Space from triggering the rapid-log overlay
+      if (e.code === 'Space') e.stopPropagation();
+    });
+  }
+
+  // ── Utility pills ──
+  const breakBtn = document.getElementById('tbBreakBtn');
+  const lunchBtn = document.getElementById('tbLunchBtn');
+  const meetingBtn = document.getElementById('tbMeetingBtn');
+  if (breakBtn) breakBtn.addEventListener('click', () => logUtilEntry('break'));
+  if (lunchBtn) lunchBtn.addEventListener('click', () => logUtilEntry('lunch'));
+  if (meetingBtn) meetingBtn.addEventListener('click', () => logUtilEntry('meeting'));
+}

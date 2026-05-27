@@ -136,13 +136,24 @@ function render() {
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
   const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
+  // Ad-hoc inline log row — shown only when viewing today
+  const adHocRow = isToday(viewDate)
+    ? `<div class="tl-adhoc-row">
+         <input class="tl-adhoc-input" id="tlAdHocInput"
+                aria-label="Log an entry directly in the time log"
+                placeholder="log something…" autocomplete="off"/>
+         <button class="tl-adhoc-btn" id="tlAdHocBtn" aria-label="Log entry">+ log</button>
+       </div>`
+    : '';
+
   // Empty state: render sub-components (plan, timeblock) and bail out early
   if (!list.length) {
     tl.innerHTML =
       logHeader +
+      adHocRow +
       '<div class="empty-state">' +
       (isToday(viewDate)
-        ? 'nothing logged yet.<br>start by typing what you just did above.'
+        ? 'nothing logged yet — type something above.'
         : 'nothing was logged on this day.') +
       '</div>';
     document.getElementById('chart').innerHTML = '';
@@ -156,6 +167,7 @@ function render() {
   // Build entry row HTML — one <div class="entry"> per log entry
   tl.innerHTML =
     logHeader +
+    adHocRow +
     list
       .map((e) => {
         const isTiming = activeTimer && activeTimer.entryId === e.id;
@@ -216,6 +228,38 @@ function render() {
       .join('');
 
   /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
+
+  /* Ad-hoc log row */
+  const adHocBtn = document.getElementById('tlAdHocBtn');
+  const adHocInput = document.getElementById('tlAdHocInput');
+  if (adHocBtn && adHocInput) {
+    const commitAdHoc = () => {
+      const text = adHocInput.value.trim();
+      if (!text) {
+        adHocInput.focus();
+        return;
+      }
+      const entry = {
+        id: Date.now() + '',
+        text,
+        tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
+        ts: safeRoundedStart(),
+        date: dk(new Date()),
+      };
+      entries.push(entry);
+      save();
+      render();
+    };
+    adHocBtn.addEventListener('click', commitAdHoc);
+    adHocInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') commitAdHoc();
+    });
+    // Prevent Space from opening the rapid-log overlay while typing here
+    adHocInput.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') e.stopPropagation();
+    });
+  }
+
   bindSignifierClicks();
 
   /* time editor */
