@@ -41,7 +41,20 @@ jobs:
           git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
           echo "Diff size: $(wc -l < pr.diff) lines"
 
+      - name: Check API key is present
+        id: key-check
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::ANTHROPIC_API_KEY secret is not set — skipping automated review. Add it in Settings → Secrets and variables → Actions."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run PR review
+        if: steps.key-check.outputs.present == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
@@ -53,16 +66,21 @@ jobs:
           echo "Review complete ($(wc -l < review-output.txt) lines)"
 
       - name: Post review as PR comment
+        if: always() && steps.key-check.result != 'skipped'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          {
-            cat review-output.txt
-            echo ""
-            echo "---"
-            echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
-          } > comment-body.txt
+          if [ -f review-output.txt ]; then
+            {
+              cat review-output.txt
+              echo ""
+              echo "---"
+              echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
+            } > comment-body.txt
+          else
+            echo "> ⚠️ Automated review skipped — \`ANTHROPIC_API_KEY\` secret is not set. Add it in **Settings → Secrets and variables → Actions** to enable AI code review." > comment-body.txt
+          fi
 
           gh pr comment "$PR_NUMBER" --body-file comment-body.txt
