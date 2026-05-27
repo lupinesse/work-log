@@ -24,7 +24,7 @@ function statusOpts(cur) {
 /**
  * Builds the priority toggle button HTML for a task row.
  * Click cycles: normal (0) → high (1) → low (-1) → normal.
- * @param {{ id: string, priority?: number }} t - The plan task.
+ * @param {{ id: string, priority: (number|undefined) }} t - The plan task.
  * @returns {string} HTML button element.
  */
 function prioBtnHtml(t) {
@@ -38,7 +38,7 @@ function prioBtnHtml(t) {
 /**
  * Builds the Notion send/link button HTML for a task row.
  * Shows a link icon if already sent; send icon otherwise.
- * @param {{ id: string, notionUrl?: string }} t - The plan task.
+ * @param {{ id: string, notionUrl: (string|undefined) }} t - The plan task.
  * @returns {string} HTML button element.
  */
 function notionBtnHtml(t) {
@@ -51,7 +51,7 @@ function notionBtnHtml(t) {
 /**
  * Builds the billable toggle button HTML for a task row.
  * Returns empty string for pending/blocked/upcoming tasks where billing is irrelevant.
- * @param {{ id: string, billable?: boolean }} t - The plan task.
+ * @param {{ id: string, billable: (boolean|undefined) }} t - The plan task.
  * @param {string} status - The task's current status.
  * @returns {string} HTML button element, or ''.
  */

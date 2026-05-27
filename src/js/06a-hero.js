@@ -16,7 +16,7 @@
 /** @type {boolean} True during the 6-second stopped confirmation window. */
 let _heroStopped = false;
 
-/** @type {ReturnType<typeof setTimeout>|null} Auto-dismiss handle for stopped state. */
+/** @type {number|null} Auto-dismiss handle for stopped state. */
 let _heroStoppedTimer = null;
 
 /**

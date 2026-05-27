@@ -300,7 +300,7 @@ function validPomoEntry(e) {
  * localStorage.
  *
  * @param {*} backup - Parsed backup object (typically from `JSON.parse`).
- * @returns {{ valid: boolean, error?: string }}
+ * @returns {{ valid: boolean, error: (string|undefined) }}
  *   `{ valid: true }` when the backup is usable;
  *   `{ valid: false, error: string }` with a human-readable reason otherwise.
  * @example
