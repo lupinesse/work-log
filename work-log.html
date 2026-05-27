@@ -40,19 +40,70 @@
 
 
 <div id="timerBar" style="display:none" class="timer-bar" role="status" aria-label="Active timer">
-  <span class="timer-pulse" aria-hidden="true"></span>
-  <span class="timer-task" id="timerTask"></span>
+  <!-- Main row: circle ticker · task block · action pills -->
+  <div class="tb-row-main">
+    <div class="tb-circle" aria-hidden="true">
+      <svg width="56" height="56" viewBox="0 0 56 56" focusable="false">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5"/>
+        <circle id="tbTickerArc" cx="28" cy="28" r="24" fill="none" stroke="#4ade80"
+                stroke-width="2.5" stroke-linecap="round"
+                transform="rotate(-90 28 28)"
+                stroke-dasharray="0 150.8"/>
+      </svg>
+      <span class="tb-circle-label" id="timerElapsed" aria-label="Elapsed time">0:00</span>
+    </div>
+
+    <div class="tb-task-block">
+      <span class="tb-eyebrow" aria-hidden="true">NOW TRACKING</span>
+      <div class="tb-title-row" id="timerTask" aria-live="polite" aria-atomic="true"></div>
+    </div>
+
+    <div class="tb-actions">
+      <!-- Mood dropdown -->
+      <div class="tb-mood-wrap" id="tbMoodWrap">
+        <button class="tb-mood-btn" id="tbMoodBtn"
+                aria-haspopup="true" aria-expanded="false" aria-label="Set mood: none selected">
+          <span id="tbMoodIcon" aria-hidden="true">💡</span>
+          <span id="tbMoodLabel">mood</span>
+          <span class="tb-mood-chevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="tb-mood-panel" id="tbMoodPanel" role="menu" style="display:none">
+          <button class="tb-mood-item" role="menuitem" data-mood="distracted" data-icon="😖">😖 distracted</button>
+          <button class="tb-mood-item" role="menuitem" data-mood="parked"     data-icon="💭">💭 parked thought</button>
+          <button class="tb-mood-item" role="menuitem" data-mood="focus"      data-icon="🌋">🌋 in the zone</button>
+          <button class="tb-mood-item" role="menuitem" data-mood="interesting" data-icon="✨">✨ interesting!</button>
+        </div>
+      </div>
+      <button class="emergency-btn-trigger tb-pill-btn" id="emergencyBtn"
+              aria-label="Enter focus mode" aria-haspopup="dialog">🚨 focus</button>
+      <button class="timer-pause tb-pill-btn" id="timerPause">pause</button>
+      <button class="timer-stop  tb-pill-btn" id="timerStop">stop</button>
+    </div>
+  </div>
+
+  <!-- Second row: note input + utility pills -->
+  <div class="tb-note-row">
+    <label class="tb-note-label" for="tbNoteInput">↳</label>
+    <input class="tb-note-input" id="tbNoteInput"
+           aria-label="Quick note on the current task"
+           placeholder="quick note… (↵ saves)" autocomplete="off"/>
+    <span class="tb-note-hint" aria-hidden="true">↵</span>
+    <span class="tb-note-divider" aria-hidden="true"></span>
+    <button class="tb-util-pill" id="tbBreakBtn"   aria-label="Log a break">☕ Break</button>
+    <button class="tb-util-pill" id="tbLunchBtn"   aria-label="Log lunch">🥪 Lunch</button>
+    <button class="tb-util-pill" id="tbMeetingBtn" aria-label="Log a meeting">👥 Meeting</button>
+  </div>
+
+  <!-- Paused label (shown via CSS when .paused class is set) -->
   <span class="timer-paused-lbl" aria-hidden="true">paused</span>
-  <span class="timer-elapsed" id="timerElapsed" aria-label="Elapsed time">00:00</span>
-  <span class="timer-handoff-lbl" id="timerHandoffLbl" aria-hidden="true">handoff:</span>
-  <input class="timer-handoff" id="timerHandoff" aria-label="Handoff note for your future self" placeholder="what should future you know?" />
-  <button class="timer-distract" id="timerDistract">😵 distracted</button>
-  <button class="timer-park-btn" id="timerParkBtn" aria-label="Park a thought" title="park a thought">💭</button>
-  <input class="park-capture" id="parkCapture" aria-label="Thought to park" placeholder="park this thought… ↵" />
-  <button class="emergency-btn-trigger" id="emergencyBtn" aria-label="Enter focus mode" aria-haspopup="dialog">🚨 focus</button>
-  <button class="timer-hook-btn" id="timerHookBtn" aria-label="Make this interesting" title="make this interesting">✨ interesting</button>
-  <button class="timer-pause" id="timerPause">pause</button>
-  <button class="timer-stop" id="timerStop">stop</button>
+
+  <!-- Compat stubs — IDs required by existing JS; kept hidden in the bar -->
+  <span class="timer-handoff-lbl" id="timerHandoffLbl" aria-hidden="true" style="display:none"></span>
+  <input class="timer-handoff" id="timerHandoff" aria-label="Handoff note" style="display:none"/>
+  <button class="timer-distract" id="timerDistract" aria-label="Log a distraction" style="display:none">😵 distracted</button>
+  <button class="timer-park-btn" id="timerParkBtn" aria-label="Park a thought" style="display:none">💭</button>
+  <input class="park-capture" id="parkCapture" aria-label="Thought to park" style="display:none"/>
+  <button class="timer-hook-btn" id="timerHookBtn" aria-label="Make this interesting" style="display:none">✨</button>
 </div>
 
 <div id="timerHookPanel" class="timer-hook-panel" style="display:none" role="region" aria-label="Task engagement suggestions">
@@ -121,19 +172,18 @@
       <button class="plan-add-btn" id="planAddBtn">+ add</button>
     </div>
     <div id="planList" role="list" aria-label="Today's tasks"></div>
+    <div id="planTrackRecent" class="plan-track-recent" style="display:none" aria-label="Track a recent entry"></div>
   </div>
 </div>
 
-<!-- Time log — capture input, recent tasks, tag row, entry list, chart -->
-<div class="capture-row">
-  <input class="capture-input" id="captureInput" aria-label="What did you just do?" placeholder="what did you just do? (Enter to log)" autocomplete="off" />
+<!-- Compat stubs: IDs required by parse-time JS listeners — kept hidden -->
+<div id="quickEntryStubs" aria-hidden="true" style="display:none">
+  <input class="capture-input" id="captureInput" aria-label="What did you just do?" autocomplete="off" />
   <button class="add-btn" id="addBtn">+ log</button>
   <button class="timer-btn" id="timerBtn" aria-label="Start timer">&#9654; start</button>
 </div>
-
-<div id="quickPick"></div>
-
-<div class="tag-row" id="tagRow"></div>
+<div id="quickPick" style="display:none"></div>
+<div class="tag-row" id="tagRow" style="display:none"></div>
 
 <div id="timeline"></div>
 <div id="chart"></div>

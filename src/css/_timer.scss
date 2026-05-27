@@ -5,14 +5,64 @@
   margin-left: 4px;
 }
 
-/* Timer bar */
+/* ── TIME LOG inline ad-hoc entry row ── */
+.tl-adhoc-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 8px 4px;
+  border-bottom: 0.5px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.tl-adhoc-input {
+  flex: 1;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.tl-adhoc-input:focus {
+  border-color: var(--info-text);
+  box-shadow: 0 0 0 2px var(--info-bg);
+}
+
+.tl-adhoc-input::placeholder {
+  color: var(--text3);
+}
+
+.tl-adhoc-btn {
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text2);
+  white-space: nowrap;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+.tl-adhoc-btn:hover {
+  background: var(--bg2);
+  color: var(--info-text);
+}
+
+/* ── Timer bar (V5 Distributed layout) ── */
 .timer-bar {
   border-radius: var(--radius-lg);
   padding: 10px 14px;
   margin-bottom: 14px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 8px;
   background: #0a3d1f;
   border: 0.5px solid #1d9e75;
   transition:
@@ -20,12 +70,279 @@
     border-color 0.3s;
 }
 
+/* ── Main row: circle · task block · actions ── */
+.tb-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* SVG circle ticker */
+.tb-circle {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tb-circle-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 600;
+  color: #5dcaa5;
+  line-height: 1;
+  transition: color 0.3s;
+}
+
+.timer-bar.paused .tb-circle-label {
+  color: #ef9f27;
+}
+
+/* Task name block */
+.tb-task-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tb-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(93, 202, 165, 0.55);
+}
+
+.tb-title-row {
+  font-size: 13px;
+  font-weight: 500;
+  color: #9fe1cb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s;
+}
+
+.timer-bar.paused .tb-title-row {
+  color: #fac775;
+}
+
+/* Actions cluster */
+.tb-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* Generic pill button used for pause / stop / focus */
+.tb-pill-btn {
+  background: none;
+  border: 0.5px solid #1d9e75;
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #5dcaa5;
+  cursor: pointer;
+  font-family: var(--font);
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition:
+    border-color 0.3s,
+    color 0.3s;
+}
+
+.tb-pill-btn:hover {
+  background: rgba(29, 158, 117, 0.15);
+}
+
+.timer-bar.paused .tb-pill-btn {
+  border-color: #ba7517;
+  color: #ef9f27;
+}
+
+.timer-bar.paused .tb-pill-btn:hover {
+  background: rgba(186, 117, 23, 0.15);
+}
+
+/* ── Mood dropdown ── */
+.tb-mood-wrap {
+  position: relative;
+}
+
+.tb-mood-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 0.5px solid rgba(93, 202, 165, 0.3);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 11px;
+  color: rgba(93, 202, 165, 0.7);
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.tb-mood-btn:hover {
+  background: rgba(29, 158, 117, 0.12);
+  color: #5dcaa5;
+}
+
+.tb-mood-chevron {
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+.tb-mood-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  min-width: 160px;
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.tb-mood-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.tb-mood-item:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+/* ── Note row ── */
+.tb-note-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 0.5px solid rgba(29, 158, 117, 0.2);
+}
+
+.tb-note-label {
+  font-size: 11px;
+  color: rgba(93, 202, 165, 0.5);
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.tb-note-input {
+  flex: 1;
+  background: rgba(29, 158, 117, 0.07);
+  border: 0.5px solid rgba(29, 158, 117, 0.2);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #9fe1cb;
+  font-family: var(--font);
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+
+.tb-note-input::placeholder {
+  color: rgba(93, 202, 165, 0.35);
+}
+
+.tb-note-input:focus {
+  border-color: rgba(29, 158, 117, 0.5);
+}
+
+.tb-note-hint {
+  font-size: 10px;
+  color: rgba(93, 202, 165, 0.35);
+  flex-shrink: 0;
+}
+
+.tb-note-divider {
+  width: 0.5px;
+  height: 14px;
+  background: rgba(29, 158, 117, 0.2);
+  flex-shrink: 0;
+}
+
+/* Utility pill: Break / Lunch / Meeting */
+.tb-util-pill {
+  background: none;
+  border: 0.5px solid rgba(93, 202, 165, 0.2);
+  border-radius: 99px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: rgba(93, 202, 165, 0.55);
+  cursor: pointer;
+  font-family: var(--font);
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+
+.tb-util-pill:hover {
+  border-color: rgba(93, 202, 165, 0.5);
+  color: #9fe1cb;
+  background: rgba(29, 158, 117, 0.1);
+}
+
+/* ── Legacy elements: keep existing selectors working ── */
+
 .timer-bar.paused {
   background: #2a2206;
   border-color: #ba7517;
 }
 
-.timer-pulse {
+.timer-bar.paused .tb-note-row {
+  border-top-color: rgba(186, 117, 23, 0.2);
+}
+
+.timer-bar.paused .tb-note-input {
+  background: rgba(186, 117, 23, 0.07);
+  border-color: rgba(186, 117, 23, 0.2);
+  color: #fac775;
+}
+
+.timer-bar.paused .tb-note-input::placeholder {
+  color: rgba(186, 117, 23, 0.35);
+}
+
+.timer-bar.paused .tb-note-hint,
+.timer-bar.paused .tb-note-label,
+.timer-bar.paused .tb-note-divider {
+  opacity: 0.5;
+}
+
+/* Hidden compat elements inside the bar */
+/* stylelint-disable-next-line selector-class-pattern */
+.timer-bar .timer-pulse {
+  display: none; /* replaced by SVG arc; kept in SCSS for compat */
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -53,34 +370,12 @@
   }
 }
 
+/* .timer-task and .timer-elapsed replaced by .tb-title-row / .tb-circle-label — selectors kept for compat */
 .timer-task {
-  font-size: 13px;
-  font-weight: 500;
-  flex: 1;
-  color: #9fe1cb;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.3s;
+  /* moved to .tb-title-row */
 }
-
-.timer-bar.paused .timer-task {
-  color: #fac775;
-}
-
 .timer-elapsed {
-  font-size: 16px;
-  font-weight: 500;
-  font-family: var(--mono);
-  color: #5dcaa5;
-  flex-shrink: 0;
-  min-width: 64px;
-  text-align: right;
-  transition: color 0.3s;
-}
-
-.timer-bar.paused .timer-elapsed {
-  color: #ef9f27;
+  /* moved to .tb-circle-label */
 }
 
 .timer-paused-lbl {
