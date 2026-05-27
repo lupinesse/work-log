@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.8.7 — 2026-05-27
+
+### Security
+
+- **Anthropic API key moved server-side**: the key is no longer stored in or readable from `localStorage`. Both the URL-title fetch (`notionFetchBtn`) and the Notion resource-save call now route through the local server proxies (`/api/ai` and `/api/notion-ai`) which inject the key from `config.local.ps1`. The CSP `connect-src` directive no longer permits direct browser connections to `https://api.anthropic.com`. A one-time `localStorage.removeItem('wl_anthropic_key')` migration clears any previously stored key on load.
+
+---
+
 ## v1.8.6 — 2026-05-27
 
 ### Hero Card — unified timer state machine (Variant C)

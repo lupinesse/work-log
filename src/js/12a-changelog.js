@@ -421,7 +421,7 @@ const DEV_CHANGES = [
   {
     id: '20260521-001',
     date: '2026-05-21',
-    desc: 'Notion integration: 📋 button on each task — sends to Notion second brain as child page under matching project (auto-matched by epic). Uses Claude API + Notion MCP; Anthropic key stored in localStorage',
+    desc: 'Notion integration: 📋 button on each task — sends to Notion second brain as child page under matching project (auto-matched by epic). Uses Claude API + Notion MCP via server-side proxy.',
     areas: [3],
   },
   {
