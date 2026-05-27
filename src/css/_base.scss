@@ -21,6 +21,23 @@
   --radius-lg: 12px;
   --font: -apple-system, 'Segoe UI', sans-serif;
   --mono: 'SF Mono', 'Fira Code', monospace;
+
+  /* ── Hero Card palette (Variant C unified style) ── */
+  --paper: #eef2f7; /* page background — cool pale blue-grey */
+  --card-soft: #f5f8fc; /* section header tint */
+  --line-strong: #c9d3e0; /* stronger border on cards */
+  --ink2: #475569; /* secondary text */
+  --ink-muted: #7a8597; /* tertiary text */
+  --ink-faint: #aab4c2; /* ghost / placeholder */
+  --live: #0284c7; /* running-state accent (sky-600) */
+  --live-deep: #075985; /* darker live for text on light bg */
+  --live-soft: #e0f2fe; /* running-state row tint */
+  --live-softer: #f0f9ff; /* barely-tinted live background */
+  --paused: #eab308; /* paused-state accent */
+  --paused-soft: #fefce8; /* amber wash */
+  --stopped: #15803d; /* stopped / logged confirmation */
+  --start-btn: #6b8eab; /* dusty blue — start tracking button */
+  --start-btn-hover: #5a7a97; /* start button hover */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,12 +52,29 @@
     --border2: rgba(255, 255, 255, 0.2);
     --info-bg: #0c2d4a;
     --info-text: #85b7eb;
+
+    /* ── Hero Card palette — dark mode ── */
+    --paper: #161a20;
+    --card-soft: #1e2530;
+    --line-strong: rgba(255, 255, 255, 0.18);
+    --ink2: #94a3b8;
+    --ink-muted: #64748b;
+    --ink-faint: #475569;
+    --live: #38bdf8;
+    --live-deep: #7dd3fc;
+    --live-soft: #0c2d4a;
+    --live-softer: #082030;
+    --paused: #facc15;
+    --paused-soft: #1a1500;
+    --stopped: #4ade80;
+    --start-btn: #7ca3bf; /* dusty blue lightened for dark backgrounds */
+    --start-btn-hover: #8db4cf;
   }
 }
 
 body {
   font-family: var(--font);
-  background: var(--bg);
+  background: var(--paper);
   color: var(--text);
   padding: 16px;
   font-size: 15px;

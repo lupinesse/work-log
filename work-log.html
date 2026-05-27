@@ -39,71 +39,146 @@
 <!-- Calendar meeting strip -->
 
 
-<div id="timerBar" style="display:none" class="timer-bar" role="status" aria-label="Active timer">
-  <!-- Main row: circle ticker · task block · action pills -->
-  <div class="tb-row-main">
-    <div class="tb-circle" aria-hidden="true">
-      <svg width="56" height="56" viewBox="0 0 56 56" focusable="false">
-        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2.5"/>
-        <circle id="tbTickerArc" cx="28" cy="28" r="24" fill="none" stroke="#4ade80"
-                stroke-width="2.5" stroke-linecap="round"
-                transform="rotate(-90 28 28)"
-                stroke-dasharray="0 150.8"/>
-      </svg>
-      <span class="tb-circle-label" id="timerElapsed" aria-label="Elapsed time">0:00</span>
-    </div>
+<!-- ── Hero Card — unified timer state (Variant C) ── -->
+<!-- Always present; state modifier class controls which inner panel is visible. -->
+<div id="heroCard" class="hero-card hero-card--idle" role="status" aria-label="Timer">
 
-    <div class="tb-task-block">
-      <span class="tb-eyebrow" aria-hidden="true">NOW TRACKING</span>
-      <div class="tb-title-row" id="timerTask" aria-live="polite" aria-atomic="true"></div>
-    </div>
-
-    <div class="tb-actions">
-      <!-- Mood dropdown -->
-      <div class="tb-mood-wrap" id="tbMoodWrap">
-        <button class="tb-mood-btn" id="tbMoodBtn"
-                aria-haspopup="true" aria-expanded="false" aria-label="Set mood: none selected">
-          <span id="tbMoodIcon" aria-hidden="true">💡</span>
-          <span id="tbMoodLabel">mood</span>
-          <span class="tb-mood-chevron" aria-hidden="true">▾</span>
-        </button>
-        <div class="tb-mood-panel" id="tbMoodPanel" role="menu" style="display:none">
-          <button class="tb-mood-item" role="menuitem" data-mood="distracted" data-icon="😖">😖 distracted</button>
-          <button class="tb-mood-item" role="menuitem" data-mood="parked"     data-icon="💭">💭 parked thought</button>
-          <button class="tb-mood-item" role="menuitem" data-mood="focus"      data-icon="🌋">🌋 in the zone</button>
-          <button class="tb-mood-item" role="menuitem" data-mood="interesting" data-icon="✨">✨ interesting!</button>
+  <!-- ① IDLE — nothing tracking -->
+  <div class="hero-panel hero-idle" id="heroPanelIdle">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-eyebrow hero-eyebrow--idle" aria-hidden="true">
+          <span class="hero-dot-idle" aria-hidden="true"></span>
+          Not tracking
         </div>
+        <div class="hero-logged-row">
+          <span class="hero-clock hero-clock--dim" id="heroLoggedToday" aria-label="Total logged today">0h 0m</span>
+          <span class="hero-sub">logged today</span>
+        </div>
+        <div class="hero-sub" id="heroIdleLastSession"></div>
       </div>
-      <button class="emergency-btn-trigger tb-pill-btn" id="emergencyBtn"
-              aria-label="Enter focus mode" aria-haspopup="dialog">🚨 focus</button>
-      <button class="timer-pause tb-pill-btn" id="timerPause">pause</button>
-      <button class="timer-stop  tb-pill-btn" id="timerStop">stop</button>
+      <div class="hero-middle">
+        <div class="hero-whats-next-hdr" aria-hidden="true">What's next?</div>
+        <input class="hero-composer" id="heroComposerInput"
+               placeholder="paste a Jira ticket, or pick from recent…"
+               autocomplete="off"
+               aria-label="Task description — press Enter or click Start to begin tracking"/>
+        <ul class="hero-recent-chips" id="heroRecentChips" aria-label="Recent tasks"></ul>
+      </div>
+      <div class="hero-right">
+        <button class="hero-btn hero-btn--ghost" id="heroIdleBreakBtn" aria-label="Log a break">☕ Break</button>
+        <button class="hero-btn hero-btn--start" id="heroStartBtn" aria-label="Start tracking">▶ Start tracking</button>
+      </div>
     </div>
   </div>
 
-  <!-- Second row: note input + utility pills -->
-  <div class="tb-note-row">
-    <label class="tb-note-label" for="tbNoteInput">↳</label>
-    <input class="tb-note-input" id="tbNoteInput"
-           aria-label="Quick note on the current task"
-           placeholder="quick note… (↵ saves)" autocomplete="off"/>
-    <span class="tb-note-hint" aria-hidden="true">↵</span>
-    <span class="tb-note-divider" aria-hidden="true"></span>
-    <button class="tb-util-pill" id="tbBreakBtn"   aria-label="Log a break">☕ Break</button>
-    <button class="tb-util-pill" id="tbLunchBtn"   aria-label="Log lunch">🥪 Lunch</button>
-    <button class="tb-util-pill" id="tbMeetingBtn" aria-label="Log a meeting">👥 Meeting</button>
+  <!-- ② RUNNING — timer active -->
+  <div class="hero-panel hero-running" id="heroPanelRunning" style="display:none">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-eyebrow hero-eyebrow--running" aria-hidden="true">
+          <span class="hero-pulse-dot" aria-hidden="true"></span>
+          Now tracking
+        </div>
+        <div class="hero-clock" id="timerElapsed" aria-label="Elapsed time" aria-live="polite">0:00:00</div>
+        <div class="hero-sub" id="heroRunningMeta"></div>
+      </div>
+      <div class="hero-middle">
+        <div class="hero-task-category" id="heroTaskCategory"></div>
+        <div class="hero-task-title" id="timerTask" aria-live="polite" aria-atomic="true"></div>
+        <div class="hero-sub hero-task-note-ref" id="heroTaskNoteRef"></div>
+      </div>
+      <div class="hero-right">
+        <!-- Mood dropdown — kept so initBannerControls() bindings stay valid -->
+        <div class="hero-mood-wrap" id="tbMoodWrap">
+          <button class="hero-btn hero-btn--ghost" id="tbMoodBtn"
+                  aria-haspopup="true" aria-expanded="false" aria-label="Set mood">
+            <span id="tbMoodIcon" aria-hidden="true">🎯</span>
+            <span id="tbMoodLabel">focus</span>
+            <span aria-hidden="true">▾</span>
+          </button>
+          <div class="tb-mood-panel" id="tbMoodPanel" role="menu" style="display:none">
+            <button class="tb-mood-item" role="menuitem" data-mood="distracted" data-icon="😖">😖 distracted</button>
+            <button class="tb-mood-item" role="menuitem" data-mood="parked"     data-icon="💭">💭 parked thought</button>
+            <button class="tb-mood-item" role="menuitem" data-mood="focus"      data-icon="🌋">🌋 in the zone</button>
+            <button class="tb-mood-item" role="menuitem" data-mood="interesting" data-icon="✨">✨ interesting!</button>
+          </div>
+        </div>
+        <button class="hero-btn hero-btn--ghost" id="timerPause" aria-label="Pause timer">⏸ pause</button>
+        <button class="hero-btn hero-btn--stop"  id="timerStop"  aria-label="Stop timer">■ stop</button>
+      </div>
+    </div>
+    <!-- Note / utility row -->
+    <div class="hero-note-row" id="heroNoteRow">
+      <label class="hero-note-label" for="tbNoteInput">↳</label>
+      <input class="hero-note-input" id="tbNoteInput"
+             aria-label="Quick note on the current task"
+             placeholder="add a quick note to this session… (↵ saves)" autocomplete="off"/>
+      <span class="hero-note-hint" aria-hidden="true">↵</span>
+      <span class="hero-note-div"  aria-hidden="true"></span>
+      <button class="hero-util-pill" id="tbBreakBtn"   aria-label="Log a break">☕ Break</button>
+      <button class="hero-util-pill" id="tbLunchBtn"   aria-label="Log lunch">🥪 Lunch</button>
+      <button class="hero-util-pill" id="tbMeetingBtn" aria-label="Log a meeting">👥 Meeting</button>
+    </div>
   </div>
 
-  <!-- Paused label (shown via CSS when .paused class is set) -->
-  <span class="timer-paused-lbl" aria-hidden="true">paused</span>
+  <!-- ③ PAUSED — timer on hold -->
+  <div class="hero-panel hero-paused" id="heroPanelPaused" style="display:none">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-eyebrow hero-eyebrow--paused" aria-hidden="true">
+          <span class="hero-dot-paused" aria-hidden="true"></span>
+          Paused
+        </div>
+        <div class="hero-clock hero-clock--paused" id="heroPausedElapsed" aria-label="Elapsed time">0:00:00</div>
+        <div class="hero-sub" id="heroPausedMeta"></div>
+      </div>
+      <div class="hero-middle">
+        <div class="hero-task-category" id="heroPausedCategory"></div>
+        <div class="hero-task-title" id="heroPausedTask"></div>
+        <div class="hero-sub" id="heroPausedNoteRef"></div>
+      </div>
+      <div class="hero-right">
+        <button class="hero-btn hero-btn--ghost" id="heroPausedFocusBtn" aria-label="Set mood">🎯 focus ▾</button>
+        <button class="hero-btn hero-btn--resume" id="heroResumeBtn" aria-label="Resume timer">▶ resume</button>
+        <button class="hero-btn hero-btn--ghost"  id="heroPausedStopBtn" aria-label="Stop timer">■ stop</button>
+      </div>
+    </div>
+  </div>
 
-  <!-- Compat stubs — IDs required by existing JS; kept hidden in the bar -->
-  <span class="timer-handoff-lbl" id="timerHandoffLbl" aria-hidden="true" style="display:none"></span>
-  <input class="timer-handoff" id="timerHandoff" aria-label="Handoff note" style="display:none"/>
-  <button class="timer-distract" id="timerDistract" aria-label="Log a distraction" style="display:none">😵 distracted</button>
-  <button class="timer-park-btn" id="timerParkBtn" aria-label="Park a thought" style="display:none">💭</button>
-  <input class="park-capture" id="parkCapture" aria-label="Thought to park" style="display:none"/>
-  <button class="timer-hook-btn" id="timerHookBtn" aria-label="Make this interesting" style="display:none">✨</button>
+  <!-- ④ STOPPED — 6-second confirmation window -->
+  <div class="hero-panel hero-stopped" id="heroPanelStopped" style="display:none">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="hero-eyebrow hero-eyebrow--stopped" aria-hidden="true">
+          <span class="hero-dot-stopped" aria-hidden="true"></span>
+          Logged
+        </div>
+        <div class="hero-clock hero-clock--stopped" id="heroStoppedElapsed" aria-label="Session duration">0:00:00</div>
+        <div class="hero-sub" id="heroStoppedRange"></div>
+      </div>
+      <div class="hero-middle">
+        <div class="hero-task-category" id="heroStoppedCategory"></div>
+        <div class="hero-task-title" id="heroStoppedTask"></div>
+        <div class="hero-sub" id="heroStoppedSessions"></div>
+      </div>
+      <div class="hero-right">
+        <button class="hero-btn hero-btn--ghost" id="heroUndoBtn"  aria-label="Undo this log entry">↶ undo</button>
+        <button class="hero-btn hero-btn--ghost" id="heroNoteBtn"  aria-label="Add a note">+ note</button>
+        <button class="hero-btn hero-btn--done"  id="heroDoneBtn"  aria-label="Dismiss confirmation">✓ done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Legacy focus / distract / park / hook buttons — kept hidden for existing JS bindings -->
+  <button class="emergency-btn-trigger" id="emergencyBtn"
+          aria-label="Enter focus mode" aria-haspopup="dialog" style="display:none">🚨 focus</button>
+  <span   id="timerHandoffLbl" aria-hidden="true" style="display:none"></span>
+  <input  id="timerHandoff"    aria-label="Handoff note" style="display:none"/>
+  <button id="timerDistract"   aria-label="Log a distraction" style="display:none">😵 distracted</button>
+  <button id="timerParkBtn"    aria-label="Park a thought"    style="display:none">💭</button>
+  <input  id="parkCapture"     aria-label="Thought to park"   style="display:none"/>
+  <button id="timerHookBtn"    aria-label="Make this interesting" style="display:none">✨</button>
 </div>
 
 <div id="timerHookPanel" class="timer-hook-panel" style="display:none" role="region" aria-label="Task engagement suggestions">

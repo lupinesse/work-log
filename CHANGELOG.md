@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.8.6 — 2026-05-27
+
+### Hero Card — unified timer state machine (Variant C)
+
+- **Replaces the `#timerBar`** with a single `#heroCard` that has four inner panels driven by CSS state-modifier classes: `hero-card--idle`, `--running`, `--paused`, `--stopped`
+- **Idle state**: shows logged-today total, last-session time, a task-composer input with Enter-to-start, and up to 3 recent-task chips for one-click restart
+- **Running state**: large monospace elapsed clock, pulsing dot, category + task title, note row, and Break / Lunch / Meeting utility pills — identical affordances to the old bar
+- **Paused state**: amber border wash, frozen clock, resume-primary / stop-ghost button pair
+- **Stopped state**: 6-second confirmation window with session summary (range, total today), undo, note, and done actions; auto-dismisses to idle
+- **Mood dropdown** kept in the running panel so `initBannerControls()` bindings remain valid without changes
+- All legacy compat IDs (`#timerStop`, `#timerPause`, `#timerHandoff`, `#emergencyBtn`, etc.) preserved as hidden stubs so `06-focus.js` and other modules need no changes
+- `--start-btn` / `--start-btn-hover` CSS custom properties added to `_base.scss` (with dark-mode overrides) for the dusty-blue start button; no hardcoded hex colours
+
+---
+
 ## v1.8.5 — 2026-05-27
 
 ### Quick Capture modal — QC_FinalV3 redesign

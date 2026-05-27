@@ -165,6 +165,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
   if (activeTimer && activeTimer.paused) resumeTimer();
   else pauseTimer();
 });
+initHero();
 initRapid();
 initDailyLog();
 initMonthlyLog();
