@@ -1,6 +1,6 @@
 {
   // Dev container for Work Log.
-  // Opens the project in a reproducible Node 20 environment — same version
+  // Opens the project in a reproducible Node 24 environment — same version
   // used in CI — with all npm dependencies pre-installed and the app ready
   // to build and test.
   //
@@ -16,12 +16,12 @@
   //   npm run docs       # generate JSDoc → docs/
 
   "name": "Work Log",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-24-bookworm",
 
   "features": {
     // Playwright needs Chromium system deps; this feature installs them.
     "ghcr.io/devcontainers/features/node:1": {
-      "version": "20"
+      "version": "24"
     }
   },
 
