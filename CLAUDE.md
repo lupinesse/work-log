@@ -120,14 +120,63 @@ State explicitly which of these you have and have not satisfied, and why.
 
 ---
 
+## PR workflow — mandatory for every code change
+
+You write all the code in this project. The user reviews your work through
+pull requests. Follow these steps for every task that involves code changes.
+Never push directly to `main`.
+
+### Step 1 — Create a branch
+```bash
+git checkout -b fix/issue-N-description    # bug fixes and QA items
+git checkout -b feat/description           # new features
+git checkout -b docs/description           # documentation only
+```
+
+### Step 2 — Implement, build, lint, test
+```bash
+npm run build && npm run lint && npm test
+```
+All tests must pass and lint must show 0 errors before continuing.
+Never stage build artefacts (`script.js`, `styles.css`, `docs/*.html`).
+
+### Step 3 — Commit on the branch
+Small, focused commits. One discrete unit of work per commit.
+
+### Step 4 — Run /pr-review and show the findings to the user
+```bash
+/pr-review
+```
+The skill generates the diff and reviews the changes against CLAUDE.md.
+Present the **full review output** to the user in the conversation.
+If there are 🔴 blocking issues, fix them before continuing.
+Do not open a PR with known blocking issues.
+
+### Step 5 — Push and open a PR
+```bash
+git push -u origin <branch-name>
+gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
+```
+
+### Step 6 — Tell the user and wait for approval
+Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge
+when you're happy, or point out anything to fix first."
+Do NOT run `gh pr merge` until the user explicitly says to merge.
+
+### Step 7 — Merge on instruction
+```bash
+gh pr merge <N> --squash --delete-branch
+git checkout main && git pull
+```
+
+---
+
 ## Out of scope for you (team responsibility — do not fake these)
 
 The Higher QA tier also requires process controls owned by the team, not by
-code generation: formal peer review and pull-request records, pair
-programming, an issue tracker with templated issues and acceptance criteria,
-hosted auto-generated documentation, branching strategy, CI pipelines, and
-formal user acceptance testing.
+code generation: an issue tracker with templated issues and acceptance
+criteria, hosted auto-generated documentation, CI pipelines, and formal user
+acceptance testing.
 
 Do not pretend to perform these. When your change would normally trigger one,
-say so — e.g. "this needs peer review before merge" or "add a CI job to run
-these tests".
+say so — e.g. "add a CI job to run these tests".

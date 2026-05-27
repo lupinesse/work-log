@@ -1,10 +1,11 @@
 ---
 name: pr-review
 description: >-
-  Adversarial code review for a pull request. Reads the diff written to
-  pr.diff by the CI workflow, audits changed files against the project's
-  CLAUDE.md quality standard, and prints a structured markdown review to
-  stdout. Use when asked to review a PR, review this change, or check a diff.
+  Adversarial code review for a pull request. Audits changed files against the
+  project's CLAUDE.md quality standard and prints a structured markdown review
+  to stdout. Works both locally (generates its own diff from git) and in CI
+  (reads pr.diff written by the workflow). Use when asked to review a PR,
+  review this change, or check a diff.
 allowed-tools: >-
   Read, Grep, Glob,
   Bash(git log:*), Bash(git diff:*), Bash(git show:*),
@@ -19,13 +20,26 @@ than polite reassurance. Do not soften language to spare feelings.
 
 ## How to run the review
 
-### Step 1 — Read the diff
+### Step 1 — Get the diff
 
-- Read `pr.diff` to understand exactly what changed.
-- Note which source files were modified, added, or deleted.
-- Skip auto-generated files: `script.js`, `styles.css`, `docs/**/*.html`,
-  `package-lock.json`. Flag if those files appear to have been edited directly
-  (that itself is a finding).
+First check whether `pr.diff` exists (written by the CI workflow):
+
+```bash
+wc -l pr.diff 2>/dev/null || echo "missing"
+```
+
+- **If `pr.diff` exists**: read it with the Read tool.
+- **If `pr.diff` is missing** (local run): generate it yourself:
+  ```bash
+  git diff main...HEAD
+  ```
+  Use that output as the diff. It covers all commits on the current branch
+  that are not yet on `main`.
+
+Note which source files were modified, added, or deleted.
+Skip auto-generated files: `script.js`, `styles.css`, `docs/**/*.html`,
+`package-lock.json`. Flag if those files appear to have been edited directly
+(that itself is a finding).
 
 ### Step 2 — Read the quality standard
 
