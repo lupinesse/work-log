@@ -359,8 +359,7 @@ Shared between the pomodoro module and changelog weekly-clear logic.
 
 ## Anthropic API key (legacy)
 
-### `wl_anthropic_key`
-String. Kept for backward compatibility with the Notion URL-bookmarking form.
+
 No longer required for task-to-Notion imports (handled server-side).
 
 ---

@@ -2,24 +2,6 @@
 // Task-to-Notion uses Notion REST API directly via /api/notion-add-task (no AI needed).
 // callClaudeWithNotion is kept for the URL-bookmarking form via /api/notion-ai proxy.
 // Notion token lives in config.local.ps1 (server-side, never exposed to the browser).
-const STORE_ANTHROPIC_KEY = 'wl_anthropic_key'; // kept for backward compat with URL bookmarking form
-
-/**
- * Retrieves the stored Anthropic API key from localStorage (trimmed).
- * @returns {string} The key, or an empty string if not set.
- */
-function getAnthropicKey() {
-  return (localStorage.getItem(STORE_ANTHROPIC_KEY) || '').trim();
-}
-
-/**
- * Stores or removes the Anthropic API key in localStorage.
- * @param {string} key - Key to store; falsy to remove.
- */
-function setAnthropicKey(key) {
-  if (key) localStorage.setItem(STORE_ANTHROPIC_KEY, key.trim());
-  else localStorage.removeItem(STORE_ANTHROPIC_KEY);
-}
 
 /**
  * Calls the Claude API with a Notion MCP server attached, via the local proxy
@@ -130,4 +112,4 @@ document.addEventListener(
 );
 
 // Expose for the URL-bookmarking form so it shares the same auth path
-window._wlNotion = { callClaudeWithNotion, getAnthropicKey, setAnthropicKey };
+window._wlNotion = { callClaudeWithNotion };
