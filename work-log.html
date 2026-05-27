@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="ADHD-friendly work tracker — log tasks, run timers, plan your day, and export a daily summary. Runs entirely in your browser.">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.open-meteo.com https://api.anthropic.com http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src https://api.open-meteo.com http://localhost:* http://127.0.0.1:*; img-src 'self' data:; font-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>Work Log</title>
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -630,16 +630,9 @@
     this.textContent = '…';
     this.disabled = true;
     try {
-      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
-      if (!key) throw new Error('Anthropic API key not set');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/ai', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 80,
@@ -647,10 +640,13 @@
           messages: [{ role: 'user', content: 'Reply with ONLY the page title of ' + url + ' — nothing else.' }]
         })
       });
+      if (!res.ok) throw new Error('API ' + res.status);
       const data = await res.json();
       const title = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
       if (title) document.getElementById('notionName').value = title;
-    } catch {}
+    } catch (err) {
+      wlLog.warn('notionFetchBtn: title fetch failed', err);
+    }
     this.textContent = 'fetch title';
     this.disabled = false;
   });
@@ -679,17 +675,9 @@
       `Reply with only OK: <page_url> on success.`;
 
     try {
-      const key = (window._wlNotion && window._wlNotion.getAnthropicKey()) || '';
-      if (!key) throw new Error('Anthropic API key not set');
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetch('/api/notion-ai', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-          'anthropic-beta': 'mcp-client-2025-04-04',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,
