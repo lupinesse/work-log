@@ -142,7 +142,8 @@ jobs:
         env:
           BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          NEW=$(git log --oneline "origin/$BRANCH..$BRANCH" 2>/dev/null | wc -l)
+          # HEAD is used (not $BRANCH) because checkout by SHA leaves a detached HEAD
+          NEW=$(git log --oneline "origin/$BRANCH..HEAD" 2>/dev/null | wc -l)
           if [ "$NEW" -gt 0 ]; then
             git push origin "HEAD:$BRANCH"
             echo "pushed=true"  >> "$GITHUB_OUTPUT"
