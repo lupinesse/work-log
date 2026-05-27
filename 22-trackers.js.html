@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 01b-migrate.js</title>
+    <title>JSDoc: Source: 22-trackers.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 01b-migrate.js</h1>
+    <h1 class="page-title">Source: 22-trackers.js</h1>
 
     
 
@@ -26,108 +26,252 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file 01b-migrate.js
- * Automatic localStorage schema migration.
- *
- * Runs once per page load, before load() reads from the versioned keys.
- * Each migration entry maps an old key name to the new one. If the old
- * key has data and the new key is empty, the data is copied across and
- * the old key is removed. Already-migrated users are unaffected (the
- * old key simply won't exist).
- *
- * Adding a new migration: append an entry to MIGRATIONS. Never remove
- * old entries — a user might be upgrading across multiple versions.
- *
- * @see DATA.md for the full localStorage schema reference.
- */
+            <pre class="prettyprint source linenums"><code>// ── 22-trackers.js — Custom time-goal progress trackers ──
 
 /**
- * Describes one key-rename migration.
- * @typedef {{ from: string, to: string, description: string }} Migration
+ * Loads the trackers array from localStorage into the module-level `trackers` variable.
+ * Falls back to an empty array and logs a warning on parse failure.
+ * @returns {void}
  */
-
-/** @type {Migration[]} */
-const MIGRATIONS = [
-  // v0 → v1: keys gained _v1 suffix and some were renamed for clarity.
-  // (Original single-file release used these bare names.)
-  { from: 'wl_entries', to: 'wl_entries_v1', description: 'entries array' },
-  { from: 'wl_cats', to: 'wl_cats_v1', description: 'categories array' },
-  { from: 'wl_categories', to: 'wl_cats_v1', description: 'categories array (alt name)' },
-  { from: 'wl_timer', to: 'wl_timer_v1', description: 'active timer state' },
-  { from: 'wl_active_timer', to: 'wl_timer_v1', description: 'active timer state (alt name)' },
-  { from: 'wl_plan', to: 'wl_plan_v1', description: 'plan tasks array' },
-  { from: 'wl_pomoLog', to: 'wl_pomoLog_v1', description: 'pomodoro session log' },
-  { from: 'wl_qp_hidden', to: 'wl_qp_hidden_v1', description: 'quick-pick hidden tasks' },
-];
-
-/**
- * Runs all pending schema migrations.
- * Safe to call multiple times — migrations are skipped if the source key
- * is absent or the destination key already has data.
- */
-function migrateStorage() {
-  let migratedCount = 0;
-  for (const { from, to, description } of MIGRATIONS) {
-    const oldData = localStorage.getItem(from);
-    if (!oldData) continue; // already migrated or never existed
-    if (localStorage.getItem(to)) {
-      // Destination already has data — don't overwrite; just clean up old key
-      localStorage.removeItem(from);
-      wlLog.warn(
-        `migrate: removed stale old key "${from}" (${description}); "${to}" already exists`
-      );
-      continue;
-    }
-    localStorage.setItem(to, oldData);
-    localStorage.removeItem(from);
-    migratedCount++;
-    wlLog.info(`migrate: "${from}" → "${to}" (${description})`);
-  }
-  if (migratedCount > 0) {
-    wlLog.info(`migrate: completed ${migratedCount} migration(s)`);
-  }
-}
-
-/**
- * Fixes entry `date` fields that were stored using UTC midnight instead of the
- * user's local calendar date.
- *
- * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
- * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
- * were stored under the previous day's UTC date. This migration re-derives `date`
- * from the entry's `ts` timestamp using the now-correct local `dk()`.
- *
- * Safe to run multiple times — entries already on the correct local date are untouched.
- */
-function migrateEntryDatesToLocal() {
-  const raw = localStorage.getItem('wl_entries_v1');
-  if (!raw) return;
+function loadTrackers() {
   try {
-    const all = JSON.parse(raw);
-    if (!Array.isArray(all)) return;
-    let changed = 0;
-    const fixed = all.map((e) => {
-      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
-      const localDate = dk(new Date(e.ts)); // dk() now returns local date
-      if (e.date !== localDate) {
-        changed++;
-        return { ...e, date: localDate };
-      }
-      return e;
-    });
-    if (changed > 0) {
-      localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
-      wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
-    }
+    const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
+    trackers = Array.isArray(raw) ? raw : [];
   } catch (e) {
-    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+    trackers = [];
+    wlLog.warn('loadTrackers: failed to parse trackers from localStorage', e);
   }
 }
 
-// Run immediately so data is in the right keys before load() is called.
-migrateStorage();
-migrateEntryDatesToLocal();
+/**
+ * Persists the current `trackers` array to localStorage.
+ * @returns {void}
+ */
+function saveTrackers() {
+  localStorage.setItem(STORE_TRACKERS, JSON.stringify(trackers));
+}
+
+/**
+ * Returns 'hit' | 'partial' | 'miss' for a given tracker on a given day.
+ * @param {Object} tracker - Tracker object with tags and targetMinutes.
+ * @param {string} dateKey - YYYY-MM-DD date key.
+ * @returns {'hit'|'partial'|'miss'}
+ */
+function trackerDayStatus(tracker, dateKey) {
+  const ms = entries
+    .filter(
+      (e) =>
+        e.date === dateKey &amp;&amp; tracker.tags.includes(e.tag) &amp;&amp; e.tsEnd &amp;&amp; e.signifier !== 'cancelled'
+    )
+    .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+  const mins = ms / 60000;
+  if (mins >= tracker.targetMinutes) return 'hit';
+  if (mins >= tracker.targetMinutes * 0.5) return 'partial';
+  return 'miss';
+}
+
+/**
+ * Calculates the current consecutive "hit" streak for a tracker, ending today.
+ * Walks backwards day-by-day (up to 60 days) and stops at the first non-hit day.
+ * @param {Object} tracker - Tracker object with `tags` and `targetMinutes`.
+ * @returns {number} Number of consecutive hit days ending today.
+ */
+function trackerStreak(tracker) {
+  let streak = 0;
+  const d = new Date();
+  for (let i = 0; i &lt; 60; i++) {
+    const dateKey = dk(d);
+    if (trackerDayStatus(tracker, dateKey) === 'hit') {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/**
+ * Renders all tracker cards into #trackerList.
+ * Each card shows a 28-day hit/partial/miss grid, current streak, and total hit count.
+ * Attaches delete-button listeners after render.
+ * @returns {void}
+ */
+function renderTrackers() {
+  const el = document.getElementById('trackerList');
+  if (!el) return;
+
+  if (!trackers.length) {
+    el.innerHTML = '&lt;div class="plan-empty">No trackers yet — click + New above.&lt;/div>';
+    return;
+  }
+
+  // Last 28 days (oldest → newest)
+  const days = Array.from({ length: 28 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (27 - i));
+    return dk(d);
+  });
+
+  el.innerHTML = trackers
+    .map((t) => {
+      const streak = trackerStreak(t);
+      const cells = days
+        .map((dateKey) => {
+          const status = trackerDayStatus(t, dateKey);
+          const bg =
+            status === 'hit' ? t.color : status === 'partial' ? t.color + '55' : 'var(--bg3)';
+          return `&lt;div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}">&lt;/div>`;
+        })
+        .join('');
+      const hitCount = days.filter((d) => trackerDayStatus(t, d) === 'hit').length;
+      const targetLabel =
+        t.targetMinutes >= 60 ? `${t.targetMinutes / 60}h/day` : `${t.targetMinutes}m/day`;
+
+      return `
+      &lt;div class="tracker-card">
+        &lt;div class="tracker-card-head">
+          &lt;span class="edot" style="background:${t.color}">&lt;/span>
+          &lt;span class="tracker-name">${escHtml(t.name)}&lt;/span>
+          &lt;span class="tracker-target">${targetLabel}&lt;/span>
+          ${streak ? `&lt;span class="tracker-streak">🔥 ${streak} day streak&lt;/span>` : '&lt;span class="tracker-streak">&lt;/span>'}
+          &lt;button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">✕&lt;/button>
+        &lt;/div>
+        &lt;div class="tr-grid">${cells}&lt;/div>
+        &lt;div class="tracker-footer">&lt;span>${hitCount}/28 days hit&lt;/span>&lt;/div>
+      &lt;/div>`;
+    })
+    .join('');
+
+  document.querySelectorAll('.tracker-delete').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      trackers = trackers.filter((t) => t.id !== btn.dataset.id);
+      saveTrackers();
+      renderTrackers();
+    });
+  });
+}
+
+let _trackerFormOpen = false;
+
+/**
+ * Shows and populates the new-tracker form inside #trackerNewForm.
+ * Pre-fills the colour picker with the first category's colour.
+ * Attaches Save / Cancel / keyboard listeners.
+ * @returns {void}
+ */
+function openTrackerForm() {
+  const formEl = document.getElementById('trackerNewForm');
+  if (!formEl) return;
+  _trackerFormOpen = true;
+  formEl.style.display = '';
+  const defaultColor = categories[0] ? categories[0].color : '#378ADD';
+  formEl.innerHTML = `
+    &lt;div class="tr-form">
+      &lt;div class="tr-form-row">
+        &lt;label class="tr-form-lbl" for="trFormName">Name&lt;/label>
+        &lt;input class="capture-input tr-form-name" id="trFormName"
+               placeholder="e.g. Deep work" autocomplete="off" />
+      &lt;/div>
+      &lt;div class="tr-form-row">
+        &lt;label class="tr-form-lbl" for="trFormMins">Daily target (minutes)&lt;/label>
+        &lt;input class="capture-input" id="trFormMins" type="number"
+               min="5" max="480" value="60" style="width:80px" />
+      &lt;/div>
+      &lt;div class="tr-form-row">
+        &lt;label class="tr-form-lbl">Categories to count&lt;/label>
+        &lt;div class="tr-form-tags" id="trFormTags">
+          ${categories
+            .map(
+              (c) =>
+                `&lt;label class="tr-tag-check">
+              &lt;input type="checkbox" value="${escHtml(c.id)}" />
+              &lt;span class="qp-chip" style="border-color:${c.color}44;color:${c.color};background:${c.color}11">${escHtml(c.label)}&lt;/span>
+            &lt;/label>`
+            )
+            .join('')}
+        &lt;/div>
+      &lt;/div>
+      &lt;div class="tr-form-row">
+        &lt;label class="tr-form-lbl" for="trFormColor">Colour&lt;/label>
+        &lt;input type="color" id="trFormColor" value="${defaultColor}"
+               style="width:40px;height:28px;cursor:pointer;border:none;background:none;padding:0" />
+      &lt;/div>
+      &lt;div class="tr-form-actions">
+        &lt;button class="add-btn" id="trFormCancel">Cancel&lt;/button>
+        &lt;button class="add-btn refl-save" id="trFormSave">Add tracker&lt;/button>
+      &lt;/div>
+    &lt;/div>`;
+
+  document.getElementById('trFormCancel').addEventListener('click', closeTrackerForm);
+  document.getElementById('trFormSave').addEventListener('click', saveTrackerForm);
+  document.getElementById('trFormName').focus();
+  document.getElementById('trFormName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveTrackerForm();
+    if (e.key === 'Escape') closeTrackerForm();
+  });
+}
+
+/**
+ * Hides the new-tracker form and resets the open-state flag.
+ * @returns {void}
+ */
+function closeTrackerForm() {
+  const formEl = document.getElementById('trackerNewForm');
+  if (formEl) formEl.style.display = 'none';
+  _trackerFormOpen = false;
+}
+
+/**
+ * Reads the new-tracker form, validates inputs, pushes the tracker to the
+ * `trackers` array, persists it, and re-renders. Shows an alert if no category
+ * is selected; focuses the name field if the name is empty.
+ * @returns {void}
+ */
+function saveTrackerForm() {
+  const name = (document.getElementById('trFormName')?.value || '').trim();
+  if (!name) {
+    document.getElementById('trFormName')?.focus();
+    return;
+  }
+  const minsRaw = parseInt(document.getElementById('trFormMins')?.value || '60', 10);
+  const targetMinutes = isNaN(minsRaw) || minsRaw &lt; 1 ? 60 : minsRaw;
+  const color = document.getElementById('trFormColor')?.value || '#378ADD';
+  const tags = [...document.querySelectorAll('#trFormTags input[type=checkbox]:checked')].map(
+    (cb) => cb.value
+  );
+  if (!tags.length) {
+    alert('Please select at least one category.');
+    return;
+  }
+  trackers.push({
+    id: Date.now() + '',
+    name,
+    targetMinutes,
+    tags,
+    color,
+  });
+  saveTrackers();
+  closeTrackerForm();
+  renderTrackers();
+}
+
+/**
+ * Bootstraps the Trackers feature: performs the initial render and wires up
+ * the "+ New" button to toggle the tracker form open/closed.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
+function initTrackers() {
+  renderTrackers();
+  document.getElementById('trackerAddBtn')?.addEventListener('click', () => {
+    if (_trackerFormOpen) {
+      closeTrackerForm();
+    } else {
+      openTrackerForm();
+    }
+  });
+}
 </code></pre>
         </article>
     </section>

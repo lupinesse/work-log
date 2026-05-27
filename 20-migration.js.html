@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 01b-migrate.js</title>
+    <title>JSDoc: Source: 20-migration.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 01b-migrate.js</h1>
+    <h1 class="page-title">Source: 20-migration.js</h1>
 
     
 
@@ -26,108 +26,205 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file 01b-migrate.js
- * Automatic localStorage schema migration.
- *
- * Runs once per page load, before load() reads from the versioned keys.
- * Each migration entry maps an old key name to the new one. If the old
- * key has data and the new key is empty, the data is copied across and
- * the old key is removed. Already-migrated users are unaffected (the
- * old key simply won't exist).
- *
- * Adding a new migration: append an entry to MIGRATIONS. Never remove
- * old entries — a user might be upgrading across multiple versions.
- *
- * @see DATA.md for the full localStorage schema reference.
- */
+            <pre class="prettyprint source linenums"><code>// ── 20-migration.js — Monthly Migration close-out flow ──
+
+let _migItems = [];
+let _migIdx = 0;
 
 /**
- * Describes one key-rename migration.
- * @typedef {{ from: string, to: string, description: string }} Migration
+ * Returns the migration completion record (map of YYYY-MM → boolean).
+ * @returns {Object}
  */
-
-/** @type {Migration[]} */
-const MIGRATIONS = [
-  // v0 → v1: keys gained _v1 suffix and some were renamed for clarity.
-  // (Original single-file release used these bare names.)
-  { from: 'wl_entries', to: 'wl_entries_v1', description: 'entries array' },
-  { from: 'wl_cats', to: 'wl_cats_v1', description: 'categories array' },
-  { from: 'wl_categories', to: 'wl_cats_v1', description: 'categories array (alt name)' },
-  { from: 'wl_timer', to: 'wl_timer_v1', description: 'active timer state' },
-  { from: 'wl_active_timer', to: 'wl_timer_v1', description: 'active timer state (alt name)' },
-  { from: 'wl_plan', to: 'wl_plan_v1', description: 'plan tasks array' },
-  { from: 'wl_pomoLog', to: 'wl_pomoLog_v1', description: 'pomodoro session log' },
-  { from: 'wl_qp_hidden', to: 'wl_qp_hidden_v1', description: 'quick-pick hidden tasks' },
-];
-
-/**
- * Runs all pending schema migrations.
- * Safe to call multiple times — migrations are skipped if the source key
- * is absent or the destination key already has data.
- */
-function migrateStorage() {
-  let migratedCount = 0;
-  for (const { from, to, description } of MIGRATIONS) {
-    const oldData = localStorage.getItem(from);
-    if (!oldData) continue; // already migrated or never existed
-    if (localStorage.getItem(to)) {
-      // Destination already has data — don't overwrite; just clean up old key
-      localStorage.removeItem(from);
-      wlLog.warn(
-        `migrate: removed stale old key "${from}" (${description}); "${to}" already exists`
-      );
-      continue;
-    }
-    localStorage.setItem(to, oldData);
-    localStorage.removeItem(from);
-    migratedCount++;
-    wlLog.info(`migrate: "${from}" → "${to}" (${description})`);
-  }
-  if (migratedCount > 0) {
-    wlLog.info(`migrate: completed ${migratedCount} migration(s)`);
-  }
-}
-
-/**
- * Fixes entry `date` fields that were stored using UTC midnight instead of the
- * user's local calendar date.
- *
- * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
- * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
- * were stored under the previous day's UTC date. This migration re-derives `date`
- * from the entry's `ts` timestamp using the now-correct local `dk()`.
- *
- * Safe to run multiple times — entries already on the correct local date are untouched.
- */
-function migrateEntryDatesToLocal() {
-  const raw = localStorage.getItem('wl_entries_v1');
-  if (!raw) return;
+function getMigrationRecord() {
   try {
-    const all = JSON.parse(raw);
-    if (!Array.isArray(all)) return;
-    let changed = 0;
-    const fixed = all.map((e) => {
-      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
-      const localDate = dk(new Date(e.ts)); // dk() now returns local date
-      if (e.date !== localDate) {
-        changed++;
-        return { ...e, date: localDate };
-      }
-      return e;
-    });
-    if (changed > 0) {
-      localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
-      wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
-    }
+    return JSON.parse(localStorage.getItem(STORE_MIGRATION) || '{}');
   } catch (e) {
-    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+    return {};
   }
 }
 
-// Run immediately so data is in the right keys before load() is called.
-migrateStorage();
-migrateEntryDatesToLocal();
+/**
+ * Persists the migration completion record to localStorage.
+ * @param {Object} rec - Map of YYYY-MM → boolean.
+ */
+function saveMigrationRecord(rec) {
+  localStorage.setItem(STORE_MIGRATION, JSON.stringify(rec));
+}
+
+/**
+ * Opens the migration modal and populates it with open (unresolved) tasks
+ * for the current month.  Alerts if there is nothing to migrate.
+ */
+function openMigration() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+
+  _migItems = planTasks.filter(
+    (t) => t.date.startsWith(prefix) &amp;&amp; t.status !== 'done' &amp;&amp; !t._migrated
+  );
+  _migIdx = 0;
+
+  if (!_migItems.length) {
+    alert('No open tasks to migrate — month is already clean!');
+    return;
+  }
+
+  const overlay = document.getElementById('migrationOverlay');
+  if (!overlay) return;
+
+  document.getElementById('migrationTitle').textContent =
+    new Date(y, m, 1).toLocaleString('default', { month: 'long', year: 'numeric' }) + ' close-out';
+  overlay.style.display = 'flex';
+  renderMigrationStep();
+}
+
+/** Closes the migration overlay. */
+function closeMigration() {
+  const overlay = document.getElementById('migrationOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+/**
+ * Renders the current migration step (or the "done" screen when all resolved).
+ */
+function renderMigrationStep() {
+  const total = _migItems.length;
+  const counter = document.getElementById('migrationCounter');
+  const prog = document.getElementById('migrationProgress');
+  const body = document.getElementById('migrationBody');
+  if (!body) return;
+
+  if (counter) counter.textContent = `${_migIdx} / ${total} resolved`;
+  if (prog) prog.style.width = `${(_migIdx / total) * 100}%`;
+
+  if (_migIdx >= total) {
+    body.innerHTML = `
+      &lt;div class="mig-done">
+        &lt;div class="mig-done-icon">✓&lt;/div>
+        &lt;div class="mig-done-title">Month closed&lt;/div>
+        &lt;div class="mig-done-sub">${total} item${total === 1 ? '' : 's'} resolved&lt;/div>
+      &lt;/div>`;
+    return;
+  }
+
+  const item = _migItems[_migIdx];
+  const cat = getCat(item.tag);
+  body.innerHTML = `
+    &lt;div class="mig-item">
+      &lt;div class="mig-item-header">
+        &lt;span class="mig-dot" style="background:${cat.color}">&lt;/span>
+        &lt;span class="mig-item-text">${escHtml(item.text)}&lt;/span>
+      &lt;/div>
+      &lt;div class="mig-item-date">Added ${item.date}&lt;/div>
+    &lt;/div>
+    &lt;div class="mig-actions">
+      &lt;button class="mig-btn mig-carry"    id="migCarry">→ Carry forward&lt;/button>
+      &lt;button class="mig-btn mig-schedule" id="migSchedule">📅 Schedule&lt;/button>
+      &lt;button class="mig-btn mig-drop"     id="migDrop">✗ Drop&lt;/button>
+    &lt;/div>
+    &lt;div id="migDateRow" style="display:none;gap:8px;margin-top:8px;align-items:center">
+      &lt;input type="date" class="capture-input" id="migDatePicker"
+             style="flex:1" />
+      &lt;button class="add-btn" id="migDateConfirm">Confirm date&lt;/button>
+    &lt;/div>`;
+
+  document.getElementById('migCarry').addEventListener('click', () => {
+    carryMigTask(_migItems[_migIdx]);
+    _migIdx++;
+    renderMigrationStep();
+  });
+  document.getElementById('migSchedule').addEventListener('click', () => {
+    const row = document.getElementById('migDateRow');
+    if (row) row.style.display = 'flex';
+  });
+  document.getElementById('migDateConfirm').addEventListener('click', () => {
+    const d = document.getElementById('migDatePicker').value;
+    if (!d) return;
+    scheduleMigTask(_migItems[_migIdx], d);
+    _migIdx++;
+    renderMigrationStep();
+  });
+  document.getElementById('migDrop').addEventListener('click', () => {
+    dropMigTask(_migItems[_migIdx]);
+    _migIdx++;
+    renderMigrationStep();
+  });
+}
+
+/**
+ * Duplicates the task into next month (first day) and marks original as migrated.
+ * @param {Object} task
+ */
+function carryMigTask(task) {
+  const nextMonth = new Date();
+  nextMonth.setDate(1);
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  const targetDate = dk(nextMonth);
+  const newTask = {
+    ...task,
+    id: Date.now() + Math.random().toString(36).slice(2),
+    date: targetDate,
+    _migrated: false,
+  };
+  task._migrated = true;
+  planTasks.push(newTask);
+  savePlan();
+}
+
+/**
+ * Reschedules the task to the given date and marks it as migrated.
+ * @param {Object} task
+ * @param {string} dateStr - YYYY-MM-DD
+ */
+function scheduleMigTask(task, dateStr) {
+  task.date = dateStr;
+  task._migrated = true;
+  savePlan();
+}
+
+/**
+ * Archives (drops) the task by marking it done and migrated.
+ * @param {Object} task
+ */
+function dropMigTask(task) {
+  task._migrated = true;
+  task.status = 'done';
+  task.completedAt = Date.now();
+  savePlan();
+}
+
+/**
+ * Initialises the migration overlay: wires close button and optionally shows
+ * a last-day-of-month banner once per month.
+ */
+function initMigration() {
+  document.getElementById('migrationClose')?.addEventListener('click', closeMigration);
+
+  // Auto-prompt on last day of month (once per month)
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const isLastDay = now.getDate() === lastDay;
+  const rec = getMigrationRecord();
+  const monthKey = dk(now).slice(0, 7); // YYYY-MM
+
+  if (isLastDay &amp;&amp; !rec[monthKey]) {
+    setTimeout(() => {
+      const banner = document.createElement('div');
+      banner.className = 'mig-banner';
+      banner.id = 'migBanner';
+      banner.innerHTML = `📋 Last day of the month — &lt;button id="migBannerBtn">run Migration&lt;/button> to close out open tasks.`;
+      document.body.prepend(banner);
+      document.getElementById('migBannerBtn')?.addEventListener('click', () => {
+        banner.remove();
+        rec[monthKey] = true;
+        saveMigrationRecord(rec);
+        openMigration();
+      });
+    }, 2000);
+  }
+}
 </code></pre>
         </article>
     </section>

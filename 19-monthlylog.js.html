@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 01b-migrate.js</title>
+    <title>JSDoc: Source: 19-monthlylog.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 01b-migrate.js</h1>
+    <h1 class="page-title">Source: 19-monthlylog.js</h1>
 
     
 
@@ -26,108 +26,205 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file 01b-migrate.js
- * Automatic localStorage schema migration.
- *
- * Runs once per page load, before load() reads from the versioned keys.
- * Each migration entry maps an old key name to the new one. If the old
- * key has data and the new key is empty, the data is copied across and
- * the old key is removed. Already-migrated users are unaffected (the
- * old key simply won't exist).
- *
- * Adding a new migration: append an entry to MIGRATIONS. Never remove
- * old entries — a user might be upgrading across multiple versions.
- *
- * @see DATA.md for the full localStorage schema reference.
- */
+            <pre class="prettyprint source linenums"><code>// ── 19-monthlylog.js — Monthly Log heatmap + task inventory ──
+
+let _mlYear = new Date().getFullYear();
+let _mlMonth = new Date().getMonth(); // 0-indexed
+let _mlActive = false;
 
 /**
- * Describes one key-rename migration.
- * @typedef {{ from: string, to: string, description: string }} Migration
+ * Returns the number of days in a given month.
+ * @param {number} y - Full year (e.g. 2026).
+ * @param {number} m - Month index, 0-based (0 = January).
+ * @returns {number} Day count (28–31).
  */
-
-/** @type {Migration[]} */
-const MIGRATIONS = [
-  // v0 → v1: keys gained _v1 suffix and some were renamed for clarity.
-  // (Original single-file release used these bare names.)
-  { from: 'wl_entries', to: 'wl_entries_v1', description: 'entries array' },
-  { from: 'wl_cats', to: 'wl_cats_v1', description: 'categories array' },
-  { from: 'wl_categories', to: 'wl_cats_v1', description: 'categories array (alt name)' },
-  { from: 'wl_timer', to: 'wl_timer_v1', description: 'active timer state' },
-  { from: 'wl_active_timer', to: 'wl_timer_v1', description: 'active timer state (alt name)' },
-  { from: 'wl_plan', to: 'wl_plan_v1', description: 'plan tasks array' },
-  { from: 'wl_pomoLog', to: 'wl_pomoLog_v1', description: 'pomodoro session log' },
-  { from: 'wl_qp_hidden', to: 'wl_qp_hidden_v1', description: 'quick-pick hidden tasks' },
-];
-
-/**
- * Runs all pending schema migrations.
- * Safe to call multiple times — migrations are skipped if the source key
- * is absent or the destination key already has data.
- */
-function migrateStorage() {
-  let migratedCount = 0;
-  for (const { from, to, description } of MIGRATIONS) {
-    const oldData = localStorage.getItem(from);
-    if (!oldData) continue; // already migrated or never existed
-    if (localStorage.getItem(to)) {
-      // Destination already has data — don't overwrite; just clean up old key
-      localStorage.removeItem(from);
-      wlLog.warn(
-        `migrate: removed stale old key "${from}" (${description}); "${to}" already exists`
-      );
-      continue;
-    }
-    localStorage.setItem(to, oldData);
-    localStorage.removeItem(from);
-    migratedCount++;
-    wlLog.info(`migrate: "${from}" → "${to}" (${description})`);
-  }
-  if (migratedCount > 0) {
-    wlLog.info(`migrate: completed ${migratedCount} migration(s)`);
-  }
+function mlDaysInMonth(y, m) {
+  return new Date(y, m + 1, 0).getDate();
 }
 
 /**
- * Fixes entry `date` fields that were stored using UTC midnight instead of the
- * user's local calendar date.
- *
- * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
- * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
- * were stored under the previous day's UTC date. This migration re-derives `date`
- * from the entry's `ts` timestamp using the now-correct local `dk()`.
- *
- * Safe to run multiple times — entries already on the correct local date are untouched.
+ * Sums tracked milliseconds for all non-cancelled entries on a given day.
+ * @param {string} dateKey
+ * @returns {number} Total hours (as a float).
  */
-function migrateEntryDatesToLocal() {
-  const raw = localStorage.getItem('wl_entries_v1');
-  if (!raw) return;
-  try {
-    const all = JSON.parse(raw);
-    if (!Array.isArray(all)) return;
-    let changed = 0;
-    const fixed = all.map((e) => {
-      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
-      const localDate = dk(new Date(e.ts)); // dk() now returns local date
-      if (e.date !== localDate) {
-        changed++;
-        return { ...e, date: localDate };
-      }
-      return e;
+function mlHoursForDay(dateKey) {
+  return (
+    entries
+      .filter((e) => e.date === dateKey &amp;&amp; e.signifier !== 'cancelled' &amp;&amp; e.tsEnd)
+      .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
+  );
+}
+
+/**
+ * Maps a logged-hours value to a CSS colour for the heatmap grid.
+ * Thresholds: 0h → bg3 (empty), &lt;2h → faint blue, &lt;5h → mid blue,
+ * &lt;7h → strong blue, ≥7h → solid blue.
+ * @param {number} hours - Total logged hours for a single day.
+ * @returns {string} A CSS colour value (variable or rgba/hex string).
+ */
+function mlHeatColor(hours) {
+  if (!hours) return 'var(--bg3)';
+  if (hours &lt; 2) return 'rgba(24,95,165,0.15)';
+  if (hours &lt; 5) return 'rgba(24,95,165,0.40)';
+  if (hours &lt; 7) return 'rgba(24,95,165,0.70)';
+  return '#185fa5';
+}
+
+/**
+ * Renders the monthly log view: navigation, heatmap, summary, task inventory.
+ */
+function renderMonthlyLog() {
+  const calEl = document.getElementById('mlCalendar');
+  const sumEl = document.getElementById('mlSummary');
+  const taskEl = document.getElementById('mlTasks');
+  if (!calEl) return;
+
+  const y = _mlYear,
+    m = _mlMonth;
+  const days = mlDaysInMonth(y, m);
+  const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+  const offset = (firstDow + 6) % 7; // shift to Mon-start
+
+  const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const monthName = new Date(y, m, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const emptyCells = Array(offset).fill('&lt;div>&lt;/div>').join('');
+  const dayCells = Array.from({ length: days }, (_, i) => {
+    const d = i + 1;
+    const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
+    const hrs = mlHoursForDay(dateKey);
+    const refl = typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
+    const reflDot = refl
+      ? `&lt;div class="ml-refl-dot" title="Focus: ${refl.focus}/5 · Energy: ${refl.energy}/5">&lt;/div>`
+      : '';
+    return `&lt;div class="ml-cell" data-date="${dateKey}"
+                  title="${d} — ${hrs.toFixed(1)}h"
+                  style="background:${mlHeatColor(hrs)};position:relative">${reflDot}&lt;/div>`;
+  }).join('');
+
+  calEl.innerHTML = `
+    &lt;div class="ml-nav">
+      &lt;button class="ml-nav-btn" id="mlPrev">←&lt;/button>
+      &lt;span class="ml-month-title">${monthName}&lt;/span>
+      &lt;button class="ml-nav-btn" id="mlNext">→&lt;/button>
+    &lt;/div>
+    &lt;div class="ml-grid">
+      ${dayLabels.map((d) => `&lt;div class="ml-day-lbl">${d}&lt;/div>`).join('')}
+      ${emptyCells}
+      ${dayCells}
+    &lt;/div>
+    &lt;div class="ml-legend">
+      ${[
+        [0, '0h'],
+        [2, '2h'],
+        [5, '5h'],
+        [7, '7h+'],
+      ]
+        .map(
+          ([v, l]) =>
+            `&lt;div class="ml-legend-item">
+              &lt;div class="ml-legend-swatch" style="background:${mlHeatColor(v + 0.1)}">&lt;/div>
+              &lt;span>${l}&lt;/span>
+            &lt;/div>`
+        )
+        .join('')}
+    &lt;/div>`;
+
+  // Cell click → navigate to that day and show the main log
+  calEl.querySelectorAll('.ml-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      viewDate = new Date(cell.dataset.date + 'T12:00:00');
+      document.getElementById('monthlyLogSection').style.display = 'none';
+      _mlActive = false;
+      render();
     });
-    if (changed > 0) {
-      localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
-      wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
+  });
+
+  // Month navigation
+  document.getElementById('mlPrev')?.addEventListener('click', () => {
+    _mlMonth--;
+    if (_mlMonth &lt; 0) {
+      _mlMonth = 11;
+      _mlYear--;
     }
-  } catch (e) {
-    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
-  }
+    renderMonthlyLog();
+  });
+  document.getElementById('mlNext')?.addEventListener('click', () => {
+    _mlMonth++;
+    if (_mlMonth > 11) {
+      _mlMonth = 0;
+      _mlYear++;
+    }
+    renderMonthlyLog();
+  });
+
+  // Summary panel
+  const monthEntries = entries.filter(
+    (e) => e.date.startsWith(monthPrefix) &amp;&amp; e.tsEnd &amp;&amp; e.signifier !== 'cancelled'
+  );
+  const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+  const billableMs = monthEntries
+    .filter((e) => isEntryBillable(e))
+    .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+
+  const tagTotals = {};
+  monthEntries.forEach((e) => {
+    tagTotals[e.tag] = (tagTotals[e.tag] || 0) + (e.tsEnd - e.ts);
+  });
+  const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
+
+  sumEl.innerHTML = `
+    &lt;div class="ml-sum-title">Summary&lt;/div>
+    &lt;div class="ml-sum-row">&lt;span>Total logged&lt;/span>&lt;span>${fmtDur(totalMs)}&lt;/span>&lt;/div>
+    &lt;div class="ml-sum-row">&lt;span>Billable&lt;/span>&lt;span class="ml-sum-blue">${fmtDur(billableMs)}&lt;/span>&lt;/div>
+    ${topTagEntry ? `&lt;div class="ml-sum-row">&lt;span>Top category&lt;/span>&lt;span>${escHtml(getCatLabel(topTagEntry[0]))}&lt;/span>&lt;/div>` : ''}`;
+
+  // Task inventory
+  const monthTasks = planTasks.filter((t) => t.date.startsWith(monthPrefix));
+  const open = monthTasks.filter((t) => t.status !== 'done').length;
+  const done = monthTasks.filter((t) => t.status === 'done').length;
+  const migrated = monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length;
+
+  taskEl.innerHTML = `
+    &lt;div class="ml-sum-title">Task inventory&lt;/div>
+    &lt;div class="ml-sum-row">&lt;span>Open&lt;/span>&lt;span class="ml-sum-amber">${open}&lt;/span>&lt;/div>
+    &lt;div class="ml-sum-row">&lt;span>Done&lt;/span>&lt;span class="ml-sum-green">${done}&lt;/span>&lt;/div>
+    &lt;div class="ml-sum-row">&lt;span>Migrated&lt;/span>&lt;span class="ml-sum-muted">${migrated}&lt;/span>&lt;/div>
+    &lt;button class="add-btn ml-migrate-btn" id="mlRunMigration">→ Run Migration&lt;/button>`;
+
+  document.getElementById('mlRunMigration')?.addEventListener('click', () => {
+    if (typeof openMigration === 'function') openMigration();
+  });
 }
 
-// Run immediately so data is in the right keys before load() is called.
-migrateStorage();
-migrateEntryDatesToLocal();
+/**
+ * Bootstraps the Monthly Log feature.
+ * Uses event delegation on `document` to handle clicks on the tab button
+ * (which is rebuilt by render() and cannot be bound directly). Toggles the
+ * section visibility and syncs the heatmap to the currently viewed month.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
+function initMonthlyLog() {
+  // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
+  document.addEventListener('click', (e) => {
+    if (e.target.id !== 'tabMonthlyLog') return;
+    _mlActive = !_mlActive;
+    const section = document.getElementById('monthlyLogSection');
+    if (section) section.style.display = _mlActive ? '' : 'none';
+    if (_mlActive) {
+      // Sync to viewed month when opening
+      _mlYear = viewDate.getFullYear();
+      _mlMonth = viewDate.getMonth();
+      renderMonthlyLog();
+    }
+    render();
+  });
+}
 </code></pre>
         </article>
     </section>

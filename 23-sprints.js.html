@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 01b-migrate.js</title>
+    <title>JSDoc: Source: 23-sprints.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 01b-migrate.js</h1>
+    <h1 class="page-title">Source: 23-sprints.js</h1>
 
     
 
@@ -26,108 +26,222 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file 01b-migrate.js
- * Automatic localStorage schema migration.
- *
- * Runs once per page load, before load() reads from the versioned keys.
- * Each migration entry maps an old key name to the new one. If the old
- * key has data and the new key is empty, the data is copied across and
- * the old key is removed. Already-migrated users are unaffected (the
- * old key simply won't exist).
- *
- * Adding a new migration: append an entry to MIGRATIONS. Never remove
- * old entries — a user might be upgrading across multiple versions.
- *
- * @see DATA.md for the full localStorage schema reference.
- */
+            <pre class="prettyprint source linenums"><code>// ── 23-sprints.js — Sprint mode ──
+
+const STORE_SPRINTS = 'wl_sprints_v1';
+let sprintLog = [];
+
+let _sprintActive = false;
+let _sprintIntention = '';
+let _sprintDuration = 25; // minutes
+let _sprintEntryId = null;
+let _onSprintEnd = null;
+
+const SPRINT_DURATIONS = [15, 25, 45, 60];
 
 /**
- * Describes one key-rename migration.
- * @typedef {{ from: string, to: string, description: string }} Migration
+ * Loads sprint history from localStorage into the module-level `sprintLog` array.
+ * Falls back to an empty array and logs a warning on parse failure.
+ * @returns {void}
  */
-
-/** @type {Migration[]} */
-const MIGRATIONS = [
-  // v0 → v1: keys gained _v1 suffix and some were renamed for clarity.
-  // (Original single-file release used these bare names.)
-  { from: 'wl_entries', to: 'wl_entries_v1', description: 'entries array' },
-  { from: 'wl_cats', to: 'wl_cats_v1', description: 'categories array' },
-  { from: 'wl_categories', to: 'wl_cats_v1', description: 'categories array (alt name)' },
-  { from: 'wl_timer', to: 'wl_timer_v1', description: 'active timer state' },
-  { from: 'wl_active_timer', to: 'wl_timer_v1', description: 'active timer state (alt name)' },
-  { from: 'wl_plan', to: 'wl_plan_v1', description: 'plan tasks array' },
-  { from: 'wl_pomoLog', to: 'wl_pomoLog_v1', description: 'pomodoro session log' },
-  { from: 'wl_qp_hidden', to: 'wl_qp_hidden_v1', description: 'quick-pick hidden tasks' },
-];
-
-/**
- * Runs all pending schema migrations.
- * Safe to call multiple times — migrations are skipped if the source key
- * is absent or the destination key already has data.
- */
-function migrateStorage() {
-  let migratedCount = 0;
-  for (const { from, to, description } of MIGRATIONS) {
-    const oldData = localStorage.getItem(from);
-    if (!oldData) continue; // already migrated or never existed
-    if (localStorage.getItem(to)) {
-      // Destination already has data — don't overwrite; just clean up old key
-      localStorage.removeItem(from);
-      wlLog.warn(
-        `migrate: removed stale old key "${from}" (${description}); "${to}" already exists`
-      );
-      continue;
-    }
-    localStorage.setItem(to, oldData);
-    localStorage.removeItem(from);
-    migratedCount++;
-    wlLog.info(`migrate: "${from}" → "${to}" (${description})`);
-  }
-  if (migratedCount > 0) {
-    wlLog.info(`migrate: completed ${migratedCount} migration(s)`);
-  }
-}
-
-/**
- * Fixes entry `date` fields that were stored using UTC midnight instead of the
- * user's local calendar date.
- *
- * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
- * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
- * were stored under the previous day's UTC date. This migration re-derives `date`
- * from the entry's `ts` timestamp using the now-correct local `dk()`.
- *
- * Safe to run multiple times — entries already on the correct local date are untouched.
- */
-function migrateEntryDatesToLocal() {
-  const raw = localStorage.getItem('wl_entries_v1');
-  if (!raw) return;
+function loadSprintLog() {
   try {
-    const all = JSON.parse(raw);
-    if (!Array.isArray(all)) return;
-    let changed = 0;
-    const fixed = all.map((e) => {
-      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
-      const localDate = dk(new Date(e.ts)); // dk() now returns local date
-      if (e.date !== localDate) {
-        changed++;
-        return { ...e, date: localDate };
-      }
-      return e;
-    });
-    if (changed > 0) {
-      localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
-      wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
-    }
+    sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
   } catch (e) {
-    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+    sprintLog = [];
+    wlLog.warn('loadSprintLog: failed to parse sprint log from localStorage', e);
   }
 }
 
-// Run immediately so data is in the right keys before load() is called.
-migrateStorage();
-migrateEntryDatesToLocal();
+/**
+ * Persists the current `sprintLog` array to localStorage.
+ * @returns {void}
+ */
+function saveSprintLog() {
+  localStorage.setItem(STORE_SPRINTS, JSON.stringify(sprintLog));
+}
+
+/**
+ * Shows the sprint setup panel, clears the intention input, resets the
+ * duration selection to 25 minutes, and focuses the intention field.
+ * @returns {void}
+ */
+function openSprintSetup() {
+  const el = document.getElementById('sprintSetup');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('sprintIntention').value = '';
+  _sprintDuration = 25;
+  renderSprintDurations();
+  document.getElementById('sprintIntention').focus();
+}
+
+/**
+ * Renders the duration chip row inside #sprintDurations, marking the
+ * currently selected duration active. Attaches click listeners to each chip.
+ * @returns {void}
+ */
+function renderSprintDurations() {
+  const el = document.getElementById('sprintDurations');
+  if (!el) return;
+  el.innerHTML = SPRINT_DURATIONS.map(
+    (d) =>
+      `&lt;button class="add-btn sprint-dur-btn${d === _sprintDuration ? ' sprint-dur-active' : ''}"
+               data-dur="${d}">${d}m&lt;/button>`
+  ).join('');
+  el.querySelectorAll('.sprint-dur-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _sprintDuration = parseInt(btn.dataset.dur, 10);
+      renderSprintDurations();
+    });
+  });
+}
+
+/**
+ * Commits a new sprint: reads the intention from the input, creates a time-log
+ * entry, starts the main timer, starts the Pomodoro for `_sprintDuration`
+ * minutes, and sets `_onSprintEnd` so the review panel is shown when the ring
+ * reaches zero. No-ops with a focus call if the intention field is empty.
+ * @returns {void}
+ */
+function startSprint() {
+  _sprintIntention = document.getElementById('sprintIntention').value.trim();
+  if (!_sprintIntention) {
+    document.getElementById('sprintIntention').focus();
+    return;
+  }
+  document.getElementById('sprintSetup').style.display = 'none';
+  _sprintActive = true;
+
+  const entry = {
+    id: Date.now() + '',
+    text: _sprintIntention,
+    tag: selectedTag,
+    ts: safeRoundedStart(),
+    date: dk(new Date()),
+    _sprintDuration,
+  };
+  entries.push(entry);
+  _sprintEntryId = entry.id;
+  save();
+
+  if (activeTimer) stopTimer();
+  startTimer(entry.id);
+
+  const focusIntention = document.getElementById('sprintFocusIntention');
+  if (focusIntention) {
+    focusIntention.textContent = _sprintIntention;
+    focusIntention.style.display = '';
+  }
+
+  // Start pomodoro for the sprint duration
+  initPomo(_sprintDuration);
+  startPomo();
+  _onSprintEnd = showSprintReview;
+
+  render();
+}
+
+/**
+ * Called from `pomoDone()` when the Pomodoro ring reaches zero.
+ * Fires the registered `_onSprintEnd` callback if one is set, then clears it
+ * so it cannot fire twice.
+ * @returns {void}
+ */
+function notifyPomodoroEnd() {
+  if (_onSprintEnd) {
+    const fn = _onSprintEnd;
+    _onSprintEnd = null;
+    fn();
+  }
+}
+
+/**
+ * Stops the main timer and renders the sprint review panel inside #sprintReview.
+ * Populates the intention label, wires outcome buttons (yes / partly / no),
+ * and on save: appends the sprint to `sprintLog`, tags the entry with the
+ * outcome, persists both, hides the panel, and triggers a full render.
+ * @returns {void}
+ */
+function showSprintReview() {
+  stopTimer();
+  const el = document.getElementById('sprintReview');
+  if (!el) return;
+  el.style.display = '';
+  document.getElementById('sprintReviewIntention').textContent = `"${_sprintIntention}"`;
+  document.getElementById('sprintReviewNote').value = '';
+
+  const outcomesEl = document.getElementById('sprintOutcomes');
+  outcomesEl.innerHTML = [
+    ['yes', '✓ Yes', '#1d9e75'],
+    ['partly', '◑ Partly', '#ef9f27'],
+    ['no', '✗ No', '#d32f2f'],
+  ]
+    .map(
+      ([val, label, color]) =>
+        `&lt;button class="add-btn sprint-outcome-btn" data-outcome="${val}"
+               style="flex:1;color:${color};border-color:${color}44">${label}&lt;/button>`
+    )
+    .join('');
+
+  let _outcome = null;
+  outcomesEl.querySelectorAll('.sprint-outcome-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _outcome = btn.dataset.outcome;
+      outcomesEl
+        .querySelectorAll('.sprint-outcome-btn')
+        .forEach((b) => (b.style.fontWeight = b === btn ? '600' : ''));
+    });
+  });
+
+  document.getElementById('sprintReviewSave').onclick = () => {
+    if (!_outcome) {
+      alert('Please choose an outcome.');
+      return;
+    }
+    const note = document.getElementById('sprintReviewNote').value.trim();
+    loadSprintLog();
+    sprintLog.push({
+      id: _sprintEntryId,
+      intention: _sprintIntention,
+      duration: _sprintDuration,
+      outcome: _outcome,
+      note,
+      ts: Date.now(),
+    });
+    saveSprintLog();
+
+    const entry = entries.find((e) => e.id === _sprintEntryId);
+    if (entry) {
+      entry._sprintOutcome = _outcome;
+      save();
+    }
+
+    el.style.display = 'none';
+    _sprintActive = false;
+    const fi = document.getElementById('sprintFocusIntention');
+    if (fi) fi.style.display = 'none';
+    render();
+  };
+}
+
+/**
+ * Registers all sprint UI event listeners: the sprint mode button, start,
+ * cancel, and Enter-key shortcut on the intention input.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
+function initSprints() {
+  document.getElementById('sprintModeBtn')?.addEventListener('click', openSprintSetup);
+  document.getElementById('sprintStartBtn')?.addEventListener('click', startSprint);
+  document.getElementById('sprintCancel')?.addEventListener('click', () => {
+    const el = document.getElementById('sprintSetup');
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('sprintIntention')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') startSprint();
+  });
+}
 </code></pre>
         </article>
     </section>
