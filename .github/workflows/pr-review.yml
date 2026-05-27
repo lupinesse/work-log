@@ -66,7 +66,7 @@ jobs:
           echo "Review complete ($(wc -l < review-output.txt) lines)"
 
       - name: Post review as PR comment
-        if: always()
+        if: always() && steps.key-check.result != 'skipped'
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
