@@ -318,6 +318,10 @@
   opacity: 1;
 }
 
+.entry.is-timing {
+  background: var(--live-softer);
+}
+
 .entry.is-timing .erestart {
   opacity: 0;
   pointer-events: none;

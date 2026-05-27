@@ -10,6 +10,23 @@
 
 ---
 
+## v1.8.9 — 2026-05-28
+
+### Visual — Unified cool-palette redesign
+
+- **Base tokens updated to cool palette**: `--text`, `--text2`, `--text3`, `--bg2`, `--bg3`, `--border`, `--border2` all shifted from warm-grey to cool blue-grey to match the unified style spec
+- **New in-progress tokens**: `--in-progress` (#ffffdf lemon), `--in-progress-accent` (#ca8a04 mustard), `--in-progress-border` (#fef08a), `--in-progress-ink` (#713f12) — dark-mode equivalents included
+- **New `--jira` token** (#1d4ed8 / #60a5fa dark) for Jira ticket link colour
+- **Active-timer task row**: pulsing amber animation replaced with a static lemon-yellow (`--in-progress`) background and 3px mustard (`--in-progress-accent`) left border; hover tints to `--in-progress-border`
+- **In-progress status pill**: updated from warm amber to mustard/lemon palette using the new in-progress tokens
+- **Live entry tint**: `.entry.is-timing` rows now receive a `--live-softer` (#f0f9ff) background so the active entry is softly distinguished in the time log
+- **Hero Card idle shadow**: subtle two-layer box-shadow added to `.hero-card--idle` per design spec
+- **Hero Card middle divider**: `.hero-middle` border changed from `--line-strong` to `--border` (lighter hairline)
+- **`.plan-text` colour**: hardcoded warm `#383836` replaced with `var(--text)` (tokens now carry the correct value in both modes)
+- **`.jira-task-key` colour**: migrated from `var(--info-text)` to `var(--jira)` for semantic correctness
+
+---
+
 ## v1.8.8 — 2026-05-28
 
 ### Fixed

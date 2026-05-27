@@ -161,7 +161,7 @@
 .jira-task-key {
   font-size: 11px;
   font-weight: 500;
-  color: var(--info-text);
+  color: var(--jira);
   flex-shrink: 0;
   min-width: 84px;
 }
@@ -325,31 +325,15 @@
   opacity: 0.5;
 }
 
-@keyframes plan-active-pulse {
-  0%,
-  100% {
-    background: rgba(186, 117, 23, 0.08);
-  }
-
-  50% {
-    background: rgba(186, 117, 23, 0.2);
-  }
-}
-
 .plan-item.active-timer {
-  animation: plan-active-pulse 2s ease-in-out infinite;
-  border-left: 3px solid #ef9f27;
+  background: var(--in-progress);
+  border-left: 3px solid var(--in-progress-accent);
   padding-left: 6px;
   border-radius: var(--radius);
 }
 
-.plan-item.active-timer .plan-text {
-  color: #fac775;
-}
-
 .plan-item.active-timer:hover {
-  animation: none;
-  background: var(--bg2);
+  background: var(--in-progress-border);
 }
 
 /* stylelint-disable-next-line block-no-empty -- intentionally empty; kept for specificity anchor */
@@ -382,9 +366,9 @@
 }
 
 .plan-status.inprogress {
-  background-color: #ffb830;
-  color: #1a0800;
-  border-color: #c07820;
+  background-color: var(--in-progress-border);
+  color: var(--in-progress-ink);
+  border-color: var(--in-progress-accent);
   font-weight: 600;
 }
 
@@ -765,13 +749,7 @@
 .plan-text {
   font-size: 12px;
   font-weight: 600;
-  color: #383836;
-}
-
-@media (prefers-color-scheme: dark) {
-  .plan-text {
-    color: #cbcbc9;
-  }
+  color: var(--text);
 }
 
 /* Pending/blocked section — tighter, completed-style typography */

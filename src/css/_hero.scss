@@ -22,6 +22,9 @@
 // State modifier: left-edge colour + optional background tint
 .hero-card--idle {
   border-left-color: var(--line-strong);
+  box-shadow:
+    0 1px 0 rgba(15, 30, 55, 0.04),
+    0 2px 8px -4px rgba(15, 30, 55, 0.08);
 }
 
 .hero-card--running {
@@ -60,7 +63,7 @@
 .hero-middle {
   min-width: 0;
   padding-left: 8px;
-  border-left: 1px solid var(--line-strong);
+  border-left: 1px solid var(--border);
 }
 
 // Right column: action buttons
