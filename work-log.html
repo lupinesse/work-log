@@ -640,10 +640,13 @@
           messages: [{ role: 'user', content: 'Reply with ONLY the page title of ' + url + ' — nothing else.' }]
         })
       });
+      if (!res.ok) throw new Error('API ' + res.status);
       const data = await res.json();
       const title = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
       if (title) document.getElementById('notionName').value = title;
-    } catch {}
+    } catch (err) {
+      wlLog.warn('notionFetchBtn: title fetch failed', err);
+    }
     this.textContent = 'fetch title';
     this.disabled = false;
   });

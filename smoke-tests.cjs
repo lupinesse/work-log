@@ -2292,6 +2292,24 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Section 41. Regression: Anthropic key not exposed on window ──────────
+  console.log('\n41. Regression: Anthropic key not in browser');
+  {
+    const page = await freshPage(ctx);
+    const exposed = await page.evaluate(() => {
+      const n = window._wlNotion;
+      return {
+        hasGetKey: typeof n?.getAnthropicKey === 'function',
+        hasSetKey: typeof n?.setAnthropicKey === 'function',
+        lsKey: localStorage.getItem('wl_anthropic_key'),
+      };
+    });
+    assert('getAnthropicKey not on window._wlNotion', exposed.hasGetKey === false);
+    assert('setAnthropicKey not on window._wlNotion', exposed.hasSetKey === false);
+    assert('wl_anthropic_key cleared from localStorage', exposed.lsKey === null);
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
