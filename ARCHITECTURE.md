@@ -3,9 +3,9 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.8 |
-| Covers app version | v1.8.x |
-| Last reviewed | 2026-05-26 |
+| Document version | 1.8.4 |
+| Covers app version | v1.8.4 |
+| Last reviewed | 2026-05-27 |
 | Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
 | Status | **Approved** — reflects current implementation |
 
@@ -13,7 +13,7 @@
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (15 modules) and organized SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (28 source files across 23 numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -379,6 +379,83 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
+#### **15-notion.js** — Notion Integration
+**Responsibility**: Push tasks and log entries to a Notion database via the Notion API.
+
+**Configuration**: Notion token and database IDs in `src/js/00-config.local.js` (gitignored).
+
+---
+
+### BuJo Modules (v1.8.x)
+
+#### **10b-signifiers.js** — Entry Signifiers
+**Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
+
+**Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
+
+**Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
+
+---
+
+#### **16-rapid.js** — Rapid Logging Overlay
+**Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
+
+**Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`
+
+---
+
+#### **18-dailylog.js** — Daily Log Feed
+**Responsibility**: A unified chronological feed tab merging time entries, log notes, and task status comments for the currently viewed day.
+
+**Key functions**: `buildDailyLogItems(dateKey)`, `renderDailyLog()`, `addLogNote()`
+
+**localStorage key**: `wl_lognotes_v1`
+
+---
+
+#### **19-monthlylog.js** — Monthly Log Heatmap
+**Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
+
+**Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`
+
+---
+
+#### **20-migration.js** — End-of-Month Migration
+**Responsibility**: Modal flow that surfaces every unresolved task for the viewed month and requires an explicit decision: carry forward, schedule (date picker), or drop. Auto-prompts on the last day of the month.
+
+**Key functions**: `openMigration()`, `renderMigrationStep()`, `carryTask(task)`, `scheduleTask(task, dateStr)`, `dropTask(task)`, `initMigration()`
+
+**localStorage key**: `wl_migration_v1`
+
+---
+
+#### **21-reflection.js** — End-of-Day Reflection
+**Responsibility**: After the end-of-day export, shows a modal for a 1–5 focus-quality rating, a 1–5 energy-level rating, and an optional one-sentence note. Ratings are surfaced as indicator dots on Monthly Log heatmap cells.
+
+**Key functions**: `openReflection(onComplete)`, `renderReflStars(elId, current)`, `getReflectionForDate(dateKey)`
+
+**localStorage key**: `wl_reflection_v1`
+
+---
+
+#### **22-trackers.js** — Custom Time-Goal Trackers
+**Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
+
+**Key functions**: `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `trackerStreak(tracker)`, `initTrackers()`
+
+**localStorage key**: `wl_trackers_v1`
+
+---
+
+#### **23-sprints.js** — Sprint Mode
+**Responsibility**: Enhances the Pomodoro with a sprint mode. User declares an intention; at the end a 3-button review (Yes / Partly / No) is shown and the session logged as a time entry with the intention as description and outcome tagged.
+
+**Key functions**: `openSprintSetup()`, `startSprint()`, `showSprintReview()`, `notifyPomodoroEnd()`, `initSprints()`
+
+**localStorage key**: `wl_sprints_v1`
+
+---
+
 ## Data Flow Diagram
 
 ```
@@ -387,6 +464,11 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 │  • wl_entries_v1 (work log)                                  │
 │  • wl_timer_v1 (active timer)                                │
 │  • wl_plan_v1 (tasks)                                        │
+│  • wl_lognotes_v1 (daily log notes)                          │
+│  • wl_reflection_v1 (end-of-day ratings)                     │
+│  • wl_sprints_v1 (sprint history)                            │
+│  • wl_trackers_v1 (tracker definitions)                      │
+│  • wl_migration_v1 (month close-out record)                  │
 └─────────────┬──────────────────────────────────────────────┘
               │
               ↓
@@ -517,7 +599,7 @@ localStorage.setItem('wl_entries_v1', JSON.stringify(entries));
 ## Extension Points
 
 ### Adding a New Feature
-1. **New module**: Create `src/js/15-feature.js` with functions
+1. **New module**: Create `src/js/24-feature.js` with functions (next available number)
 2. **UI**: Add HTML to `work-log.html`
 3. **State**: If persists, add to localStorage and validators
 4. **Rendering**: Add function in `04-render.js` call stack
@@ -544,10 +626,16 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Smoke Tests** (162 tests via Playwright):
+**Unit Tests** (133 tests via Node assert):
+- `test/unit.cjs` — 16 describe blocks covering all pure functions in `00-pure-fns.js`, `validateBackupFile`, and schema migrations
+
+**Smoke Tests** (211 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
+- BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
+
+**Total: 344 tests (133 unit + 211 smoke)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
@@ -558,18 +646,17 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **Split Module**: `10-tasks.js` too large (929 lines)
-   - → `10-tasks-ui.js` (rendering)
-   - → `10-tasks-logic.js` (status transitions, nesting)
+1. **Split Module**: `10-tasks.js` is 1 100+ lines — too large for a single file
+   - → `10-tasks-ui.js` (rendering + event binding)
+   - → `10-tasks-logic.js` (status transitions, nesting, carry-over)
 
-2. **API Validation**: Add schema validators for external APIs
+2. **API Validation**: Add schema validators for external API responses
    - Outlook calendar response
    - Weather API response
    - Jira CSV format
 
-3. **Logging**: Centralize console.warn/error calls
-   - Create `logger.js` with debug/info/warn/error levels
+3. **BuJo module size**: `renderMonthlyLog()` in `19-monthlylog.js` mixes HTML build, event binding, and summary calculation in one ~120-line function — split into focused sub-functions
 
-4. **Accessibility**: Add ARIA labels, document keyboard shortcuts
+4. **Node version alignment**: `.nvmrc` pins 24.15.0 but CI uses Node 20 and `.devcontainer` also uses Node 20; align all three to the same version
 
 This architecture has been stable through v1.0 → v1.1 releases with only feature additions.

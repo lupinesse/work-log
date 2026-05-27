@@ -32,10 +32,10 @@ Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md`.
 | Large/complex data in a database | N/A | localStorage is appropriate scale for a personal single-user tool |
 | Data in information asset register | ✅ Pass | `DATA.md` — full localStorage schema dictionary |
 | Pair programming used (together with another AI) | ✅ Pass | Recorded in `CITATION.cff` and `CONTRIBUTING.md` |
-| Core functionality unit tested | ✅ Pass | `test/unit.cjs` — 110 tests across 13 describe blocks |
+| Core functionality unit tested | ✅ Pass | `test/unit.cjs` — 110 tests across 13 describe blocks (133 / 16 blocks as of v1.8.4) |
 | Informal tests recorded near the code | ✅ Pass | `@example` JSDoc tags on all pure functions in `00-pure-fns.js` |
 | Stakeholder sign-off recorded | ✅ Pass | This document |
-| Formal user acceptance testing (by another AI) | ✅ Pass | `smoke-tests.cjs` — 160+ Playwright tests run by AI pair reviewer |
+| Formal user acceptance testing (by another AI) | ✅ Pass | `smoke-tests.cjs` — 160+ Playwright tests run by AI pair reviewer (211 as of v1.8.4) |
 | Integration tests | ✅ Pass | `smoke-tests.cjs` wired into `npm test` |
 | Code runs cross-platform where appropriate | ✅ Pass | `path.join()` throughout; `launch.sh` for Linux/Mac |
 | Dependencies managed separately for users/devs/testers | ✅ Pass | All in `devDependencies`; no runtime deps (browser app) |
@@ -58,3 +58,40 @@ Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md`.
 ---
 
 *This document is maintained per-release. Future releases should add a new dated section.*
+
+---
+
+## v1.8.1–v1.8.4 — 2026-05-26 / 2026-05-27
+
+### Changes since v1.8.0
+
+| Release | Key changes |
+|---|---|
+| v1.8.1 | Timezone bug fix in `dk()`; `fmtDur` extracted; empty catches replaced with `wlLog.warn()`; dead functions removed |
+| v1.8.2 | Backup import integrated into Start of Day; forced hourly break removed; TDZ crash fix; `validateBackupFile` extracted as pure function |
+| v1.8.3 | `.nvmrc` added; duplicate formatters consolidated; JSDoc added to all BuJo modules; Stylelint added; `DATA.md` updated with new BuJo fields |
+| v1.8.4 | Test suite streamlined (344 total: 133 unit + 211 smoke); `freshPage()` wait optimised; 31 redundant smoke tests removed; automated weekly QA review added |
+
+### QA checklist delta
+
+All items from the v1.8.0 checklist remain ✅ Pass. Additional items addressed:
+
+| Checklist item | Status | Evidence |
+|---|---|---|
+| All functions and classes documented | ✅ Pass | JSDoc added to all 8 BuJo modules (16-rapid through 23-sprints) in v1.8.3 |
+| `DATA.md` up to date | ✅ Pass | 5 new entry fields and 5 new localStorage keys added |
+| Test counts accurate in documentation | ✅ Pass | ARCHITECTURE.md and QA.md updated to 133 unit + 211 smoke = 344 total |
+| Automated QA review | ✅ Pass | `weekly-qa-review.yml` CI workflow; first report at `docs/qa-reports/qa-review-2026-05-27.md` |
+| Version tag present | ✅ Pass | `v1.8.4` annotated git tag created |
+
+### Stakeholder acceptance
+
+| Field | Value |
+|---|---|
+| Accepted by | Jenni Järvinen (sole author and user) |
+| Date | 2026-05-27 |
+| Scope | v1.8.1–v1.8.4 — all features listed in `CHANGELOG.md §§ v1.8.1–v1.8.4` |
+| Method | Automated smoke test suite (211 Playwright tests) + manual spot-check of BuJo features on Windows 11 / Chrome |
+| AI co-reviewer | Claude Sonnet 4.6 (QA audit, test streamlining, documentation updates) |
+| Outcome | **Accepted** — all 344 tests passing; first automated QA report filed; no regressions |
+| Outstanding known issues | Node version inconsistency (`.nvmrc` = 24.15.0, CI = Node 20, devcontainer = Node 20) — tracked in `docs/qa-reports/qa-review-2026-05-27.md` priority 5 |
