@@ -84,12 +84,15 @@
 .hero-eyebrow--idle {
   color: var(--ink-faint);
 }
+
 .hero-eyebrow--running {
   color: var(--live);
 }
+
 .hero-eyebrow--paused {
   color: var(--paused);
 }
+
 .hero-eyebrow--stopped {
   color: var(--stopped);
 }
@@ -244,6 +247,7 @@
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 8px;
+  list-style: none;
 }
 
 .hero-chip {
