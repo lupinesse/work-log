@@ -26,6 +26,7 @@ function startTimer(entryId) {
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
+  renderHeroCard();
 }
 /**
  * Pauses the running timer, accumulating elapsed time so it can be resumed.
@@ -43,6 +44,7 @@ function pauseTimer() {
   save();
   updateTimerBar();
   updateTabAndFavicon();
+  renderHeroCard();
 }
 /**
  * Resumes a paused timer from where it left off.
@@ -56,6 +58,7 @@ function resumeTimer() {
   timerInterval = setInterval(tickTimer, 1000);
   tickTimer();
   updateTimerBar();
+  renderHeroCard();
 }
 /**
  * Stops the active timer, stamps the log entry with an end time (rounded to
@@ -71,17 +74,13 @@ function stopTimer() {
   }
   const entry = entries.find((e) => e.id === activeTimer.entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
+  // Enter the 6-second confirmation panel before clearing activeTimer so
+  // heroEnterStopped() can snapshot the entry details.
+  if (entry) heroEnterStopped(entry);
   activeTimer = null;
   _lastChimeMinute = null;
   save();
   render();
-  const bar = document.getElementById('timerBar');
-  if (bar) {
-    bar.style.background = '';
-    bar.style.borderColor = '';
-  }
-  const pulse = document.querySelector('.timer-pulse');
-  if (pulse) pulse.style.background = '';
   // Close park capture if open
   const pc = document.getElementById('parkCapture');
   const pb = document.getElementById('timerParkBtn');
@@ -268,30 +267,12 @@ function playChime() {
 }
 
 /**
- * Applies or clears the dynamic colour on the timer bar and pulse indicator.
- * When paused, removes inline styles so the CSS `.paused` class takes over.
- * When running, sets background and border to the hue computed by
- * {@link timerBarColor}.
+ * No-op: `#timerBar` was replaced by the Hero Card whose colour is driven by
+ * CSS state-modifier classes (`hero-card--running`, `--paused`, etc.).
+ * Kept so existing call-sites in `tickTimer` compile without changes.
  */
 function updateTimerBarColor() {
-  const bar = document.getElementById('timerBar');
-  if (!bar || !activeTimer) return;
-  if (activeTimer.paused) {
-    // Let CSS handle paused state — remove inline styles
-    bar.style.background = '';
-    bar.style.borderColor = '';
-    const pulse = bar.querySelector('.timer-pulse');
-    if (pulse) pulse.style.background = '';
-    return;
-  }
-  const color = timerBarColor(getElapsedMs(), false);
-  // Derive a darker background from the same hue
-  const t = Math.min(getElapsedMs() / (HYPERFOCUS_MINS * 60 * 1000), 1);
-  const hue = Math.round(158 - 153 * t);
-  bar.style.background = `hsl(${hue}, 60%, 8%)`;
-  bar.style.borderColor = color;
-  const pulse = bar.querySelector('.timer-pulse');
-  if (pulse) pulse.style.background = color;
+  // Hero card colour is handled entirely by CSS — nothing to do here.
 }
 
 /**
@@ -327,10 +308,11 @@ function tickTimer() {
     if (!activeTimer) return;
     const entry = entries.find((e) => e.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
-    document.getElementById('timerBar').style.display = 'flex';
-    // Use innerHTML so Jira ticket links are rendered inside the title row
-    document.getElementById('timerTask').innerHTML = entry ? jiraTicketHtml(entry.text) : '…';
-    document.getElementById('timerElapsed').textContent = fmtElapsed(elapsed);
+    // Update hero card clock (running state) — lightweight, no full render
+    heroUpdateClock();
+    // Keep the task title element current for accessibility aria-live region
+    const taskEl = document.getElementById('timerTask');
+    if (taskEl) taskEl.innerHTML = entry ? jiraTicketHtml(entry.text) : '…';
     updateTimerArc(elapsed);
     updateLiveBlock();
     updateTabAndFavicon();
@@ -350,17 +332,15 @@ function tickTimer() {
  * Also enables or disables the "make it interesting" hook button.
  */
 function updateTimerBar() {
-  const bar = document.getElementById('timerBar');
+  // #timerBar no longer exists — hero card replaces it.
+  // Keep the pause-button label update so existing event listeners remain valid.
   const pauseBtn = document.getElementById('timerPause');
   const hookBtn = document.getElementById('timerHookBtn');
   if (!activeTimer) {
-    bar.style.display = 'none';
     if (hookBtn) hookBtn.disabled = true;
     return;
   }
-  bar.style.display = 'flex';
-  bar.classList.toggle('paused', activeTimer.paused);
-  pauseBtn.textContent = activeTimer.paused ? 'resume' : 'pause';
+  if (pauseBtn) pauseBtn.textContent = activeTimer.paused ? 'resume' : 'pause';
   if (hookBtn) hookBtn.disabled = false;
 }
 /**

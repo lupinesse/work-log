@@ -187,8 +187,10 @@ async function runTests() {
     await page.evaluate(() => window.__wl.startTimer('tm1'));
     await page.waitForTimeout(1200);
     assert(
-      'Timer bar visible',
-      await page.evaluate(() => document.getElementById('timerBar').style.display !== 'none')
+      'Hero card shows running state',
+      await page.evaluate(() =>
+        document.getElementById('heroCard').classList.contains('hero-card--running')
+      )
     );
     assert(
       'Timer shows task name',
@@ -218,8 +220,10 @@ async function runTests() {
     await page.waitForTimeout(1500);
     const elapsed2 = await page.evaluate(() => document.getElementById('timerElapsed').textContent);
     assert(
-      'Timer bar visible while running',
-      await page.evaluate(() => document.getElementById('timerBar').style.display !== 'none')
+      'Hero card shows running state while timer active',
+      await page.evaluate(() =>
+        document.getElementById('heroCard').classList.contains('hero-card--running')
+      )
     );
     // Either the timer ticked (elapsed2 > elapsed1) or it shows non-zero
     const nonZero = elapsed1 !== '00:00' || elapsed2 !== '00:00';
@@ -230,6 +234,60 @@ async function runTests() {
       () => !!JSON.parse(localStorage.getItem('wl_timer_v1') || 'null')
     );
     assert('Timer state saved to localStorage', saved);
+    await page.close();
+  }
+
+  // ── 5b. Hero Card states (paused / stopped / undo) ───────────────────────
+  console.log('\n5b. Hero Card states');
+  {
+    const today = dk(new Date());
+    const entries = [
+      { id: 'hc1', text: 'Hero task', tag: 'work', ts: Date.now() - 10000, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+
+    // Start then pause
+    await page.evaluate(() => window.__wl.startTimer('hc1'));
+    await page.evaluate(() => window.__wl.pauseTimer());
+    assert(
+      'Hero card shows paused state',
+      await page.evaluate(() =>
+        document.getElementById('heroCard').classList.contains('hero-card--paused')
+      )
+    );
+    assert(
+      'Paused panel is visible',
+      await page.evaluate(() => document.getElementById('heroPanelPaused').style.display !== 'none')
+    );
+
+    // Stop from paused → stopped confirmation window
+    await page.evaluate(() => window.__wl.stopTimer());
+    assert(
+      'Hero card shows stopped state',
+      await page.evaluate(() =>
+        document.getElementById('heroCard').classList.contains('hero-card--stopped')
+      )
+    );
+    assert(
+      'Stopped panel is visible',
+      await page.evaluate(
+        () => document.getElementById('heroPanelStopped').style.display !== 'none'
+      )
+    );
+
+    // Undo removes the entry
+    const countBefore = await page.evaluate(() => window.__wl.getState().entries.length);
+    await page.click('#heroUndoBtn');
+    await page.waitForTimeout(50);
+    const countAfter = await page.evaluate(() => window.__wl.getState().entries.length);
+    assert('Undo removes the stopped entry', countAfter === countBefore - 1);
+    assert(
+      'Hero card returns to idle after undo',
+      await page.evaluate(() =>
+        document.getElementById('heroCard').classList.contains('hero-card--idle')
+      )
+    );
+
     await page.close();
   }
 

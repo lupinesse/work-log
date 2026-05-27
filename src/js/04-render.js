@@ -12,6 +12,9 @@
  * candidate for optimisation (see phase 6 below).
  */
 function render() {
+  /* ── 0. Hero Card state ── */
+  renderHeroCard();
+
   /* ── 1. Date header and navigation ── */
   document.getElementById('dateLabel').textContent = fmtLabel(viewDate);
   document.getElementById('prevDay').disabled = false;
@@ -346,7 +349,6 @@ function render() {
         activeTimer = null;
         save();
         updateTimerBtn(false);
-        document.getElementById('timerBar').style.display = 'none';
       }
       entries = entries.filter((e) => e.id !== id);
       save();
