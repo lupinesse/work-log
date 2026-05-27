@@ -262,7 +262,9 @@ function playChime() {
       osc.start(start);
       osc.stop(start + 0.5);
     });
-  } catch (e) {}
+  } catch (e) {
+    // Silently skip — Web Audio API may be unavailable (e.g. browser policy, no audio hardware)
+  }
 }
 
 /**

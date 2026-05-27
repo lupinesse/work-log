@@ -868,7 +868,9 @@ function loadExpiryDates() {
         .sort();
       return;
     }
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', e);
+  }
   // Seed localStorage with defaults on first load
   _expiryDates = [...EXPIRY_SEED];
   localStorage.setItem(STORE_EXPIRY, JSON.stringify(_expiryDates));

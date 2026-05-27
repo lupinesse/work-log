@@ -31,6 +31,7 @@ const {
   dk,
   fmtTime,
   fmtElapsed,
+  fmtDur,
   roundUp30,
   roundToNearest30,
   validEntry,
@@ -39,6 +40,7 @@ const {
   validBlock,
   validTimer,
   validPomoEntry,
+  validateBackupFile,
 } = sandbox;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -90,14 +92,15 @@ describe('escHtml', () => {
 
 // ── dk ────────────────────────────────────────────────────────────────────────
 describe('dk', () => {
-  // dk uses toISOString() which is UTC — use UTC-anchored dates to avoid
-  // timezone-dependent failures in CI.
-  it('formats a UTC date as YYYY-MM-DD', () =>
-    assert.equal(dk(new Date('2026-05-26T12:00:00Z')), '2026-05-26'));
-  it('returns YYYY-MM-DD format for year-end', () =>
-    assert.equal(dk(new Date('2026-12-31T23:59:59Z')), '2026-12-31'));
-  it('returns YYYY-MM-DD format for year-start', () =>
-    assert.equal(dk(new Date('2026-01-01T00:00:00Z')), '2026-01-01'));
+  // dk uses local date components (getFullYear/getMonth/getDate) — create dates
+  // with the local-time constructor (year, month, day, ...) to avoid timezone-
+  // dependent failures in CI.
+  it('formats a local date as YYYY-MM-DD', () =>
+    assert.equal(dk(new Date(2026, 4, 26, 12, 0, 0)), '2026-05-26')); // noon local
+  it('returns YYYY-MM-DD at local year-end (11:59 PM)', () =>
+    assert.equal(dk(new Date(2026, 11, 31, 23, 59, 0)), '2026-12-31'));
+  it('returns YYYY-MM-DD at local midnight (00:00)', () =>
+    assert.equal(dk(new Date(2026, 0, 1, 0, 0, 0)), '2026-01-01'));
   it('output matches YYYY-MM-DD pattern', () =>
     assert.match(dk(new Date()), /^\d{4}-\d{2}-\d{2}$/));
 });
@@ -125,6 +128,16 @@ describe('fmtElapsed', () => {
   it('uses MM:SS below 1h', () => assert.match(fmtElapsed(3_599_000), /^\d{2}:\d{2}$/));
   it('uses HH:MM:SS at exactly 1h', () =>
     assert.match(fmtElapsed(3_600_000), /^\d{2}:\d{2}:\d{2}$/));
+});
+
+// ── fmtDur ────────────────────────────────────────────────────────────────────
+describe('fmtDur', () => {
+  it('formats 0ms as 0m', () => assert.equal(fmtDur(0), '0m'));
+  it('formats 45 min as 45m', () => assert.equal(fmtDur(45 * 60_000), '45m'));
+  it('formats exactly 1h as 1h', () => assert.equal(fmtDur(60 * 60_000), '1h'));
+  it('formats 1h 30m as 1h 30m', () => assert.equal(fmtDur(90 * 60_000), '1h 30m'));
+  it('formats 2h 0m as 2h (no trailing 0m)', () => assert.equal(fmtDur(120 * 60_000), '2h'));
+  it('rounds partial minutes', () => assert.equal(fmtDur(89 * 60_000 + 30_000), '1h 30m'));
 });
 
 // ── roundUp30 ─────────────────────────────────────────────────────────────────
@@ -273,4 +286,84 @@ describe('validPomoEntry', () => {
   it('rejects string mins', () =>
     assert.equal(validPomoEntry({ ts: 1_000_000, mins: '25' }), false));
   it('rejects string ts', () => assert.equal(validPomoEntry({ ts: '1000000', mins: 25 }), false));
+});
+
+// ── validateBackupFile ────────────────────────────────────────────────────────
+describe('validateBackupFile', () => {
+  const minimalValid = { version: '1', entries: [], categories: [], planTasks: [] };
+
+  it('accepts a minimal valid backup', () => {
+    const result = validateBackupFile(minimalValid);
+    assert.ok(result.valid, `expected valid, got: ${result.error}`);
+  });
+
+  it('accepts a backup with optional arrays', () => {
+    const result = validateBackupFile({
+      ...minimalValid,
+      blocks: [],
+      pomoLog: [],
+      devLog: [],
+      distractions: [],
+      qpHidden: [],
+    });
+    assert.ok(result.valid);
+  });
+
+  it('rejects null', () => {
+    const result = validateBackupFile(null);
+    assert.equal(result.valid, false);
+    assert.ok(typeof result.error === 'string' && result.error.length > 0);
+  });
+
+  it('rejects an array', () => {
+    const result = validateBackupFile([]);
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects a plain string', () => {
+    const result = validateBackupFile('backup');
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects version !== "1"', () => {
+    const result = validateBackupFile({ ...minimalValid, version: '2' });
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('"2"'));
+  });
+
+  it('rejects missing version field', () => {
+    const noVersion = { ...minimalValid };
+    delete noVersion.version;
+    const result = validateBackupFile(noVersion);
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects missing entries array', () => {
+    const noEntries = { ...minimalValid };
+    delete noEntries.entries;
+    const result = validateBackupFile(noEntries);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('"entries"'));
+  });
+
+  it('rejects missing categories array', () => {
+    const noCats = { ...minimalValid };
+    delete noCats.categories;
+    const result = validateBackupFile(noCats);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('"categories"'));
+  });
+
+  it('rejects missing planTasks array', () => {
+    const noTasks = { ...minimalValid };
+    delete noTasks.planTasks;
+    const result = validateBackupFile(noTasks);
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('"planTasks"'));
+  });
+
+  it('rejects entries being an object instead of array', () => {
+    const result = validateBackupFile({ ...minimalValid, entries: {} });
+    assert.equal(result.valid, false);
+  });
 });

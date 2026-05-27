@@ -219,7 +219,9 @@ function playPomoBeep() {
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
         osc.start();
         osc.stop(ctx.currentTime + 0.25);
-      } catch (e) {}
+      } catch (e) {
+        // Silently skip — Web Audio API may be unavailable (browser policy, no hardware)
+      }
     }, delay)
   );
 }
@@ -323,7 +325,9 @@ function exportForDate(dateKey) {
   let pomoLog = [];
   try {
     pomoLog = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('buildExportMd: failed to parse pomodoro log — sessions omitted from export', e);
+  }
   const dayPomos = pomoLog.filter((p) => p.date === dateKey);
   if (dayPomos.length > 0) {
     lines.push('');

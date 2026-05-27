@@ -4,12 +4,20 @@
  * Full application re-render: updates the date label, timer bar, stat counters,
  * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
  * time-block view. Call whenever persistent state changes.
+ *
+ * Design trade-off: full DOM re-render on every change rather than targeted
+ * updates. Keeps state reasoning simple for a single-user personal tool where
+ * the entry list is small (typically < 50 items per day). If performance becomes
+ * a concern, the innermost `tl.querySelectorAll` event-binding loop is the first
+ * candidate for optimisation (see phase 6 below).
  */
 function render() {
+  /* ── 1. Date header and navigation ── */
   document.getElementById('dateLabel').textContent = fmtLabel(viewDate);
   document.getElementById('prevDay').disabled = false;
   document.getElementById('nextDay').disabled = isToday(viewDate);
 
+  /* ── 2. Timer bar ── */
   if (!activeTimer) {
     updateTimerBar();
     updateTimerBtn(false);
@@ -18,6 +26,7 @@ function render() {
     updateTimerBtn(true);
   }
 
+  /* ── 3. Header stat tiles (distinct tasks today / epics this week / streak) ── */
   const todayKey = dk(new Date());
   document.getElementById('statToday').textContent = new Set(
     entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase())
@@ -30,13 +39,8 @@ function render() {
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
-  // Sub-stats
-  function fmtMs(ms) {
-    const mins = Math.round(ms / 60000),
-      h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-  }
+  /* ── 4. Sub-stat tiles (most-tracked task today / this week / best streak day) ── */
+  // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic
   function taskSubHtml(label, ms) {
     const m = label.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/s);
     const ticket = m ? m[1] : null;
@@ -45,8 +49,8 @@ function render() {
       ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
       : null;
     return keyHtml
-      ? `${keyHtml}${name ? `<br>${escHtml(name)}` : ''}<br><strong>${fmtMs(ms)}</strong>`
-      : `${escHtml(label)}<br><strong>${fmtMs(ms)}</strong>`;
+      ? `${keyHtml}${name ? `<br>${escHtml(name)}` : ''}<br><strong>${fmtDur(ms)}</strong>`
+      : `${escHtml(label)}<br><strong>${fmtDur(ms)}</strong>`;
   }
 
   // Today: task with most tracked time
@@ -115,7 +119,7 @@ function render() {
       const dayName = isToday(d3)
         ? 'today'
         : d3.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
-      streakSub.innerHTML = `<strong>Longest date tracked</strong><br>${escHtml(dayName)}<br><strong>${fmtMs(bestMs)}</strong>`;
+      streakSub.innerHTML = `<strong>Longest date tracked</strong><br>${escHtml(dayName)}<br><strong>${fmtDur(bestMs)}</strong>`;
       streakSub.style.display = '';
     } else {
       streakSub.style.display = 'none';
@@ -124,6 +128,7 @@ function render() {
     streakSub.style.display = 'none';
   }
 
+  /* ── 5. Timeline ── */
   const list = viewEntries();
   const tl = document.getElementById('timeline');
 
@@ -131,6 +136,7 @@ function render() {
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
   const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
+  // Empty state: render sub-components (plan, timeblock) and bail out early
   if (!list.length) {
     tl.innerHTML =
       logHeader +
@@ -147,6 +153,7 @@ function render() {
     renderTrackers();
     return;
   }
+  // Build entry row HTML — one <div class="entry"> per log entry
   tl.innerHTML =
     logHeader +
     list
@@ -208,6 +215,7 @@ function render() {
       })
       .join('');
 
+  /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
   bindSignifierClicks();
 
   /* time editor */
@@ -545,10 +553,7 @@ function renderChart(list) {
     .map((key) => {
       const ms = totals[key],
         pct = Math.round((ms / maxMs) * 100);
-      const mins = Math.round(ms / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+      const dur = fmtDur(ms);
       const { label, color } = meta[key];
       const live = liveKeys.has(key) ? ' chart-row-live' : '';
       const liveDot = liveKeys.has(key)
@@ -563,20 +568,11 @@ function renderChart(list) {
     })
     .join('');
 
-  const tm2 = Math.round(grandTotal / 60000),
-    th2 = Math.floor(tm2 / 60),
-    tm3 = tm2 % 60;
-  const totalDur = th2 > 0 ? (tm3 > 0 ? `${th2}h ${tm3}m` : `${th2}h`) : `${tm3}m`;
+  const totalDur = fmtDur(grandTotal);
   const billMs = timed.filter((e) => isEntryBillable(e)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
   const nonBillMs = timed.reduce((s, e) => s + (e.tsEnd - e.ts), 0) - billMs;
-  const fmtMs = (ms) => {
-    const m = Math.round(ms / 60000),
-      h = Math.floor(m / 60),
-      r = m % 60;
-    return h > 0 ? (r > 0 ? `${h}h ${r}m` : `${h}h`) : `${r}m`;
-  };
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtMs(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtMs(nonBillMs)}</span></div>` : ''}</div>`;
+  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div>`;
   el.querySelectorAll('.chart-tog').forEach((b) =>
     b.addEventListener('click', () => {
       chartMode = b.dataset.mode;

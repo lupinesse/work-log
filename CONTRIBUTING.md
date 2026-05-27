@@ -79,6 +79,19 @@ The repository uses a simple trunk-based workflow:
 - **Pull requests** — required for any code change; self-review is fine for solo contributors
 - **Releases** — tagged commits on `main` following semantic versioning (see `CHANGELOG.md`)
 
+### Commits
+
+- **Commit often** — each logical change should be its own commit; avoid "big-bang" commits that mix unrelated changes
+- **Commit message format**: imperative mood (`Add`, `Fix`, `Update`), present tense; keep the subject line under 72 characters; use the body for *why*, not *what*
+  ```
+  Fix checkpoint toggle skipping 'partial' state
+
+  The cycle was false → true → false, missing the intermediate value.
+  Changed the ternary to: false → 'partial' → true → false.
+  ```
+- **Never commit secrets**: `config.local.ps1` is gitignored; API tokens must never be committed
+- **`.gitignore`** covers: `node_modules/`, `dist/`, `portable/`, `config.local.ps1`, `.env`, crash logs — update it before adding any new generated or sensitive file
+
 ## Code Style Guidelines
 
 ### JavaScript

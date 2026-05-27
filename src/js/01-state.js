@@ -138,7 +138,9 @@ function load() {
           categories = snap.categories.filter(validCategory);
         wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
       }
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('load: failed to parse snapshot from localStorage', e);
+    }
   }
   loadLogNotes();
   loadTrackers();

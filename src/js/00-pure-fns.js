@@ -48,14 +48,21 @@ function escHtml(s) {
 /* ── Date / time formatting ── */
 
 /**
- * Formats a Date as YYYY-MM-DD using UTC (toISOString).
- * Note: uses UTC midnight, not local midnight — callers near midnight in UTC+ zones
- * should be aware that this may return the previous calendar day.
+ * Formats a Date as YYYY-MM-DD using local calendar date.
+ * Uses local date components (getFullYear / getMonth / getDate) so the returned
+ * string always matches the date the user sees on their clock, regardless of timezone.
  * @param {Date} d
- * @returns {string} e.g. '2026-05-25'
+ * @returns {string} e.g. '2026-05-26'
+ * @example
+ * dk(new Date(2026, 4, 26, 12, 0, 0))  // → '2026-05-26'  (noon local)
+ * dk(new Date(2026, 11, 31, 23, 59, 0)) // → '2026-12-31' (11 PM local)
+ * dk(new Date(2026, 0, 1, 0, 0, 0))    // → '2026-01-01'  (midnight local)
  */
 function dk(d) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 /**
@@ -89,6 +96,24 @@ function fmtElapsed(ms) {
   if (hh > 0)
     return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
   return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+/**
+ * Formats a duration in milliseconds as a compact human-readable string ("Xh Ym").
+ * Used throughout the UI for tracked-time display in the timeline, chart, and plan.
+ * @param {number} ms - Duration in milliseconds.
+ * @returns {string} e.g. '1h 30m', '45m', '2h'
+ * @example
+ * fmtDur(0)                  // → '0m'
+ * fmtDur(45 * 60 * 1000)     // → '45m'
+ * fmtDur(90 * 60 * 1000)     // → '1h 30m'
+ * fmtDur(120 * 60 * 1000)    // → '2h'
+ */
+function fmtDur(ms) {
+  const mins = Math.round(ms / 60000);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 }
 
 /* ── Billing time rounding ── */
@@ -246,6 +271,47 @@ function validPomoEntry(e) {
   return !!(e && typeof e.ts === 'number' && typeof e.mins === 'number');
 }
 
+/* ── Backup import validation ── */
+
+/**
+ * Validates a parsed JSON backup object created by `exportBackup()`.
+ *
+ * Separated from the import flow so the validation logic can be unit-tested
+ * without any browser APIs. `importBackup()` calls this before writing to
+ * localStorage.
+ *
+ * @param {*} backup - Parsed backup object (typically from `JSON.parse`).
+ * @returns {{ valid: boolean, error?: string }}
+ *   `{ valid: true }` when the backup is usable;
+ *   `{ valid: false, error: string }` with a human-readable reason otherwise.
+ * @example
+ * validateBackupFile({ version: '1', entries: [], categories: [], planTasks: [] })
+ *   // → { valid: true }
+ * validateBackupFile(null)
+ *   // → { valid: false, error: 'Not a valid backup object.' }
+ * validateBackupFile({ version: '2', entries: [], categories: [], planTasks: [] })
+ *   // → { valid: false, error: 'Unrecognised backup version "2"...' }
+ * validateBackupFile({ version: '1', entries: [], categories: [] })
+ *   // → { valid: false, error: '...missing required field "planTasks".' }
+ */
+function validateBackupFile(backup) {
+  if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
+    return { valid: false, error: 'Not a valid backup object.' };
+  }
+  if (backup.version !== '1') {
+    return {
+      valid: false,
+      error: `Unrecognised backup version "${backup.version}". Only version 1 is supported.`,
+    };
+  }
+  for (const key of ['entries', 'categories', 'planTasks']) {
+    if (!Array.isArray(backup[key])) {
+      return { valid: false, error: `Invalid backup — missing required field "${key}".` };
+    }
+  }
+  return { valid: true };
+}
+
 // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
 // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
 // this block is skipped — functions remain as globals in the closure.
@@ -256,6 +322,7 @@ if (typeof module !== 'undefined') {
     dk,
     fmtTime,
     fmtElapsed,
+    fmtDur,
     roundUp30,
     roundToNearest30,
     validEntry,
@@ -264,5 +331,6 @@ if (typeof module !== 'undefined') {
     validBlock,
     validTimer,
     validPomoEntry,
+    validateBackupFile,
   };
 }

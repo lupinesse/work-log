@@ -226,7 +226,9 @@ function saveHook(taskText, hook) {
       map[taskText.toLowerCase()] = hook;
     }
     localStorage.setItem(STORE_HOOKS, JSON.stringify(map));
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('saveHook: failed to persist task hook to localStorage', e);
+  }
 }
 
 (() => {

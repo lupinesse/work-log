@@ -264,6 +264,106 @@ function exportBackup() {
   writeExportFile('JSON backups', filename, blob);
 }
 
+/**
+ * Restores application state from a JSON backup file previously created by
+ * {@link exportBackup}. Reads the file, validates its structure via
+ * {@link validateBackupFile}, asks the user to confirm, writes all arrays to
+ * their localStorage keys, then reloads the page so state is re-initialised
+ * cleanly from the restored data.
+ *
+ * Assumption: import is a full replace, not a merge. All data currently in the
+ * affected localStorage keys is overwritten after the user confirms. If
+ * selective-date merging is ever needed, add a merge mode option here and update
+ * the confirmation dialog accordingly.
+ *
+ * @param {File} file - The .json backup file selected by the user.
+ * @returns {Promise<void>}
+ */
+async function importBackup(file) {
+  let text;
+  try {
+    text = await file.text();
+  } catch (e) {
+    wlLog.warn('importBackup: failed to read file', e);
+    alert('Could not read the file. Please try again.');
+    return;
+  }
+
+  let backup;
+  try {
+    backup = JSON.parse(text);
+  } catch (e) {
+    wlLog.warn('importBackup: file is not valid JSON', e);
+    alert('The selected file is not valid JSON. Please choose a work-log backup file.');
+    return;
+  }
+
+  const { valid, error } = validateBackupFile(backup);
+  if (!valid) {
+    alert(error);
+    return;
+  }
+
+  const entryCount = backup.entries.length;
+  const dates = backup.entries
+    .map((e) => e.date)
+    .filter(Boolean)
+    .sort();
+  const dateRange =
+    dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : 'no dated entries';
+  const exportedAt = backup.exported ? new Date(backup.exported).toLocaleString() : 'unknown date';
+
+  const confirmed = window.confirm(
+    `Restore backup from ${exportedAt}?\n\n` +
+      `${entryCount} entries (${dateRange})\n` +
+      `${backup.categories.length} categories\n` +
+      `${backup.planTasks.length} tasks\n\n` +
+      `⚠️  This will replace your current data. The page will reload after import.`
+  );
+  if (!confirmed) return;
+
+  try {
+    // Write primary arrays — always present (validated above)
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(backup.entries));
+    localStorage.setItem(STORE_CATS, JSON.stringify(backup.categories));
+    // STORE_PLAN is defined in 10-tasks.js; safe to reference at call-time
+    localStorage.setItem(STORE_PLAN, JSON.stringify(backup.planTasks));
+
+    // Write optional arrays — only if present in the backup
+    // STORE_BLOCKS is defined in 11-timeblock.js
+    if (Array.isArray(backup.blocks)) {
+      localStorage.setItem(STORE_BLOCKS, JSON.stringify(backup.blocks));
+    }
+    if (Array.isArray(backup.pomoLog)) {
+      localStorage.setItem(STORE_POMO_LOG, JSON.stringify(backup.pomoLog));
+    }
+    // STORE_DEV_LOG is defined in 12a-changelog.js
+    if (Array.isArray(backup.devLog)) {
+      localStorage.setItem(STORE_DEV_LOG, JSON.stringify(backup.devLog));
+    }
+    // STORE_DISTRACTIONS is defined in 12-misc.js
+    if (Array.isArray(backup.distractions)) {
+      localStorage.setItem(STORE_DISTRACTIONS, JSON.stringify(backup.distractions));
+    }
+    if (Array.isArray(backup.qpHidden)) {
+      localStorage.setItem(STORE_QP_HIDDEN, JSON.stringify(backup.qpHidden));
+    }
+
+    wlLog.info(
+      `importBackup: restored ${entryCount} entries, ` +
+        `${backup.categories.length} categories, ` +
+        `${backup.planTasks.length} tasks ` +
+        `from backup exported ${backup.exported ?? 'unknown'}`
+    );
+    location.reload();
+  } catch (e) {
+    wlLog.warn('importBackup: failed to write to localStorage', e);
+    alert(
+      'Import failed — could not write to localStorage. Your existing data has not been changed.'
+    );
+  }
+}
+
 /* ── File System Access API ── */
 let _cachedDirHandle = null;
 
@@ -319,7 +419,10 @@ async function storeDirHandle(handle) {
       tx.oncomplete = () => res();
       tx.onerror = () => res();
     });
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('saveDirHandle: failed to persist FSA handle to IndexedDB', e);
+    // Future exports will fall back to browser downloads — data is not lost
+  }
 }
 
 /**
@@ -333,7 +436,10 @@ async function clearDirHandle() {
     const db = await openIDB();
     const tx = db.transaction('handles', 'readwrite');
     tx.objectStore('handles').delete('saveDir');
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('clearDirHandle: failed to remove FSA handle from IndexedDB', e);
+    // In-memory cache is already cleared — future exports will fall back to browser downloads
+  }
 }
 
 /**

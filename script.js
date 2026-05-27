@@ -178,14 +178,21 @@
   /* ── Date / time formatting ── */
 
   /**
-   * Formats a Date as YYYY-MM-DD using UTC (toISOString).
-   * Note: uses UTC midnight, not local midnight — callers near midnight in UTC+ zones
-   * should be aware that this may return the previous calendar day.
+   * Formats a Date as YYYY-MM-DD using local calendar date.
+   * Uses local date components (getFullYear / getMonth / getDate) so the returned
+   * string always matches the date the user sees on their clock, regardless of timezone.
    * @param {Date} d
-   * @returns {string} e.g. '2026-05-25'
+   * @returns {string} e.g. '2026-05-26'
+   * @example
+   * dk(new Date(2026, 4, 26, 12, 0, 0))  // → '2026-05-26'  (noon local)
+   * dk(new Date(2026, 11, 31, 23, 59, 0)) // → '2026-12-31' (11 PM local)
+   * dk(new Date(2026, 0, 1, 0, 0, 0))    // → '2026-01-01'  (midnight local)
    */
   function dk(d) {
-    return d.toISOString().slice(0, 10);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   /**
@@ -219,6 +226,24 @@
     if (hh > 0)
       return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
     return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  }
+
+  /**
+   * Formats a duration in milliseconds as a compact human-readable string ("Xh Ym").
+   * Used throughout the UI for tracked-time display in the timeline, chart, and plan.
+   * @param {number} ms - Duration in milliseconds.
+   * @returns {string} e.g. '1h 30m', '45m', '2h'
+   * @example
+   * fmtDur(0)                  // → '0m'
+   * fmtDur(45 * 60 * 1000)     // → '45m'
+   * fmtDur(90 * 60 * 1000)     // → '1h 30m'
+   * fmtDur(120 * 60 * 1000)    // → '2h'
+   */
+  function fmtDur(ms) {
+    const mins = Math.round(ms / 60000);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
   }
 
   /* ── Billing time rounding ── */
@@ -376,6 +401,47 @@
     return !!(e && typeof e.ts === 'number' && typeof e.mins === 'number');
   }
 
+  /* ── Backup import validation ── */
+
+  /**
+   * Validates a parsed JSON backup object created by `exportBackup()`.
+   *
+   * Separated from the import flow so the validation logic can be unit-tested
+   * without any browser APIs. `importBackup()` calls this before writing to
+   * localStorage.
+   *
+   * @param {*} backup - Parsed backup object (typically from `JSON.parse`).
+   * @returns {{ valid: boolean, error?: string }}
+   *   `{ valid: true }` when the backup is usable;
+   *   `{ valid: false, error: string }` with a human-readable reason otherwise.
+   * @example
+   * validateBackupFile({ version: '1', entries: [], categories: [], planTasks: [] })
+   *   // → { valid: true }
+   * validateBackupFile(null)
+   *   // → { valid: false, error: 'Not a valid backup object.' }
+   * validateBackupFile({ version: '2', entries: [], categories: [], planTasks: [] })
+   *   // → { valid: false, error: 'Unrecognised backup version "2"...' }
+   * validateBackupFile({ version: '1', entries: [], categories: [] })
+   *   // → { valid: false, error: '...missing required field "planTasks".' }
+   */
+  function validateBackupFile(backup) {
+    if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
+      return { valid: false, error: 'Not a valid backup object.' };
+    }
+    if (backup.version !== '1') {
+      return {
+        valid: false,
+        error: `Unrecognised backup version "${backup.version}". Only version 1 is supported.`,
+      };
+    }
+    for (const key of ['entries', 'categories', 'planTasks']) {
+      if (!Array.isArray(backup[key])) {
+        return { valid: false, error: `Invalid backup — missing required field "${key}".` };
+      }
+    }
+    return { valid: true };
+  }
+
   // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
   // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
   // this block is skipped — functions remain as globals in the closure.
@@ -386,6 +452,7 @@
       dk,
       fmtTime,
       fmtElapsed,
+      fmtDur,
       roundUp30,
       roundToNearest30,
       validEntry,
@@ -394,6 +461,7 @@
       validBlock,
       validTimer,
       validPomoEntry,
+      validateBackupFile,
     };
   }
 
@@ -538,7 +606,9 @@
             categories = snap.categories.filter(validCategory);
           wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
         }
-      } catch (e) {}
+      } catch (e) {
+        wlLog.warn('load: failed to parse snapshot from localStorage', e);
+      }
     }
     loadLogNotes();
     loadTrackers();
@@ -643,8 +713,45 @@
     }
   }
 
+  /**
+   * Fixes entry `date` fields that were stored using UTC midnight instead of the
+   * user's local calendar date.
+   *
+   * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
+   * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
+   * were stored under the previous day's UTC date. This migration re-derives `date`
+   * from the entry's `ts` timestamp using the now-correct local `dk()`.
+   *
+   * Safe to run multiple times — entries already on the correct local date are untouched.
+   */
+  function migrateEntryDatesToLocal() {
+    const raw = localStorage.getItem('wl_entries_v1');
+    if (!raw) return;
+    try {
+      const all = JSON.parse(raw);
+      if (!Array.isArray(all)) return;
+      let changed = 0;
+      const fixed = all.map((e) => {
+        if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
+        const localDate = dk(new Date(e.ts)); // dk() now returns local date
+        if (e.date !== localDate) {
+          changed++;
+          return { ...e, date: localDate };
+        }
+        return e;
+      });
+      if (changed > 0) {
+        localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
+        wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
+      }
+    } catch (e) {
+      wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+    }
+  }
+
   // Run immediately so data is in the right keys before load() is called.
   migrateStorage();
+  migrateEntryDatesToLocal();
 
   // ── 02-utils.js ──
   /* ── Epic helpers ── */
@@ -1259,7 +1366,9 @@
         osc.start(start);
         osc.stop(start + 0.5);
       });
-    } catch (e) {}
+    } catch (e) {
+      // Silently skip — Web Audio API may be unavailable (e.g. browser policy, no audio hardware)
+    }
   }
 
   /**
@@ -1389,12 +1498,20 @@
    * Full application re-render: updates the date label, timer bar, stat counters,
    * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
    * time-block view. Call whenever persistent state changes.
+   *
+   * Design trade-off: full DOM re-render on every change rather than targeted
+   * updates. Keeps state reasoning simple for a single-user personal tool where
+   * the entry list is small (typically < 50 items per day). If performance becomes
+   * a concern, the innermost `tl.querySelectorAll` event-binding loop is the first
+   * candidate for optimisation (see phase 6 below).
    */
   function render() {
+    /* ── 1. Date header and navigation ── */
     document.getElementById('dateLabel').textContent = fmtLabel(viewDate);
     document.getElementById('prevDay').disabled = false;
     document.getElementById('nextDay').disabled = isToday(viewDate);
 
+    /* ── 2. Timer bar ── */
     if (!activeTimer) {
       updateTimerBar();
       updateTimerBtn(false);
@@ -1403,6 +1520,7 @@
       updateTimerBtn(true);
     }
 
+    /* ── 3. Header stat tiles (distinct tasks today / epics this week / streak) ── */
     const todayKey = dk(new Date());
     document.getElementById('statToday').textContent = new Set(
       entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase())
@@ -1416,13 +1534,8 @@
     })();
     document.getElementById('statStreak').textContent = calcStreak();
 
-    // Sub-stats
-    function fmtMs(ms) {
-      const mins = Math.round(ms / 60000),
-        h = Math.floor(mins / 60),
-        m = mins % 60;
-      return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-    }
+    /* ── 4. Sub-stat tiles (most-tracked task today / this week / best streak day) ── */
+    // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic
     function taskSubHtml(label, ms) {
       const m = label.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/s);
       const ticket = m ? m[1] : null;
@@ -1431,8 +1544,8 @@
         ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
         : null;
       return keyHtml
-        ? `${keyHtml}${name ? `<br>${escHtml(name)}` : ''}<br><strong>${fmtMs(ms)}</strong>`
-        : `${escHtml(label)}<br><strong>${fmtMs(ms)}</strong>`;
+        ? `${keyHtml}${name ? `<br>${escHtml(name)}` : ''}<br><strong>${fmtDur(ms)}</strong>`
+        : `${escHtml(label)}<br><strong>${fmtDur(ms)}</strong>`;
     }
 
     // Today: task with most tracked time
@@ -1501,7 +1614,7 @@
         const dayName = isToday(d3)
           ? 'today'
           : d3.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
-        streakSub.innerHTML = `<strong>Longest date tracked</strong><br>${escHtml(dayName)}<br><strong>${fmtMs(bestMs)}</strong>`;
+        streakSub.innerHTML = `<strong>Longest date tracked</strong><br>${escHtml(dayName)}<br><strong>${fmtDur(bestMs)}</strong>`;
         streakSub.style.display = '';
       } else {
         streakSub.style.display = 'none';
@@ -1510,6 +1623,7 @@
       streakSub.style.display = 'none';
     }
 
+    /* ── 5. Timeline ── */
     const list = viewEntries();
     const tl = document.getElementById('timeline');
 
@@ -1517,6 +1631,7 @@
     const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
     const logHeader = `<div class="timelog-header"><span class="chart-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
+    // Empty state: render sub-components (plan, timeblock) and bail out early
     if (!list.length) {
       tl.innerHTML =
         logHeader +
@@ -1533,6 +1648,7 @@
       renderTrackers();
       return;
     }
+    // Build entry row HTML — one <div class="entry"> per log entry
     tl.innerHTML =
       logHeader +
       list
@@ -1594,6 +1710,7 @@
         })
         .join('');
 
+    /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
     bindSignifierClicks();
 
     /* time editor */
@@ -1931,10 +2048,7 @@
       .map((key) => {
         const ms = totals[key],
           pct = Math.round((ms / maxMs) * 100);
-        const mins = Math.round(ms / 60000),
-          h = Math.floor(mins / 60),
-          m = mins % 60;
-        const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+        const dur = fmtDur(ms);
         const { label, color } = meta[key];
         const live = liveKeys.has(key) ? ' chart-row-live' : '';
         const liveDot = liveKeys.has(key)
@@ -1949,22 +2063,13 @@
       })
       .join('');
 
-    const tm2 = Math.round(grandTotal / 60000),
-      th2 = Math.floor(tm2 / 60),
-      tm3 = tm2 % 60;
-    const totalDur = th2 > 0 ? (tm3 > 0 ? `${th2}h ${tm3}m` : `${th2}h`) : `${tm3}m`;
+    const totalDur = fmtDur(grandTotal);
     const billMs = timed
       .filter((e) => isEntryBillable(e))
       .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
     const nonBillMs = timed.reduce((s, e) => s + (e.tsEnd - e.ts), 0) - billMs;
-    const fmtMs = (ms) => {
-      const m = Math.round(ms / 60000),
-        h = Math.floor(m / 60),
-        r = m % 60;
-      return h > 0 ? (r > 0 ? `${h}h ${r}m` : `${h}h`) : `${r}m`;
-    };
     const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtMs(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtMs(nonBillMs)}</span></div>` : ''}</div>`;
+    el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div>${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div>`;
     el.querySelectorAll('.chart-tog').forEach((b) =>
       b.addEventListener('click', () => {
         chartMode = b.dataset.mode;
@@ -2289,6 +2394,108 @@
     writeExportFile('JSON backups', filename, blob);
   }
 
+  /**
+   * Restores application state from a JSON backup file previously created by
+   * {@link exportBackup}. Reads the file, validates its structure via
+   * {@link validateBackupFile}, asks the user to confirm, writes all arrays to
+   * their localStorage keys, then reloads the page so state is re-initialised
+   * cleanly from the restored data.
+   *
+   * Assumption: import is a full replace, not a merge. All data currently in the
+   * affected localStorage keys is overwritten after the user confirms. If
+   * selective-date merging is ever needed, add a merge mode option here and update
+   * the confirmation dialog accordingly.
+   *
+   * @param {File} file - The .json backup file selected by the user.
+   * @returns {Promise<void>}
+   */
+  async function importBackup(file) {
+    let text;
+    try {
+      text = await file.text();
+    } catch (e) {
+      wlLog.warn('importBackup: failed to read file', e);
+      alert('Could not read the file. Please try again.');
+      return;
+    }
+
+    let backup;
+    try {
+      backup = JSON.parse(text);
+    } catch (e) {
+      wlLog.warn('importBackup: file is not valid JSON', e);
+      alert('The selected file is not valid JSON. Please choose a work-log backup file.');
+      return;
+    }
+
+    const { valid, error } = validateBackupFile(backup);
+    if (!valid) {
+      alert(error);
+      return;
+    }
+
+    const entryCount = backup.entries.length;
+    const dates = backup.entries
+      .map((e) => e.date)
+      .filter(Boolean)
+      .sort();
+    const dateRange =
+      dates.length > 0 ? `${dates[0]} to ${dates[dates.length - 1]}` : 'no dated entries';
+    const exportedAt = backup.exported
+      ? new Date(backup.exported).toLocaleString()
+      : 'unknown date';
+
+    const confirmed = window.confirm(
+      `Restore backup from ${exportedAt}?\n\n` +
+        `${entryCount} entries (${dateRange})\n` +
+        `${backup.categories.length} categories\n` +
+        `${backup.planTasks.length} tasks\n\n` +
+        `⚠️  This will replace your current data. The page will reload after import.`
+    );
+    if (!confirmed) return;
+
+    try {
+      // Write primary arrays — always present (validated above)
+      localStorage.setItem(STORE_ENTRIES, JSON.stringify(backup.entries));
+      localStorage.setItem(STORE_CATS, JSON.stringify(backup.categories));
+      // STORE_PLAN is defined in 10-tasks.js; safe to reference at call-time
+      localStorage.setItem(STORE_PLAN, JSON.stringify(backup.planTasks));
+
+      // Write optional arrays — only if present in the backup
+      // STORE_BLOCKS is defined in 11-timeblock.js
+      if (Array.isArray(backup.blocks)) {
+        localStorage.setItem(STORE_BLOCKS, JSON.stringify(backup.blocks));
+      }
+      if (Array.isArray(backup.pomoLog)) {
+        localStorage.setItem(STORE_POMO_LOG, JSON.stringify(backup.pomoLog));
+      }
+      // STORE_DEV_LOG is defined in 12a-changelog.js
+      if (Array.isArray(backup.devLog)) {
+        localStorage.setItem(STORE_DEV_LOG, JSON.stringify(backup.devLog));
+      }
+      // STORE_DISTRACTIONS is defined in 12-misc.js
+      if (Array.isArray(backup.distractions)) {
+        localStorage.setItem(STORE_DISTRACTIONS, JSON.stringify(backup.distractions));
+      }
+      if (Array.isArray(backup.qpHidden)) {
+        localStorage.setItem(STORE_QP_HIDDEN, JSON.stringify(backup.qpHidden));
+      }
+
+      wlLog.info(
+        `importBackup: restored ${entryCount} entries, ` +
+          `${backup.categories.length} categories, ` +
+          `${backup.planTasks.length} tasks ` +
+          `from backup exported ${backup.exported ?? 'unknown'}`
+      );
+      location.reload();
+    } catch (e) {
+      wlLog.warn('importBackup: failed to write to localStorage', e);
+      alert(
+        'Import failed — could not write to localStorage. Your existing data has not been changed.'
+      );
+    }
+  }
+
   /* ── File System Access API ── */
   let _cachedDirHandle = null;
 
@@ -2344,7 +2551,10 @@
         tx.oncomplete = () => res();
         tx.onerror = () => res();
       });
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('saveDirHandle: failed to persist FSA handle to IndexedDB', e);
+      // Future exports will fall back to browser downloads — data is not lost
+    }
   }
 
   /**
@@ -2358,7 +2568,10 @@
       const db = await openIDB();
       const tx = db.transaction('handles', 'readwrite');
       tx.objectStore('handles').delete('saveDir');
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('clearDirHandle: failed to remove FSA handle from IndexedDB', e);
+      // In-memory cache is already cleared — future exports will fall back to browser downloads
+    }
   }
 
   /**
@@ -2613,7 +2826,9 @@
       if (note) notes[entryText.toLowerCase().trim()] = note;
       else delete notes[entryText.toLowerCase().trim()];
       localStorage.setItem('wl_handoff', JSON.stringify(notes));
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('saveHandoffNote: failed to persist handoff note', e);
+    }
   }
 
   // When stop is clicked: show handoff input, save note on confirm
@@ -2687,7 +2902,7 @@
   document.getElementById('sodBtn').addEventListener('click', () => {
     const existing = getDayStart();
     if (existing) {
-      // Allow re-setting — ask for time
+      // Day already started — allow the user to correct the start time.
       const d = new Date(existing);
       const cur =
         String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -2698,11 +2913,26 @@
       const ts = new Date();
       ts.setHours(h, m, 0, 0);
       localStorage.setItem(sodKey(), String(ts.getTime()));
+      renderSodBtn();
+      renderTimeblock();
     } else {
+      // First click of the day — offer a chance to restore from backup before
+      // recording start-of-day. The SOD timestamp is written first so it
+      // survives the page reload that importBackup() triggers: the backup only
+      // overwrites data keys (entries, tasks, …) and leaves wl_sod_* alone.
+      const wantRestore = window.confirm(
+        'Start of day — restore data from a backup first?\n\n' +
+          'OK     → select a backup file to restore, then start the day\n' +
+          'Cancel → start the day now without restoring'
+      );
       localStorage.setItem(sodKey(), String(Date.now()));
+      renderSodBtn();
+      renderTimeblock();
+      if (wantRestore) {
+        // Trigger the hidden file input — the change listener calls importBackup()
+        document.getElementById('backupFileInput').click();
+      }
     }
-    renderSodBtn();
-    renderTimeblock();
   });
 
   /* ── End of day button state ── */
@@ -2761,6 +2991,16 @@
   }
 
   /* ── Event listeners ── */
+
+  // Backup restore: the hidden file input is triggered from the SOD button flow.
+  // The change handler calls importBackup() and resets the input so the same
+  // file can be re-selected if needed (e.g. user cancels and retries).
+  document.getElementById('backupFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) importBackup(file);
+    e.target.value = '';
+  });
+
   document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
   document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
   document.getElementById('captureInput').addEventListener('keydown', (e) => {
@@ -2790,17 +3030,6 @@
   });
 
   /* ── Auto-backup ── */
-
-  /**
-   * Returns true if today has at least one log entry that has not yet been
-   * exported (i.e. the last export date differs from today's date key).
-   * @returns {boolean}
-   */
-  function todayHasUnexportedEntries() {
-    const todayKey = dk(new Date());
-    const lastExport = localStorage.getItem('wl_last_export');
-    return entries.some((e) => e.date === todayKey) && lastExport !== todayKey;
-  }
 
   /**
    * Writes a recoverable snapshot of today's log entries to localStorage every
@@ -2858,38 +3087,29 @@
     );
   }
 
-  /**
-   * Formerly offered to download yesterday's snapshot on page load.
-   * The banner was removed — end-of-day modal handles exports now.
-   * Kept as a no-op stub to avoid removing the call sites.
-   */
-  function checkSnapshot() {
-    // Banner removed — end-of-day modal handles exports now
-  }
-
   saveSnapshot();
   setInterval(saveSnapshot, 30 * 60 * 1000);
 
-  // Deferred so planTasks/blocks are initialized before logging their counts.
-  // planTasks is declared in 10-tasks.js which comes after this file in build order.
-  setTimeout(
-    () =>
-      wlLog.config({
-        version: '1.8.0',
-        date: dk(new Date()),
-        // Persistent state counts (after load + migration have run)
-        entries: entries.length,
-        categories: categories.length,
-        planTasks: planTasks.length,
-        blocks: blocks.length,
-        // Runtime state
-        timer: activeTimer ? 'active' : 'idle',
-        snapshot: !!localStorage.getItem('wl_snapshot'),
-        // Environment: true when the PS API server responded (weather / calendar live)
-        apiServer: !!localStorage.getItem('wl_api_ok'),
-      }),
-    0
-  );
+  // Defer config log one tick so `planTasks` (declared in 10-tasks.js, which is
+  // concatenated after this file) has been initialised before we read its length.
+  // The IIFE runs all files synchronously; setTimeout(fn, 0) fires after that
+  // synchronous block completes, so all let/const declarations are in scope.
+  setTimeout(() => {
+    wlLog.config({
+      version: '1.8.2',
+      date: dk(new Date()),
+      // Persistent state counts (from localStorage after load + migration)
+      entries: entries.length,
+      categories: categories.length,
+      planTasks: planTasks.length,
+      blocks: blocks.length,
+      // Runtime state
+      timer: activeTimer ? 'active' : 'idle',
+      snapshot: !!localStorage.getItem('wl_snapshot'),
+      // Environment: true when the PS API server responded (weather / calendar live)
+      apiServer: !!localStorage.getItem('wl_api_ok'),
+    });
+  }, 0);
 
   // ── 08-pomodoro.js ──
   /* ── Pomodoro ── */
@@ -3113,7 +3333,9 @@
           gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
           osc.start();
           osc.stop(ctx.currentTime + 0.25);
-        } catch (e) {}
+        } catch (e) {
+          // Silently skip — Web Audio API may be unavailable (browser policy, no hardware)
+        }
       }, delay)
     );
   }
@@ -3217,7 +3439,9 @@
     let pomoLog = [];
     try {
       pomoLog = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('buildExportMd: failed to parse pomodoro log — sessions omitted from export', e);
+    }
     const dayPomos = pomoLog.filter((p) => p.date === dateKey);
     if (dayPomos.length > 0) {
       lines.push('');
@@ -3267,154 +3491,14 @@
   }
 
   let _lastTickDate = dk(new Date());
-  let _lastReminderMinute = -1;
-
-  // Auto-break state — set at :50, cleared at :00
-  let _preBreakEntryId = null; // entry id that was running before the automated break
-  let _breakEntryId = null; // entry id of the auto-created Break entry
-
-  /* ── Water-themed reminders ── */
-
-  /**
-   * Plays a water-themed audio reminder using the Web Audio API.
-   * 'breaktime' plays a short rain sound (8 rustling oscillators).
-   * 'worktime' plays a rolling ocean-wave sound (3 deeper tones).
-   * Silently skips if Web Audio is unavailable.
-   * @param {'breaktime'|'worktime'} type - Which sound to play.
-   */
-  function playWaterReminderSound(type) {
-    // type: 'breaktime' (get up, at XX:50) or 'worktime' (return to work, at XX:00)
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-      if (type === 'breaktime') {
-        // Rain sound: multiple short rustling sounds in quick succession
-        // Simulates rain/drizzle
-        for (let i = 0; i < 8; i++) {
-          setTimeout(() => {
-            try {
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-
-              // Randomized low frequency for rain effect
-              osc.frequency.value = 100 + Math.random() * 80;
-
-              gain.gain.setValueAtTime(0.15, ctx.currentTime);
-              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-
-              osc.start();
-              osc.stop(ctx.currentTime + 0.3);
-            } catch (e) {}
-          }, i * 80);
-        }
-      } else if (type === 'worktime') {
-        // Ocean wave sound: deeper, rolling wave tones
-        // Three waves in sequence
-        for (let w = 0; w < 3; w++) {
-          setTimeout(() => {
-            try {
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-
-              // Deeper frequency for ocean/waves
-              osc.frequency.value = 60 + w * 20;
-
-              gain.gain.setValueAtTime(0.2, ctx.currentTime);
-              gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-
-              osc.start();
-              osc.stop(ctx.currentTime + 0.6);
-            } catch (e) {}
-          }, w * 700);
-        }
-      }
-    } catch (e) {}
-  }
-
-  /**
-   * Checks the current minute and fires hourly break/return-to-work logic.
-   * At minute :50 — stops the active timer, creates a Break entry, starts a
-   * 10-minute pomodoro, and enters focus mode.
-   * At minute :00 — stops the Break timer (if still running), restarts the
-   * pre-break task, and exits focus mode.
-   * Runs at most once per clock minute.
-   */
-  function checkReminders() {
-    const now = new Date();
-    const mins = now.getMinutes();
-
-    // Only check once per minute
-    if (mins === _lastReminderMinute) return;
-    _lastReminderMinute = mins;
-
-    if (mins === 50) {
-      // Break time — stop current timer, create Break entry, play rain sound, enter focus mode
-      playWaterReminderSound('breaktime');
-
-      // Remember which entry was running so we can restore it after the break
-      _preBreakEntryId = activeTimer ? activeTimer.entryId : null;
-      _breakEntryId = null;
-
-      // Stop any active timer
-      if (activeTimer) stopTimer();
-
-      // Create a Break entry
-      const breakEntry = {
-        id: Date.now() + '',
-        text: 'Break',
-        tag: 'break',
-        ts: Date.now(),
-        date: dk(new Date()),
-      };
-      entries.push(breakEntry);
-      save();
-      _breakEntryId = breakEntry.id;
-
-      // Start timer on Break entry
-      startTimer(breakEntry.id);
-
-      // Initialize and start 10-minute pomodoro
-      initPomo(10);
-      startPomo();
-
-      // Enter focus/emergency mode
-      enterEmergency();
-
-      render();
-    } else if (mins === 0) {
-      // Return to work — play ocean wave sound, then restore pre-break state
-      playWaterReminderSound('worktime');
-
-      if (_breakEntryId) {
-        // Only stop the break timer if the user hasn't already switched away from it
-        if (activeTimer && activeTimer.entryId === _breakEntryId) {
-          stopTimer(); // finalizes the Break entry with tsEnd
-          // Resume the pre-break task if it still exists in entries
-          if (_preBreakEntryId && entries.find((e) => e.id === _preBreakEntryId)) {
-            startTimer(_preBreakEntryId);
-          }
-        }
-        // Exit focus mode regardless — it was auto-entered, so auto-exit it
-        if (emergencyMode) exitEmergency();
-        _preBreakEntryId = null;
-        _breakEntryId = null;
-        render();
-      }
-    }
-  }
 
   tickClock();
   setInterval(tickClock, 10000);
 
   /**
    * Updates the live clock display (date, time, ISO week), the time-block
-   * "now" line, block notifications, and hourly reminders. Also detects
-   * midnight rollover: carries unfinished plan tasks to the new day and
-   * re-renders the UI.
+   * "now" line, and block notifications. Also detects midnight rollover:
+   * carries unfinished plan tasks to the new day and re-renders the UI.
    */
   function tickClock() {
     const now = new Date();
@@ -3430,7 +3514,6 @@
     document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
     positionNowLine();
     checkBlockNotifications();
-    checkReminders(); // Check for hourly break reminders
     // Detect midnight rollover — carry tasks and re-render
     const todayKey = dk(now);
     if (todayKey !== _lastTickDate) {
@@ -4027,13 +4110,87 @@
     localStorage.setItem(STORE_PLAN, JSON.stringify(planTasks));
   }
 
+  /* ── renderPlan helpers ──────────────────────────────────────────────────── */
+  // These functions have no dependency on renderPlan's local state, so they are
+  // defined outside it (KISS: smaller closure, easier to read and test in isolation).
+
+  /**
+   * Builds the <option> list for a task's status <select>.
+   * @param {string} cur - The task's current status value.
+   * @returns {string} HTML option elements.
+   */
+  function statusOpts(cur) {
+    return ['todo', 'inprogress', 'upcoming', 'pending', 'blocked', 'done']
+      .map((s) => {
+        const labels = {
+          todo: 'To do',
+          inprogress: 'In progress',
+          upcoming: 'Upcoming',
+          pending: 'Pending',
+          blocked: 'Blocked',
+          done: 'Done',
+        };
+        return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
+      })
+      .join('');
+  }
+
+  /**
+   * Builds the priority toggle button HTML for a task row.
+   * Click cycles: normal (0) → high (1) → low (-1) → normal.
+   * @param {{ id: string, priority?: number }} t - The plan task.
+   * @returns {string} HTML button element.
+   */
+  function prioBtnHtml(t) {
+    const p = t.priority || 0;
+    const icon = p === 1 ? '⭐' : p === -1 ? '⬇' : '☆';
+    const cls = p === 1 ? ' prio-high' : p === -1 ? ' prio-low' : '';
+    const next = p === 0 ? 'high' : p === 1 ? 'low' : 'normal';
+    return `<button class="prio-btn${cls}" data-pid="${t.id}" title="priority: ${p === 1 ? 'high' : p === -1 ? 'low' : 'normal'} — click for ${next}">${icon}</button>`;
+  }
+
+  /**
+   * Builds the Notion send/link button HTML for a task row.
+   * Shows a link icon if already sent; send icon otherwise.
+   * @param {{ id: string, notionUrl?: string }} t - The plan task.
+   * @returns {string} HTML button element.
+   */
+  function notionBtnHtml(t) {
+    if (t.notionUrl) {
+      return `<button class="notion-task-btn notion-sent" data-pid="${t.id}" title="open in Notion: ${escHtml(t.notionUrl)}">🔗</button>`;
+    }
+    return `<button class="notion-task-btn" data-pid="${t.id}" title="send to Notion second brain">📋</button>`;
+  }
+
+  /**
+   * Builds the billable toggle button HTML for a task row.
+   * Returns empty string for pending/blocked/upcoming tasks where billing is irrelevant.
+   * @param {{ id: string, billable?: boolean }} t - The plan task.
+   * @param {string} status - The task's current status.
+   * @returns {string} HTML button element, or ''.
+   */
+  function billBtnHtml(t, status) {
+    // Hidden (not rendered) for pending/blocked/upcoming; the t.billable value
+    // is preserved on the task object and reappears when status returns to active.
+    if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
+    const icon = t.billable === false ? '💸' : '💰';
+    const title = t.billable === false ? 'mark billable' : 'mark non-billable';
+    return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
+  }
+
   /**
    * Re-renders the entire plan UI for the currently viewed date: main task list,
    * pending/blocked section, upcoming section, all associated controls (status
    * dropdowns, checkpoints, billable buttons, Notion/emoji buttons), and section
    * headers with counts. Also renders the completed-tasks section.
+   *
+   * Design trade-off: full DOM re-render on every state change rather than
+   * targeted updates. Acceptable for a personal tool where the task list is small
+   * (typically < 20 items) and the simplicity of "always consistent" outweighs
+   * the cost of targeted diffing. If list size grows, consider partial updates.
    */
   function renderPlan() {
+    /* ── 1. Filter and count tasks for the current view date ── */
     const viewKey = dk(viewDate);
     const todayKey = dk(new Date());
     const allViewTasks = planTasks.filter((t) => t.date === viewKey);
@@ -4066,6 +4223,7 @@
       todoCount + progressCount + doneCount ? mainParts.join(' · ') : '';
     document.getElementById('planSection').classList.toggle('collapsed', planCollapsed);
 
+    /* ── 2. Section header visibility and counts ── */
     // Upcoming section
     const upcomingSectionEl = document.getElementById('upcomingSection');
     if (upcomingTasks.length > 0) {
@@ -4092,6 +4250,7 @@
     const addRow = document.getElementById('planAddRow');
     if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
 
+    /* ── 3. List DOM references and empty state ── */
     const mainListEl = document.getElementById('planList');
     const pendingListEl = document.getElementById('pendingList');
     const upcomingListEl = document.getElementById('upcomingList');
@@ -4107,6 +4266,7 @@
       }</div>`;
     }
 
+    /* ── 4. Sort helpers and HTML fragment builders ── */
     const STATUS_ORDER = { inprogress: 0, todo: 1, pending: 2, blocked: 3, done: 4 };
 
     const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
@@ -4145,58 +4305,18 @@
       return result;
     };
 
-    const statusOpts = (cur) =>
-      ['todo', 'inprogress', 'upcoming', 'pending', 'blocked', 'done']
-        .map((s) => {
-          const labels = {
-            todo: 'To do',
-            inprogress: 'In progress',
-            upcoming: 'Upcoming',
-            pending: 'Pending',
-            blocked: 'Blocked',
-            done: 'Done',
-          };
-          return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
-        })
-        .join('');
+    // statusOpts, prioBtnHtml, notionBtnHtml, billBtnHtml are defined above renderPlan()
 
     const mainSorted = flatSort(mainTasks);
     const pendingSorted = flatSort(pendingTasks);
     const upcomingSorted = flatSort(upcomingTasks);
 
-    const fmtMins = (mins) => {
-      const h = Math.floor(mins / 60),
-        m = mins % 60;
-      return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-    };
+    // fmtDur(ms) is defined in 00-pure-fns.js — converts milliseconds to "Xh Ym" string
 
-    // Priority button: click cycles 0 (normal) → 1 (high) → -1 (low) → 0
-    function prioBtnHtml(t) {
-      const p = t.priority || 0;
-      const icon = p === 1 ? '⭐' : p === -1 ? '⬇' : '☆';
-      const cls = p === 1 ? ' prio-high' : p === -1 ? ' prio-low' : '';
-      const next = p === 0 ? 'high' : p === 1 ? 'low' : 'normal';
-      return `<button class="prio-btn${cls}" data-pid="${t.id}" title="priority: ${p === 1 ? 'high' : p === -1 ? 'low' : 'normal'} — click for ${next}">${icon}</button>`;
-    }
-
-    // Notion button: 📋 send to Notion. If already sent, becomes a link icon.
-    function notionBtnHtml(t) {
-      if (t.notionUrl) {
-        return `<button class="notion-task-btn notion-sent" data-pid="${t.id}" title="open in Notion: ${escHtml(t.notionUrl)}">🔗</button>`;
-      }
-      return `<button class="notion-task-btn" data-pid="${t.id}" title="send to Notion second brain">📋</button>`;
-    }
-
-    // Billable button: 💰/💸 — sits between status dropdown and task name.
-    // Hidden (not rendered) for pending/blocked/upcoming; the t.billable value
-    // is preserved on the task object and reappears when status returns to today.
-    function billBtnHtml(t, status) {
-      if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
-      const icon = t.billable === false ? '💸' : '💰';
-      const title = t.billable === false ? 'mark billable' : 'mark non-billable';
-      return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
-    }
-
+    /* ── 5. renderRow: build the HTML for a single task row ── */
+    // Returns a <div class="plan-item"> string. Two layout branches:
+    //   • pending/blocked — compact, no start-timer button, shows timestamp + comment bubble
+    //   • normal (todo/inprogress/done) — full layout with actions, checkpoint badge, split button
     function renderRow(t) {
       const status = t.status || 'todo';
       const tag = t.tag || 'other';
@@ -4206,7 +4326,7 @@
           (e) => e.date === viewKey && e.text.toLowerCase() === t.text.toLowerCase() && e.tsEnd
         )
         .reduce((sum, e) => sum + Math.round((e.tsEnd - e.ts) / 60000), 0);
-      const timeSpent = loggedMins > 0 ? fmtMins(loggedMins) : '';
+      const timeSpent = loggedMins > 0 ? fmtDur(loggedMins * 60000) : '';
 
       if (editingPlanId === t.id) {
         return `<div class="plan-item" data-pid="${t.id}">
@@ -4304,7 +4424,9 @@
           const _note = _hn[t.text.toLowerCase().trim()];
           if (_note)
             handoffNoteHtml = `<div class="plan-handoff-note"><span class="plan-handoff-text">↳ ${escHtml(_note)}</span><button class="plan-handoff-dismiss" data-task="${escHtml(t.text.toLowerCase().trim())}" title="dismiss note">×</button></div>`;
-        } catch (e) {}
+        } catch (e) {
+          // Silently skip — handoff note is display-only; a parse failure just hides it
+        }
       }
 
       // Checkpoint badge + expandable area
@@ -4412,11 +4534,13 @@
       }`;
     }
 
-    // Render all three lists
+    /* ── 6. Write HTML to the DOM ── */
     if (mainTasks.length) mainListEl.innerHTML = mainSorted.map(renderRow).join('');
     pendingListEl.innerHTML = pendingSorted.map(renderRow).join('');
     upcomingListEl.innerHTML = upcomingSorted.map(renderRow).join('');
 
+    /* ── 7. Event binding (runs across all three lists via the qa() helper) ── */
+    // qa(selector) queries all three list containers and returns a flat array of matches.
     // Event handlers bound across all three lists (main, pending, upcoming)
     const lists = [mainListEl, pendingListEl, upcomingListEl];
     const qa = (sel) => lists.flatMap((L) => [...L.querySelectorAll(sel)]);
@@ -4696,7 +4820,9 @@
         const len = inp.value.length;
         try {
           inp.setSelectionRange(len, len);
-        } catch (e) {}
+        } catch (e) {
+          // Silently skip — setSelectionRange may fail on certain input types in some browsers
+        }
       }
     });
 
@@ -4716,7 +4842,9 @@
           const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
           delete notes[btn.dataset.task];
           localStorage.setItem('wl_handoff', JSON.stringify(notes));
-        } catch (e) {}
+        } catch (e) {
+          wlLog.warn('plan-handoff-dismiss: failed to update wl_handoff in localStorage', e);
+        }
         renderPlan();
       });
     });
@@ -6143,7 +6271,9 @@
           .sort();
         return;
       }
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', e);
+    }
     // Seed localStorage with defaults on first load
     _expiryDates = [...EXPIRY_SEED];
     localStorage.setItem(STORE_EXPIRY, JSON.stringify(_expiryDates));
@@ -6569,7 +6699,9 @@
         map[taskText.toLowerCase()] = hook;
       }
       localStorage.setItem(STORE_HOOKS, JSON.stringify(map));
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('saveHook: failed to persist task hook to localStorage', e);
+    }
   }
 
   (() => {
@@ -7401,7 +7533,9 @@ Requirements:
         const merged = [...stored, ...newEntries].sort((a, b) => a.id.localeCompare(b.id));
         localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
       }
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('mergeDevChanges: failed to merge dev changelog entries', e);
+    }
   }
 
   /**
@@ -7439,7 +7573,10 @@ Requirements:
     let handoffNotes = {};
     try {
       handoffNotes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
-    } catch (e) {}
+    } catch (e) {
+      // Silently fall back to empty object — existing notes are unavailable but EOD modal still works
+      wlLog.warn('openEodModal: failed to parse wl_handoff', e);
+    }
     const taskNotesEl = document.getElementById('eodTaskNotes');
     if (unfinishedTasks.length) {
       const statusLabel = {
@@ -7468,7 +7605,9 @@ Requirements:
     let allLog = [];
     try {
       allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', e);
+    }
     const todayChanges = allLog.filter((e) => e.date === todayKey);
     const changesEl = document.getElementById('eodChanges');
     if (todayChanges.length) {
@@ -7548,7 +7687,9 @@ Requirements:
         else delete notes[key];
       });
       localStorage.setItem('wl_handoff', JSON.stringify(notes));
-    } catch (e) {}
+    } catch (e) {
+      wlLog.warn('saveEodHandoffNotes: failed to persist handoff notes to localStorage', e);
+    }
   }
   document.getElementById('expiryBtn').addEventListener('click', openExpiryModal);
   document.getElementById('expirySave').addEventListener('click', saveExpiryDates);
@@ -7729,11 +7870,6 @@ Requirements:
     const now = new Date();
     const fmtTime = (d) =>
       `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    const fmtDur = (s, e) => {
-      const m = Math.round((e - s) / 60000);
-      return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`;
-    };
-
     const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
     if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
@@ -7744,7 +7880,7 @@ Requirements:
         const isPast = end < now;
         const isNow = start <= now && end > now;
         const cls = isNow ? 'now' : isPast ? 'past' : '';
-        const dur = `<span class="cal-meeting-dur">${fmtDur(start, end)}</span>`;
+        const dur = `<span class="cal-meeting-dur">${fmtDur(end - start)}</span>`;
         const join = ev.joinUrl
           ? `<a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join</a>`
           : '';
@@ -8122,6 +8258,8 @@ Requirements:
       loadExpiryDates,
       exportTxt,
       exportBackup,
+      importBackup,
+      validateBackupFile,
       getHook,
       saveHook,
       _showBridgeBanner: showBridgeBanner,

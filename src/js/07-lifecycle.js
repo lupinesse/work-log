@@ -40,7 +40,7 @@ function renderSodBtn() {
 document.getElementById('sodBtn').addEventListener('click', () => {
   const existing = getDayStart();
   if (existing) {
-    // Allow re-setting — ask for time
+    // Day already started — allow the user to correct the start time.
     const d = new Date(existing);
     const cur =
       String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
@@ -51,11 +51,26 @@ document.getElementById('sodBtn').addEventListener('click', () => {
     const ts = new Date();
     ts.setHours(h, m, 0, 0);
     localStorage.setItem(sodKey(), String(ts.getTime()));
+    renderSodBtn();
+    renderTimeblock();
   } else {
+    // First click of the day — offer a chance to restore from backup before
+    // recording start-of-day. The SOD timestamp is written first so it
+    // survives the page reload that importBackup() triggers: the backup only
+    // overwrites data keys (entries, tasks, …) and leaves wl_sod_* alone.
+    const wantRestore = window.confirm(
+      'Start of day — restore data from a backup first?\n\n' +
+        'OK     → select a backup file to restore, then start the day\n' +
+        'Cancel → start the day now without restoring'
+    );
     localStorage.setItem(sodKey(), String(Date.now()));
+    renderSodBtn();
+    renderTimeblock();
+    if (wantRestore) {
+      // Trigger the hidden file input — the change listener calls importBackup()
+      document.getElementById('backupFileInput').click();
+    }
   }
-  renderSodBtn();
-  renderTimeblock();
 });
 
 /* ── End of day button state ── */
@@ -114,6 +129,16 @@ function checkPomoWeeklyClear() {
 }
 
 /* ── Event listeners ── */
+
+// Backup restore: the hidden file input is triggered from the SOD button flow.
+// The change handler calls importBackup() and resets the input so the same
+// file can be re-selected if needed (e.g. user cancels and retries).
+document.getElementById('backupFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) importBackup(file);
+  e.target.value = '';
+});
+
 document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
 document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
 document.getElementById('captureInput').addEventListener('keydown', (e) => {
@@ -143,17 +168,6 @@ document.getElementById('nextDay').addEventListener('click', () => {
 });
 
 /* ── Auto-backup ── */
-
-/**
- * Returns true if today has at least one log entry that has not yet been
- * exported (i.e. the last export date differs from today's date key).
- * @returns {boolean}
- */
-function todayHasUnexportedEntries() {
-  const todayKey = dk(new Date());
-  const lastExport = localStorage.getItem('wl_last_export');
-  return entries.some((e) => e.date === todayKey) && lastExport !== todayKey;
-}
 
 /**
  * Writes a recoverable snapshot of today's log entries to localStorage every
@@ -211,35 +225,26 @@ function saveSnapshot() {
   );
 }
 
-/**
- * Formerly offered to download yesterday's snapshot on page load.
- * The banner was removed — end-of-day modal handles exports now.
- * Kept as a no-op stub to avoid removing the call sites.
- */
-function checkSnapshot() {
-  // Banner removed — end-of-day modal handles exports now
-}
-
 saveSnapshot();
 setInterval(saveSnapshot, 30 * 60 * 1000);
 
-// Deferred so planTasks/blocks are initialized before logging their counts.
-// planTasks is declared in 10-tasks.js which comes after this file in build order.
-setTimeout(
-  () =>
-    wlLog.config({
-      version: '1.8.0',
-      date: dk(new Date()),
-      // Persistent state counts (after load + migration have run)
-      entries: entries.length,
-      categories: categories.length,
-      planTasks: planTasks.length,
-      blocks: blocks.length,
-      // Runtime state
-      timer: activeTimer ? 'active' : 'idle',
-      snapshot: !!localStorage.getItem('wl_snapshot'),
-      // Environment: true when the PS API server responded (weather / calendar live)
-      apiServer: !!localStorage.getItem('wl_api_ok'),
-    }),
-  0
-);
+// Defer config log one tick so `planTasks` (declared in 10-tasks.js, which is
+// concatenated after this file) has been initialised before we read its length.
+// The IIFE runs all files synchronously; setTimeout(fn, 0) fires after that
+// synchronous block completes, so all let/const declarations are in scope.
+setTimeout(() => {
+  wlLog.config({
+    version: '1.8.2',
+    date: dk(new Date()),
+    // Persistent state counts (from localStorage after load + migration)
+    entries: entries.length,
+    categories: categories.length,
+    planTasks: planTasks.length,
+    blocks: blocks.length,
+    // Runtime state
+    timer: activeTimer ? 'active' : 'idle',
+    snapshot: !!localStorage.getItem('wl_snapshot'),
+    // Environment: true when the PS API server responded (weather / calendar live)
+    apiServer: !!localStorage.getItem('wl_api_ok'),
+  });
+}, 0);

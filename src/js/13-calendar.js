@@ -55,11 +55,6 @@ function renderCalStrip(meetings) {
   const now = new Date();
   const fmtTime = (d) =>
     `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const fmtDur = (s, e) => {
-    const m = Math.round((e - s) / 60000);
-    return m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m}m`;
-  };
-
   const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
   if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
@@ -70,7 +65,7 @@ function renderCalStrip(meetings) {
       const isPast = end < now;
       const isNow = start <= now && end > now;
       const cls = isNow ? 'now' : isPast ? 'past' : '';
-      const dur = `<span class="cal-meeting-dur">${fmtDur(start, end)}</span>`;
+      const dur = `<span class="cal-meeting-dur">${fmtDur(end - start)}</span>`;
       const join = ev.joinUrl
         ? `<a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join</a>`
         : '';
@@ -448,6 +443,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     loadExpiryDates,
     exportTxt,
     exportBackup,
+    importBackup,
+    validateBackupFile,
     getHook,
     saveHook,
     _showBridgeBanner: showBridgeBanner,

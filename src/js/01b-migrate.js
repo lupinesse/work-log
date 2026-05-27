@@ -61,5 +61,42 @@ function migrateStorage() {
   }
 }
 
+/**
+ * Fixes entry `date` fields that were stored using UTC midnight instead of the
+ * user's local calendar date.
+ *
+ * Background: `dk()` previously called `toISOString()` (UTC). For UTC+ users
+ * (e.g., Finland, UTC+2/+3), entries logged between local midnight and 02:00–03:00
+ * were stored under the previous day's UTC date. This migration re-derives `date`
+ * from the entry's `ts` timestamp using the now-correct local `dk()`.
+ *
+ * Safe to run multiple times — entries already on the correct local date are untouched.
+ */
+function migrateEntryDatesToLocal() {
+  const raw = localStorage.getItem('wl_entries_v1');
+  if (!raw) return;
+  try {
+    const all = JSON.parse(raw);
+    if (!Array.isArray(all)) return;
+    let changed = 0;
+    const fixed = all.map((e) => {
+      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
+      const localDate = dk(new Date(e.ts)); // dk() now returns local date
+      if (e.date !== localDate) {
+        changed++;
+        return { ...e, date: localDate };
+      }
+      return e;
+    });
+    if (changed > 0) {
+      localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
+      wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
+    }
+  } catch (e) {
+    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+  }
+}
+
 // Run immediately so data is in the right keys before load() is called.
 migrateStorage();
+migrateEntryDatesToLocal();

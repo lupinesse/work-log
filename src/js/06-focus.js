@@ -156,7 +156,9 @@ function saveHandoffNote(entryText, note) {
     if (note) notes[entryText.toLowerCase().trim()] = note;
     else delete notes[entryText.toLowerCase().trim()];
     localStorage.setItem('wl_handoff', JSON.stringify(notes));
-  } catch (e) {}
+  } catch (e) {
+    wlLog.warn('saveHandoffNote: failed to persist handoff note', e);
+  }
 }
 
 // When stop is clicked: show handoff input, save note on confirm

@@ -42,13 +42,87 @@ function savePlan() {
   localStorage.setItem(STORE_PLAN, JSON.stringify(planTasks));
 }
 
+/* ── renderPlan helpers ──────────────────────────────────────────────────── */
+// These functions have no dependency on renderPlan's local state, so they are
+// defined outside it (KISS: smaller closure, easier to read and test in isolation).
+
+/**
+ * Builds the <option> list for a task's status <select>.
+ * @param {string} cur - The task's current status value.
+ * @returns {string} HTML option elements.
+ */
+function statusOpts(cur) {
+  return ['todo', 'inprogress', 'upcoming', 'pending', 'blocked', 'done']
+    .map((s) => {
+      const labels = {
+        todo: 'To do',
+        inprogress: 'In progress',
+        upcoming: 'Upcoming',
+        pending: 'Pending',
+        blocked: 'Blocked',
+        done: 'Done',
+      };
+      return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
+    })
+    .join('');
+}
+
+/**
+ * Builds the priority toggle button HTML for a task row.
+ * Click cycles: normal (0) → high (1) → low (-1) → normal.
+ * @param {{ id: string, priority?: number }} t - The plan task.
+ * @returns {string} HTML button element.
+ */
+function prioBtnHtml(t) {
+  const p = t.priority || 0;
+  const icon = p === 1 ? '⭐' : p === -1 ? '⬇' : '☆';
+  const cls = p === 1 ? ' prio-high' : p === -1 ? ' prio-low' : '';
+  const next = p === 0 ? 'high' : p === 1 ? 'low' : 'normal';
+  return `<button class="prio-btn${cls}" data-pid="${t.id}" title="priority: ${p === 1 ? 'high' : p === -1 ? 'low' : 'normal'} — click for ${next}">${icon}</button>`;
+}
+
+/**
+ * Builds the Notion send/link button HTML for a task row.
+ * Shows a link icon if already sent; send icon otherwise.
+ * @param {{ id: string, notionUrl?: string }} t - The plan task.
+ * @returns {string} HTML button element.
+ */
+function notionBtnHtml(t) {
+  if (t.notionUrl) {
+    return `<button class="notion-task-btn notion-sent" data-pid="${t.id}" title="open in Notion: ${escHtml(t.notionUrl)}">🔗</button>`;
+  }
+  return `<button class="notion-task-btn" data-pid="${t.id}" title="send to Notion second brain">📋</button>`;
+}
+
+/**
+ * Builds the billable toggle button HTML for a task row.
+ * Returns empty string for pending/blocked/upcoming tasks where billing is irrelevant.
+ * @param {{ id: string, billable?: boolean }} t - The plan task.
+ * @param {string} status - The task's current status.
+ * @returns {string} HTML button element, or ''.
+ */
+function billBtnHtml(t, status) {
+  // Hidden (not rendered) for pending/blocked/upcoming; the t.billable value
+  // is preserved on the task object and reappears when status returns to active.
+  if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
+  const icon = t.billable === false ? '💸' : '💰';
+  const title = t.billable === false ? 'mark billable' : 'mark non-billable';
+  return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
+}
+
 /**
  * Re-renders the entire plan UI for the currently viewed date: main task list,
  * pending/blocked section, upcoming section, all associated controls (status
  * dropdowns, checkpoints, billable buttons, Notion/emoji buttons), and section
  * headers with counts. Also renders the completed-tasks section.
+ *
+ * Design trade-off: full DOM re-render on every state change rather than
+ * targeted updates. Acceptable for a personal tool where the task list is small
+ * (typically < 20 items) and the simplicity of "always consistent" outweighs
+ * the cost of targeted diffing. If list size grows, consider partial updates.
  */
 function renderPlan() {
+  /* ── 1. Filter and count tasks for the current view date ── */
   const viewKey = dk(viewDate);
   const todayKey = dk(new Date());
   const allViewTasks = planTasks.filter((t) => t.date === viewKey);
@@ -79,6 +153,7 @@ function renderPlan() {
     todoCount + progressCount + doneCount ? mainParts.join(' · ') : '';
   document.getElementById('planSection').classList.toggle('collapsed', planCollapsed);
 
+  /* ── 2. Section header visibility and counts ── */
   // Upcoming section
   const upcomingSectionEl = document.getElementById('upcomingSection');
   if (upcomingTasks.length > 0) {
@@ -105,6 +180,7 @@ function renderPlan() {
   const addRow = document.getElementById('planAddRow');
   if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
 
+  /* ── 3. List DOM references and empty state ── */
   const mainListEl = document.getElementById('planList');
   const pendingListEl = document.getElementById('pendingList');
   const upcomingListEl = document.getElementById('upcomingList');
@@ -120,6 +196,7 @@ function renderPlan() {
     }</div>`;
   }
 
+  /* ── 4. Sort helpers and HTML fragment builders ── */
   const STATUS_ORDER = { inprogress: 0, todo: 1, pending: 2, blocked: 3, done: 4 };
 
   const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
@@ -158,58 +235,18 @@ function renderPlan() {
     return result;
   };
 
-  const statusOpts = (cur) =>
-    ['todo', 'inprogress', 'upcoming', 'pending', 'blocked', 'done']
-      .map((s) => {
-        const labels = {
-          todo: 'To do',
-          inprogress: 'In progress',
-          upcoming: 'Upcoming',
-          pending: 'Pending',
-          blocked: 'Blocked',
-          done: 'Done',
-        };
-        return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
-      })
-      .join('');
+  // statusOpts, prioBtnHtml, notionBtnHtml, billBtnHtml are defined above renderPlan()
 
   const mainSorted = flatSort(mainTasks);
   const pendingSorted = flatSort(pendingTasks);
   const upcomingSorted = flatSort(upcomingTasks);
 
-  const fmtMins = (mins) => {
-    const h = Math.floor(mins / 60),
-      m = mins % 60;
-    return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
-  };
+  // fmtDur(ms) is defined in 00-pure-fns.js — converts milliseconds to "Xh Ym" string
 
-  // Priority button: click cycles 0 (normal) → 1 (high) → -1 (low) → 0
-  function prioBtnHtml(t) {
-    const p = t.priority || 0;
-    const icon = p === 1 ? '⭐' : p === -1 ? '⬇' : '☆';
-    const cls = p === 1 ? ' prio-high' : p === -1 ? ' prio-low' : '';
-    const next = p === 0 ? 'high' : p === 1 ? 'low' : 'normal';
-    return `<button class="prio-btn${cls}" data-pid="${t.id}" title="priority: ${p === 1 ? 'high' : p === -1 ? 'low' : 'normal'} — click for ${next}">${icon}</button>`;
-  }
-
-  // Notion button: 📋 send to Notion. If already sent, becomes a link icon.
-  function notionBtnHtml(t) {
-    if (t.notionUrl) {
-      return `<button class="notion-task-btn notion-sent" data-pid="${t.id}" title="open in Notion: ${escHtml(t.notionUrl)}">🔗</button>`;
-    }
-    return `<button class="notion-task-btn" data-pid="${t.id}" title="send to Notion second brain">📋</button>`;
-  }
-
-  // Billable button: 💰/💸 — sits between status dropdown and task name.
-  // Hidden (not rendered) for pending/blocked/upcoming; the t.billable value
-  // is preserved on the task object and reappears when status returns to today.
-  function billBtnHtml(t, status) {
-    if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
-    const icon = t.billable === false ? '💸' : '💰';
-    const title = t.billable === false ? 'mark billable' : 'mark non-billable';
-    return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
-  }
-
+  /* ── 5. renderRow: build the HTML for a single task row ── */
+  // Returns a <div class="plan-item"> string. Two layout branches:
+  //   • pending/blocked — compact, no start-timer button, shows timestamp + comment bubble
+  //   • normal (todo/inprogress/done) — full layout with actions, checkpoint badge, split button
   function renderRow(t) {
     const status = t.status || 'todo';
     const tag = t.tag || 'other';
@@ -217,7 +254,7 @@ function renderPlan() {
     const loggedMins = entries
       .filter((e) => e.date === viewKey && e.text.toLowerCase() === t.text.toLowerCase() && e.tsEnd)
       .reduce((sum, e) => sum + Math.round((e.tsEnd - e.ts) / 60000), 0);
-    const timeSpent = loggedMins > 0 ? fmtMins(loggedMins) : '';
+    const timeSpent = loggedMins > 0 ? fmtDur(loggedMins * 60000) : '';
 
     if (editingPlanId === t.id) {
       return `<div class="plan-item" data-pid="${t.id}">
@@ -315,7 +352,9 @@ function renderPlan() {
         const _note = _hn[t.text.toLowerCase().trim()];
         if (_note)
           handoffNoteHtml = `<div class="plan-handoff-note"><span class="plan-handoff-text">↳ ${escHtml(_note)}</span><button class="plan-handoff-dismiss" data-task="${escHtml(t.text.toLowerCase().trim())}" title="dismiss note">×</button></div>`;
-      } catch (e) {}
+      } catch (e) {
+        // Silently skip — handoff note is display-only; a parse failure just hides it
+      }
     }
 
     // Checkpoint badge + expandable area
@@ -422,11 +461,13 @@ function renderPlan() {
       }`;
   }
 
-  // Render all three lists
+  /* ── 6. Write HTML to the DOM ── */
   if (mainTasks.length) mainListEl.innerHTML = mainSorted.map(renderRow).join('');
   pendingListEl.innerHTML = pendingSorted.map(renderRow).join('');
   upcomingListEl.innerHTML = upcomingSorted.map(renderRow).join('');
 
+  /* ── 7. Event binding (runs across all three lists via the qa() helper) ── */
+  // qa(selector) queries all three list containers and returns a flat array of matches.
   // Event handlers bound across all three lists (main, pending, upcoming)
   const lists = [mainListEl, pendingListEl, upcomingListEl];
   const qa = (sel) => lists.flatMap((L) => [...L.querySelectorAll(sel)]);
@@ -701,7 +742,9 @@ function renderPlan() {
       const len = inp.value.length;
       try {
         inp.setSelectionRange(len, len);
-      } catch (e) {}
+      } catch (e) {
+        // Silently skip — setSelectionRange may fail on certain input types in some browsers
+      }
     }
   });
 
@@ -721,7 +764,9 @@ function renderPlan() {
         const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
         delete notes[btn.dataset.task];
         localStorage.setItem('wl_handoff', JSON.stringify(notes));
-      } catch (e) {}
+      } catch (e) {
+        wlLog.warn('plan-handoff-dismiss: failed to update wl_handoff in localStorage', e);
+      }
       renderPlan();
     });
   });

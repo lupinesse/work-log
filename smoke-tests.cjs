@@ -2188,6 +2188,82 @@ async function runTests() {
       () => document.getElementById('migrationOverlay').style.display === 'none'
     );
     assert('Migration closes on close button', hidden);
+    await page.close();
+  }
+
+  // ── 39. Import backup — UI elements and validation ───────────────────────
+  // The file-input flow can't be driven headlessly without a real file, so
+  // this section verifies: (a) the hidden file input is present in the DOM
+  // (it is now triggered from the SOD button flow, not a standalone button);
+  // (b) validateBackupFile is exposed via the test harness and correctly
+  // accepts/rejects backup objects.
+  console.log('\n39. Import backup — UI and validation');
+  {
+    const page = await freshPage(ctx);
+
+    assert(
+      'backupFileInput exists and is hidden',
+      await page.evaluate(() => {
+        const el = document.getElementById('backupFileInput');
+        return el && el.type === 'file' && el.style.display === 'none';
+      })
+    );
+    assert(
+      'backupFileInput accepts .json only',
+      await page.evaluate(() => document.getElementById('backupFileInput').accept === '.json')
+    );
+    assert(
+      'validateBackupFile exposed on test harness',
+      await page.evaluate(() => typeof window.__wl.validateBackupFile === 'function')
+    );
+
+    // Validation: happy path
+    const validResult = await page.evaluate(() =>
+      window.__wl.validateBackupFile({
+        version: '1',
+        entries: [],
+        categories: [],
+        planTasks: [],
+      })
+    );
+    assert(
+      'validateBackupFile accepts version-1 backup',
+      validResult.valid === true,
+      JSON.stringify(validResult)
+    );
+
+    // Validation: wrong version
+    const wrongVersion = await page.evaluate(() =>
+      window.__wl.validateBackupFile({
+        version: '2',
+        entries: [],
+        categories: [],
+        planTasks: [],
+      })
+    );
+    assert(
+      'validateBackupFile rejects wrong version',
+      wrongVersion.valid === false,
+      JSON.stringify(wrongVersion)
+    );
+
+    // Validation: null
+    const nullResult = await page.evaluate(() => window.__wl.validateBackupFile(null));
+    assert(
+      'validateBackupFile rejects null',
+      nullResult.valid === false,
+      JSON.stringify(nullResult)
+    );
+
+    // Validation: missing required field
+    const missingField = await page.evaluate(() =>
+      window.__wl.validateBackupFile({ version: '1', entries: [], categories: [] })
+    );
+    assert(
+      'validateBackupFile rejects missing planTasks',
+      missingField.valid === false && missingField.error.includes('"planTasks"'),
+      JSON.stringify(missingField)
+    );
 
     await page.close();
   }

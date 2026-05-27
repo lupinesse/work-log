@@ -22,154 +22,14 @@ function totalISOWeeks(year) {
 }
 
 let _lastTickDate = dk(new Date());
-let _lastReminderMinute = -1;
-
-// Auto-break state — set at :50, cleared at :00
-let _preBreakEntryId = null; // entry id that was running before the automated break
-let _breakEntryId = null; // entry id of the auto-created Break entry
-
-/* ── Water-themed reminders ── */
-
-/**
- * Plays a water-themed audio reminder using the Web Audio API.
- * 'breaktime' plays a short rain sound (8 rustling oscillators).
- * 'worktime' plays a rolling ocean-wave sound (3 deeper tones).
- * Silently skips if Web Audio is unavailable.
- * @param {'breaktime'|'worktime'} type - Which sound to play.
- */
-function playWaterReminderSound(type) {
-  // type: 'breaktime' (get up, at XX:50) or 'worktime' (return to work, at XX:00)
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-
-    if (type === 'breaktime') {
-      // Rain sound: multiple short rustling sounds in quick succession
-      // Simulates rain/drizzle
-      for (let i = 0; i < 8; i++) {
-        setTimeout(() => {
-          try {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-
-            // Randomized low frequency for rain effect
-            osc.frequency.value = 100 + Math.random() * 80;
-
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.3);
-          } catch (e) {}
-        }, i * 80);
-      }
-    } else if (type === 'worktime') {
-      // Ocean wave sound: deeper, rolling wave tones
-      // Three waves in sequence
-      for (let w = 0; w < 3; w++) {
-        setTimeout(() => {
-          try {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-
-            // Deeper frequency for ocean/waves
-            osc.frequency.value = 60 + w * 20;
-
-            gain.gain.setValueAtTime(0.2, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-
-            osc.start();
-            osc.stop(ctx.currentTime + 0.6);
-          } catch (e) {}
-        }, w * 700);
-      }
-    }
-  } catch (e) {}
-}
-
-/**
- * Checks the current minute and fires hourly break/return-to-work logic.
- * At minute :50 — stops the active timer, creates a Break entry, starts a
- * 10-minute pomodoro, and enters focus mode.
- * At minute :00 — stops the Break timer (if still running), restarts the
- * pre-break task, and exits focus mode.
- * Runs at most once per clock minute.
- */
-function checkReminders() {
-  const now = new Date();
-  const mins = now.getMinutes();
-
-  // Only check once per minute
-  if (mins === _lastReminderMinute) return;
-  _lastReminderMinute = mins;
-
-  if (mins === 50) {
-    // Break time — stop current timer, create Break entry, play rain sound, enter focus mode
-    playWaterReminderSound('breaktime');
-
-    // Remember which entry was running so we can restore it after the break
-    _preBreakEntryId = activeTimer ? activeTimer.entryId : null;
-    _breakEntryId = null;
-
-    // Stop any active timer
-    if (activeTimer) stopTimer();
-
-    // Create a Break entry
-    const breakEntry = {
-      id: Date.now() + '',
-      text: 'Break',
-      tag: 'break',
-      ts: Date.now(),
-      date: dk(new Date()),
-    };
-    entries.push(breakEntry);
-    save();
-    _breakEntryId = breakEntry.id;
-
-    // Start timer on Break entry
-    startTimer(breakEntry.id);
-
-    // Initialize and start 10-minute pomodoro
-    initPomo(10);
-    startPomo();
-
-    // Enter focus/emergency mode
-    enterEmergency();
-
-    render();
-  } else if (mins === 0) {
-    // Return to work — play ocean wave sound, then restore pre-break state
-    playWaterReminderSound('worktime');
-
-    if (_breakEntryId) {
-      // Only stop the break timer if the user hasn't already switched away from it
-      if (activeTimer && activeTimer.entryId === _breakEntryId) {
-        stopTimer(); // finalizes the Break entry with tsEnd
-        // Resume the pre-break task if it still exists in entries
-        if (_preBreakEntryId && entries.find((e) => e.id === _preBreakEntryId)) {
-          startTimer(_preBreakEntryId);
-        }
-      }
-      // Exit focus mode regardless — it was auto-entered, so auto-exit it
-      if (emergencyMode) exitEmergency();
-      _preBreakEntryId = null;
-      _breakEntryId = null;
-      render();
-    }
-  }
-}
 
 tickClock();
 setInterval(tickClock, 10000);
 
 /**
  * Updates the live clock display (date, time, ISO week), the time-block
- * "now" line, block notifications, and hourly reminders. Also detects
- * midnight rollover: carries unfinished plan tasks to the new day and
- * re-renders the UI.
+ * "now" line, and block notifications. Also detects midnight rollover:
+ * carries unfinished plan tasks to the new day and re-renders the UI.
  */
 function tickClock() {
   const now = new Date();
@@ -185,7 +45,6 @@ function tickClock() {
   document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
   positionNowLine();
   checkBlockNotifications();
-  checkReminders(); // Check for hourly break reminders
   // Detect midnight rollover — carry tasks and re-render
   const todayKey = dk(now);
   if (todayKey !== _lastTickDate) {
