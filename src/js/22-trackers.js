@@ -1,5 +1,10 @@
 // ── 22-trackers.js — Custom time-goal progress trackers ──
 
+/**
+ * Loads the trackers array from localStorage into the module-level `trackers` variable.
+ * Falls back to an empty array and logs a warning on parse failure.
+ * @returns {void}
+ */
 function loadTrackers() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
@@ -10,6 +15,10 @@ function loadTrackers() {
   }
 }
 
+/**
+ * Persists the current `trackers` array to localStorage.
+ * @returns {void}
+ */
 function saveTrackers() {
   localStorage.setItem(STORE_TRACKERS, JSON.stringify(trackers));
 }
@@ -35,8 +44,9 @@ function trackerDayStatus(tracker, dateKey) {
 
 /**
  * Calculates the current consecutive "hit" streak for a tracker, ending today.
- * @param {Object} tracker
- * @returns {number} Number of consecutive hit days.
+ * Walks backwards day-by-day (up to 60 days) and stops at the first non-hit day.
+ * @param {Object} tracker - Tracker object with `tags` and `targetMinutes`.
+ * @returns {number} Number of consecutive hit days ending today.
  */
 function trackerStreak(tracker) {
   let streak = 0;
@@ -55,7 +65,9 @@ function trackerStreak(tracker) {
 
 /**
  * Renders all tracker cards into #trackerList.
- * Shows a 28-day grid, streak, and hit count for each tracker.
+ * Each card shows a 28-day hit/partial/miss grid, current streak, and total hit count.
+ * Attaches delete-button listeners after render.
+ * @returns {void}
  */
 function renderTrackers() {
   const el = document.getElementById('trackerList');
@@ -114,7 +126,12 @@ function renderTrackers() {
 
 let _trackerFormOpen = false;
 
-/** Renders the new-tracker form inside #trackerNewForm. */
+/**
+ * Shows and populates the new-tracker form inside #trackerNewForm.
+ * Pre-fills the colour picker with the first category's colour.
+ * Attaches Save / Cancel / keyboard listeners.
+ * @returns {void}
+ */
 function openTrackerForm() {
   const formEl = document.getElementById('trackerNewForm');
   if (!formEl) return;
@@ -167,12 +184,22 @@ function openTrackerForm() {
   });
 }
 
+/**
+ * Hides the new-tracker form and resets the open-state flag.
+ * @returns {void}
+ */
 function closeTrackerForm() {
   const formEl = document.getElementById('trackerNewForm');
   if (formEl) formEl.style.display = 'none';
   _trackerFormOpen = false;
 }
 
+/**
+ * Reads the new-tracker form, validates inputs, pushes the tracker to the
+ * `trackers` array, persists it, and re-renders. Shows an alert if no category
+ * is selected; focuses the name field if the name is empty.
+ * @returns {void}
+ */
 function saveTrackerForm() {
   const name = (document.getElementById('trFormName')?.value || '').trim();
   if (!name) {
@@ -201,6 +228,12 @@ function saveTrackerForm() {
   renderTrackers();
 }
 
+/**
+ * Bootstraps the Trackers feature: performs the initial render and wires up
+ * the "+ New" button to toggle the tracker form open/closed.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
 function initTrackers() {
   renderTrackers();
   document.getElementById('trackerAddBtn')?.addEventListener('click', () => {

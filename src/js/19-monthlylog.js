@@ -4,6 +4,12 @@ let _mlYear = new Date().getFullYear();
 let _mlMonth = new Date().getMonth(); // 0-indexed
 let _mlActive = false;
 
+/**
+ * Returns the number of days in a given month.
+ * @param {number} y - Full year (e.g. 2026).
+ * @param {number} m - Month index, 0-based (0 = January).
+ * @returns {number} Day count (28–31).
+ */
 function mlDaysInMonth(y, m) {
   return new Date(y, m + 1, 0).getDate();
 }
@@ -21,6 +27,13 @@ function mlHoursForDay(dateKey) {
   );
 }
 
+/**
+ * Maps a logged-hours value to a CSS colour for the heatmap grid.
+ * Thresholds: 0h → bg3 (empty), <2h → faint blue, <5h → mid blue,
+ * <7h → strong blue, ≥7h → solid blue.
+ * @param {number} hours - Total logged hours for a single day.
+ * @returns {string} A CSS colour value (variable or rgba/hex string).
+ */
 function mlHeatColor(hours) {
   if (!hours) return 'var(--bg3)';
   if (hours < 2) return 'rgba(24,95,165,0.15)';
@@ -160,6 +173,14 @@ function renderMonthlyLog() {
   });
 }
 
+/**
+ * Bootstraps the Monthly Log feature.
+ * Uses event delegation on `document` to handle clicks on the tab button
+ * (which is rebuilt by render() and cannot be bound directly). Toggles the
+ * section visibility and syncs the heatmap to the currently viewed month.
+ * Called once on DOMContentLoaded.
+ * @returns {void}
+ */
 function initMonthlyLog() {
   // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
   document.addEventListener('click', (e) => {
