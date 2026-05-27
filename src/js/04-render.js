@@ -45,7 +45,9 @@ function render() {
   /* ── 4. Sub-stat tiles (most-tracked task today / this week / best streak day) ── */
   // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic
   function taskSubHtml(label, ms) {
-    const m = label.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/s);
+    // Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
+    // eslint-disable-next-line security/detect-unsafe-regex
+    const m = label.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/);
     const ticket = m ? m[1] : null;
     const name = m ? (m[3] || '').trim() : label;
     const keyHtml = ticket

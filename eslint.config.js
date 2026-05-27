@@ -1,10 +1,15 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import security from 'eslint-plugin-security';
 
 export default [
   js.configs.recommended,
+  security.configs.recommended,
 
   // Build tooling — ES modules running in Node
+  // detect-non-literal-fs-filename is suppressed: all file paths here are
+  // internal configuration constants derived from package.json and __dirname,
+  // never from external/user input, so the rule produces only false positives.
   {
     files: ['*.js'],
     ignores: ['take-screenshots.js'],
@@ -16,6 +21,7 @@ export default [
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
     },
   },
 
@@ -36,6 +42,9 @@ export default [
   // Source modules — concatenated into a single browser IIFE at build time.
   // no-undef is disabled: functions defined in one module are legitimately called
   // from another; ESLint cannot see the full shared scope of the concatenated output.
+  // detect-object-injection is disabled: bracket-notation on internal state arrays
+  // (entries, categories, planTasks) is intentional and the data is never from
+  // untrusted external input at that point.
   {
     files: ['src/js/*.js'],
     languageOptions: {
@@ -49,11 +58,14 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-object-injection': 'off',
     },
   },
 
   // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
   // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
+  // detect-non-literal-fs-filename: paths come from internal config, not external input.
+  // detect-object-injection: MIME[ext] is a static lookup keyed by path.extname(), not user data.
   {
     files: ['*.cjs', 'test/**/*.cjs', 'scripts/**/*.cjs'],
     languageOptions: {
@@ -63,6 +75,8 @@ export default [
     },
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
     },
   },
 
