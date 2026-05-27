@@ -378,3 +378,234 @@ describe('validateBackupFile', () => {
     assert.equal(result.valid, false);
   });
 });
+
+// ── 15-notion.js ─────────────────────────────────────────────────────────────
+// Tests for addTaskToNotion, saveTaskNotionUrl, and callClaudeWithNotion.
+// These functions depend on browser globals (fetch, getCat, planTasks, etc.)
+// so each test builds a fresh VM sandbox with stubs for those globals.
+
+const notionSrc = fs.readFileSync(path.join(__dirname, '../src/js/15-notion.js'), 'utf8');
+
+/**
+ * Creates a VM sandbox pre-loaded with the browser globals that 15-notion.js
+ * expects, then evaluates the source. Returns the sandbox for assertions.
+ * @param {Object} overrides - Properties merged onto the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadNotionSandbox(overrides = {}) {
+  const store = {};
+  const ctx = {
+    fetch: async () => new Response(JSON.stringify({})),
+    getCat: () => ({ id: 'other', label: 'other', color: '#888780' }),
+    planTasks: [],
+    savePlan: () => {},
+    renderPlan: () => {},
+    localStorage: {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => {
+        store[k] = String(v);
+      },
+      removeItem: (k) => {
+        delete store[k];
+      },
+    },
+    document: { addEventListener: () => {} },
+    window: {},
+    alert: () => {},
+    console,
+    Response,
+    ...overrides,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(notionSrc, ctx);
+  return ctx;
+}
+
+/**
+ * Minimal Response shim for the VM sandbox — enough for 15-notion.js to call
+ * res.ok, res.status, res.json(), and res.text().
+ */
+class Response {
+  constructor(body, init = {}) {
+    this._body = typeof body === 'string' ? body : JSON.stringify(body);
+    this.status = init.status || 200;
+    this.ok = this.status >= 200 && this.status < 300;
+  }
+  async json() {
+    return JSON.parse(this._body);
+  }
+  async text() {
+    return this._body;
+  }
+}
+
+describe('addTaskToNotion', () => {
+  it('returns the Notion page URL on success', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response(JSON.stringify({ url: 'https://notion.so/page-1' })),
+    });
+    const url = await ctx.addTaskToNotion({ text: 'Write tests', tag: 'dev' });
+    assert.equal(url, 'https://notion.so/page-1');
+  });
+
+  it('sends the task title and epic label in the request body', async () => {
+    let captured;
+    const ctx = loadNotionSandbox({
+      getCat: () => ({ id: 'dev', label: 'Development', color: '#000' }),
+      fetch: async (_url, opts) => {
+        captured = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ url: 'https://notion.so/p' }));
+      },
+    });
+    await ctx.addTaskToNotion({ text: 'My task', tag: 'dev' });
+    assert.equal(captured.title, 'My task');
+    assert.equal(captured.epic, 'development');
+  });
+
+  it('falls back to "other" when task has no tag', async () => {
+    let captured;
+    const ctx = loadNotionSandbox({
+      getCat: (id) => ({ id, label: id, color: '#000' }),
+      fetch: async (_url, opts) => {
+        captured = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ url: 'https://notion.so/p' }));
+      },
+    });
+    await ctx.addTaskToNotion({ text: 'Untagged task' });
+    assert.equal(captured.epic, 'other');
+  });
+
+  it('throws when the API returns a non-OK status', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response(JSON.stringify({ detail: 'Forbidden' }), { status: 403 }),
+    });
+    await assert.rejects(
+      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      (err) => err.message === 'Forbidden'
+    );
+  });
+
+  it('throws with generic message when error response has no detail', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response('not json', { status: 500 }),
+    });
+    await assert.rejects(
+      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      (err) => err.message === 'API 500'
+    );
+  });
+
+  it('throws when the response is OK but contains no URL', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response(JSON.stringify({ id: '123' })),
+    });
+    await assert.rejects(
+      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      (err) => err.message === 'No URL returned from Notion'
+    );
+  });
+});
+
+describe('saveTaskNotionUrl', () => {
+  it('persists the URL on the matching plan task', () => {
+    const task = { id: 'abc', text: 'Do thing' };
+    let planSaved = false;
+    let planRendered = false;
+    const ctx = loadNotionSandbox({
+      planTasks: [task],
+      savePlan: () => {
+        planSaved = true;
+      },
+      renderPlan: () => {
+        planRendered = true;
+      },
+    });
+    ctx.saveTaskNotionUrl('abc', 'https://notion.so/page');
+    assert.equal(task.notionUrl, 'https://notion.so/page');
+    assert.equal(planSaved, true);
+    assert.equal(planRendered, true);
+  });
+
+  it('does nothing when the task ID is not found', () => {
+    let planSaved = false;
+    const ctx = loadNotionSandbox({
+      planTasks: [{ id: 'xyz', text: 'Other' }],
+      savePlan: () => {
+        planSaved = true;
+      },
+    });
+    ctx.saveTaskNotionUrl('missing-id', 'https://notion.so/page');
+    assert.equal(planSaved, false);
+  });
+});
+
+describe('callClaudeWithNotion', () => {
+  it('returns concatenated text content from a successful response', async () => {
+    const body = {
+      content: [
+        { type: 'text', text: 'Hello ' },
+        { type: 'tool_use', id: 'x' },
+        { type: 'text', text: 'World' },
+      ],
+    };
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response(JSON.stringify(body)),
+    });
+    const result = await ctx.callClaudeWithNotion('test prompt');
+    assert.equal(result, 'Hello World');
+  });
+
+  it('sends model and maxTokens overrides in the request body', async () => {
+    let captured;
+    const ctx = loadNotionSandbox({
+      fetch: async (_url, opts) => {
+        captured = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ content: [] }));
+      },
+    });
+    await ctx.callClaudeWithNotion('p', { model: 'claude-opus-4-7', maxTokens: 500 });
+    assert.equal(captured.model, 'claude-opus-4-7');
+    assert.equal(captured.max_tokens, 500);
+  });
+
+  it('uses default model and maxTokens when no overrides given', async () => {
+    let captured;
+    const ctx = loadNotionSandbox({
+      fetch: async (_url, opts) => {
+        captured = JSON.parse(opts.body);
+        return new Response(JSON.stringify({ content: [] }));
+      },
+    });
+    await ctx.callClaudeWithNotion('p');
+    assert.equal(captured.model, 'claude-sonnet-4-6');
+    assert.equal(captured.max_tokens, 1000);
+  });
+
+  it('throws when the API returns a non-OK status', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response('Unauthorized', { status: 401 }),
+    });
+    await assert.rejects(
+      () => ctx.callClaudeWithNotion('p'),
+      (err) => err.message.includes('API 401')
+    );
+  });
+
+  it('includes truncated body text in the error message', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response('Some error detail', { status: 400 }),
+    });
+    await assert.rejects(
+      () => ctx.callClaudeWithNotion('p'),
+      (err) => err.message === 'API 400: Some error detail'
+    );
+  });
+
+  it('returns empty string when response has no text blocks', async () => {
+    const ctx = loadNotionSandbox({
+      fetch: async () => new Response(JSON.stringify({ content: [] })),
+    });
+    const result = await ctx.callClaudeWithNotion('p');
+    assert.equal(result, '');
+  });
+});
