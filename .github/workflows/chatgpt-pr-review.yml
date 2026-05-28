@@ -19,10 +19,12 @@ name: ChatGPT PR Review
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
 #   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token
+# An installation token is minted at runtime via actions/create-github-app-token@v2
 # and passed to anc95/ChatGPT-CodeReview so PR comments are attributed to the
 # App (with its custom name + avatar) instead of "github-actions[bot]" — keeps
-# the ChatGPT reviewer visually distinct from the Claude PR reviewer.
+# the ChatGPT reviewer visually distinct from the Claude PR reviewer. If the
+# mint step fails (bad secret / uninstalled App) the env var falls back to
+# secrets.GITHUB_TOKEN so the review still posts.
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
@@ -100,12 +102,18 @@ jobs:
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
 
       - name: Code Review with ChatGPT
-        if: steps.gate.outputs.should_run == 'true'
+        # `always()` keeps the review running even if the mint step failed —
+        # the env var falls back to the default workflow token so the review
+        # still posts (under github-actions[bot]) rather than being silently
+        # skipped because `success()` is false. The mint failure surfaces as
+        # a red CI step, which is the signal to fix the secret.
+        if: always() && steps.gate.outputs.should_run == 'true'
         uses: anc95/ChatGPT-CodeReview@main
         env:
           # App-installation token; comments post as the "ChatGPT Reviewer"
-          # App rather than the generic github-actions[bot].
-          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token }}
+          # App rather than the generic github-actions[bot]. Falls back to
+          # secrets.GITHUB_TOKEN if the mint step failed.
+          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token || secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
           # o3 reasoning model — deeper analysis than gpt-4o for the kind of

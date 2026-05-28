@@ -10,10 +10,12 @@ name: Claude PR Review
 #   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
 #   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token
+# An installation token is minted at runtime via actions/create-github-app-token@v2
 # and used by `gh pr comment` so the review comment is attributed to the App
 # (with its custom name + avatar) instead of "github-actions[bot]" — keeps the
-# Claude reviewer visually distinct from the ChatGPT reviewer.
+# Claude reviewer visually distinct from the ChatGPT reviewer. If the mint
+# step fails (bad secret / uninstalled App) GH_TOKEN falls back to
+# github.token so the review still posts.
 
 on:
   pull_request:
@@ -87,8 +89,11 @@ jobs:
         if: always() && steps.key-check.result != 'skipped'
         env:
           # App-installation token; comment posts as the "Claude Reviewer" App
-          # rather than the generic github-actions[bot].
-          GH_TOKEN: ${{ steps.claude-token.outputs.token }}
+          # rather than the generic github-actions[bot]. Falls back to the
+          # automatic workflow token if the mint step failed (bad secret /
+          # uninstalled App) so the review comment still gets posted — the
+          # red mint-step failure in CI is the signal to fix the secret.
+          GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
