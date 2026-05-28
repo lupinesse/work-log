@@ -1,0 +1,50 @@
+name: ChatGPT PR Review
+
+# Posts an automated ChatGPT code review as inline PR comments.
+# Only runs when the 'chatgpt-review' label is applied to the PR —
+# use this deliberately on large PRs where a second perspective is worth
+# the token cost. Small / doc-only PRs don't need it.
+#
+# Required secret:
+#   OPENAI_API_KEY — set in Settings > Secrets and variables > Actions
+#
+# Required permission:
+#   Settings > Actions > General > Workflow permissions > Read and write
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  chatgpt-review:
+    if: github.event.label.name == 'chatgpt-review'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Code Review with ChatGPT
+        uses: anc95/ChatGPT-CodeReview@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_ENDPOINT: https://api.openai.com/v1
+          MODEL: gpt-4o
+          PROMPT: >
+            You are reviewing a pull request in a personal time-tracking web
+            app (vanilla JavaScript ES modules, SCSS, HTML). The project follows
+            the UK Government Analysis Function Higher QA standard. Focus on:
+            correctness (logic errors, edge cases, null/undefined), single-purpose
+            functions (flag any function doing more than one thing), informative
+            naming (flag single-letter variables outside tight map/filter chains),
+            error handling (failures must call wlLog.warn or wlLog.error — never
+            silent catch), and test coverage (every new exported function needs a
+            unit test in test/unit.cjs). Ignore auto-generated files: script.js,
+            styles.css, docs/*.html. Be direct and specific; cite file and line
+            number for every finding.
+          TEMPERATURE: '0.2'
+          MAX_TOKENS: '2048'
+          top_p: '1'
+          MODE: patch
+          LANGUAGE: en
