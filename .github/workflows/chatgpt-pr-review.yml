@@ -81,7 +81,7 @@ jobs:
             );
 
             const sourceFiles = files.filter(f => !GENERATED.test(f.filename));
-            const totalLines  = sourceFiles.reduce((s, f) => s + f.additions + f.deletions, 0);
+            const totalLines  = sourceFiles.reduce((sum, f) => sum + f.additions + f.deletions, 0);
             const fileCount   = sourceFiles.length;
 
             core.info(`Source files changed: ${fileCount} (threshold ${FILES_THRESHOLD})`);
@@ -139,6 +139,10 @@ jobs:
               return;
             }
 
+            if (!fs.existsSync('pr.diff')) {
+              core.warning('pr.diff not found — diff step may have failed. Skipping review.');
+              return;
+            }
             const diff = fs.readFileSync('pr.diff', 'utf8');
             if (!diff.trim()) {
               core.info('Empty diff after filtering generated files — nothing to review.');
@@ -172,7 +176,8 @@ jobs:
                 { role: 'user',   content: `Review this diff:\n\n\`\`\`diff\n${diffContent}\n\`\`\`` },
               ],
               max_tokens:       2048,
-              temperature:      0.2,
+              // reasoning_effort replaces temperature for reasoning-class models;
+              // sending both causes an API error.
               reasoning_effort: 'high',
             });
 
