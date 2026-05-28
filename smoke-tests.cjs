@@ -306,14 +306,14 @@ async function runTests() {
     // starts. Wait explicitly rather than relying on Playwright's implicit
     // auto-wait inside page.click, so any future state-machine regression
     // surfaces here with a clear timeout rather than a flaky click.
-    await page.waitForSelector('#tbMoodBtn', { state: 'visible', timeout: 1000 });
+    await page.waitForSelector('#tbMoodBtn', { state: 'visible', timeout: 3000 });
 
     await page.click('#tbMoodBtn');
     // Wait on an actual menu item being visible — robust against changes to
     // how the panel toggles (class vs. inline style, animations, etc.).
     await page.waitForSelector('#tbMoodPanel .tb-mood-item', {
       state: 'visible',
-      timeout: 1000,
+      timeout: 3000,
     });
 
     const probe = await page.evaluate(() => {

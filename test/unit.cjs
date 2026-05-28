@@ -420,7 +420,7 @@ function loadNotionSandbox(overrides = {}) {
   const store = {};
   let capturedClickHandler = null;
   const sandbox = {
-    fetch: async () => new MockResponse(JSON.stringify({})),
+    fetch: async () => new MockResponse({}),
     getCat: () => ({ id: 'other', label: 'other', color: '#888780' }),
     planTasks: [],
     savePlan: () => {},
