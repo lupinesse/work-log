@@ -460,7 +460,9 @@ function loadNotionSandbox(overrides = {}) {
 
 it('regression #33: removes wl_anthropic_key from localStorage on load', () => {
   const removed = [];
-  loadNotionSandbox({ localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} } });
+  loadNotionSandbox({
+    localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} },
+  });
   assert.ok(removed.includes('wl_anthropic_key'));
 });
 
@@ -853,5 +855,313 @@ describe('Notion button click handler', () => {
     assert.equal(btn.textContent, '📋');
     assert.equal(alerts.length, 1);
     assert.match(alerts[0], /Failed to add to Notion: API down/);
+  });
+});
+
+// ── flatSort ──────────────────────────────────────────────────────────────────
+// flatSort lives in src/js/10-tasks.js and reads the module-level globals
+// `activeTimer` and `entries` to give the live-timer task a sort bonus.
+// Loading the file in a VM sandbox with those globals pre-populated lets us
+// test the sort algorithm without a browser or build step.
+
+/**
+ * Creates a VM sandbox with 00-pure-fns.js and 10-tasks.js loaded.
+ * The sandbox exposes `flatSort` as a property (function declaration = global).
+ *
+ * @param {Object} [overrides] - Properties to merge into the sandbox before evaluation.
+ * @returns {Object} The populated VM sandbox.
+ */
+function loadFlatSortSandbox(overrides = {}) {
+  const pureSrc = fs.readFileSync(path.join(__dirname, '../src/js/00-pure-fns.js'), 'utf8');
+  const tasksSrc = fs.readFileSync(path.join(__dirname, '../src/js/10-tasks.js'), 'utf8');
+  const sandbox = {
+    document: {
+      getElementById: () => ({
+        addEventListener: () => {},
+        style: {},
+        classList: { toggle: () => {} },
+      }),
+    },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    activeTimer: null,
+    entries: [],
+    planTasks: [],
+    categories: [{ id: 'other', label: 'Other', color: '#888' }],
+    viewDate: new Date(),
+    pendingCollapsed: false,
+    planCollapsed: false,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {} },
+    validPlanTask: () => true,
+    selectedTag: 'other',
+    render: () => {},
+    renderPlan: () => {},
+    getCat: (id) => ({ id, label: id, color: '#888', billable: true }),
+    safeRoundedStart: () => Date.now(),
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(tasksSrc, sandbox);
+  return sandbox;
+}
+
+describe('flatSort', () => {
+  it('orders tasks by status: inprogress → todo → pending → blocked → done', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: '1', text: 'done task', status: 'done' },
+      { id: '2', text: 'blocked task', status: 'blocked' },
+      { id: '3', text: 'todo task', status: 'todo' },
+      { id: '4', text: 'live task', status: 'inprogress' },
+    ];
+    const result = flatSort(tasks);
+    assert.equal(result[0].status, 'inprogress');
+    assert.equal(result[1].status, 'todo');
+    assert.equal(result[2].status, 'blocked');
+    assert.equal(result[3].status, 'done');
+  });
+
+  it('orders by priority within same status: high(1) > normal(0) > low(-1)', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: '1', text: 'low pri', status: 'todo', priority: -1 },
+      { id: '2', text: 'normal pri', status: 'todo' },
+      { id: '3', text: 'high pri', status: 'todo', priority: 1 },
+    ];
+    const result = flatSort(tasks);
+    assert.equal(result[0].priority, 1);
+    assert.equal(result[1].priority || 0, 0);
+    assert.equal(result[2].priority, -1);
+  });
+
+  it('places child immediately after its parent', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: 'p1', text: 'beta parent', status: 'todo' },
+      { id: 'c1', text: 'child of beta', status: 'todo', parentId: 'p1' },
+      { id: 'p2', text: 'alpha parent', status: 'todo' },
+    ];
+    const result = flatSort(tasks);
+    const p1Idx = result.findIndex((t) => t.id === 'p1');
+    const c1Idx = result.findIndex((t) => t.id === 'c1');
+    assert.equal(c1Idx, p1Idx + 1, 'child must immediately follow its parent');
+  });
+
+  it('appends orphaned children (missing parent) at the end', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: 'p1', text: 'parent', status: 'todo' },
+      { id: 'orphan', text: 'orphan', status: 'todo', parentId: 'deleted-parent-id' },
+    ];
+    const result = flatSort(tasks);
+    assert.equal(result[result.length - 1].id, 'orphan');
+  });
+
+  it('sorts the live-timer matching task first regardless of status', () => {
+    const sb = loadFlatSortSandbox();
+    sb.activeTimer = { entryId: 'e1' };
+    sb.entries = [
+      { id: 'e1', text: 'Active work', tag: 'other', ts: Date.now(), date: '2026-05-28' },
+    ];
+    const tasks = [
+      { id: '1', text: 'done task', status: 'done' },
+      { id: '2', text: 'Active work', status: 'todo' },
+    ];
+    const result = sb.flatSort(tasks);
+    assert.equal(result[0].id, '2', 'live-timer task must sort first');
+  });
+
+  it('uses alphabetical tiebreaker within same status and priority', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: '1', text: 'zebra', status: 'todo' },
+      { id: '2', text: 'apple', status: 'todo' },
+      { id: '3', text: 'mango', status: 'todo' },
+    ];
+    const result = flatSort(tasks);
+    assert.equal(result[0].text, 'apple');
+    assert.equal(result[1].text, 'mango');
+    assert.equal(result[2].text, 'zebra');
+  });
+
+  it('returns empty array unchanged', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    assert.equal(flatSort([]).length, 0);
+  });
+});
+
+// ── _qcBuildTaskGroups and _qcTaskListHtml ────────────────────────────────────
+// These pure functions live in src/js/16-rapid.js.  The module-level let for
+// _qcFilterCat is promoted to var via source rewrite so tests can mutate it
+// as a sandbox property without reloading the file each time.
+
+/**
+ * Creates a VM sandbox with 00-pure-fns.js and 16-rapid.js loaded.
+ * Injects getCat using the sandbox's `categories` array.
+ *
+ * @param {Object} [overrides] - Properties to merge into the sandbox before evaluation.
+ * @returns {Object} The populated VM sandbox.
+ */
+function loadRapidSandbox(overrides = {}) {
+  const pureSrc = fs.readFileSync(path.join(__dirname, '../src/js/00-pure-fns.js'), 'utf8');
+  let rapidSrc = fs.readFileSync(path.join(__dirname, '../src/js/16-rapid.js'), 'utf8');
+  rapidSrc = rapidSrc.replace(/\blet (_qcFilterCat)\b/, 'var $1');
+  rapidSrc = rapidSrc.replace(/\blet (_qcSearch)\b/, 'var $1');
+
+  const sandbox = {
+    document: { getElementById: () => null, addEventListener: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    activeTimer: null,
+    entries: [],
+    planTasks: [],
+    categories: [
+      { id: 'other', label: 'Other', color: '#888780' },
+      { id: 'work', label: 'Work', color: '#4a90e2', billable: true },
+    ],
+    fmtElapsed: () => '0:00',
+    getElapsedMs: () => 0,
+    selectedTag: 'other',
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    safeRoundedStart: () => Date.now(),
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(
+    `function getCat(id) {
+       const cat = categories.find(function(c){ return c.id === id; })
+                || categories.find(function(c){ return c.id === 'other'; });
+       if (!cat) return { id: 'other', label: 'Other', color: '#888780' };
+       return { id: cat.id, label: cat.label, color: cat.color };
+     }`,
+    sandbox
+  );
+  vm.runInContext(rapidSrc, sandbox);
+  return sandbox;
+}
+
+describe('_qcBuildTaskGroups', () => {
+  const TODAY = '2026-05-28';
+
+  it('returns three empty arrays when there is no data', () => {
+    const sb = loadRapidSandbox();
+    const { inProgress, todo, recent } = sb._qcBuildTaskGroups('', TODAY);
+    assert.equal(inProgress.length, 0);
+    assert.equal(todo.length, 0);
+    assert.equal(recent.length, 0);
+  });
+
+  it('puts the active-timer entry in inProgress', () => {
+    const sb = loadRapidSandbox();
+    sb.activeTimer = { entryId: 'e1' };
+    sb.entries = [{ id: 'e1', text: 'Active work', tag: 'work', ts: 1, date: TODAY }];
+    const { inProgress } = sb._qcBuildTaskGroups('', TODAY);
+    assert.equal(inProgress.length, 1);
+    assert.equal(inProgress[0].id, 'e1');
+  });
+
+  it('puts open plan tasks in todo, excludes done and _migrated', () => {
+    const sb = loadRapidSandbox();
+    sb.planTasks = [
+      { id: 't1', text: 'open task', tag: 'work', status: 'todo', date: TODAY },
+      { id: 't2', text: 'done task', tag: 'work', status: 'done', date: TODAY },
+      { id: 't3', text: 'migrated', tag: 'work', status: 'todo', date: TODAY, _migrated: true },
+    ];
+    const { todo } = sb._qcBuildTaskGroups('', TODAY);
+    assert.equal(todo.length, 1);
+    assert.equal(todo[0].id, 't1');
+  });
+
+  it('puts closed today entries in recent, deduplicates by text', () => {
+    const sb = loadRapidSandbox();
+    sb.entries = [
+      { id: 'e1', text: 'Task A', tag: 'work', ts: 1, date: TODAY },
+      { id: 'e2', text: 'Task A', tag: 'work', ts: 2, date: TODAY },
+    ];
+    const { recent } = sb._qcBuildTaskGroups('', TODAY);
+    assert.equal(recent.length, 1, 'duplicate texts must appear once only');
+  });
+
+  it('filters all groups by search string', () => {
+    const sb = loadRapidSandbox();
+    sb.planTasks = [
+      { id: 't1', text: 'Design review', tag: 'work', status: 'todo', date: TODAY },
+      { id: 't2', text: 'Unrelated task', tag: 'work', status: 'todo', date: TODAY },
+    ];
+    const { todo } = sb._qcBuildTaskGroups('design', TODAY);
+    assert.equal(todo.length, 1);
+    assert.equal(todo[0].id, 't1');
+  });
+
+  it('filters all groups by category when _qcFilterCat is set', () => {
+    const sb = loadRapidSandbox();
+    sb._qcFilterCat = 'work';
+    sb.planTasks = [
+      { id: 't1', text: 'Work task', tag: 'work', status: 'todo', date: TODAY },
+      { id: 't2', text: 'Other task', tag: 'other', status: 'todo', date: TODAY },
+    ];
+    const { todo } = sb._qcBuildTaskGroups('', TODAY);
+    assert.equal(todo.length, 1);
+    assert.equal(todo[0].id, 't1');
+  });
+});
+
+describe('_qcTaskListHtml', () => {
+  it('returns a qc-empty div when all groups are empty', () => {
+    const sb = loadRapidSandbox();
+    const html = sb._qcTaskListHtml({ inProgress: [], todo: [], recent: [] }, '');
+    assert.ok(html.includes('qc-empty'), 'empty-state div must be present');
+  });
+
+  it('shows the typed search text in the empty-state prompt', () => {
+    const sb = loadRapidSandbox();
+    const html = sb._qcTaskListHtml({ inProgress: [], todo: [], recent: [] }, 'design');
+    assert.ok(html.includes('design'), 'empty-state must surface the user search text');
+  });
+
+  it('renders "In progress" group header when inProgress is non-empty', () => {
+    const sb = loadRapidSandbox();
+    const entry = { id: 'e1', text: 'Active', tag: 'work', ts: 1 };
+    const html = sb._qcTaskListHtml({ inProgress: [entry], todo: [], recent: [] }, '');
+    assert.ok(html.includes('In progress'), '"In progress" header must appear');
+    assert.ok(html.includes('Active'), 'entry text must appear');
+  });
+
+  it('renders "To-do" group header and caps at 6 items', () => {
+    const sb = loadRapidSandbox();
+    const todo = Array.from({ length: 8 }, (_, i) => ({
+      id: `t${i}`,
+      text: `Task ${i}`,
+      tag: 'work',
+    }));
+    const html = sb._qcTaskListHtml({ inProgress: [], todo, recent: [] }, '');
+    assert.ok(html.includes('To-do'), '"To-do" header must appear');
+    const matches = [...html.matchAll(/qc-task-row/g)];
+    assert.ok(matches.length <= 6, `todo must be capped at 6 rows, got ${matches.length}`);
+  });
+
+  it('caps recent group at 5 items', () => {
+    const sb = loadRapidSandbox();
+    const recent = Array.from({ length: 7 }, (_, i) => ({
+      id: `e${i}`,
+      text: `Entry ${i}`,
+      tag: 'other',
+    }));
+    const html = sb._qcTaskListHtml({ inProgress: [], todo: [], recent }, '');
+    const matches = [...html.matchAll(/qc-task-row/g)];
+    assert.ok(matches.length <= 5, `recent must be capped at 5 rows, got ${matches.length}`);
+  });
+
+  it('escapes HTML in task text to prevent XSS', () => {
+    const sb = loadRapidSandbox();
+    const entry = { id: 'e1', text: '<script>alert(1)</script>', tag: 'other' };
+    const html = sb._qcTaskListHtml({ inProgress: [entry], todo: [], recent: [] }, '');
+    assert.ok(!html.includes('<script>'), 'raw <script> tag must not appear in output');
+    assert.ok(html.includes('&lt;script&gt;'), 'text must be HTML-escaped');
   });
 });
