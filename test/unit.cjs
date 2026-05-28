@@ -458,6 +458,12 @@ function loadNotionSandbox(overrides = {}) {
   return sandbox;
 }
 
+it('regression #33: removes wl_anthropic_key from localStorage on load', () => {
+  const removed = [];
+  loadNotionSandbox({ localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} } });
+  assert.ok(removed.includes('wl_anthropic_key'));
+});
+
 describe('addTaskToNotion', () => {
   it('returns the Notion page URL on success', async () => {
     const sandbox = loadNotionSandbox({
@@ -576,6 +582,19 @@ describe('saveTaskNotionUrl', () => {
     });
     sandbox.saveTaskNotionUrl('missing-id', 'https://notion.so/page');
     assert.equal(planSaved, false);
+  });
+
+  it('updates only the matching task when multiple tasks exist', () => {
+    const tasks = [
+      { id: 'a', text: 'A' },
+      { id: 'b', text: 'B' },
+      { id: 'c', text: 'C' },
+    ];
+    const sandbox = loadNotionSandbox({ planTasks: tasks });
+    sandbox.saveTaskNotionUrl('b', 'https://notion.so/b');
+    assert.equal(tasks[0].notionUrl, undefined, 'task a should be untouched');
+    assert.equal(tasks[1].notionUrl, 'https://notion.so/b');
+    assert.equal(tasks[2].notionUrl, undefined, 'task c should be untouched');
   });
 });
 
