@@ -1155,6 +1155,7 @@ function loadRapidSandbox(overrides = {}) {
     document: { getElementById: () => null, addEventListener: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
     console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     activeTimer: null,
     entries: [],
     planTasks: [],
@@ -1334,6 +1335,7 @@ function loadMonthlyLogSandbox() {
     getCatLabel: () => '',
     isEntryBillable: () => false,
     getReflectionForDate: () => null,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     console,
   };
   vm.createContext(sandbox);

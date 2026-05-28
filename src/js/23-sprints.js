@@ -79,9 +79,11 @@ function renderSprintDurations() {
 function startSprint() {
   _sprintIntention = document.getElementById('sprintIntention').value.trim();
   if (!_sprintIntention) {
+    wlLog.info('startSprint: rejected — empty intention');
     document.getElementById('sprintIntention').focus();
     return;
   }
+  wlLog.info('startSprint: starting', { duration: _sprintDuration });
   document.getElementById('sprintSetup').style.display = 'none';
   _sprintActive = true;
 
@@ -122,9 +124,12 @@ function startSprint() {
  */
 function notifyPomodoroEnd() {
   if (_onSprintEnd) {
+    wlLog.info('notifyPomodoroEnd: firing sprint-end callback');
     const fn = _onSprintEnd;
     _onSprintEnd = null;
     fn();
+  } else {
+    wlLog.info('notifyPomodoroEnd: no callback registered');
   }
 }
 
@@ -168,6 +173,7 @@ function showSprintReview() {
 
   document.getElementById('sprintReviewSave').onclick = () => {
     if (!_outcome) {
+      wlLog.info('showSprintReview: rejected — no outcome chosen');
       alert('Please choose an outcome.');
       return;
     }
@@ -182,6 +188,11 @@ function showSprintReview() {
       ts: Date.now(),
     });
     saveSprintLog();
+    wlLog.info('showSprintReview: sprint reviewed', {
+      duration: _sprintDuration,
+      outcome: _outcome,
+      hasNote: !!note,
+    });
 
     const entry = entries.find((e) => e.id === _sprintEntryId);
     if (entry) {
