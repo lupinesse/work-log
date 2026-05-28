@@ -22,9 +22,12 @@
 // State modifier: left-edge colour + optional background tint
 .hero-card--idle {
   border-left-color: var(--line-strong);
+
+  // Black-with-alpha (project convention) — renders as a tint on both
+  // light and dark backgrounds without needing a per-scheme override.
   box-shadow:
-    0 1px 0 rgba(15, 30, 55, 0.04),
-    0 2px 8px -4px rgba(15, 30, 55, 0.08);
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 2px 8px -4px rgba(0, 0, 0, 0.08);
 }
 
 .hero-card--running {
