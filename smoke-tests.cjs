@@ -291,6 +291,68 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 5c. Mood dropdown is not clipped by hero card ─────────────────────────
+  // Invariant: every item in `.tb-mood-panel` is rendered and hit-testable —
+  // no ancestor `overflow` / stacking rule may clip or cover the panel.
+  console.log('\n5c. Mood dropdown not clipped');
+  {
+    const today = dk(new Date());
+    const entries = [
+      { id: 'md1', text: 'Mood task', tag: 'work', ts: Date.now() - 5000, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.evaluate(() => window.__wl.startTimer('md1'));
+    // The running panel (which contains #tbMoodBtn) is shown when the timer
+    // starts. Wait explicitly rather than relying on Playwright's implicit
+    // auto-wait inside page.click, so any future state-machine regression
+    // surfaces here with a clear timeout rather than a flaky click.
+    await page.waitForSelector('#tbMoodBtn', { state: 'visible', timeout: 3000 });
+
+    await page.click('#tbMoodBtn');
+    // Wait on an actual menu item being visible — robust against changes to
+    // how the panel toggles (class vs. inline style, animations, etc.).
+    await page.waitForSelector('#tbMoodPanel .tb-mood-item', {
+      state: 'visible',
+      timeout: 3000,
+    });
+
+    const probe = await page.evaluate(() => {
+      const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
+      if (items.length === 0) return { itemCount: 0 };
+      // NodeList does not include .at() — use bracket-index access.
+      const last = items[items.length - 1];
+      const rect = last.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      // closest() walks up from text nodes / nested children, so the assertion
+      // still passes if items later gain inline icon/label children.
+      const hit = document.elementFromPoint(x, y);
+      const inItem = hit ? hit.closest('.tb-mood-item') : null;
+      return {
+        itemCount: items.length,
+        hitReachesItem: inItem !== null,
+        bottomItemHeight: rect.height,
+      };
+    });
+    assert(
+      'Mood panel contains at least one item',
+      probe.itemCount > 0,
+      `expected .tb-mood-item elements but found ${probe.itemCount}`
+    );
+    assert(
+      'Bottom mood item is rendered with a non-zero height',
+      probe.bottomItemHeight > 0,
+      `height=${probe.bottomItemHeight}`
+    );
+    assert(
+      'Bottom mood item is reachable by hit-test at its centre',
+      probe.hitReachesItem,
+      'elementFromPoint at centre of last item is not inside a .tb-mood-item'
+    );
+
+    await page.close();
+  }
+
   // ── 6. completedAt + completed section ────────────────────────────────────
   console.log('\n6. completedAt');
   {
