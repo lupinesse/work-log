@@ -14,10 +14,10 @@
   transition:
     border-left-color 0.25s,
     background 0.25s;
-}
 
-// NOTE: no `overflow: hidden` — would clip the mood-dropdown panel
-// (`.tb-mood-panel`) which is absolute-positioned out of `.hero-mood-wrap`.
+  // Intentionally no `overflow: hidden`: it would clip the mood-dropdown
+  // panel (.tb-mood-panel), which is absolute-positioned out of .hero-mood-wrap.
+}
 
 // State modifier: left-edge colour + optional background tint
 .hero-card--idle {

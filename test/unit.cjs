@@ -392,6 +392,10 @@ const notionSrc = fs.readFileSync(path.join(__dirname, '../src/js/15-notion.js')
  * Node's global `Response`.
  */
 class MockResponse {
+  /**
+   * @param {string|Object} body - Response body. Objects are JSON-stringified.
+   * @param {{ status?: number }} [init] - Status defaults to 200.
+   */
   constructor(body, init = {}) {
     this._body = typeof body === 'string' ? body : JSON.stringify(body);
     this.status = init.status || 200;
@@ -623,7 +627,12 @@ describe('callClaudeWithNotion', () => {
 // without a real DOM. Async tests drain the microtask queue with setImmediate
 // because the handler kicks off a fire-and-forget promise chain.
 
-/** Build a synthetic event whose `target.closest()` returns the given button. */
+/**
+ * Build a synthetic click event whose `target.closest()` returns the given
+ * button, mimicking the shape the delegated handler expects.
+ * @param {Object} btn - Stand-in for the `.notion-task-btn` element.
+ * @returns {{ target: { closest: Function }, stopPropagation: Function }}
+ */
 function eventTargetingButton(btn) {
   return { target: { closest: () => btn }, stopPropagation: () => {} };
 }
@@ -674,6 +683,21 @@ describe('Notion button click handler', () => {
     });
     sandbox.__clickHandler(eventTargetingButton({ dataset: {} }));
     assert.equal(fetchCalled, false);
+  });
+
+  it('is a no-op when the pid does not match any plan task', () => {
+    let fetchCalled = false;
+    const sandbox = loadNotionSandbox({
+      planTasks: [{ id: 'other-id', text: 'Some other task' }],
+      fetch: async () => {
+        fetchCalled = true;
+        return new MockResponse({});
+      },
+    });
+    const btn = { dataset: { pid: 'unknown-pid' }, disabled: false, textContent: '📋' };
+    sandbox.__clickHandler(eventTargetingButton(btn));
+    assert.equal(fetchCalled, false);
+    assert.equal(btn.disabled, false, 'button must not be disabled when task is missing');
   });
 
   it('disables the button and persists the URL on a successful add', async () => {
