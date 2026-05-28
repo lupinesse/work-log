@@ -92,6 +92,36 @@ The repository uses a simple trunk-based workflow:
 - **Never commit secrets**: `config.local.ps1` is gitignored; API tokens must never be committed
 - **`.gitignore`** covers: `node_modules/`, `dist/`, `portable/`, `config.local.ps1`, `.env`, crash logs — update it before adding any new generated or sensitive file
 
+### Commit hygiene — one discrete unit of work
+
+A **discrete unit of work** is a change that is independently understandable and reviewable:
+
+- one bug fix (and its regression test)
+- one new function or module
+- one refactor step (rename, extract, move)
+- one documentation update
+
+**Bad examples — do not bundle:**
+
+| What to avoid | Why |
+|---|---|
+| CSS fix + new feature + test in one commit | Impossible to revert the fix without losing the feature |
+| Renaming a variable across 6 files + fixing an unrelated bug | The revert of one change carries the other |
+| "WIP" or "various fixes" commit | Provides no information; makes `git bisect` unreliable |
+
+**Staging selectively with `git add -p`**
+
+When you've made several changes at once, use `git add -p` (patch mode) to stage individual hunks and split the work into focused commits before pushing:
+
+```bash
+git add -p src/js/05-entries.js   # choose which hunks to stage
+git commit -m "fix: correct date key in buildDailyLogItems"
+git add -p src/js/05-entries.js   # stage the remaining hunks
+git commit -m "refactor: extract buildEntryHtml from renderEntries"
+```
+
+This is the primary tool for keeping the commit log readable on a solo project where you often make several related changes before stepping back to commit.
+
 ## Code Style Guidelines
 
 ### JavaScript
