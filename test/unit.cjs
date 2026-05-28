@@ -398,7 +398,7 @@ class MockResponse {
    */
   constructor(body, init = {}) {
     this._body = typeof body === 'string' ? body : JSON.stringify(body);
-    this.status = init.status || 200;
+    this.status = init.status ?? 200;
     this.ok = this.status >= 200 && this.status < 300;
   }
   async json() {

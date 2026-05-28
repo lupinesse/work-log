@@ -302,6 +302,11 @@ async function runTests() {
     ];
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
     await page.evaluate(() => window.__wl.startTimer('md1'));
+    // The running panel (which contains #tbMoodBtn) is shown when the timer
+    // starts. Wait explicitly rather than relying on Playwright's implicit
+    // auto-wait inside page.click, so any future state-machine regression
+    // surfaces here with a clear timeout rather than a flaky click.
+    await page.waitForSelector('#tbMoodBtn', { state: 'visible', timeout: 1000 });
 
     await page.click('#tbMoodBtn');
     await page.waitForFunction(
