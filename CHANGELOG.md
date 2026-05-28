@@ -6,6 +6,7 @@
 - Malformed Outlook calendar meeting objects (e.g. missing `subject`, `start`, or `end`) are now filtered out before rendering rather than appearing as `"undefined"` in the meeting strip
 - Weather API responses with an unexpected shape now fall back to showing the city name (same as a network error) instead of leaving the weather widget empty
 - Jira CSV files with a wrong delimiter (e.g. semicolons) now log a console warning and show the "No tasks found" message rather than silently dropping all rows
+- Jira invalid-row warning now logs the full list of malformed rows instead of only the first row, so all problem rows are visible in a single DevTools entry
 
 ### Added
 - `ROADMAP.md` — forward-looking feature plan; addresses the "communication" gap in DevOps checklist
