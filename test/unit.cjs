@@ -454,7 +454,7 @@ function loadNotionSandbox(overrides = {}) {
 describe('addTaskToNotion', () => {
   it('returns the Notion page URL on success', async () => {
     const sandbox = loadNotionSandbox({
-      fetch: async () => new MockResponse(JSON.stringify({ url: 'https://notion.so/page-1' })),
+      fetch: async () => new MockResponse({ url: 'https://notion.so/page-1' }),
     });
     const url = await sandbox.addTaskToNotion({ text: 'Write tests', tag: 'dev' });
     assert.equal(url, 'https://notion.so/page-1');
@@ -466,7 +466,7 @@ describe('addTaskToNotion', () => {
       getCat: () => ({ id: 'dev', label: 'Development', color: '#000' }),
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new MockResponse(JSON.stringify({ url: 'https://notion.so/p' }));
+        return new MockResponse({ url: 'https://notion.so/p' });
       },
     });
     await sandbox.addTaskToNotion({ text: 'My task', tag: 'dev' });
@@ -480,7 +480,7 @@ describe('addTaskToNotion', () => {
       getCat: (id) => ({ id, label: id, color: '#000' }),
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new MockResponse(JSON.stringify({ url: 'https://notion.so/p' }));
+        return new MockResponse({ url: 'https://notion.so/p' });
       },
     });
     await sandbox.addTaskToNotion({ text: 'Untagged task' });
@@ -489,7 +489,7 @@ describe('addTaskToNotion', () => {
 
   it('throws when the API returns a non-OK status', async () => {
     const sandbox = loadNotionSandbox({
-      fetch: async () => new MockResponse(JSON.stringify({ detail: 'Forbidden' }), { status: 403 }),
+      fetch: async () => new MockResponse({ detail: 'Forbidden' }, { status: 403 }),
     });
     await assert.rejects(
       () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
@@ -509,7 +509,7 @@ describe('addTaskToNotion', () => {
 
   it('throws when the response is OK but contains no URL', async () => {
     const sandbox = loadNotionSandbox({
-      fetch: async () => new MockResponse(JSON.stringify({ id: '123' })),
+      fetch: async () => new MockResponse({ id: '123' }),
     });
     await assert.rejects(
       () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
@@ -561,7 +561,7 @@ describe('callClaudeWithNotion', () => {
       ],
     };
     const sandbox = loadNotionSandbox({
-      fetch: async () => new MockResponse(JSON.stringify(body)),
+      fetch: async () => new MockResponse(body),
     });
     const result = await sandbox.callClaudeWithNotion('test prompt');
     assert.equal(result, 'Hello World');
@@ -572,7 +572,7 @@ describe('callClaudeWithNotion', () => {
     const sandbox = loadNotionSandbox({
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new MockResponse(JSON.stringify({ content: [] }));
+        return new MockResponse({ content: [] });
       },
     });
     await sandbox.callClaudeWithNotion('p', { model: 'claude-opus-4-7', maxTokens: 500 });
@@ -585,7 +585,7 @@ describe('callClaudeWithNotion', () => {
     const sandbox = loadNotionSandbox({
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new MockResponse(JSON.stringify({ content: [] }));
+        return new MockResponse({ content: [] });
       },
     });
     await sandbox.callClaudeWithNotion('p');
@@ -617,7 +617,7 @@ describe('callClaudeWithNotion', () => {
 
   it('returns empty string when response has no text blocks', async () => {
     const sandbox = loadNotionSandbox({
-      fetch: async () => new MockResponse(JSON.stringify({ content: [] })),
+      fetch: async () => new MockResponse({ content: [] }),
     });
     const result = await sandbox.callClaudeWithNotion('p');
     assert.equal(result, '');
@@ -641,6 +641,18 @@ describe('callClaudeWithNotion', () => {
  */
 function eventTargetingButton(btn) {
   return { target: { closest: () => btn }, stopPropagation: () => {} };
+}
+
+/**
+ * Drain queued microtasks so fire-and-forget promise chains can settle.
+ * Two ticks rather than one: one drains the top-level resolution of the
+ * stubbed addTaskToNotion, the second drains any nested `await` a future
+ * refactor might add inside the chain.
+ * @returns {Promise<void>}
+ */
+async function flushPromises() {
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('Notion button click handler', () => {
@@ -724,10 +736,15 @@ describe('Notion button click handler', () => {
     const btn = { dataset: { pid: 'p2' }, disabled: false, textContent: '📋' };
     sandbox.__clickHandler(eventTargetingButton(btn));
     assert.equal(btn.disabled, true, 'button disabled synchronously before fetch resolves');
-    await new Promise((resolve) => setImmediate(resolve));
+    await flushPromises();
 
     assert.equal(savedTaskId, 'p2');
     assert.equal(savedUrl, 'https://notion.so/new-page');
+    // Source leaves the button in its loading state on success — renderPlan
+    // is expected to redraw it via saveTaskNotionUrl. Guard against a future
+    // refactor that prematurely re-enables the button here.
+    assert.equal(btn.disabled, true);
+    assert.equal(btn.textContent, '…');
   });
 
   it('restores the button and alerts when addTaskToNotion resolves to a non-HTTP URL', async () => {
@@ -740,7 +757,7 @@ describe('Notion button click handler', () => {
 
     const btn = { dataset: { pid: 'p4' }, disabled: false, textContent: '📋' };
     sandbox.__clickHandler(eventTargetingButton(btn));
-    await new Promise((resolve) => setImmediate(resolve));
+    await flushPromises();
 
     assert.equal(btn.disabled, false);
     assert.equal(btn.textContent, '📋');
@@ -760,7 +777,7 @@ describe('Notion button click handler', () => {
 
     const btn = { dataset: { pid: 'p3' }, disabled: false, textContent: '📋' };
     sandbox.__clickHandler(eventTargetingButton(btn));
-    await new Promise((resolve) => setImmediate(resolve));
+    await flushPromises();
 
     assert.equal(btn.disabled, false);
     assert.equal(btn.textContent, '📋');
