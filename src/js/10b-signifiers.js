@@ -42,10 +42,15 @@ function sigTitle(entry) {
  */
 function cycleSignifier(entryId) {
   const entry = entries.find((e) => e.id === entryId);
-  if (!entry) return;
+  if (!entry) {
+    wlLog.info('cycleSignifier: no matching entry', { entryId });
+    return;
+  }
   const idx = SIG_CYCLE.indexOf(entry.signifier);
   // -1 (none) → 0 (event); last item → null (back to none)
-  entry.signifier = idx + 1 < SIG_CYCLE.length ? SIG_CYCLE[idx + 1] : null;
+  const next = idx + 1 < SIG_CYCLE.length ? SIG_CYCLE[idx + 1] : null;
+  wlLog.info('cycleSignifier: changed', { entryId, from: entry.signifier || null, to: next });
+  entry.signifier = next;
   save();
   render();
 }

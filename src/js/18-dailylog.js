@@ -65,7 +65,9 @@ function renderDailyLog() {
 
   if (!items.length) {
     el.innerHTML = `<div class="tl-empty">No entries or notes for this day yet.</div>`;
+    wlLog.info('renderDailyLog: empty feed', { dateKey });
   } else {
+    wlLog.info('renderDailyLog: rendering feed', { dateKey, itemCount: items.length });
     el.innerHTML = items
       .map((item, i) => {
         const time = new Date(item.ts);
@@ -100,10 +102,14 @@ function renderDailyLog() {
 function addLogNote() {
   const inp = document.getElementById('dailyLogNoteInput');
   const text = inp ? inp.value.trim() : '';
-  if (!text) return;
+  if (!text) {
+    wlLog.info('addLogNote: rejected — empty input');
+    return;
+  }
   logNotes.push({ id: Date.now() + '', text, ts: Date.now(), date: dk(new Date()), type: 'note' });
   saveLogNotes();
   if (inp) inp.value = '';
+  wlLog.info('addLogNote: note saved', { length: text.length });
   renderDailyLog();
 }
 

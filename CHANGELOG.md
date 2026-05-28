@@ -18,6 +18,7 @@
 ### Changed
 - Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.
 - Split `renderMonthlyLog()` into `renderMonthlyCalendar()`, `renderMonthlySummary()`, `renderMonthlyTasks()`, plus a 12-line orchestrator — closes #9.
+- BuJo modules (`10b-signifiers.js`, `10b-tasks-events.js`, `16-rapid.js`, `18-dailylog.js`, `19-monthlylog.js`, `20-migration.js`, `21-reflection.js`, `22-trackers.js`, `23-sprints.js`) now emit `wlLog.info` at branch-decision points (empty state, skip/save, auto-prompt, input rejection, status transitions). Closes #12.
 
 ---
 

@@ -39,9 +39,11 @@ function openMigration() {
   _migIdx = 0;
 
   if (!_migItems.length) {
+    wlLog.info('openMigration: nothing to migrate', { monthPrefix: prefix });
     alert('No open tasks to migrate — month is already clean!');
     return;
   }
+  wlLog.info('openMigration: opening', { monthPrefix: prefix, taskCount: _migItems.length });
 
   const overlay = document.getElementById('migrationOverlay');
   if (!overlay) return;
@@ -143,6 +145,7 @@ function carryMigTask(task) {
   task._migrated = true;
   planTasks.push(newTask);
   savePlan();
+  wlLog.info('migration: carried task forward', { fromId: task.id, toDate: targetDate });
 }
 
 /**
@@ -154,6 +157,7 @@ function scheduleMigTask(task, dateStr) {
   task.date = dateStr;
   task._migrated = true;
   savePlan();
+  wlLog.info('migration: scheduled task', { id: task.id, newDate: dateStr });
 }
 
 /**
@@ -165,6 +169,7 @@ function dropMigTask(task) {
   task.status = 'done';
   task.completedAt = Date.now();
   savePlan();
+  wlLog.info('migration: dropped task', { id: task.id });
 }
 
 /**
@@ -182,6 +187,7 @@ function initMigration() {
   const monthKey = dk(now).slice(0, 7); // YYYY-MM
 
   if (isLastDay && !rec[monthKey]) {
+    wlLog.info('initMigration: showing last-day banner', { monthKey });
     setTimeout(() => {
       const banner = document.createElement('div');
       banner.className = 'mig-banner';
@@ -195,5 +201,10 @@ function initMigration() {
         openMigration();
       });
     }, 2000);
+  } else {
+    wlLog.info('initMigration: no auto-prompt', {
+      isLastDay,
+      alreadyDoneThisMonth: !!rec[monthKey],
+    });
   }
 }

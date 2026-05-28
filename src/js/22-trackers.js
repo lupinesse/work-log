@@ -74,9 +74,11 @@ function renderTrackers() {
   if (!el) return;
 
   if (!trackers.length) {
+    wlLog.info('renderTrackers: empty state');
     el.innerHTML = '<div class="plan-empty">No trackers yet — click + New above.</div>';
     return;
   }
+  wlLog.info('renderTrackers: rendering trackers', { count: trackers.length });
 
   // Last 28 days (oldest → newest)
   const days = Array.from({ length: 28 }, (_, i) => {
@@ -203,6 +205,7 @@ function closeTrackerForm() {
 function saveTrackerForm() {
   const name = (document.getElementById('trFormName')?.value || '').trim();
   if (!name) {
+    wlLog.info('saveTrackerForm: rejected — empty name');
     document.getElementById('trFormName')?.focus();
     return;
   }
@@ -213,6 +216,7 @@ function saveTrackerForm() {
     (cb) => cb.value
   );
   if (!tags.length) {
+    wlLog.info('saveTrackerForm: rejected — no categories selected', { name });
     alert('Please select at least one category.');
     return;
   }
@@ -224,6 +228,7 @@ function saveTrackerForm() {
     color,
   });
   saveTrackers();
+  wlLog.info('saveTrackerForm: tracker added', { name, targetMinutes, tagCount: tags.length });
   closeTrackerForm();
   renderTrackers();
 }
