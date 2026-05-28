@@ -158,6 +158,78 @@ git push -u origin <branch-name>
 gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
 ```
 
+### Step 5b — Fetch the ChatGPT review, triage, and resolve every thread
+
+After the PR is open, the `chatgpt-review` CI check runs and posts its findings
+as **inline review comments** (separate from the `/pr-review` issue comment).
+Do not skip these — they often catch refactor opportunities and naming issues
+that `/pr-review` overlooks because both reviews are run by the same model
+family.
+
+Wait for the check to complete (typically 30–60 s), then fetch the threads
+and their comments in one GraphQL query so both the thread IDs (needed to
+resolve) and comment bodies (needed to triage) come back together.
+
+> **Placeholder convention in the commands below:** `<N>` and similar
+> angle-bracket tokens are values you must substitute manually (PR number,
+> comment ID, thread ID). `{owner}` and `{repo}` in curly braces are
+> `gh`-template placeholders that `gh` expands automatically from the
+> current git remote — leave them literal.
+
+```bash
+gh pr checks <N> --watch          # blocks until all checks finish
+gh api graphql -F owner={owner} -F name={repo} -F number=<N> -f query='
+  query($owner: String!, $name: String!, $number: Int!) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        reviewThreads(first: 20) {
+          nodes {
+            id
+            isResolved
+            comments(first: 3) {
+              nodes { databaseId path line body }
+            }
+          }
+        }
+      }
+    }
+  }'
+```
+
+Summarise the findings in the conversation as a short follow-up to the
+`/pr-review` output from Step 4:
+- **Blocking** concerns (correctness bugs, security issues, broken tests):
+  fix before continuing, same as Step 4.
+- **Non-blocking** concerns you agree with (including any that overlap with
+  `/pr-review` findings): fix in the same PR, or open a follow-up PR if
+  `/pr-review` has already approved and you don't want to rerun the cycle.
+- **Style/refactor nitpicks** you disagree with: state your reasoning and
+  move on; don't silently ignore them.
+
+**Then close the loop on every thread.** For each `reviewThreads.nodes[]`
+entry that is not already resolved, post a reply explaining the decision
+(acting / declining + reasoning, referencing follow-up PR numbers if
+applicable) and mark the thread resolved:
+```bash
+# Reply (use the `databaseId` of the FIRST comment in the thread)
+gh api repos/{owner}/{repo}/pulls/<N>/comments/<comment_id>/replies \
+  --method POST -f body="..."
+
+# Resolve (use the GraphQL thread `id`, the one starting with `PRRT_...`)
+gh api graphql -f query='
+  mutation { resolveReviewThread(input: { threadId: "PRRT_..." })
+             { thread { id isResolved } } }'
+```
+
+Why this matters: open threads on merged PRs become invisible technical debt
+— a future reader can't tell which findings were considered vs which were
+silently ignored. The reply makes the decision auditable; the resolve clears
+the review queue.
+
+If ChatGPT posts no inline comments (the `reviewThreads.nodes` array is empty
+or contains only already-resolved threads), say so explicitly rather than
+skipping the step.
+
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge
 when you're happy, or point out anything to fix first."
