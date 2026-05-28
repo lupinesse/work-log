@@ -168,7 +168,14 @@ family.
 
 Wait for the check to complete (typically 30–60 s), then fetch the threads
 and their comments in one GraphQL query so both the thread IDs (needed to
-resolve) and comment bodies (needed to triage) come back together:
+resolve) and comment bodies (needed to triage) come back together.
+
+> **Placeholder convention in the commands below:** `<N>` and similar
+> angle-bracket tokens are values you must substitute manually (PR number,
+> comment ID, thread ID). `{owner}` and `{repo}` in curly braces are
+> `gh`-template placeholders that `gh` expands automatically from the
+> current git remote — leave them literal.
+
 ```bash
 gh pr checks <N> --watch          # blocks until all checks finish
 gh api graphql -F owner={owner} -F name={repo} -F number=<N> -f query='
@@ -193,9 +200,9 @@ Summarise the findings in the conversation as a short follow-up to the
 `/pr-review` output from Step 4:
 - **Blocking** concerns (correctness bugs, security issues, broken tests):
   fix before continuing, same as Step 4.
-- **Non-blocking** concerns that overlap with `/pr-review` findings or you
-  judge correct: fix in the same PR (or a follow-up PR if `/pr-review` has
-  already approved and you don't want to rerun the cycle).
+- **Non-blocking** concerns you agree with (including any that overlap with
+  `/pr-review` findings): fix in the same PR, or open a follow-up PR if
+  `/pr-review` has already approved and you don't want to rerun the cycle.
 - **Style/refactor nitpicks** you disagree with: state your reasoning and
   move on; don't silently ignore them.
 
