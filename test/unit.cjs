@@ -660,20 +660,20 @@ function eventTargetingButton(btn) {
 
 /**
  * Drain queued microtasks so fire-and-forget promise chains can settle.
- * Two ticks rather than one: one drains the top-level resolution of the
- * stubbed addTaskToNotion, the second drains any nested `await` a future
- * refactor might add inside the chain.
+ * Pumps several `setImmediate` ticks rather than coupling to a specific
+ * depth — the click handler in src/js/15-notion.js currently has a
+ * 1–2-await chain, so five ticks gives generous headroom for slower
+ * CI runners or a future internal `await`.
  *
- * Maintenance note: the tick count must be >= the await depth of the
- * click handler's `.then(...).catch(...)` chain in `src/js/15-notion.js`.
- * If the handler grows additional internal awaits, bump this accordingly
- * — symptoms of an under-count are flaky tests that pass locally and
- * intermittently fail in CI.
+ * If a future contributor restructures the click handler to return its
+ * promise, switch the tests to `await sandbox.__clickHandler(...)`
+ * directly and delete this helper.
  * @returns {Promise<void>}
  */
 async function flushPromises() {
-  await new Promise((resolve) => setImmediate(resolve));
-  await new Promise((resolve) => setImmediate(resolve));
+  for (let i = 0; i < 5; i += 1) {
+    await new Promise((resolve) => setImmediate(resolve));
+  }
 }
 
 describe('Notion button click handler', () => {
