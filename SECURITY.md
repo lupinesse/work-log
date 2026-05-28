@@ -16,17 +16,19 @@ This policy applies to:
 
 Only the latest minor release on the `main` branch receives active security updates. Older versions may not receive patches; users are encouraged to upgrade promptly when security releases are published.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| latest  | :white_check_mark: |
-| older   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| latest  | ✅        |
+| older   | ❌        |
 
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do not** open a public GitHub issue, discussion, or pull request that discloses the vulnerability.
-2. Report the issue privately by using GitHub's "Report a vulnerability" feature under the repository's Security tab, or by contacting the maintainer directly.
+2. Report the issue privately using one of these channels:
+   - GitHub's **"Report a vulnerability"** button under the repository's Security tab (Private Vulnerability Reporting is enabled on this repo)
+   - Email the maintainer directly at **lupinesse@gmail.com**
 3. Include the following details where possible:
    - A clear description of the vulnerability and its potential impact
    - Steps to reproduce, including any required configuration or proof-of-concept code
@@ -104,6 +106,8 @@ In the event of a confirmed security incident:
 ## Policy Review
 
 This policy is reviewed at least annually and updated as the project evolves or in response to significant security events. Suggestions for improvement are welcome via pull request.
+
+**Last reviewed:** 2026-05-28
 
 ## Acknowledgements
 
