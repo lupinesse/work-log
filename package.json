@@ -20,7 +20,7 @@
     "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\"",
     "prepare": "husky",
     "docs": "jsdoc -c jsdoc.config.json",
-    "clean-branches": "git fetch --prune && git branch --merged main | Where-Object { $_ -notmatch '^\\*|main' } | ForEach-Object { git branch -d $_.Trim() }"
+    "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1"
   },
   "lint-staged": {
     "src/js/*.js": [

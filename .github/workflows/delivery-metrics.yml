@@ -25,23 +25,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           WEEK=$(date +%Y-%m-%d)
           SINCE=$(date -d '7 days ago' +%Y-%m-%d)
           REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 
           # Use GitHub search API for accurate date-filtered counts.
           # per_page=1 + total_count avoids fetching all records.
+          # Fall back to 0 on API failure so the row is written with zeros
+          # rather than aborting and leaving the metrics file with a gap.
           OPENED=$(gh api \
             "search/issues?q=repo:${REPO}+is:issue+created:>=${SINCE}&per_page=1" \
-            --jq '.total_count')
+            --jq '.total_count' 2>/dev/null || echo 0)
 
           CLOSED=$(gh api \
             "search/issues?q=repo:${REPO}+is:issue+closed:>=${SINCE}&per_page=1" \
-            --jq '.total_count')
+            --jq '.total_count' 2>/dev/null || echo 0)
 
           PRS=$(gh api \
             "search/issues?q=repo:${REPO}+is:pr+is:merged+merged:>=${SINCE}&per_page=1" \
-            --jq '.total_count')
+            --jq '.total_count' 2>/dev/null || echo 0)
 
           if [ "$OPENED" -gt 0 ]; then
             RATIO=$(awk "BEGIN { printf \"%.0f%%\", $CLOSED / $OPENED * 100 }")
@@ -67,7 +71,7 @@ jobs:
           if [ -n "$(git status --porcelain docs/delivery-metrics.md)" ]; then
             git add docs/delivery-metrics.md
             git commit -m "Add weekly delivery metrics"
-            git push
+            git push origin HEAD
           else
             echo "No changes to commit."
           fi
