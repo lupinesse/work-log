@@ -78,6 +78,17 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Moon phase** — current phase, illumination %, and zodiac sign
 - **Finnish nameday** — fetched live from nimipaivat.fi
 
+## Project documentation
+
+| Document | Purpose |
+|----------|---------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Module map, data flow, and design decisions |
+| [DATA.md](DATA.md) | localStorage schema dictionary |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, branching strategy, and quality standard |
+| [ROADMAP.md](ROADMAP.md) | Planned and in-progress features |
+| [CHANGELOG.md](CHANGELOG.md) | Full release history |
+| [QA.md](QA.md) | QA checklist and stakeholder sign-offs per release |
+
 ## Testing
 
 A smoke test suite is included. Requires Node.js ≥ 20 (matches `engines` in `package.json`).

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- `ROADMAP.md` — forward-looking feature plan; addresses the "communication" gap in DevOps checklist
+- `docs/delivery-metrics.md` generated weekly by new `delivery-metrics.yml` CI workflow — tracks issues opened vs closed (Say/Do ratio) each Monday
+- README documentation index linking ARCHITECTURE.md, DATA.md, CONTRIBUTING.md, ROADMAP.md, QA.md
+- `npm run clean-branches` — PowerShell script to prune local branches already merged into main
+
+---
+
 ## v1.8.8 — 2026-05-28
 
 ### Fixed

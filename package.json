@@ -19,7 +19,8 @@
     "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\"",
     "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\"",
     "prepare": "husky",
-    "docs": "jsdoc -c jsdoc.config.json"
+    "docs": "jsdoc -c jsdoc.config.json",
+    "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1"
   },
   "lint-staged": {
     "src/js/*.js": [
