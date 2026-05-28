@@ -1,104 +1,93 @@
-# Work Log
+# Assistant
 
-ADHD-friendly work tracker — single HTML file, runs locally in your browser.
+A private, **no-backend** browser chat UI for the **OpenAI** and **Anthropic**
+APIs. Bring your own API key — it is stored only in your browser and sent
+directly to the provider you choose. Switch between ChatGPT and Claude models at
+any time.
 
-## Screenshots
-
-![Overview](screenshots/ss1-overview.png)
-
-![Today's Tasks](screenshots/ss2-tasks.png)
-
-![Timeblock](screenshots/ss3-timeblock.png)
-
-![Pomodoro](screenshots/ss4-pomodoro.png)
-
-![Focus Mode](screenshots/ss5-focus-mode.png)
-
-## How to use
-
-> **Important:** The tracker needs to run via a local server (not opened directly as a file) so your data saves correctly between sessions.
-
-### Windows
-1. Download `work-log.html`, `launch.bat`, and `start-server.ps1` into the same folder
-2. Double-click `launch.bat`
-3. The tracker opens automatically in your browser
-
-### Linux / Mac
-1. Download `work-log.html` and `launch.sh` into the same folder
-2. Open a terminal in that folder and run:
-   ```
-   bash launch.sh
-   ```
-3. The tracker opens automatically in your browser
-
-Your data is stored locally in your browser — nothing is sent anywhere.
+This is an independent, maintained reimplementation inspired by the (now
+unmaintained) [`felixbade/assistant`](https://github.com/felixbade/assistant),
+extended with switchable OpenAI + Anthropic providers.
 
 ## Features
 
-### Time tracking
-- **Live timer** — start a timer on any task, pause and resume, add a handoff note when stopping
-- **Time log** — every logged entry shown with duration, epic, and billable flag
-- **Billable tracking** — mark epics and individual entries as billable; totals shown per task and per day
-- **Quick pick** — recent tasks shown as chips for fast re-logging
+- **Two providers, switchable** — OpenAI (GPT-4o / GPT-4.1) and Anthropic
+  (Claude Opus / Sonnet / Haiku). Each keeps its own API key and last-used model.
+- **No backend** — requests go straight from your browser to the provider. Your
+  key lives in `localStorage` and is synced across tabs.
+- **Streaming replies** with live markdown rendering (code blocks, tables,
+  links, images).
+- **Prompt caching** on the Anthropic system prompt to cut repeat-token cost.
+- **PWA** — installable to a phone home screen or as a desktop app, with offline
+  shell caching via a service worker.
+- **Export** the conversation as markdown or as a PNG screenshot.
+- **Configurable history limit** and a shared **system prompt**.
+- **Automatic dark / light theme** following the OS setting.
+- **Deep link** — open with `#q=your%20prompt` to send an initial message.
+- **Ctrl+M** cycles through the current provider's models.
 
-### Tasks
-- **Today's tasks** — To do / In Progress / Done with epic colour coding
-- **Task subtasks** — split any task into child steps; completing all steps completes the parent
-- **Deadlines** — date picker with overdue (red) and due-today (amber) highlighting
-- **Auto-carry** — unfinished tasks roll over to the next day automatically
-- **Jira import** — paste a Jira CSV export to bulk-add tickets as tasks
-- **Completion history** — done tasks shown for 14 days with timestamp, then expire by iteration
+## Getting started
 
-### Focus mode
-- **Focus screen** — one-click distraction-free view showing only the active task and next steps
-- **Parked thoughts** — capture stray thoughts mid-focus without leaving the screen
-- **Pomodoro timer** — 5 / 10 / 20 min ring timer with session log; visible in focus mode
+Requires Node.js ≥ 20 (see `.nvmrc`).
 
-### Planning
-- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link
-- **Timeblock** — visual 08:00–18:00 grid auto-filled from logged entries; drag to rearrange
-- **Day streak** — consecutive days with logged work
+```bash
+npm install
+npm run dev      # webpack dev server at http://localhost:8080
+```
 
-### Export & review
-- **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
-- **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
-- **Reflection** — end-of-day focus-quality and energy ratings with an optional note
+Open the app, pick a provider, and paste an API key:
 
-### Bullet Journal (BuJo) features
-- **Rapid logging** — `✏️` button opens a floating capture panel; `Enter` starts the timer immediately
-- **Signifiers** — clickable symbol on each entry cycles through meeting / flagged / migrated / cancelled / overtime; cancelled entries are excluded from totals
-- **Daily Log** — tab view merging time entries, log notes, and task updates in a single chronological feed
-- **Monthly Log** — heatmap of hours per day with intensity colouring; monthly summary and task inventory
-- **Migration** — end-of-month close-out flow: carry forward, reschedule, or drop each open task
-- **Trackers** — custom 28-day progress grids with a daily target and streak counter
-- **Sprints** — intention-first focus sessions: declare an outcome, run a Pomodoro, then record yes / partly / no
+- **OpenAI** — <https://platform.openai.com/account/api-keys>
+- **Anthropic** — <https://console.anthropic.com/settings/keys>
 
-### Info widgets
-- **Weather** — current conditions, rain forecast, sunrise/sunset (Helsinki)
-- **Moon phase** — current phase, illumination %, and zodiac sign
-- **Finnish nameday** — fetched live from nimipaivat.fi
+> Anthropic blocks browser-origin API calls by default; this app opts in with
+> the `anthropic-dangerous-direct-browser-access` header. That is appropriate
+> here because it is *your* key, sent from *your* browser, only to Anthropic. Do
+> not reuse this pattern in an app that ships a shared key to end users.
 
-## Project documentation
+## Build & deploy
 
-| Document | Purpose |
-|----------|---------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Module map, data flow, and design decisions |
-| [DATA.md](DATA.md) | localStorage schema dictionary |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, branching strategy, and quality standard |
-| [ROADMAP.md](ROADMAP.md) | Planned and in-progress features |
-| [CHANGELOG.md](CHANGELOG.md) | Full release history |
-| [QA.md](QA.md) | QA checklist and stakeholder sign-offs per release |
+```bash
+npm run build    # outputs a static bundle to dist/
+```
+
+`dist/` is a fully static site — host it anywhere (GitHub Pages, Netlify, nginx,
+an S3 bucket). There is nothing to run server-side.
 
 ## Testing
 
-A smoke test suite is included. Requires Node.js ≥ 20 (matches `engines` in `package.json`).
+Unit tests cover the pure provider request/response logic, the SSE reader, and
+the hash parser. They run on Node's built-in test runner (no extra deps):
+
+```bash
+npm test
+```
+
+## Project layout
 
 ```
-node smoke-tests.cjs
+src/
+  index.html          app shell
+  index.js            entry point (styles + app + service worker)
+  style/main.css      styles (light/dark)
+  js/
+    app.js            UI wiring and conversation orchestration
+    settings.js       localStorage-backed settings (per-provider keys/models)
+    markdown.js       markdown → sanitised DOM
+    sse.js            shared Server-Sent Events reader
+    utils.js          small DOM/util helpers
+    providers/
+      index.js        provider registry + shared types
+      stream.js       shared streaming transport
+      openai.js       OpenAI provider
+      anthropic.js    Anthropic (Claude) provider
+test/                 unit tests (node --test)
 ```
 
-Or double-click `run-tests.bat` on Windows.
+Adding a provider means implementing the `Provider` interface in
+`src/js/providers/` and registering it in `providers/index.js`; the UI adapts
+automatically.
 
-To schedule tests to run automatically each morning, run `schedule-tests.bat` once as Administrator.
+## License
 
-To set up automated weekly releases every Friday, run `setup-scheduler.ps1` once as Administrator.
+MIT

@@ -1,54 +1,41 @@
 {
-  "name": "worklog",
-  "version": "1.8.9",
-  "description": "ADHD-friendly work tracker — single HTML file, runs locally in your browser.",
+  "name": "byok-assistant",
+  "version": "1.0.0",
+  "description": "Bring-your-own-key, no-backend browser chat UI for the OpenAI and Anthropic APIs.",
   "type": "module",
-  "engines": {
-    "node": ">=20.0.0"
-  },
+  "main": "src/index.html",
   "scripts": {
-    "dev": "vite",
-    "build": "node build.js && vite build",
-    "portable": "node build.js && node build-portable.js",
-    "portable:deploy": "node build.js && node build-portable.js && node deploy-portable.js",
-    "preview": "vite preview --port 8080",
-    "test:unit": "node test/unit.cjs",
-    "test": "node test/unit.cjs && node smoke-tests.cjs",
-    "lint": "eslint src/js/ *.js *.cjs && stylelint \"src/css/**/*.scss\"",
-    "lint:css": "stylelint \"src/css/**/*.scss\"",
-    "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\"",
-    "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\"",
-    "prepare": "husky",
-    "docs": "jsdoc -c jsdoc.config.json",
-    "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1"
+    "start": "webpack serve --mode development",
+    "dev": "webpack serve --mode development",
+    "build": "webpack --mode production --env version=$(./get-version.sh)",
+    "build:dev": "webpack --mode development --env version=$(./get-version.sh)",
+    "test": "node --test"
   },
-  "lint-staged": {
-    "src/js/*.js": [
-      "eslint",
-      "prettier --write"
-    ],
-    "*.{js,cjs}": [
-      "eslint",
-      "prettier --write"
-    ],
-    "src/css/*.scss": [
-      "stylelint --fix",
-      "prettier --write"
-    ]
+  "keywords": [
+    "chatgpt",
+    "claude",
+    "openai",
+    "anthropic",
+    "pwa"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "eslint": "^10.4.0",
-    "eslint-plugin-security": "^4.0.0",
-    "globals": "^17.6.0",
-    "husky": "^9.1.7",
-    "jsdoc": "^4.0.5",
-    "lint-staged": "^17.0.5",
-    "playwright": "^1.60.0",
-    "prettier": "^3.0.0",
-    "sass": "^1.100.0",
-    "stylelint": "^17.12.0",
-    "stylelint-config-standard-scss": "^17.0.0",
-    "vite": "^8.0.14"
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.0",
+    "mini-css-extract-plugin": "^2.7.2",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.2"
+  },
+  "dependencies": {
+    "dompurify": "^3.0.1",
+    "html2canvas": "^1.4.1",
+    "marked": "^4.2.12",
+    "workbox-webpack-plugin": "^6.5.4"
   }
 }
