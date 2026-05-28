@@ -24,7 +24,7 @@ name: ChatGPT PR Review
 # App (with its custom name + avatar) instead of "github-actions[bot]" — keeps
 # the ChatGPT reviewer visually distinct from the Claude PR reviewer. If the
 # mint step fails (bad secret / uninstalled App) the env var falls back to
-# secrets.GITHUB_TOKEN so the review still posts.
+# github.token so the review still posts.
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
