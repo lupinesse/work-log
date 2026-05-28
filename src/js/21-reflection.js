@@ -47,6 +47,7 @@ function openReflection(onComplete) {
   if (overlay) overlay.style.display = 'flex';
 
   document.getElementById('reflSkip').onclick = () => {
+    wlLog.info('openReflection: skipped');
     if (overlay) overlay.style.display = 'none';
     if (onComplete) onComplete();
   };
@@ -58,6 +59,12 @@ function openReflection(onComplete) {
       note: document.getElementById('reflNote').value.trim(),
     };
     saveReflection();
+    wlLog.info('openReflection: saved', {
+      dateKey,
+      focus: _reflFocus,
+      energy: _reflEnergy,
+      hasNote: !!_reflData[dateKey].note,
+    });
     if (overlay) overlay.style.display = 'none';
     if (onComplete) onComplete();
   };
