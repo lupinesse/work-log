@@ -292,9 +292,8 @@ async function runTests() {
   }
 
   // ── 5c. Mood dropdown is not clipped by hero card ─────────────────────────
-  // Regression: `.hero-card { overflow: hidden }` previously clipped the
-  // absolute-positioned `.tb-mood-panel` so the bottom menu item ("interesting!")
-  // was not visible/clickable.
+  // Invariant: every item in `.tb-mood-panel` is rendered and hit-testable —
+  // no ancestor `overflow` / stacking rule may clip or cover the panel.
   console.log('\n5c. Mood dropdown not clipped');
   {
     const today = dk(new Date());
@@ -316,8 +315,11 @@ async function runTests() {
       const rect = last.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
+      // closest() walks up from text nodes / nested children, so the assertion
+      // still passes if items later gain inline icon/label children.
       const hit = document.elementFromPoint(x, y);
-      return { hitClass: hit ? hit.className : '', bottomItemHeight: rect.height };
+      const inItem = hit ? hit.closest('.tb-mood-item') : null;
+      return { hitReachesItem: inItem !== null, bottomItemHeight: rect.height };
     });
     assert(
       'Bottom mood item is rendered with a non-zero height',
@@ -325,9 +327,9 @@ async function runTests() {
       `height=${probe.bottomItemHeight}`
     );
     assert(
-      'Bottom mood item is not clipped by an ancestor (hit-test reaches it)',
-      probe.hitClass.includes('tb-mood-item'),
-      `elementFromPoint returned: "${probe.hitClass}"`
+      'Bottom mood item is reachable by hit-test at its centre',
+      probe.hitReachesItem,
+      'elementFromPoint at centre of last item is not inside a .tb-mood-item'
     );
 
     await page.close();

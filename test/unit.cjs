@@ -3,7 +3,7 @@
 // Tests pure functions from src/js/00-pure-fns.js using Node's built-in test runner.
 // No browser, no Playwright, no build step required.
 //
-// Node >=18 required (node:test and node:assert/strict are built-in).
+// Node >=20 required (matches `engines` in package.json).
 
 'use strict';
 
@@ -387,45 +387,11 @@ describe('validateBackupFile', () => {
 const notionSrc = fs.readFileSync(path.join(__dirname, '../src/js/15-notion.js'), 'utf8');
 
 /**
- * Creates a VM sandbox pre-loaded with the browser globals that 15-notion.js
- * expects, then evaluates the source. Returns the sandbox for assertions.
- * @param {Object} overrides - Properties merged onto the sandbox before eval.
- * @returns {Object} The populated sandbox.
+ * Minimal Fetch Response shim — enough for 15-notion.js to read `ok`, `status`,
+ * `json()`, and `text()`. Named `MockResponse` deliberately so it doesn't shadow
+ * Node's global `Response`.
  */
-function loadNotionSandbox(overrides = {}) {
-  const store = {};
-  const ctx = {
-    fetch: async () => new Response(JSON.stringify({})),
-    getCat: () => ({ id: 'other', label: 'other', color: '#888780' }),
-    planTasks: [],
-    savePlan: () => {},
-    renderPlan: () => {},
-    localStorage: {
-      getItem: (k) => store[k] ?? null,
-      setItem: (k, v) => {
-        store[k] = String(v);
-      },
-      removeItem: (k) => {
-        delete store[k];
-      },
-    },
-    document: { addEventListener: () => {} },
-    window: {},
-    alert: () => {},
-    console,
-    Response,
-    ...overrides,
-  };
-  vm.createContext(ctx);
-  vm.runInContext(notionSrc, ctx);
-  return ctx;
-}
-
-/**
- * Minimal Response shim for the VM sandbox — enough for 15-notion.js to call
- * res.ok, res.status, res.json(), and res.text().
- */
-class Response {
+class MockResponse {
   constructor(body, init = {}) {
     this._body = typeof body === 'string' ? body : JSON.stringify(body);
     this.status = init.status || 200;
@@ -439,68 +405,109 @@ class Response {
   }
 }
 
+/**
+ * Creates a VM sandbox pre-loaded with the browser globals that 15-notion.js
+ * expects, evaluates the source, and exposes the registered document-level
+ * click handler via `sandbox.__clickHandler` so tests can drive it directly.
+ * @param {Object} overrides - Properties merged onto the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadNotionSandbox(overrides = {}) {
+  const store = {};
+  let capturedClickHandler = null;
+  const sandbox = {
+    fetch: async () => new MockResponse(JSON.stringify({})),
+    getCat: () => ({ id: 'other', label: 'other', color: '#888780' }),
+    planTasks: [],
+    savePlan: () => {},
+    renderPlan: () => {},
+    localStorage: {
+      getItem: (key) => store[key] ?? null,
+      setItem: (key, value) => {
+        store[key] = String(value);
+      },
+      removeItem: (key) => {
+        delete store[key];
+      },
+    },
+    document: {
+      addEventListener: (event, handler) => {
+        if (event === 'click') capturedClickHandler = handler;
+      },
+    },
+    window: {},
+    alert: () => {},
+    console,
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(notionSrc, sandbox);
+  sandbox.__clickHandler = (event) => capturedClickHandler && capturedClickHandler(event);
+  return sandbox;
+}
+
 describe('addTaskToNotion', () => {
   it('returns the Notion page URL on success', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response(JSON.stringify({ url: 'https://notion.so/page-1' })),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(JSON.stringify({ url: 'https://notion.so/page-1' })),
     });
-    const url = await ctx.addTaskToNotion({ text: 'Write tests', tag: 'dev' });
+    const url = await sandbox.addTaskToNotion({ text: 'Write tests', tag: 'dev' });
     assert.equal(url, 'https://notion.so/page-1');
   });
 
   it('sends the task title and epic label in the request body', async () => {
     let captured;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       getCat: () => ({ id: 'dev', label: 'Development', color: '#000' }),
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new Response(JSON.stringify({ url: 'https://notion.so/p' }));
+        return new MockResponse(JSON.stringify({ url: 'https://notion.so/p' }));
       },
     });
-    await ctx.addTaskToNotion({ text: 'My task', tag: 'dev' });
+    await sandbox.addTaskToNotion({ text: 'My task', tag: 'dev' });
     assert.equal(captured.title, 'My task');
     assert.equal(captured.epic, 'development');
   });
 
   it('falls back to "other" when task has no tag', async () => {
     let captured;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       getCat: (id) => ({ id, label: id, color: '#000' }),
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new Response(JSON.stringify({ url: 'https://notion.so/p' }));
+        return new MockResponse(JSON.stringify({ url: 'https://notion.so/p' }));
       },
     });
-    await ctx.addTaskToNotion({ text: 'Untagged task' });
+    await sandbox.addTaskToNotion({ text: 'Untagged task' });
     assert.equal(captured.epic, 'other');
   });
 
   it('throws when the API returns a non-OK status', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response(JSON.stringify({ detail: 'Forbidden' }), { status: 403 }),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(JSON.stringify({ detail: 'Forbidden' }), { status: 403 }),
     });
     await assert.rejects(
-      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
       (err) => err.message === 'Forbidden'
     );
   });
 
   it('throws with generic message when error response has no detail', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response('not json', { status: 500 }),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse('not json', { status: 500 }),
     });
     await assert.rejects(
-      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
       (err) => err.message === 'API 500'
     );
   });
 
   it('throws when the response is OK but contains no URL', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response(JSON.stringify({ id: '123' })),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(JSON.stringify({ id: '123' })),
     });
     await assert.rejects(
-      () => ctx.addTaskToNotion({ text: 'x', tag: 'a' }),
+      () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
       (err) => err.message === 'No URL returned from Notion'
     );
   });
@@ -511,7 +518,7 @@ describe('saveTaskNotionUrl', () => {
     const task = { id: 'abc', text: 'Do thing' };
     let planSaved = false;
     let planRendered = false;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       planTasks: [task],
       savePlan: () => {
         planSaved = true;
@@ -520,7 +527,7 @@ describe('saveTaskNotionUrl', () => {
         planRendered = true;
       },
     });
-    ctx.saveTaskNotionUrl('abc', 'https://notion.so/page');
+    sandbox.saveTaskNotionUrl('abc', 'https://notion.so/page');
     assert.equal(task.notionUrl, 'https://notion.so/page');
     assert.equal(planSaved, true);
     assert.equal(planRendered, true);
@@ -528,13 +535,13 @@ describe('saveTaskNotionUrl', () => {
 
   it('does nothing when the task ID is not found', () => {
     let planSaved = false;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       planTasks: [{ id: 'xyz', text: 'Other' }],
       savePlan: () => {
         planSaved = true;
       },
     });
-    ctx.saveTaskNotionUrl('missing-id', 'https://notion.so/page');
+    sandbox.saveTaskNotionUrl('missing-id', 'https://notion.so/page');
     assert.equal(planSaved, false);
   });
 });
@@ -548,64 +555,164 @@ describe('callClaudeWithNotion', () => {
         { type: 'text', text: 'World' },
       ],
     };
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response(JSON.stringify(body)),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(JSON.stringify(body)),
     });
-    const result = await ctx.callClaudeWithNotion('test prompt');
+    const result = await sandbox.callClaudeWithNotion('test prompt');
     assert.equal(result, 'Hello World');
   });
 
   it('sends model and maxTokens overrides in the request body', async () => {
     let captured;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new Response(JSON.stringify({ content: [] }));
+        return new MockResponse(JSON.stringify({ content: [] }));
       },
     });
-    await ctx.callClaudeWithNotion('p', { model: 'claude-opus-4-7', maxTokens: 500 });
+    await sandbox.callClaudeWithNotion('p', { model: 'claude-opus-4-7', maxTokens: 500 });
     assert.equal(captured.model, 'claude-opus-4-7');
     assert.equal(captured.max_tokens, 500);
   });
 
   it('uses default model and maxTokens when no overrides given', async () => {
     let captured;
-    const ctx = loadNotionSandbox({
+    const sandbox = loadNotionSandbox({
       fetch: async (_url, opts) => {
         captured = JSON.parse(opts.body);
-        return new Response(JSON.stringify({ content: [] }));
+        return new MockResponse(JSON.stringify({ content: [] }));
       },
     });
-    await ctx.callClaudeWithNotion('p');
+    await sandbox.callClaudeWithNotion('p');
     assert.equal(captured.model, 'claude-sonnet-4-6');
     assert.equal(captured.max_tokens, 1000);
   });
 
   it('throws when the API returns a non-OK status', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response('Unauthorized', { status: 401 }),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse('Unauthorized', { status: 401 }),
     });
     await assert.rejects(
-      () => ctx.callClaudeWithNotion('p'),
+      () => sandbox.callClaudeWithNotion('p'),
       (err) => err.message.includes('API 401')
     );
   });
 
   it('includes truncated body text in the error message', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response('Some error detail', { status: 400 }),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse('Some error detail', { status: 400 }),
     });
     await assert.rejects(
-      () => ctx.callClaudeWithNotion('p'),
+      () => sandbox.callClaudeWithNotion('p'),
       (err) => err.message === 'API 400: Some error detail'
     );
   });
 
   it('returns empty string when response has no text blocks', async () => {
-    const ctx = loadNotionSandbox({
-      fetch: async () => new Response(JSON.stringify({ content: [] })),
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(JSON.stringify({ content: [] })),
     });
-    const result = await ctx.callClaudeWithNotion('p');
+    const result = await sandbox.callClaudeWithNotion('p');
     assert.equal(result, '');
+  });
+});
+
+// ── per-task Notion button click handler ─────────────────────────────────────
+// 15-notion.js:84-117 attaches a delegated document click handler. The sandbox
+// captures it on registration so tests can drive it with synthetic events
+// without a real DOM. Async tests drain the microtask queue with setImmediate
+// because the handler kicks off a fire-and-forget promise chain.
+
+/** Build a synthetic event whose `target.closest()` returns the given button. */
+function eventTargetingButton(btn) {
+  return { target: { closest: () => btn }, stopPropagation: () => {} };
+}
+
+describe('Notion button click handler', () => {
+  it('opens the existing notionUrl in a new tab without fetching', () => {
+    const openCalls = [];
+    let fetchCalled = false;
+    const sandbox = loadNotionSandbox({
+      planTasks: [{ id: 'p1', text: 'Task', notionUrl: 'https://notion.so/page-1' }],
+      window: {
+        open: (url, target, features) => openCalls.push({ url, target, features }),
+      },
+      fetch: async () => {
+        fetchCalled = true;
+        return new MockResponse({});
+      },
+    });
+
+    const btn = { dataset: { pid: 'p1' }, disabled: false, textContent: '📋' };
+    sandbox.__clickHandler(eventTargetingButton(btn));
+
+    assert.equal(openCalls.length, 1);
+    assert.equal(openCalls[0].url, 'https://notion.so/page-1');
+    assert.equal(openCalls[0].target, '_blank');
+    assert.equal(fetchCalled, false);
+  });
+
+  it('is a no-op when the click target has no .notion-task-btn ancestor', () => {
+    let fetchCalled = false;
+    const sandbox = loadNotionSandbox({
+      fetch: async () => {
+        fetchCalled = true;
+        return new MockResponse({});
+      },
+    });
+    sandbox.__clickHandler({ target: { closest: () => null }, stopPropagation: () => {} });
+    assert.equal(fetchCalled, false);
+  });
+
+  it('is a no-op when the button has no pid in its dataset', () => {
+    let fetchCalled = false;
+    const sandbox = loadNotionSandbox({
+      fetch: async () => {
+        fetchCalled = true;
+        return new MockResponse({});
+      },
+    });
+    sandbox.__clickHandler(eventTargetingButton({ dataset: {} }));
+    assert.equal(fetchCalled, false);
+  });
+
+  it('disables the button and persists the URL on a successful add', async () => {
+    let savedTaskId, savedUrl;
+    const sandbox = loadNotionSandbox({
+      planTasks: [{ id: 'p2', text: 'New task' }],
+    });
+    sandbox.addTaskToNotion = async () => 'https://notion.so/new-page';
+    sandbox.saveTaskNotionUrl = (taskId, url) => {
+      savedTaskId = taskId;
+      savedUrl = url;
+    };
+
+    const btn = { dataset: { pid: 'p2' }, disabled: false, textContent: '📋' };
+    sandbox.__clickHandler(eventTargetingButton(btn));
+    assert.equal(btn.disabled, true, 'button disabled synchronously before fetch resolves');
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(savedTaskId, 'p2');
+    assert.equal(savedUrl, 'https://notion.so/new-page');
+  });
+
+  it('restores the button and alerts when addTaskToNotion rejects', async () => {
+    const alerts = [];
+    const sandbox = loadNotionSandbox({
+      planTasks: [{ id: 'p3', text: 'Failing task' }],
+      alert: (message) => alerts.push(message),
+    });
+    sandbox.addTaskToNotion = async () => {
+      throw new Error('API down');
+    };
+
+    const btn = { dataset: { pid: 'p3' }, disabled: false, textContent: '📋' };
+    sandbox.__clickHandler(eventTargetingButton(btn));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(btn.disabled, false);
+    assert.equal(btn.textContent, '📋');
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0], /Failed to add to Notion: API down/);
   });
 });
