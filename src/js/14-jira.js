@@ -311,7 +311,7 @@
     if (invalidRows.length) {
       wlLog.warn(
         `jiraParseAndRender: ${invalidRows.length} row(s) missing required columns (Issue key / Summary) — check delimiter`,
-        invalidRows[0]
+        invalidRows
       );
     }
     jiraTasks = rows.filter(validJiraCsvRow).map((r) => ({
