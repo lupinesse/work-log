@@ -1,6 +1,11 @@
 name: ChatGPT PR Review
 
-# Posts an automated ChatGPT code review as inline PR comments.
+# Posts an automated ChatGPT code review as a PR comment.
+# Calls OpenAI's chat-completions API from `.github/scripts/chatgpt-review.mjs`,
+# replacing the unmaintained anc95/ChatGPT-CodeReview action (Node.js 20,
+# silently failed to post reviews). Logic lives in a standalone .mjs file
+# rather than inline YAML so it can be read, tested, and modified with
+# proper tooling.
 #
 # Triggers two ways:
 #   1. 'labeled' event with label == 'chatgpt-review'  — manual labeling
@@ -14,17 +19,14 @@ name: ChatGPT PR Review
 #   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
 # Required secrets:
-#   OPENAI_API_KEY              — OpenAI API key for the ChatGPT review call
-#   CHATGPT_REVIEWER_APP_ID     — App ID of the "ChatGPT Reviewer" GitHub App
+#   OPENAI_API_KEY               — OpenAI API key for the ChatGPT review call
+#   CHATGPT_REVIEWER_APP_ID      — Client ID of the "ChatGPT Reviewer" GitHub App
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
 #   Contents: read · Pull requests: write
 # An installation token is minted at runtime via actions/create-github-app-token@v3
-# and passed to anc95/ChatGPT-CodeReview so PR comments are attributed to the
-# App (with its custom name + avatar) instead of "github-actions[bot]" — keeps
-# the ChatGPT reviewer visually distinct from the Claude PR reviewer. If the
-# mint step fails (bad secret / uninstalled App) the env var falls back to
-# github.token so the review still posts.
+# so PR comments are attributed to the App (custom name + avatar) instead of
+# github-actions[bot]. Falls back to github.token if the mint step fails.
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
@@ -51,11 +53,11 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const LABEL            = 'chatgpt-review';
-            const LINES_THRESHOLD  = 200;
-            const FILES_THRESHOLD  = 4;
-            const GENERATED        = /^(script\.js|styles\.css|docs\/.+\.html|package-lock\.json)$/;
-            const action           = context.payload.action;
+            const LABEL           = 'chatgpt-review';
+            const LINES_THRESHOLD = 200;
+            const FILES_THRESHOLD = 4;
+            const GENERATED       = /^(script\.js|styles\.css|docs\/.+\.html|package-lock\.json)$/;
+            const action          = context.payload.action;
 
             // Path 1 — explicit label event: only run for this specific label.
             if (action === 'labeled') {
@@ -93,53 +95,50 @@ jobs:
               : 'Below both thresholds — skipping.');
             core.setOutput('should_run', String(meetsThreshold));
 
+      - name: Check out repository
+        if: steps.gate.outputs.should_run == 'true'
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write diff
+        if: steps.gate.outputs.should_run == 'true'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!script.js' ':!styles.css' ':!docs/*.html' ':!package-lock.json' \
+            > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
       - name: Mint ChatGPT Reviewer App token
         id: chatgpt-token
         if: steps.gate.outputs.should_run == 'true'
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
+          client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
+
+      - name: Set up Node.js
+        if: always() && steps.gate.outputs.should_run == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
 
       - name: Code Review with ChatGPT
         # `always()` keeps the review running even if the mint step failed —
-        # the env var falls back to the default workflow token so the review
-        # still posts (under github-actions[bot]) rather than being silently
-        # skipped because `success()` is false. The mint failure surfaces as
-        # a red CI step, which is the signal to fix the secret.
+        # GITHUB_TOKEN falls back to github.token so the review still posts
+        # (under github-actions[bot]) rather than being silently skipped.
+        # The red mint-step failure in CI is the signal to fix the secret.
         if: always() && steps.gate.outputs.should_run == 'true'
-        uses: anc95/ChatGPT-CodeReview@main
         env:
-          # App-installation token; comments post as the "ChatGPT Reviewer"
-          # App rather than the generic github-actions[bot]. Falls back to
-          # github.token (same value as secrets.GITHUB_TOKEN; using the
-          # idiomatic form to match pr-review.yml).
-          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token || github.token }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          # gpt-5.5 — OpenAI's current top-tier model for "coding and
-          # professional work" (per platform.openai.com/docs/models),
-          # released April 2026. Has built-in configurable reasoning;
-          # the action sends just the model name so we get the default
-          # reasoning level, which is sufficient for PR-sized diffs.
-          # Picked over gpt-5.4 because chatgpt-review fires only on big
-          # PRs where the depth premium ($2.10/month vs $1.00/month at
-          # ~10 PRs/month) is worth the extra quality.
-          MODEL: gpt-5.5
-          PROMPT: >
-            You are reviewing a pull request in a personal time-tracking web
-            app (vanilla JavaScript ES modules, SCSS, HTML). The project follows
-            the UK Government Analysis Function Higher QA standard. Focus on:
-            correctness (logic errors, edge cases, null/undefined), single-purpose
-            functions (flag any function doing more than one thing), informative
-            naming (flag single-letter variables outside tight map/filter chains),
-            error handling (failures must call wlLog.warn or wlLog.error — never
-            silent catch), and test coverage (every new exported function needs a
-            unit test in test/unit.cjs). Ignore auto-generated files: script.js,
-            styles.css, docs/*.html. Be direct and specific; cite file and line
-            number for every finding.
-          TEMPERATURE: '0.2'
-          MAX_TOKENS: '2048'
-          top_p: '1'
-          MODE: patch
-          LANGUAGE: en
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.chatgpt-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+          # Optional overrides for MODEL / REASONING_EFFORT / PROMPT /
+          # MAX_DIFF_CHARS / MAX_TOKENS / DIFF_PATH live in
+          # .github/scripts/chatgpt-review.mjs with sensible defaults.
+        run: node .github/scripts/chatgpt-review.mjs

@@ -82,7 +82,7 @@ jobs:
         if: always() && steps.key-check.result != 'skipped'
         uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+          client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Post review as PR comment
