@@ -1,8 +1,9 @@
 name: ChatGPT PR Review
 
-# Posts an automated ChatGPT code review as inline PR comments on every push.
-# Runs in parallel with the existing Claude PR review (pr-review.yml) to
-# provide a second independent perspective.
+# Posts an automated ChatGPT code review as inline PR comments.
+# Only runs when the 'chatgpt-review' label is applied to the PR —
+# use this deliberately on large PRs where a second perspective is worth
+# the token cost. Small / doc-only PRs don't need it.
 #
 # Required secret:
 #   OPENAI_API_KEY — set in Settings > Secrets and variables > Actions
@@ -12,10 +13,11 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [labeled]
 
 jobs:
   chatgpt-review:
+    if: github.event.label.name == 'chatgpt-review'
     runs-on: ubuntu-latest
     permissions:
       contents: read
