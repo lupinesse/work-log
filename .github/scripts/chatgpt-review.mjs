@@ -64,6 +64,7 @@ const HEAD_SHA = must('HEAD_SHA');
 const MODEL = process.env.MODEL || 'gpt-5.5';
 const REASONING_EFFORT = process.env.REASONING_EFFORT || 'high';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
+// Reasoning models use max_completion_tokens, not max_tokens.
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '2048', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
@@ -110,7 +111,7 @@ async function reviewWithOpenAI(diff) {
     body: JSON.stringify({
       model: MODEL,
       reasoning_effort: REASONING_EFFORT,
-      max_tokens: MAX_TOKENS,
+      max_completion_tokens: MAX_TOKENS,
       // No `temperature` — GPT-5 reasoning models reject it alongside
       // `reasoning_effort`. Reasoning level is the controlling knob.
       messages: [
