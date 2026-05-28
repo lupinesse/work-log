@@ -333,7 +333,7 @@
 }
 
 .plan-item.active-timer:hover {
-  background: var(--in-progress-border);
+  background: var(--in-progress-highlight);
 }
 
 /* stylelint-disable-next-line block-no-empty -- intentionally empty; kept for specificity anchor */
@@ -366,7 +366,7 @@
 }
 
 .plan-status.inprogress {
-  background-color: var(--in-progress-border);
+  background-color: var(--in-progress-highlight);
   color: var(--in-progress-ink);
   border-color: var(--in-progress-accent);
   font-weight: 600;

@@ -40,7 +40,7 @@
   --start-btn-hover: #5a7a97; /* start button hover */
   --in-progress: #ffffdf; /* in-progress task row tint (lemon) */
   --in-progress-accent: #ca8a04; /* mustard border / status pill */
-  --in-progress-border: #fef08a; /* status pill background */
+  --in-progress-highlight: #fef08a; /* status pill background / hover wash */
   --in-progress-ink: #713f12; /* status pill text */
   --jira: #1d4ed8; /* Jira ticket link colour */
 }
@@ -76,7 +76,7 @@
     --start-btn-hover: #8db4cf;
     --in-progress: rgba(202, 138, 4, 0.1);
     --in-progress-accent: #eab308;
-    --in-progress-border: rgba(202, 138, 4, 0.18);
+    --in-progress-highlight: rgba(202, 138, 4, 0.18);
     --in-progress-ink: #fde68a;
     --jira: #60a5fa;
   }
