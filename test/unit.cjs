@@ -631,6 +631,9 @@ describe('callClaudeWithNotion', () => {
 /**
  * Build a synthetic click event whose `target.closest()` returns the given
  * button, mimicking the shape the delegated handler expects.
+ * Note: the stub ignores its selector argument because the handler only
+ * calls `closest('.notion-task-btn')` once. Add a switch on the selector
+ * if a future handler grows a second `closest()` call.
  * @param {Object} btn - Stand-in for the `.notion-task-btn` element.
  * @returns {{ target: { closest: Function }, stopPropagation: Function }}
  */
@@ -706,6 +709,10 @@ describe('Notion button click handler', () => {
     const sandbox = loadNotionSandbox({
       planTasks: [{ id: 'p2', text: 'New task' }],
     });
+    // Override VM-context globals: properties assigned on the sandbox after
+    // vm.runInContext are visible to closures created inside the script
+    // (including the captured click handler), so this replaces the real
+    // function with a stub for this test.
     sandbox.addTaskToNotion = async () => 'https://notion.so/new-page';
     sandbox.saveTaskNotionUrl = (taskId, url) => {
       savedTaskId = taskId;
