@@ -8,7 +8,7 @@
 
 ### Added
 
-- 22 unit tests for `src/js/15-notion.js` (`addTaskToNotion`, `saveTaskNotionUrl`, `callClaudeWithNotion`, and the delegated per-task button click handler) — closes #34.
+- 23 unit tests for `src/js/15-notion.js` (`addTaskToNotion`, `saveTaskNotionUrl`, `callClaudeWithNotion`, and the delegated per-task button click handler) — closes #34.
 - Smoke test 5c that opens the mood dropdown on a running timer and verifies the bottom menu item is hit-testable at its centre.
 
 ---

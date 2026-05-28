@@ -439,6 +439,11 @@ function loadNotionSandbox(overrides = {}) {
     },
     document: {
       addEventListener: (event, handler) => {
+        // 15-notion.js registers exactly one document-level click listener
+        // (the delegated handler for `.notion-task-btn`). Last-write-wins
+        // by design: if a second handler is ever added, this stub silently
+        // drops the earlier one, which would surface as missing assertions
+        // — bump this capture to an array of handlers in that case.
         if (event === 'click') capturedClickHandler = handler;
       },
     },
@@ -506,6 +511,17 @@ describe('addTaskToNotion', () => {
     await assert.rejects(
       () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
       (err) => err.message === 'API 500'
+    );
+  });
+
+  it('truncates the error detail to 300 characters', async () => {
+    const longDetail = 'y'.repeat(500);
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse({ detail: longDetail }, { status: 500 }),
+    });
+    await assert.rejects(
+      () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
+      (err) => err.message === 'y'.repeat(300)
     );
   });
 
