@@ -319,7 +319,8 @@ async function runTests() {
     const probe = await page.evaluate(() => {
       const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
       if (items.length === 0) return { itemCount: 0 };
-      const last = items.at(-1);
+      // NodeList has no .at() method per spec — use bracket index access.
+      const last = items[items.length - 1];
       const rect = last.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
       const y = rect.top + rect.height / 2;
