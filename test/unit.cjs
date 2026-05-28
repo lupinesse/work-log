@@ -1,7 +1,8 @@
 // Work Log — Unit Tests
 // Run with: node test/unit.cjs
-// Tests pure functions from src/js/00-pure-fns.js using Node's built-in test runner.
-// No browser, no Playwright, no build step required.
+// Covers pure functions from src/js/00-pure-fns.js and the Notion integration
+// in src/js/15-notion.js using Node's built-in test runner. No browser,
+// no Playwright, no build step required.
 //
 // Node >=20 required (matches `engines` in package.json).
 
