@@ -20,7 +20,7 @@ jobs:
       contents: write  # required to create a GitHub Release
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0  # needed so the full CHANGELOG history is available
 
