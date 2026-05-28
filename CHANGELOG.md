@@ -17,6 +17,7 @@
 
 ### Changed
 - Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.
+- Split `renderMonthlyLog()` into `renderMonthlyCalendar()`, `renderMonthlySummary()`, `renderMonthlyTasks()`, plus a 12-line orchestrator — closes #9.
 
 ---
 
