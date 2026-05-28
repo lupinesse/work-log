@@ -589,6 +589,8 @@ describe('callClaudeWithNotion', () => {
       },
     });
     await sandbox.callClaudeWithNotion('p');
+    // These literals mirror the defaults in src/js/15-notion.js — bump them
+    // together when the source default model or token cap changes.
     assert.equal(captured.model, 'claude-sonnet-4-6');
     assert.equal(captured.max_tokens, 1000);
   });
