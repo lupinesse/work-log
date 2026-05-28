@@ -16,6 +16,9 @@
 - `npm run clean-branches` — PowerShell script to prune local branches already merged into main
 - 19 unit tests for `flatSort` (`10-tasks.js`), `_qcBuildTaskGroups`, and `_qcTaskListHtml` (`16-rapid.js`).
 
+### Fixed
+- **`chatgpt-pr-review.yml` now posts reviews reliably.** Replaced `anc95/ChatGPT-CodeReview@main` (Node.js 20 — deprecated June 2026, silently exited without calling the API) with a direct OpenAI `chat/completions` call via `actions/github-script`. Also passes `reasoning_effort: high` so the model applies deep reasoning on every review. Both workflow files updated `app-id` → `client-id` in `actions/create-github-app-token@v3` (the `app-id` input was deprecated in v3).
+
 ### Changed
 - **Review bots now post under dedicated GitHub App identities.** `pr-review.yml` mints an installation token for the "Claude Reviewer" App and `chatgpt-pr-review.yml` mints one for the "ChatGPT Reviewer" App via `actions/create-github-app-token@v3`. Comments and reviews are attributed to those Apps (with custom names + avatars) instead of the generic `github-actions[bot]`, so the two reviewers are visually distinct on PRs. Requires four new repo secrets: `CLAUDE_REVIEWER_APP_ID`, `CLAUDE_REVIEWER_PRIVATE_KEY`, `CHATGPT_REVIEWER_APP_ID`, `CHATGPT_REVIEWER_PRIVATE_KEY`.
 - **ChatGPT review model bumped from `gpt-4o` to `gpt-5.5`** — OpenAI's current top model for "coding and professional work" (released April 2026), with built-in reasoning and a 1M context window. $5/$30 per M tokens; at ~10 big PRs/month this is ~$2.10/month. Picked over the cheaper `gpt-5.4` ($2.50/$15) because chatgpt-review only fires on big PRs where the depth premium matters most — exactly the case where `gpt-4o` missed the `engines.node` mismatch on PR #61.
