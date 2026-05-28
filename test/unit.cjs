@@ -415,7 +415,9 @@ class MockResponse {
  * expects, evaluates the source, and exposes the registered document-level
  * click handler via `sandbox.__clickHandler` so tests can drive it directly.
  * @param {Object} overrides - Properties merged onto the sandbox before eval.
- * @returns {Object} The populated sandbox.
+ * @returns {Object} The populated sandbox, with a `__clickHandler(event)`
+ *   method that invokes the click listener 15-notion.js registered on
+ *   `document` (null-safe when no listener was captured).
  */
 function loadNotionSandbox(overrides = {}) {
   const store = {};
@@ -605,13 +607,24 @@ describe('callClaudeWithNotion', () => {
     );
   });
 
-  it('includes truncated body text in the error message', async () => {
+  it('includes the error body in the message (short body, no truncation)', async () => {
     const sandbox = loadNotionSandbox({
       fetch: async () => new MockResponse('Some error detail', { status: 400 }),
     });
     await assert.rejects(
       () => sandbox.callClaudeWithNotion('p'),
       (err) => err.message === 'API 400: Some error detail'
+    );
+  });
+
+  it('truncates the error body to 200 characters', async () => {
+    const longBody = 'x'.repeat(500);
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse(longBody, { status: 500 }),
+    });
+    await assert.rejects(
+      () => sandbox.callClaudeWithNotion('p'),
+      (err) => err.message === `API 500: ${'x'.repeat(200)}`
     );
   });
 
@@ -648,6 +661,12 @@ function eventTargetingButton(btn) {
  * Two ticks rather than one: one drains the top-level resolution of the
  * stubbed addTaskToNotion, the second drains any nested `await` a future
  * refactor might add inside the chain.
+ *
+ * Maintenance note: the tick count must be >= the await depth of the
+ * click handler's `.then(...).catch(...)` chain in `src/js/15-notion.js`.
+ * If the handler grows additional internal awaits, bump this accordingly
+ * — symptoms of an under-count are flaky tests that pass locally and
+ * intermittently fail in CI.
  * @returns {Promise<void>}
  */
 async function flushPromises() {

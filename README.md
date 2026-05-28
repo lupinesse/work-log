@@ -80,7 +80,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ## Testing
 
-A smoke test suite is included. Requires Node.js.
+A smoke test suite is included. Requires Node.js ≥ 20 (matches `engines` in `package.json`).
 
 ```
 node smoke-tests.cjs
