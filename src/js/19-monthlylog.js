@@ -43,22 +43,21 @@ function mlHeatColor(hours) {
 }
 
 /**
- * Renders the monthly log view: navigation, heatmap, summary, task inventory.
+ * Renders the heatmap calendar grid: navigation header, day labels, day cells,
+ * and the colour legend. Binds cell-click (navigate to that day) and prev/next
+ * month buttons. Writes its full HTML to `calEl`.
+ * @param {HTMLElement} calEl - The `#mlCalendar` container.
+ * @param {number} year - Full year to render.
+ * @param {number} month - Month index, 0-based.
+ * @returns {void}
  */
-function renderMonthlyLog() {
-  const calEl = document.getElementById('mlCalendar');
-  const sumEl = document.getElementById('mlSummary');
-  const taskEl = document.getElementById('mlTasks');
-  if (!calEl) return;
-
-  const y = _mlYear,
-    m = _mlMonth;
-  const days = mlDaysInMonth(y, m);
-  const firstDow = new Date(y, m, 1).getDay(); // 0=Sun
+function renderMonthlyCalendar(calEl, year, month) {
+  const days = mlDaysInMonth(year, month);
+  const firstDow = new Date(year, month, 1).getDay(); // 0 = Sun
   const offset = (firstDow + 6) % 7; // shift to Mon-start
 
-  const monthPrefix = `${y}-${String(m + 1).padStart(2, '0')}`;
-  const monthName = new Date(y, m, 1).toLocaleString('default', {
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const monthName = new Date(year, month, 1).toLocaleString('default', {
     month: 'long',
     year: 'numeric',
   });
@@ -106,7 +105,7 @@ function renderMonthlyLog() {
         .join('')}
     </div>`;
 
-  // Cell click → navigate to that day and show the main log
+  // Cell click → navigate to that day and close the monthly log
   calEl.querySelectorAll('.ml-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
       viewDate = new Date(cell.dataset.date + 'T12:00:00');
@@ -116,7 +115,7 @@ function renderMonthlyLog() {
     });
   });
 
-  // Month navigation
+  // Month navigation — module-level _mlYear / _mlMonth advance, then re-render.
   document.getElementById('mlPrev')?.addEventListener('click', () => {
     _mlMonth--;
     if (_mlMonth < 0) {
@@ -133,8 +132,16 @@ function renderMonthlyLog() {
     }
     renderMonthlyLog();
   });
+}
 
-  // Summary panel
+/**
+ * Renders the time-totals summary panel: total logged, billable, top category.
+ * Writes its full HTML to `sumEl`. No event binding.
+ * @param {HTMLElement} sumEl - The `#mlSummary` container.
+ * @param {string} monthPrefix - Date prefix `YYYY-MM` used to filter entries.
+ * @returns {void}
+ */
+function renderMonthlySummary(sumEl, monthPrefix) {
   const monthEntries = entries.filter(
     (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
   );
@@ -154,8 +161,17 @@ function renderMonthlyLog() {
     <div class="ml-sum-row"><span>Total logged</span><span>${fmtDur(totalMs)}</span></div>
     <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${fmtDur(billableMs)}</span></div>
     ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
+}
 
-  // Task inventory
+/**
+ * Renders the task-inventory panel: open / done / migrated counts plus
+ * a "Run Migration" button. Writes its full HTML to `taskEl` and binds
+ * the button to `openMigration()` if that helper is loaded.
+ * @param {HTMLElement} taskEl - The `#mlTasks` container.
+ * @param {string} monthPrefix - Date prefix `YYYY-MM` used to filter plan tasks.
+ * @returns {void}
+ */
+function renderMonthlyTasks(taskEl, monthPrefix) {
   const monthTasks = planTasks.filter((t) => t.date.startsWith(monthPrefix));
   const open = monthTasks.filter((t) => t.status !== 'done').length;
   const done = monthTasks.filter((t) => t.status === 'done').length;
@@ -171,6 +187,24 @@ function renderMonthlyLog() {
   document.getElementById('mlRunMigration')?.addEventListener('click', () => {
     if (typeof openMigration === 'function') openMigration();
   });
+}
+
+/**
+ * Orchestrates the Monthly Log view: resolves DOM targets and delegates
+ * each panel to a single-purpose renderer.
+ * @returns {void}
+ */
+function renderMonthlyLog() {
+  const calEl = document.getElementById('mlCalendar');
+  const sumEl = document.getElementById('mlSummary');
+  const taskEl = document.getElementById('mlTasks');
+  if (!calEl) return;
+
+  const monthPrefix = `${_mlYear}-${String(_mlMonth + 1).padStart(2, '0')}`;
+
+  renderMonthlyCalendar(calEl, _mlYear, _mlMonth);
+  renderMonthlySummary(sumEl, monthPrefix);
+  renderMonthlyTasks(taskEl, monthPrefix);
 }
 
 /**
