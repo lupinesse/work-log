@@ -10,6 +10,7 @@
 
 ### Added
 - `SECURITY.md`: security policy, supported versions, and responsible disclosure process.
+- **Conventional Commits enforced** via a new Husky `commit-msg` hook backed by `@commitlint/config-conventional`; `commitlint.config.js` committed at repo root and the rules + examples are documented in `CONTRIBUTING.md`. Non-conformant commit messages are now rejected locally before they can be pushed — closes #11.
 - **PR workflow Step 5b** (`CLAUDE.md`): after each PR is opened, the `chatgpt-review` CI check's inline comments are fetched via GraphQL, triaged alongside the `/pr-review` output, and every thread is replied to and resolved — closes the inline-review loop so threads no longer linger unresolved on merged PRs.
 - `ROADMAP.md` — forward-looking feature plan; addresses the "communication" gap in DevOps checklist
 - `docs/delivery-metrics.md` generated weekly by new `delivery-metrics.yml` CI workflow — tracks issues opened vs closed (Say/Do ratio) each Monday
@@ -21,6 +22,7 @@
 - **`chatgpt-pr-review.yml` now posts reviews reliably.** Replaced `anc95/ChatGPT-CodeReview@main` (Node.js 20 — deprecated June 2026, silently exited without calling the API) with a direct OpenAI `chat/completions` call. The review logic now lives in a standalone `.github/scripts/chatgpt-review.mjs` (native `fetch`, no external deps) rather than inline YAML, so it's readable and testable. Passes `reasoning_effort: high` so the model applies deep reasoning on every review. Both workflow files updated `app-id` → `client-id` in `actions/create-github-app-token@v3` (the `app-id` input was deprecated in v3).
 
 ### Changed
+- **Minimum Node version bumped from ≥20 to ≥22.12** in `engines.node`, README, and CONTRIBUTING — pulled forward by `@commitlint/cli@21`'s own engines floor. Anyone still on Node 20 or 21 will see install warnings; upgrade `nvm install 24` (matches `.nvmrc`).
 - **Review bots now post under dedicated GitHub App identities.** `pr-review.yml` mints an installation token for the "Claude Reviewer" App and `chatgpt-pr-review.yml` mints one for the "ChatGPT Reviewer" App via `actions/create-github-app-token@v3`. Comments and reviews are attributed to those Apps (with custom names + avatars) instead of the generic `github-actions[bot]`, so the two reviewers are visually distinct on PRs. Requires four new repo secrets: `CLAUDE_REVIEWER_APP_ID`, `CLAUDE_REVIEWER_PRIVATE_KEY`, `CHATGPT_REVIEWER_APP_ID`, `CHATGPT_REVIEWER_PRIVATE_KEY`.
 - **ChatGPT review model bumped from `gpt-4o` to `gpt-5.5`** — OpenAI's current top model for "coding and professional work" (released April 2026), with built-in reasoning and a 1M context window. $5/$30 per M tokens; at ~10 big PRs/month this is ~$2.10/month. Picked over the cheaper `gpt-5.4` ($2.50/$15) because chatgpt-review only fires on big PRs where the depth premium matters most — exactly the case where `gpt-4o` missed the `engines.node` mismatch on PR #61.
 - Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.

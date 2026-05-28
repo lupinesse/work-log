@@ -91,7 +91,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ## Testing
 
-A smoke test suite is included. Requires Node.js ≥ 20 (matches `engines` in `package.json`).
+A smoke test suite is included. Requires Node.js ≥ 22.12 (matches `engines` in `package.json`; bumped to track `@commitlint/cli` v21).
 
 ```
 node smoke-tests.cjs

@@ -15,7 +15,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ## Development Setup
 
 ### Prerequisites
-- Node.js 18+ (for build tools)
+- Node.js ≥ 22.12 (matches `engines` in `package.json`; `.nvmrc` pins the dev version)
 - A text editor or IDE (VS Code recommended)
 - Git
 
@@ -70,27 +70,62 @@ worklog/
 
 ## Branching Strategy
 
-The repository uses a simple trunk-based workflow:
+The repository uses a trunk-based workflow with **no direct commits to `main`** — every change ships via a pull request. The full PR workflow (build/lint/test, `/pr-review`, ChatGPT-review triage, merge) is documented in `CLAUDE.md` Steps 1–7.
 
-- **`main`** — always releasable; protected from direct commits except single-line fixes or documentation
-- **Feature branches** — branch from `main`, merge back via pull request
-  - Use descriptive names: `feature/`, `fix/`, `docs/`, `refactor/`
-  - Keep branches short-lived (days, not weeks)
-- **Pull requests** — required for any code change; self-review is fine for solo contributors
-- **Releases** — tagged commits on `main` following semantic versioning (see `CHANGELOG.md`)
+| Branch prefix | Use for | Example |
+|---|---|---|
+| `feature/` | New user-facing functionality | `feature/rapid-logging` |
+| `fix/` | Bug fixes; reference the issue number when one exists | `fix/issue-11-commitlint` |
+| `docs/` | Documentation-only changes (README, CONTRIBUTING, CHANGELOG, CLAUDE.md) | `docs/branching-strategy` |
+| `refactor/` | Structural changes with no behaviour change | `refactor/split-render-monthly-log` |
+| `chore/` | Build, tooling, dependency updates | `chore/bump-vite` |
 
-### Commits
+- **`main`** is always releasable. CI runs on every PR; merge only when checks are green.
+- **Feature branches** branch from `main` and merge back via squash-merge. Keep them short-lived (days, not weeks).
+- **Releases** are tagged commits on `main` following [Semantic Versioning](https://semver.org/) (see `CHANGELOG.md`).
 
-- **Commit often** — each logical change should be its own commit; avoid "big-bang" commits that mix unrelated changes
-- **Commit message format**: imperative mood (`Add`, `Fix`, `Update`), present tense; keep the subject line under 72 characters; use the body for *why*, not *what*
-  ```
-  Fix checkpoint toggle skipping 'partial' state
+### Commit messages — Conventional Commits
 
-  The cycle was false → true → false, missing the intermediate value.
-  Changed the ternary to: false → 'partial' → true → false.
-  ```
-- **Never commit secrets**: `config.local.ps1` is gitignored; API tokens must never be committed
-- **`.gitignore`** covers: `node_modules/`, `dist/`, `portable/`, `config.local.ps1`, `.env`, crash logs — update it before adding any new generated or sensitive file
+Every commit must follow the [Conventional Commits 1.0](https://www.conventionalcommits.org/en/v1.0.0/) spec. A Husky `commit-msg` hook (`.husky/commit-msg`) enforces this locally via [`@commitlint/config-conventional`](https://github.com/conventional-changelog/commitlint) — non-conformant messages are rejected before the commit lands.
+
+```
+<type>(<optional-scope>): <description>
+
+<optional body — explain why, not what; wrap at 72 chars>
+
+<optional footer — Refs #123, Closes #456, BREAKING CHANGE: …>
+```
+
+**Allowed types:** `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`.
+
+**Examples that pass:**
+
+```
+feat(rapid): add Space-bar capture overlay
+fix: stop weather widget falling back to empty string on null response
+docs(contributing): document branching strategy and conventional commits
+chore(deps): bump vite to 8.0.14
+```
+
+**Examples that fail:**
+
+```
+Update README                  → missing type prefix
+feat - add overlay             → wrong separator (must be ':')
+WIP                            → not a recognised type
+```
+
+- **Subject line:** ≤ 72 characters, imperative mood, no full stop at the end.
+- **Body:** wrap at 72 chars; explain *why* the change is needed, not *what* (the diff shows what).
+- **Footer:** reference issues (`Refs #N`, `Closes #N`); use `BREAKING CHANGE:` for incompatible changes.
+
+Do not use `--no-verify` to bypass the hook unless the user has explicitly approved.
+
+### Other commit rules
+
+- **Commit often** — each logical change is its own commit; avoid "big-bang" commits that mix unrelated changes.
+- **Never commit secrets**: `config.local.ps1` is gitignored; API tokens must never be committed.
+- **`.gitignore`** covers: `node_modules/`, `dist/`, `portable/`, `config.local.ps1`, `.env`, crash logs — update it before adding any new generated or sensitive file.
 
 ### Commit hygiene — one discrete unit of work
 
