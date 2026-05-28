@@ -158,6 +158,35 @@ git push -u origin <branch-name>
 gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
 ```
 
+### Step 5b — Fetch the ChatGPT review and present alongside
+
+After the PR is open, the `chatgpt-review` CI check runs and posts its findings
+as **inline review comments** (separate from the `/pr-review` issue comment).
+Do not skip these — they often catch refactor opportunities and naming issues
+that `/pr-review` overlooks because both reviews are run by the same model
+family.
+
+Wait for the check to complete (typically 30–60 s), then fetch the comments:
+```bash
+gh pr checks <N> --watch          # blocks until all checks finish
+gh api repos/{owner}/{repo}/pulls/<N>/comments \
+  --jq '.[] | select(.user.login == "github-actions[bot]")
+            | {path, line: (.line // .original_line), body}'
+```
+
+Summarise the findings in the conversation as a short follow-up to the
+`/pr-review` output from Step 4:
+- **Blocking** concerns (correctness bugs, security issues, broken tests):
+  fix before continuing, same as Step 4.
+- **Non-blocking** concerns that overlap with `/pr-review` findings or you
+  judge correct: fix in the same PR.
+- **Style/refactor nitpicks** you disagree with: state your reasoning and
+  move on; don't silently ignore them.
+
+If ChatGPT posts no inline comments (its review body is empty and no
+`pulls/<N>/comments` entries exist), say so explicitly rather than skipping
+the step.
+
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge
 when you're happy, or point out anything to fix first."
