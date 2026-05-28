@@ -8,7 +8,7 @@
 - Jira CSV files with a wrong delimiter (e.g. semicolons) now log a console warning and show the "No tasks found" message rather than silently dropping all rows
 
 ### Added
-- **PR workflow Step 5b** (`CLAUDE.md`): after each push, the `chatgpt-review` CI check's inline comments are fetched via GraphQL, triaged alongside the `/pr-review` output, and every thread is replied to and resolved — closes the inline-review loop so threads no longer linger unresolved on merged PRs.
+- **PR workflow Step 5b** (`CLAUDE.md`): after each PR is opened, the `chatgpt-review` CI check's inline comments are fetched via GraphQL, triaged alongside the `/pr-review` output, and every thread is replied to and resolved — closes the inline-review loop so threads no longer linger unresolved on merged PRs.
 - `ROADMAP.md` — forward-looking feature plan; addresses the "communication" gap in DevOps checklist
 - `docs/delivery-metrics.md` generated weekly by new `delivery-metrics.yml` CI workflow — tracks issues opened vs closed (Say/Do ratio) each Monday
 - README documentation index linking ARCHITECTURE.md, DATA.md, CONTRIBUTING.md, ROADMAP.md, QA.md
