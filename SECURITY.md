@@ -51,7 +51,7 @@ Contributors are expected to follow these practices:
 
 ### Code
 - Validate and sanitize all external input
-- Use parameterized queries to prevent injection attacks
+- Sanitize all DOM insertions; prefer `textContent` over `innerHTML` to prevent XSS
 - Apply the principle of least privilege to processes, files, and credentials
 - Avoid hardcoding secrets, API keys, tokens, or passwords in source code or commit history
 - Prefer well-maintained, audited libraries over custom cryptography
@@ -99,7 +99,7 @@ In the event of a confirmed security incident:
 
 - Do not store production or personally identifiable data in the repository, issues, or pull requests
 - Use anonymized or synthetic data for examples, tests, and documentation
-- Comply with applicable data protection regulations (e.g., GDPR, CCPA) when handling user data in any deployment of this project
+- This project stores data in browser `localStorage` only; no server-side user data is collected. If you deploy it in a context that processes personal data, ensure your deployment complies with applicable regulations
 
 ## Policy Review
 
