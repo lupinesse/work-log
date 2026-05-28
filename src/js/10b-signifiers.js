@@ -43,7 +43,9 @@ function sigTitle(entry) {
 function cycleSignifier(entryId) {
   const entry = entries.find((e) => e.id === entryId);
   if (!entry) {
-    wlLog.info('cycleSignifier: no matching entry', { entryId });
+    // No matching entry usually means a stale click during a re-render —
+    // a misuse-shaped event, not a routine info-level branch.
+    wlLog.warn('cycleSignifier: no matching entry', { entryId });
     return;
   }
   const idx = SIG_CYCLE.indexOf(entry.signifier);

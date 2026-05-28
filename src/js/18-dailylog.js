@@ -64,8 +64,8 @@ function renderDailyLog() {
   const items = buildDailyLogItems(dateKey);
 
   if (!items.length) {
-    el.innerHTML = `<div class="tl-empty">No entries or notes for this day yet.</div>`;
     wlLog.info('renderDailyLog: empty feed', { dateKey });
+    el.innerHTML = `<div class="tl-empty">No entries or notes for this day yet.</div>`;
   } else {
     wlLog.info('renderDailyLog: rendering feed', { dateKey, itemCount: items.length });
     el.innerHTML = items
