@@ -18,6 +18,7 @@
 - 19 unit tests for `flatSort` (`10-tasks.js`), `_qcBuildTaskGroups`, and `_qcTaskListHtml` (`16-rapid.js`).
 
 ### Changed
+- **Minimum Node version bumped from ≥20 to ≥22.12** in `engines.node`, README, and CONTRIBUTING — pulled forward by `@commitlint/cli@21`'s own engines floor. Anyone still on Node 20 or 21 will see install warnings; upgrade `nvm install 24` (matches `.nvmrc`).
 - Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.
 - Split `renderMonthlyLog()` into `renderMonthlyCalendar()`, `renderMonthlySummary()`, `renderMonthlyTasks()`, plus a 12-line orchestrator — closes #9.
 
