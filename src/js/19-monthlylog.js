@@ -46,10 +46,16 @@ function mlHeatColor(hours) {
  * Renders the heatmap calendar grid: navigation header, day labels, day cells,
  * and the colour legend. Binds cell-click (navigate to that day) and prev/next
  * month buttons. Writes its full HTML to `calEl`.
+ *
+ * Implicit dependency: the prev/next handlers mutate module-level `_mlYear` /
+ * `_mlMonth` and then call `renderMonthlyLog()` to re-render the whole view.
+ * Both globals must therefore be in scope when this function is called.
+ *
  * @param {HTMLElement} calEl - The `#mlCalendar` container.
  * @param {number} year - Full year to render.
  * @param {number} month - Month index, 0-based.
  * @returns {void}
+ * @see renderMonthlyLog
  */
 function renderMonthlyCalendar(calEl, year, month) {
   const days = mlDaysInMonth(year, month);
@@ -135,20 +141,21 @@ function renderMonthlyCalendar(calEl, year, month) {
 }
 
 /**
- * Renders the time-totals summary panel: total logged, billable, top category.
- * Writes its full HTML to `sumEl`. No event binding.
- * @param {HTMLElement} sumEl - The `#mlSummary` container.
- * @param {string} monthPrefix - Date prefix `YYYY-MM` used to filter entries.
- * @returns {void}
+ * Computes monthly summary statistics from a flat entries array. Pure: takes
+ * its own data dependency, no DOM, no module globals. Excludes entries with
+ * no `tsEnd` (still running) or `signifier === 'cancelled'`.
+ * @param {Array<Object>} allEntries - The full entries array to filter.
+ * @param {string} monthPrefix - Date prefix `YYYY-MM` used to select entries.
+ * @param {function(Object): boolean} isBillable - Predicate identifying
+ *   billable entries; the caller supplies the project's `isEntryBillable`.
+ * @returns {{ totalMs: number, billableMs: number, topTag: (string|null) }}
  */
-function renderMonthlySummary(sumEl, monthPrefix) {
-  const monthEntries = entries.filter(
+function calcMonthSummaryStats(allEntries, monthPrefix, isBillable) {
+  const monthEntries = allEntries.filter(
     (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
   );
   const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
-  const billableMs = monthEntries
-    .filter((e) => isEntryBillable(e))
-    .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+  const billableMs = monthEntries.filter(isBillable).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
 
   const tagTotals = {};
   monthEntries.forEach((e) => {
@@ -156,26 +163,65 @@ function renderMonthlySummary(sumEl, monthPrefix) {
   });
   const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
 
+  return {
+    totalMs,
+    billableMs,
+    topTag: topTagEntry ? topTagEntry[0] : null,
+  };
+}
+
+/**
+ * Computes open / done / migrated task counts for a given month. Pure.
+ * `_migrated` (programmatic) and `signifier === 'migrated'` (BuJo marker)
+ * both count toward the migrated total.
+ * @param {Array<Object>} allTasks - The full plan-tasks array.
+ * @param {string} monthPrefix - Date prefix `YYYY-MM` used to select tasks.
+ * @returns {{ open: number, done: number, migrated: number }}
+ */
+function calcMonthTaskCounts(allTasks, monthPrefix) {
+  const monthTasks = allTasks.filter((t) => t.date.startsWith(monthPrefix));
+  return {
+    open: monthTasks.filter((t) => t.status !== 'done').length,
+    done: monthTasks.filter((t) => t.status === 'done').length,
+    migrated: monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length,
+  };
+}
+
+/**
+ * Renders the time-totals summary panel: total logged, billable, top category.
+ * Writes its full HTML to `sumEl`. No event binding. Early-returns if `sumEl`
+ * is absent so a partial DOM doesn't throw on innerHTML assignment.
+ * @param {HTMLElement} sumEl - The `#mlSummary` container.
+ * @param {string} monthPrefix - Date prefix `YYYY-MM` used to filter entries.
+ * @returns {void}
+ */
+function renderMonthlySummary(sumEl, monthPrefix) {
+  if (!sumEl) return;
+  const { totalMs, billableMs, topTag } = calcMonthSummaryStats(
+    entries,
+    monthPrefix,
+    isEntryBillable
+  );
+
   sumEl.innerHTML = `
     <div class="ml-sum-title">Summary</div>
     <div class="ml-sum-row"><span>Total logged</span><span>${fmtDur(totalMs)}</span></div>
     <div class="ml-sum-row"><span>Billable</span><span class="ml-sum-blue">${fmtDur(billableMs)}</span></div>
-    ${topTagEntry ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTagEntry[0]))}</span></div>` : ''}`;
+    ${topTag ? `<div class="ml-sum-row"><span>Top category</span><span>${escHtml(getCatLabel(topTag))}</span></div>` : ''}`;
 }
 
 /**
  * Renders the task-inventory panel: open / done / migrated counts plus
  * a "Run Migration" button. Writes its full HTML to `taskEl` and binds
- * the button to `openMigration()` if that helper is loaded.
+ * the button to `openMigration()` if that helper is loaded. Early-returns
+ * if `taskEl` is absent so a partial DOM doesn't throw on innerHTML.
  * @param {HTMLElement} taskEl - The `#mlTasks` container.
  * @param {string} monthPrefix - Date prefix `YYYY-MM` used to filter plan tasks.
  * @returns {void}
  */
 function renderMonthlyTasks(taskEl, monthPrefix) {
-  const monthTasks = planTasks.filter((t) => t.date.startsWith(monthPrefix));
-  const open = monthTasks.filter((t) => t.status !== 'done').length;
-  const done = monthTasks.filter((t) => t.status === 'done').length;
-  const migrated = monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length;
+  if (!taskEl) return;
+  const { open, done, migrated } = calcMonthTaskCounts(planTasks, monthPrefix);
 
   taskEl.innerHTML = `
     <div class="ml-sum-title">Task inventory</div>
