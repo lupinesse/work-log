@@ -17,6 +17,8 @@
 - 19 unit tests for `flatSort` (`10-tasks.js`), `_qcBuildTaskGroups`, and `_qcTaskListHtml` (`16-rapid.js`).
 
 ### Changed
+- **Review bots now post under dedicated GitHub App identities.** `pr-review.yml` mints an installation token for the "Claude Reviewer" App and `chatgpt-pr-review.yml` mints one for the "ChatGPT Reviewer" App via `actions/create-github-app-token@v2`. Comments and reviews are attributed to those Apps (with custom names + avatars) instead of the generic `github-actions[bot]`, so the two reviewers are visually distinct on PRs. Requires four new repo secrets: `CLAUDE_REVIEWER_APP_ID`, `CLAUDE_REVIEWER_PRIVATE_KEY`, `CHATGPT_REVIEWER_APP_ID`, `CHATGPT_REVIEWER_PRIVATE_KEY`.
+- **ChatGPT review model bumped from `gpt-4o` to `o3`** — proper reasoning model designed for multi-step logic and code analysis. ~$2/$8 per M tokens (input/output); at ~10 big PRs/month this is ~$0.60/month. Catches the kind of subtle bugs `gpt-4o` missed (e.g. the `engines.node` mismatch on PR #61).
 - Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.
 - Split `renderMonthlyLog()` into `renderMonthlyCalendar()`, `renderMonthlySummary()`, `renderMonthlyTasks()`, plus a 12-line orchestrator — closes #9.
 

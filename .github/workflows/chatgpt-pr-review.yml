@@ -13,8 +13,16 @@ name: ChatGPT PR Review
 #   ≥ 200 source-line changes  OR  ≥ 4 source files changed
 #   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
-# Required secret:
-#   OPENAI_API_KEY — set in Settings > Secrets and variables > Actions
+# Required secrets:
+#   OPENAI_API_KEY              — OpenAI API key for the ChatGPT review call
+#   CHATGPT_REVIEWER_APP_ID     — App ID of the "ChatGPT Reviewer" GitHub App
+#   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
+# The GitHub App must be installed on this repo with permissions:
+#   Contents: read · Pull requests: write
+# An installation token is minted at runtime via actions/create-github-app-token
+# and passed to anc95/ChatGPT-CodeReview so PR comments are attributed to the
+# App (with its custom name + avatar) instead of "github-actions[bot]" — keeps
+# the ChatGPT reviewer visually distinct from the Claude PR reviewer.
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
@@ -83,14 +91,27 @@ jobs:
               : 'Below both thresholds — skipping.');
             core.setOutput('should_run', String(meetsThreshold));
 
+      - name: Mint ChatGPT Reviewer App token
+        id: chatgpt-token
+        if: steps.gate.outputs.should_run == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
+
       - name: Code Review with ChatGPT
         if: steps.gate.outputs.should_run == 'true'
         uses: anc95/ChatGPT-CodeReview@main
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # App-installation token; comments post as the "ChatGPT Reviewer"
+          # App rather than the generic github-actions[bot].
+          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          MODEL: gpt-4o
+          # o3 reasoning model — deeper analysis than gpt-4o for the kind of
+          # subtle bugs surfaced on big PRs (see PR #61 where gpt-4o missed
+          # the engines.node mismatch).
+          MODEL: o3
           PROMPT: >
             You are reviewing a pull request in a personal time-tracking web
             app (vanilla JavaScript ES modules, SCSS, HTML). The project follows
