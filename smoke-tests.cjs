@@ -291,6 +291,48 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 5c. Mood dropdown is not clipped by hero card ─────────────────────────
+  // Regression: `.hero-card { overflow: hidden }` previously clipped the
+  // absolute-positioned `.tb-mood-panel` so the bottom menu item ("interesting!")
+  // was not visible/clickable.
+  console.log('\n5c. Mood dropdown not clipped');
+  {
+    const today = dk(new Date());
+    const entries = [
+      { id: 'md1', text: 'Mood task', tag: 'work', ts: Date.now() - 5000, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.evaluate(() => window.__wl.startTimer('md1'));
+
+    await page.click('#tbMoodBtn');
+    await page.waitForFunction(
+      () => document.getElementById('tbMoodPanel').style.display !== 'none',
+      { timeout: 1000 }
+    );
+
+    const probe = await page.evaluate(() => {
+      const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
+      const last = items[items.length - 1];
+      const rect = last.getBoundingClientRect();
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      return { hitClass: hit ? hit.className : '', bottomItemHeight: rect.height };
+    });
+    assert(
+      'Bottom mood item is rendered with a non-zero height',
+      probe.bottomItemHeight > 0,
+      `height=${probe.bottomItemHeight}`
+    );
+    assert(
+      'Bottom mood item is not clipped by an ancestor (hit-test reaches it)',
+      probe.hitClass.includes('tb-mood-item'),
+      `elementFromPoint returned: "${probe.hitClass}"`
+    );
+
+    await page.close();
+  }
+
   // ── 6. completedAt + completed section ────────────────────────────────────
   console.log('\n6. completedAt');
   {
