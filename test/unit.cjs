@@ -504,6 +504,16 @@ describe('addTaskToNotion', () => {
     );
   });
 
+  it('falls back to data.error when data.detail is absent', async () => {
+    const sandbox = loadNotionSandbox({
+      fetch: async () => new MockResponse({ error: 'database not found' }, { status: 404 }),
+    });
+    await assert.rejects(
+      () => sandbox.addTaskToNotion({ text: 'x', tag: 'a' }),
+      (err) => err.message === 'database not found'
+    );
+  });
+
   it('throws with generic message when error response has no detail', async () => {
     const sandbox = loadNotionSandbox({
       fetch: async () => new MockResponse('not json', { status: 500 }),
