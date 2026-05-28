@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Apply chatgpt-review label to large PRs
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const LINES_THRESHOLD = 200;
