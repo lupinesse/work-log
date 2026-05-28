@@ -506,8 +506,8 @@ function fetchWeather() {
     .then((r) => r.json())
     .then((d) => {
       if (!validWeatherResponse(d)) {
-        wlLog.warn('fetchWeather: unexpected response shape — skipping render', d);
-        return;
+        wlLog.warn('fetchWeather: unexpected response shape', d);
+        throw new Error('fetchWeather: invalid response shape');
       }
       const temp = Math.round(d.current.temperature_2m);
       const emoji = weatherEmoji(d.current.weather_code);

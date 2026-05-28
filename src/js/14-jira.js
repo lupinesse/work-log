@@ -314,17 +314,14 @@
         invalidRows[0]
       );
     }
-    jiraTasks = rows
-      .filter(validJiraCsvRow)
-      .map((r) => ({
-        key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
-        summary: (r['Summary'] || r['summary'] || '').trim(),
-        status: (r['Status'] || r['status'] || '').trim(),
-        parentKey: (r['Parent key'] || r['Parent Key'] || '').trim() || null,
-        parentSummary:
-          (r['Parent summary'] || r['Parent Summary'] || r['Epic Name'] || '').trim() || null,
-      }))
-      .filter((t) => t.key && t.summary);
+    jiraTasks = rows.filter(validJiraCsvRow).map((r) => ({
+      key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
+      summary: (r['Summary'] || r['summary'] || '').trim(),
+      status: (r['Status'] || r['status'] || '').trim(),
+      parentKey: (r['Parent key'] || r['Parent Key'] || '').trim() || null,
+      parentSummary:
+        (r['Parent summary'] || r['Parent Summary'] || r['Epic Name'] || '').trim() || null,
+    }));
 
     if (!jiraTasks.length) {
       setJiraMsg('No tasks found — expected columns: Issue key, Summary, Status.', false);
