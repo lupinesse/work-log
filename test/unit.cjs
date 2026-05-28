@@ -554,12 +554,14 @@ describe('saveTaskNotionUrl', () => {
 });
 
 describe('callClaudeWithNotion', () => {
-  it('returns concatenated text content from a successful response', async () => {
+  it('concatenates text blocks, skips non-text, and trims surrounding whitespace', async () => {
+    // Leading + trailing whitespace makes the source's `.trim()` load-bearing:
+    // without it the result would be '  Hello World  '.
     const body = {
       content: [
-        { type: 'text', text: 'Hello ' },
+        { type: 'text', text: '  Hello ' },
         { type: 'tool_use', id: 'x' },
-        { type: 'text', text: 'World' },
+        { type: 'text', text: 'World  ' },
       ],
     };
     const sandbox = loadNotionSandbox({

@@ -6,10 +6,10 @@
 
 - **Focus / mood dropdown no longer clipped**: removed `overflow: hidden` from `.hero-card` so the absolute-positioned `.tb-mood-panel` can extend past the card's bottom edge. The bottom mood item ("✨ interesting!") is now fully visible and clickable while the timer is running.
 
-### Tests
+### Added
 
-- Added 21 unit tests for `src/js/15-notion.js` (`addTaskToNotion`, `saveTaskNotionUrl`, `callClaudeWithNotion`, and the delegated per-task button click handler) — closes #34.
-- Added smoke test 5c that opens the mood dropdown on a running timer and verifies the bottom menu item is hit-testable at its centre.
+- 22 unit tests for `src/js/15-notion.js` (`addTaskToNotion`, `saveTaskNotionUrl`, `callClaudeWithNotion`, and the delegated per-task button click handler) — closes #34.
+- Smoke test 5c that opens the mood dropdown on a running timer and verifies the bottom menu item is hit-testable at its centre.
 
 ---
 
