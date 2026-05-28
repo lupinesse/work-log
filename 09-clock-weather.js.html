@@ -97,7 +97,9 @@ function tickClock() {
  * @returns {string} HTML string.
  */
 function jiraTicketHtml(text) {
-  const m = text.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/s);
+  // Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
+  // eslint-disable-next-line security/detect-unsafe-regex
+  const m = text.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/);
   if (!m) return escHtml(text);
   const key = m[1];
   const rest = (m[3] || '').trim();
