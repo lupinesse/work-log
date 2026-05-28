@@ -1,9 +1,11 @@
 name: ChatGPT PR Review
 
 # Posts an automated ChatGPT code review as a PR comment.
-# Uses a direct OpenAI chat-completions API call via actions/github-script,
+# Calls OpenAI's chat-completions API from `.github/scripts/chatgpt-review.mjs`,
 # replacing the unmaintained anc95/ChatGPT-CodeReview action (Node.js 20,
-# silently failed to post reviews).
+# silently failed to post reviews). Logic lives in a standalone .mjs file
+# rather than inline YAML so it can be read, tested, and modified with
+# proper tooling.
 #
 # Triggers two ways:
 #   1. 'labeled' event with label == 'chatgpt-review'  — manual labeling
@@ -118,119 +120,25 @@ jobs:
           client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
 
+      - name: Set up Node.js
+        if: always() && steps.gate.outputs.should_run == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
       - name: Code Review with ChatGPT
         # `always()` keeps the review running even if the mint step failed —
-        # github-token falls back to github.token so the review still posts
+        # GITHUB_TOKEN falls back to github.token so the review still posts
         # (under github-actions[bot]) rather than being silently skipped.
         # The red mint-step failure in CI is the signal to fix the secret.
         if: always() && steps.gate.outputs.should_run == 'true'
-        uses: actions/github-script@v9
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          HEAD_SHA:       ${{ github.event.pull_request.head.sha }}
-        with:
-          github-token: ${{ steps.chatgpt-token.outputs.token || github.token }}
-          script: |
-            const fs    = require('fs');
-            const https = require('https');
-
-            if (!process.env.OPENAI_API_KEY) {
-              core.warning('OPENAI_API_KEY secret is not set — skipping ChatGPT review.');
-              return;
-            }
-
-            if (!fs.existsSync('pr.diff')) {
-              core.warning('pr.diff not found — diff step may have failed. Skipping review.');
-              return;
-            }
-            const diff = fs.readFileSync('pr.diff', 'utf8');
-            if (!diff.trim()) {
-              core.info('Empty diff after filtering generated files — nothing to review.');
-              return;
-            }
-
-            // Truncate very large diffs to avoid exceeding the model context window.
-            const MAX_DIFF_CHARS = 50000;
-            const diffContent = diff.length > MAX_DIFF_CHARS
-              ? diff.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]'
-              : diff;
-
-            const MODEL  = 'gpt-5.5';
-            const PROMPT = [
-              'You are reviewing a pull request in a personal time-tracking web app',
-              '(vanilla JavaScript ES modules, SCSS, HTML). The project follows the',
-              'UK Government Analysis Function Higher QA standard. Focus on:',
-              'correctness (logic errors, edge cases, null/undefined),',
-              'single-purpose functions (flag any function doing more than one thing),',
-              'informative naming (flag single-letter variables outside tight map/filter chains),',
-              'error handling (failures must call wlLog.warn or wlLog.error — never silent catch),',
-              'and test coverage (every new exported function needs a unit test in test/unit.cjs).',
-              'Ignore auto-generated files: script.js, styles.css, docs/*.html.',
-              'Be direct and specific; cite file and line number for every finding.',
-            ].join(' ');
-
-            const requestBody = JSON.stringify({
-              model:            MODEL,
-              messages: [
-                { role: 'system', content: PROMPT },
-                { role: 'user',   content: `Review this diff:\n\n\`\`\`diff\n${diffContent}\n\`\`\`` },
-              ],
-              max_tokens:       2048,
-              // reasoning_effort replaces temperature for reasoning-class models;
-              // sending both causes an API error.
-              reasoning_effort: 'high',
-            });
-
-            const reviewText = await new Promise((resolve, reject) => {
-              const req = https.request(
-                {
-                  hostname: 'api.openai.com',
-                  path:     '/v1/chat/completions',
-                  method:   'POST',
-                  headers:  {
-                    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-                    'Content-Type':  'application/json',
-                    'Content-Length': Buffer.byteLength(requestBody),
-                  },
-                },
-                (res) => {
-                  let raw = '';
-                  res.on('data', chunk => { raw += chunk; });
-                  res.on('end', () => {
-                    let parsed;
-                    try {
-                      parsed = JSON.parse(raw);
-                    } catch (e) {
-                      reject(new Error(`Failed to parse OpenAI response: ${raw.slice(0, 200)}`));
-                      return;
-                    }
-                    if (parsed.error) {
-                      reject(new Error(`OpenAI API error (${parsed.error.code}): ${parsed.error.message}`));
-                      return;
-                    }
-                    resolve(parsed.choices?.[0]?.message?.content ?? '');
-                  });
-                }
-              );
-              req.on('error', reject);
-              req.write(requestBody);
-              req.end();
-            });
-
-            if (!reviewText.trim()) {
-              core.warning('OpenAI returned an empty review — skipping comment.');
-              return;
-            }
-
-            const prNumber = context.payload.pull_request.number;
-            const headSha  = process.env.HEAD_SHA;
-            const body     = `${reviewText}\n\n---\n*Automated review by ChatGPT \`${MODEL}\` · commit \`${headSha.slice(0, 7)}\`*`;
-
-            await github.rest.issues.createComment({
-              owner:        context.repo.owner,
-              repo:         context.repo.repo,
-              issue_number: prNumber,
-              body,
-            });
-
-            core.info('ChatGPT review posted successfully.');
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.chatgpt-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+          # Optional overrides for MODEL / REASONING_EFFORT / PROMPT /
+          # MAX_DIFF_CHARS / MAX_TOKENS / DIFF_PATH live in
+          # .github/scripts/chatgpt-review.mjs with sensible defaults.
+        run: node .github/scripts/chatgpt-review.mjs
