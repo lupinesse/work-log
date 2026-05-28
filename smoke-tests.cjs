@@ -318,6 +318,7 @@ async function runTests() {
 
     const probe = await page.evaluate(() => {
       const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
+      if (items.length === 0) return { itemCount: 0 };
       const last = items[items.length - 1];
       const rect = last.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
@@ -326,8 +327,17 @@ async function runTests() {
       // still passes if items later gain inline icon/label children.
       const hit = document.elementFromPoint(x, y);
       const inItem = hit ? hit.closest('.tb-mood-item') : null;
-      return { hitReachesItem: inItem !== null, bottomItemHeight: rect.height };
+      return {
+        itemCount: items.length,
+        hitReachesItem: inItem !== null,
+        bottomItemHeight: rect.height,
+      };
     });
+    assert(
+      'Mood panel contains at least one item',
+      probe.itemCount > 0,
+      `expected .tb-mood-item elements but found ${probe.itemCount}`
+    );
     assert(
       'Bottom mood item is rendered with a non-zero height',
       probe.bottomItemHeight > 0,
