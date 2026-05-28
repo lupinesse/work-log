@@ -117,10 +117,15 @@ jobs:
           GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token || github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
-          # o3 reasoning model — deeper analysis than gpt-4o for the kind of
-          # subtle bugs surfaced on big PRs (see PR #61 where gpt-4o missed
-          # the engines.node mismatch).
-          MODEL: o3
+          # gpt-5.5 — OpenAI's current top-tier model for "coding and
+          # professional work" (per platform.openai.com/docs/models),
+          # released April 2026. Has built-in configurable reasoning;
+          # the action sends just the model name so we get the default
+          # reasoning level, which is sufficient for PR-sized diffs.
+          # Picked over gpt-5.4 because chatgpt-review fires only on big
+          # PRs where the depth premium ($2.10/month vs $1.00/month at
+          # ~10 PRs/month) is worth the extra quality.
+          MODEL: gpt-5.5
           PROMPT: >
             You are reviewing a pull request in a personal time-tracking web
             app (vanilla JavaScript ES modules, SCSS, HTML). The project follows
