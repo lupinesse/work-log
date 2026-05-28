@@ -9,6 +9,7 @@
 - Jira invalid-row warning now logs the full list of malformed rows instead of only the first row, so all problem rows are visible in a single DevTools entry
 
 ### Added
+- **Conventional Commits enforced** via a new Husky `commit-msg` hook backed by `@commitlint/config-conventional`; `commitlint.config.js` committed at repo root and the rules + examples are documented in `CONTRIBUTING.md`. Non-conformant commit messages are now rejected locally before they can be pushed — closes #11.
 - **PR workflow Step 5b** (`CLAUDE.md`): after each PR is opened, the `chatgpt-review` CI check's inline comments are fetched via GraphQL, triaged alongside the `/pr-review` output, and every thread is replied to and resolved — closes the inline-review loop so threads no longer linger unresolved on merged PRs.
 - `ROADMAP.md` — forward-looking feature plan; addresses the "communication" gap in DevOps checklist
 - `docs/delivery-metrics.md` generated weekly by new `delivery-metrics.yml` CI workflow — tracks issues opened vs closed (Say/Do ratio) each Monday
