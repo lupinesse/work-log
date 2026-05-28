@@ -331,6 +331,110 @@ function validateBackupFile(backup) {
   return { valid: true };
 }
 
+/* ── External API response validators ── */
+// Pure validators for shapes received from external data sources.
+// Each function returns a boolean; callers are responsible for logging and
+// providing safe fallbacks when validation fails.
+
+/**
+ * Returns true if `data` is a well-formed Open-Meteo forecast response
+ * containing the fields that `fetchWeather()` reads.
+ *
+ * Required shape:
+ * - `data.current.temperature_2m` — number
+ * - `data.current.weather_code`   — number
+ * - `data.hourly.time`                      — array
+ * - `data.hourly.precipitation_probability` — array
+ *
+ * The `daily` block is optional (used only when present).
+ *
+ * @param {*} data - Value parsed from the Open-Meteo JSON response.
+ * @returns {boolean}
+ * @example
+ * validWeatherResponse({
+ *   current: { temperature_2m: 15, weather_code: 3 },
+ *   hourly: { time: ['2026-05-28T00:00'], precipitation_probability: [10] },
+ * }) // → true
+ * validWeatherResponse(null)                  // → false
+ * validWeatherResponse({ current: {} })       // → false  (missing hourly)
+ * validWeatherResponse({ hourly: { time: [], precipitation_probability: [] } })
+ *   // → false  (missing current)
+ */
+function validWeatherResponse(data) {
+  return !!(
+    data &&
+    typeof data === 'object' &&
+    data.current &&
+    typeof data.current.temperature_2m === 'number' &&
+    typeof data.current.weather_code === 'number' &&
+    data.hourly &&
+    Array.isArray(data.hourly.time) &&
+    Array.isArray(data.hourly.precipitation_probability)
+  );
+}
+
+/**
+ * Returns true if `meeting` is a well-formed Outlook calendar event object
+ * as returned by the PowerShell `/api/calendar` endpoint.
+ *
+ * Required fields: `subject` (string), `start` (string), `end` (string).
+ * Optional fields (`joinUrl`, `account`) are not validated here — their
+ * absence is handled gracefully by `renderCalStrip`.
+ *
+ * @param {*} meeting - Candidate meeting object from the calendar API response.
+ * @returns {boolean}
+ * @example
+ * validCalendarMeeting({ subject: 'Standup', start: '2026-05-28T09:00', end: '2026-05-28T09:30' })
+ *   // → true
+ * validCalendarMeeting(null)                   // → false
+ * validCalendarMeeting({ subject: 'x' })       // → false  (missing start/end)
+ * validCalendarMeeting({ subject: 42, start: '2026-05-28T09:00', end: '2026-05-28T09:30' })
+ *   // → false  (subject not a string)
+ */
+function validCalendarMeeting(meeting) {
+  return !!(
+    meeting &&
+    typeof meeting === 'object' &&
+    typeof meeting.subject === 'string' &&
+    typeof meeting.start === 'string' &&
+    typeof meeting.end === 'string'
+  );
+}
+
+/**
+ * Returns true if `row` — a single object produced by `parseCSV()` — contains
+ * at least the key and summary columns that `jiraParseAndRender()` expects.
+ *
+ * The Jira CSV export uses several possible column names for the same field
+ * (matching the lenient lookup in `jiraParseAndRender`):
+ * - Key column: `Issue key`, `Key`, or `Issue Key`
+ * - Summary column: `Summary` or `summary`
+ *
+ * A row that has neither column set (e.g. from a semicolon-delimited file
+ * parsed as single-column rows) fails validation and triggers a warning.
+ *
+ * @param {*} row - Single row object from `parseCSV()`.
+ * @returns {boolean}
+ * @example
+ * validJiraCsvRow({ 'Issue key': 'AITO-1', Summary: 'Fix login bug', Status: 'Open' })
+ *   // → true
+ * validJiraCsvRow({ Key: 'PROJ-2', Summary: 'Add dark mode', Status: 'To Do' })
+ *   // → true
+ * validJiraCsvRow({})                           // → false  (no key or summary)
+ * validJiraCsvRow({ 'Issue key': 'AITO-1' })    // → false  (missing summary)
+ * validJiraCsvRow({ Summary: 'Fix login bug' }) // → false  (missing key)
+ */
+function validJiraCsvRow(row) {
+  if (!row || typeof row !== 'object') return false;
+  const hasKey = !!(
+    (row['Issue key'] || '').trim() ||
+    (row['Key'] || '').trim() ||
+    (row['Issue Key'] || '').trim()
+  );
+  const hasSummary = !!((row['Summary'] || '').trim() || (row['summary'] || '').trim());
+  return hasKey && hasSummary;
+}
+
 // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
 // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
 // this block is skipped — functions remain as globals in the closure.
@@ -352,5 +456,8 @@ if (typeof module !== 'undefined') {
     validTimer,
     validPomoEntry,
     validateBackupFile,
+    validWeatherResponse,
+    validCalendarMeeting,
+    validJiraCsvRow,
   };
 }

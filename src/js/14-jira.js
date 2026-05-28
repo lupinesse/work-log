@@ -307,16 +307,21 @@
       setJiraMsg('CSV is empty or could not be parsed.', false);
       return;
     }
-    jiraTasks = rows
-      .map((r) => ({
-        key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
-        summary: (r['Summary'] || r['summary'] || '').trim(),
-        status: (r['Status'] || r['status'] || '').trim(),
-        parentKey: (r['Parent key'] || r['Parent Key'] || '').trim() || null,
-        parentSummary:
-          (r['Parent summary'] || r['Parent Summary'] || r['Epic Name'] || '').trim() || null,
-      }))
-      .filter((t) => t.key && t.summary);
+    const invalidRows = rows.filter((r) => !validJiraCsvRow(r));
+    if (invalidRows.length) {
+      wlLog.warn(
+        `jiraParseAndRender: ${invalidRows.length} row(s) missing required columns (Issue key / Summary) — check delimiter`,
+        invalidRows[0]
+      );
+    }
+    jiraTasks = rows.filter(validJiraCsvRow).map((r) => ({
+      key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
+      summary: (r['Summary'] || r['summary'] || '').trim(),
+      status: (r['Status'] || r['status'] || '').trim(),
+      parentKey: (r['Parent key'] || r['Parent Key'] || '').trim() || null,
+      parentSummary:
+        (r['Parent summary'] || r['Parent Summary'] || r['Epic Name'] || '').trim() || null,
+    }));
 
     if (!jiraTasks.length) {
       setJiraMsg('No tasks found — expected columns: Issue key, Summary, Status.', false);
