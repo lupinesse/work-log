@@ -7,7 +7,10 @@
 - `docs/delivery-metrics.md` generated weekly by new `delivery-metrics.yml` CI workflow — tracks issues opened vs closed (Say/Do ratio) each Monday
 - README documentation index linking ARCHITECTURE.md, DATA.md, CONTRIBUTING.md, ROADMAP.md, QA.md
 - `npm run clean-branches` — PowerShell script to prune local branches already merged into main
-- 19 unit tests restoring coverage for `flatSort` (10-tasks.js), `_qcBuildTaskGroups`, and `_qcTaskListHtml` (16-rapid.js). These were added during PR #26's review but lost in the squash-merge; the underlying functions had been shipping without dedicated unit coverage since.
+- 19 unit tests for `flatSort` (`10-tasks.js`), `_qcBuildTaskGroups`, and `_qcTaskListHtml` (`16-rapid.js`).
+
+### Changed
+- Renamed CSS token `--in-progress-border` to `--in-progress-highlight` — its only usages set `background` / `background-color`, never a border.
 
 ---
 
