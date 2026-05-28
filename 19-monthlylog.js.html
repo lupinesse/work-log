@@ -142,6 +142,7 @@ function renderMonthlyCalendar(calEl, year, month) {
   // Cell click → navigate to that day and close the monthly log
   calEl.querySelectorAll('.ml-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
+      wlLog.info('monthlyLog: cell clicked, navigating', { dateKey: cell.dataset.date });
       viewDate = new Date(cell.dataset.date + 'T12:00:00');
       document.getElementById('monthlyLogSection').style.display = 'none';
       _mlActive = false;
@@ -294,6 +295,7 @@ function initMonthlyLog() {
   document.addEventListener('click', (e) => {
     if (e.target.id !== 'tabMonthlyLog') return;
     _mlActive = !_mlActive;
+    wlLog.info('monthlyLog: section toggled', { active: _mlActive });
     const section = document.getElementById('monthlyLogSection');
     if (section) section.style.display = _mlActive ? '' : 'none';
     if (_mlActive) {

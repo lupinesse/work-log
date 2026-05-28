@@ -129,6 +129,7 @@ function bindPlanEvents(lists) {
       if (!t) return;
       const prevStatus = t.status;
       const newStatus = sel.value;
+      wlLog.info('planTask: status changed', { id: t.id, from: prevStatus, to: newStatus });
 
       // Capture in-flight typed text BEFORE re-render
       let liveTyped = null;

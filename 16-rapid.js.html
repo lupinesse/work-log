@@ -103,9 +103,11 @@ function _qcLogOnly() {
     };
     entries.push(entry);
     save();
+    wlLog.info('_qcLogOnly: log-only entry created', { tag, uncategorised: entry._uncategorised });
     closeRapid();
     render();
   } else {
+    wlLog.info('_qcLogOnly: empty input, redirecting focus to ad-hoc row');
     closeRapid();
     const adHoc = document.getElementById('tlAdHocInput');
     if (adHoc) adHoc.focus();
@@ -394,11 +396,13 @@ function _qcRenderTaskList() {
  */
 function _qcActivateRow(rowId, text, tag, isActive) {
   if (isActive) {
+    wlLog.info('_qcActivateRow: clicked already-active row, just closing', { rowId });
     closeRapid();
     return;
   }
 
-  if (activeTimer) stopTimer();
+  const switching = !!activeTimer;
+  if (switching) stopTimer();
 
   // Re-use the existing entry for log entries; always create new for plan tasks.
   let entry = rowId.startsWith('plan:') ? null : entries.find((e) => e.id === rowId);
@@ -413,6 +417,12 @@ function _qcActivateRow(rowId, text, tag, isActive) {
     };
     entries.push(entry);
     save();
+    wlLog.info('_qcActivateRow: new entry created', { rowId, tag, switched: switching });
+  } else {
+    wlLog.info('_qcActivateRow: resuming existing entry', {
+      entryId: entry.id,
+      switched: switching,
+    });
   }
 
   startTimer(entry.id);
