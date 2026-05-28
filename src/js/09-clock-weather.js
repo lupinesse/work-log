@@ -505,6 +505,10 @@ function fetchWeather() {
   )
     .then((r) => r.json())
     .then((d) => {
+      if (!validWeatherResponse(d)) {
+        wlLog.warn('fetchWeather: unexpected response shape — skipping render', d);
+        return;
+      }
       const temp = Math.round(d.current.temperature_2m);
       const emoji = weatherEmoji(d.current.weather_code);
       document.getElementById('liveWeather').textContent = `${WEATHER_NAME}, ${temp}°C ${emoji}`;

@@ -307,7 +307,15 @@
       setJiraMsg('CSV is empty or could not be parsed.', false);
       return;
     }
+    const invalidRows = rows.filter((r) => !validJiraCsvRow(r));
+    if (invalidRows.length) {
+      wlLog.warn(
+        `jiraParseAndRender: ${invalidRows.length} row(s) missing required columns (Issue key / Summary) — check delimiter`,
+        invalidRows[0]
+      );
+    }
     jiraTasks = rows
+      .filter(validJiraCsvRow)
       .map((r) => ({
         key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
         summary: (r['Summary'] || r['summary'] || '').trim(),

@@ -43,6 +43,9 @@ const {
   validTimer,
   validPomoEntry,
   validateBackupFile,
+  validWeatherResponse,
+  validCalendarMeeting,
+  validJiraCsvRow,
 } = sandbox;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -380,6 +383,141 @@ describe('validateBackupFile', () => {
   });
 });
 
+// ── validWeatherResponse ──────────────────────────────────────────────────────
+describe('validWeatherResponse', () => {
+  const VALID = {
+    current: { temperature_2m: 15.3, weather_code: 3 },
+    hourly: {
+      time: ['2026-05-28T00:00', '2026-05-28T01:00'],
+      precipitation_probability: [10, 20],
+    },
+  };
+
+  it('accepts a well-formed Open-Meteo response', () =>
+    assert.equal(validWeatherResponse(VALID), true));
+  it('accepts a response with an additional daily block', () =>
+    assert.equal(
+      validWeatherResponse({
+        ...VALID,
+        daily: {
+          time: ['2026-05-28'],
+          sunrise: ['2026-05-28T04:10'],
+          sunset: ['2026-05-28T21:50'],
+          daylight_duration: [64200],
+        },
+      }),
+      true
+    ));
+  it('rejects null', () => assert.equal(validWeatherResponse(null), false));
+  it('rejects undefined', () => assert.equal(validWeatherResponse(undefined), false));
+  it('rejects empty object', () => assert.equal(validWeatherResponse({}), false));
+  it('rejects when current block is missing', () =>
+    assert.equal(validWeatherResponse({ hourly: VALID.hourly }), false));
+  it('rejects when hourly block is missing', () =>
+    assert.equal(validWeatherResponse({ current: VALID.current }), false));
+  it('rejects when temperature_2m is missing from current', () =>
+    assert.equal(
+      validWeatherResponse({ current: { weather_code: 3 }, hourly: VALID.hourly }),
+      false
+    ));
+  it('rejects when weather_code is a string instead of number', () =>
+    assert.equal(
+      validWeatherResponse({
+        current: { temperature_2m: 15, weather_code: '3' },
+        hourly: VALID.hourly,
+      }),
+      false
+    ));
+  it('rejects when hourly.time is not an array', () =>
+    assert.equal(
+      validWeatherResponse({
+        current: VALID.current,
+        hourly: { time: null, precipitation_probability: [] },
+      }),
+      false
+    ));
+  it('rejects when hourly.precipitation_probability is not an array', () =>
+    assert.equal(
+      validWeatherResponse({
+        current: VALID.current,
+        hourly: { time: [], precipitation_probability: 'none' },
+      }),
+      false
+    ));
+});
+
+// ── validCalendarMeeting ──────────────────────────────────────────────────────
+describe('validCalendarMeeting', () => {
+  const VALID = { subject: 'Standup', start: '2026-05-28T09:00', end: '2026-05-28T09:30' };
+
+  it('accepts a minimal meeting with subject, start, and end', () =>
+    assert.equal(validCalendarMeeting(VALID), true));
+  it('accepts a meeting with optional joinUrl and account', () =>
+    assert.equal(
+      validCalendarMeeting({
+        ...VALID,
+        joinUrl: 'https://teams.example.com/x',
+        account: 'work@example.com',
+      }),
+      true
+    ));
+  it('rejects null', () => assert.equal(validCalendarMeeting(null), false));
+  it('rejects undefined', () => assert.equal(validCalendarMeeting(undefined), false));
+  it('rejects empty object', () => assert.equal(validCalendarMeeting({}), false));
+  it('rejects when subject is missing', () =>
+    assert.equal(
+      validCalendarMeeting({ start: '2026-05-28T09:00', end: '2026-05-28T09:30' }),
+      false
+    ));
+  it('rejects when start is missing', () =>
+    assert.equal(validCalendarMeeting({ subject: 'x', end: '2026-05-28T09:30' }), false));
+  it('rejects when end is missing', () =>
+    assert.equal(validCalendarMeeting({ subject: 'x', start: '2026-05-28T09:00' }), false));
+  it('rejects when subject is a number instead of string', () =>
+    assert.equal(
+      validCalendarMeeting({ subject: 42, start: '2026-05-28T09:00', end: '2026-05-28T09:30' }),
+      false
+    ));
+  it('rejects when start is an array instead of string', () =>
+    assert.equal(
+      validCalendarMeeting({ subject: 'x', start: ['2026-05-28T09:00'], end: '2026-05-28T09:30' }),
+      false
+    ));
+  it('rejects a plain string (not an object)', () =>
+    assert.equal(validCalendarMeeting('Standup'), false));
+});
+
+// ── validJiraCsvRow ───────────────────────────────────────────────────────────
+describe('validJiraCsvRow', () => {
+  it('accepts a row with "Issue key" and "Summary"', () =>
+    assert.equal(
+      validJiraCsvRow({ 'Issue key': 'AITO-1', Summary: 'Fix login', Status: 'Open' }),
+      true
+    ));
+  it('accepts a row with alternate "Key" column name', () =>
+    assert.equal(validJiraCsvRow({ Key: 'PROJ-2', Summary: 'Dark mode', Status: 'To Do' }), true));
+  it('accepts a row with "Issue Key" (capitalised K)', () =>
+    assert.equal(
+      validJiraCsvRow({ 'Issue Key': 'AITO-3', Summary: 'Refactor', Status: 'Done' }),
+      true
+    ));
+  it('accepts a row with lowercase "summary"', () =>
+    assert.equal(validJiraCsvRow({ 'Issue key': 'AITO-4', summary: 'Lowercase summary' }), true));
+  it('rejects null', () => assert.equal(validJiraCsvRow(null), false));
+  it('rejects undefined', () => assert.equal(validJiraCsvRow(undefined), false));
+  it('rejects empty object (no columns)', () => assert.equal(validJiraCsvRow({}), false));
+  it('rejects when key column is present but summary is absent', () =>
+    assert.equal(validJiraCsvRow({ 'Issue key': 'AITO-1' }), false));
+  it('rejects when summary is present but key column is absent', () =>
+    assert.equal(validJiraCsvRow({ Summary: 'Fix login' }), false));
+  it('rejects when key column is present but empty', () =>
+    assert.equal(validJiraCsvRow({ 'Issue key': '   ', Summary: 'Fix login' }), false));
+  it('rejects when summary is present but empty', () =>
+    assert.equal(validJiraCsvRow({ 'Issue key': 'AITO-1', Summary: '   ' }), false));
+  it('rejects a semicolon-delimited row parsed as one column (wrong delimiter)', () =>
+    assert.equal(validJiraCsvRow({ 'AITO-1;Fix login bug;Open': '' }), false));
+});
+
 // ── 15-notion.js ─────────────────────────────────────────────────────────────
 // Tests for addTaskToNotion, saveTaskNotionUrl, and callClaudeWithNotion.
 // These functions depend on browser globals (fetch, getCat, planTasks, etc.)
@@ -460,7 +598,9 @@ function loadNotionSandbox(overrides = {}) {
 
 it('regression #33: removes wl_anthropic_key from localStorage on load', () => {
   const removed = [];
-  loadNotionSandbox({ localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} } });
+  loadNotionSandbox({
+    localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} },
+  });
   assert.ok(removed.includes('wl_anthropic_key'));
 });
 

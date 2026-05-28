@@ -196,7 +196,19 @@ async function fetchAndRenderCalendar() {
     if (!res.ok) throw new Error(`Server ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    _calMeetingsCache = data;
+    if (!Array.isArray(data)) {
+      wlLog.warn('fetchAndRenderCalendar: response is not an array — skipping render', data);
+      return;
+    }
+    const invalidMeetings = data.filter((m) => !validCalendarMeeting(m));
+    if (invalidMeetings.length) {
+      wlLog.warn(
+        `fetchAndRenderCalendar: dropped ${invalidMeetings.length} malformed meeting(s)`,
+        invalidMeetings
+      );
+    }
+    const validMeetings = data.filter(validCalendarMeeting);
+    _calMeetingsCache = validMeetings;
 
     // Filter out hidden meetings for today
     const todayKey = dk(new Date());
@@ -207,7 +219,7 @@ async function fetchAndRenderCalendar() {
         return [];
       }
     })();
-    const filteredData = data.filter((m) => !hiddenMeetings.includes(m.subject));
+    const filteredData = validMeetings.filter((m) => !hiddenMeetings.includes(m.subject));
 
     renderCalStrip(filteredData);
   } catch (err) {
