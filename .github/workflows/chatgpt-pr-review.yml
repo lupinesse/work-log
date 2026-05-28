@@ -19,7 +19,7 @@ name: ChatGPT PR Review
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
 #   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token@v2
+# An installation token is minted at runtime via actions/create-github-app-token@v3
 # and passed to anc95/ChatGPT-CodeReview so PR comments are attributed to the
 # App (with its custom name + avatar) instead of "github-actions[bot]" — keeps
 # the ChatGPT reviewer visually distinct from the Claude PR reviewer. If the
@@ -96,7 +96,7 @@ jobs:
       - name: Mint ChatGPT Reviewer App token
         id: chatgpt-token
         if: steps.gate.outputs.should_run == 'true'
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
@@ -112,8 +112,9 @@ jobs:
         env:
           # App-installation token; comments post as the "ChatGPT Reviewer"
           # App rather than the generic github-actions[bot]. Falls back to
-          # secrets.GITHUB_TOKEN if the mint step failed.
-          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token || secrets.GITHUB_TOKEN }}
+          # github.token (same value as secrets.GITHUB_TOKEN; using the
+          # idiomatic form to match pr-review.yml).
+          GITHUB_TOKEN: ${{ steps.chatgpt-token.outputs.token || github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
           # o3 reasoning model — deeper analysis than gpt-4o for the kind of
