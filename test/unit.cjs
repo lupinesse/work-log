@@ -676,6 +676,10 @@ describe('Notion button click handler', () => {
     assert.equal(openCalls.length, 1);
     assert.equal(openCalls[0].url, 'https://notion.so/page-1');
     assert.equal(openCalls[0].target, '_blank');
+    // Pin 'noopener': prevents the opened page from controlling window.opener
+    // (tab-jacking / reverse-tabnabbing). Removing it would silently weaken
+    // a security boundary, so this assertion guards against drift.
+    assert.equal(openCalls[0].features, 'noopener');
     assert.equal(fetchCalled, false);
   });
 
