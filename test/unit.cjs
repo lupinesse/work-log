@@ -720,6 +720,24 @@ describe('Notion button click handler', () => {
     assert.equal(savedUrl, 'https://notion.so/new-page');
   });
 
+  it('restores the button and alerts when addTaskToNotion resolves to a non-HTTP URL', async () => {
+    const alerts = [];
+    const sandbox = loadNotionSandbox({
+      planTasks: [{ id: 'p4', text: 'Weird URL task' }],
+      alert: (message) => alerts.push(message),
+    });
+    sandbox.addTaskToNotion = async () => '/relative-path';
+
+    const btn = { dataset: { pid: 'p4' }, disabled: false, textContent: '📋' };
+    sandbox.__clickHandler(eventTargetingButton(btn));
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(btn.disabled, false);
+    assert.equal(btn.textContent, '📋');
+    assert.equal(alerts.length, 1);
+    assert.match(alerts[0], /Notion responded but no URL: \/relative-path/);
+  });
+
   it('restores the button and alerts when addTaskToNotion rejects', async () => {
     const alerts = [];
     const sandbox = loadNotionSandbox({

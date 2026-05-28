@@ -309,10 +309,12 @@ async function runTests() {
     await page.waitForSelector('#tbMoodBtn', { state: 'visible', timeout: 1000 });
 
     await page.click('#tbMoodBtn');
-    await page.waitForFunction(
-      () => document.getElementById('tbMoodPanel').style.display !== 'none',
-      { timeout: 1000 }
-    );
+    // Wait on an actual menu item being visible — robust against changes to
+    // how the panel toggles (class vs. inline style, animations, etc.).
+    await page.waitForSelector('#tbMoodPanel .tb-mood-item', {
+      state: 'visible',
+      timeout: 1000,
+    });
 
     const probe = await page.evaluate(() => {
       const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
