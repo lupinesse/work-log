@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+- **ESLint now covers `.github/scripts/**/*.mjs`** — the CI dialogue scripts (`chatgpt-review.mjs`, `claude-chatgpt-dialogue.mjs`, `chatgpt-claude-dialogue.mjs`, and the shared `lib/` modules) were previously invisible to the `lint` CI job, meaning any lint errors in those files produced a false green. A new flat-config block in `eslint.config.js` applies `globals.node` (giving `process`, `console`, `fetch`, `URL` etc.) and suppresses `security/detect-non-literal-fs-filename` and `security/detect-object-injection` for the same trusted-input reasons documented on the existing Node blocks. The `lint` script glob is updated to match.
+
+### Fixed
+- **`chatgpt-review.mjs:postInlineComment` now sends the `X-GitHub-Api-Version` header** — the function was building GitHub API headers manually and omitting `X-GitHub-Api-Version: 2022-11-28`, making its calls inconsistent with the shared `ghHeaders()` helper used elsewhere in the dialogue scripts. Replaced with `ghHeaders(GITHUB_TOKEN)`.
+
 ### Added
 - **Rapid-logging inline token grammar** — users can type `#<cat>`, `!<sig>`, and `><date>` directly in the quick-capture input to set category, signifier, and entry date without touching the mouse. Recognised tokens are stripped from the saved text; unrecognised tokens are left in place so nothing is silently discarded. A live pill-badge preview (`#qcTokenPreview`) updates on every keystroke. Date tokens support `today`, `tomorrow`, `YYYY-MM-DD`, and weekday abbreviations (`mon`–`sun`, always the *next* occurrence). The category chip auto-activates when a `#cat` token is typed and clears again when the token is deleted.
 - **Pomodoro 4-column card** — the `.pomo-body` is restructured into a CSS grid with four columns: clock face (ring + duration buttons), composer (task label + controls + chime), 28-day focus sparkline, and session ledger. A ribbon footer below the grid shows a 5-dot recent-session indicator, a "Peak Focus" / session-count status pill, and a "View all sessions" scroll link. The sparkline and ribbon refresh after every completed session. All colours respond to the OS dark-mode preference via `--pomo-spark-fill` / `--pomo-spark-empty` CSS variables.

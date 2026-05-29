@@ -37,6 +37,7 @@ import { readFileSync } from 'node:fs';
 import {
   fetchAllThreads,
   formatThreadsForPrompt,
+  ghHeaders,
   replyToThread,
   unresolveThread,
   upsertReview,
@@ -280,13 +281,11 @@ async function postInlineComment(path, line, body) {
     `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments`,
     {
       method: 'POST',
-      headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      headers: ghHeaders(GITHUB_TOKEN),
       body: JSON.stringify({ body, commit_id: HEAD_SHA, path, line, side: 'RIGHT' }),
     }
   );
-  if (!response.ok) {
-    throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
-  }
+  if (!response.ok) throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
