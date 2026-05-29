@@ -173,8 +173,14 @@ async function fetchClaudeIssueComments() {
   // Walk newest-first so we pick up the latest version of each.
   for (const c of [...comments].reverse()) {
     const body = c.body || '';
-    if (!synthesis && body.includes(SYNTHESIS_MARKER_PHRASE)) synthesis = body;
-    if (!finalReview && (body.includes(FINAL_REVIEW_MARKER) || body.includes('claude.ai/claude-code'))) {
+    const isSynthesis = body.includes(SYNTHESIS_MARKER_PHRASE);
+    if (!synthesis && isSynthesis) synthesis = body;
+    // Gate the footer fallback on !isSynthesis so a synthesis comment that
+    // happens to mention claude.ai/claude-code (current attribution doesn't,
+    // but attribution wording can drift) is never mis-classified as the final
+    // /pr-review verdict. The HTML marker stays a primary signal regardless
+    // because it's only injected by the pr-review-comment workflow step.
+    if (!finalReview && !isSynthesis && (body.includes(FINAL_REVIEW_MARKER) || body.includes('claude.ai/claude-code'))) {
       finalReview = body;
     }
     if (synthesis && finalReview) break;
