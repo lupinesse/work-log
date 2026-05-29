@@ -21,7 +21,7 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars (all have sensible defaults):
- *   MODEL              default 'gpt-5.5'
+ *   MODEL              default 'gpt-5.4'
  *   REASONING_EFFORT   default 'medium' (low | medium | high) — 'high' exhausted the token budget on CoT
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 50000 — truncate larger diffs

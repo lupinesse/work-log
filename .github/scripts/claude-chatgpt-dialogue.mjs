@@ -20,7 +20,7 @@
  *   HEAD_SHA                 Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL              default 'claude-opus-4-8'
+ *   MODEL              default 'claude-opus-4-7'
  *   MAX_TOKENS         default 8192
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 40000
