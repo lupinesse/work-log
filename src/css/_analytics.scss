@@ -1,0 +1,38 @@
+// ── _analytics.scss — Analytics section stat card grid ──
+// Extends _header.scss which owns the base .stats / .stat / .stat-val rules.
+// This partial adds: collapsed-summary visibility, card-level border, and
+// tabular-nums on the large value so digits don't reflow as counts change.
+
+/* ── Collapsed summary ─────────────────────────────────────────────────────── */
+
+// Hidden by default; becomes visible when the section carries .collapsed.
+// aria-hidden="true" keeps screen readers focused on the live stat tiles.
+.analytics-summary {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--text3);
+  padding-left: 6px;
+}
+
+.plan-section.collapsed .analytics-summary {
+  display: block;
+}
+
+/* ── Stat card refinements ─────────────────────────────────────────────────── */
+
+// Add a hairline border so each card reads as a distinct surface in both
+// light and dark mode. The base .stat already sets background and padding.
+.analytics-section .stat {
+  border: 0.5px solid var(--border);
+}
+
+// Monospace + tabular-nums prevents the surrounding layout from reflowing
+// when the count flips between one and two digits (e.g. 9 → 10 tasks).
+.analytics-section .stat-val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}

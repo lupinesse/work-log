@@ -6,6 +6,7 @@
 @use 'base'; // reset, :root vars, dark mode, body
 @use 'hero'; // hero card — unified timer state (Variant C)
 @use 'header'; // header section + stats
+@use 'analytics'; // analytics section — collapsed summary + stat card polish
 @use 'timer'; // timer bar, start button, running indicator, capture row
 @use 'picker'; // quick pick + epic dropdown
 @use 'timeline'; // timeline + bar chart

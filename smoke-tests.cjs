@@ -608,6 +608,44 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 12c. Analytics section — default collapsed + summary text ────────────
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'an1', text: 'Task A', tag: 'work', status: 'inprogress', date: today },
+      { id: 'an2', text: 'Task B', tag: 'work', status: 'todo', date: today },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+
+    const startsCollapsed = await page.evaluate(() =>
+      document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('Analytics section starts collapsed by default', startsCollapsed);
+
+    const summaryText = await page.evaluate(
+      () => document.getElementById('analyticsSummary').textContent
+    );
+    assert('Analytics summary contains "tasks today"', summaryText.includes('tasks today'));
+    assert('Analytics summary contains "epics this week"', summaryText.includes('epics this week'));
+    assert('Analytics summary contains "-day streak"', summaryText.includes('-day streak'));
+
+    // Click the header to open the section
+    await page.click('#analyticsHeader');
+    const isOpenAfterClick = await page.evaluate(
+      () => !document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('Analytics section opens on header click', isOpenAfterClick);
+
+    // Click again to close
+    await page.click('#analyticsHeader');
+    const isClosedAgain = await page.evaluate(() =>
+      document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('Analytics section closes on second header click', isClosedAgain);
+
+    await page.close();
+  }
+
   // ── 13. Tab title updates with timer ──────────────────────────────────────
   console.log('\n13. Tab title');
   {
