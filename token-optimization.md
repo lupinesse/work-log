@@ -23,10 +23,9 @@ Optimize for:
 
 This repository already exposes structured AI workflows through:
 
-- `.claude/skills/`
-- `SKILL.md`
-- `CLAUDE.md`
-- architecture boundary documents
+- `.claude/skills/` (each skill has its own `SKILL.md` brief)
+- `CLAUDE.md` (project quality standard — repo root)
+- `ARCHITECTURE.md` (architecture constraints — repo root)
 
 These should act as the primary context-loading mechanism.
 
@@ -52,8 +51,8 @@ overhead.
 
 ### Centralize persistent instructions
 
-Stable rules belong in `CLAUDE.md`, `ARCHITECTURE.md`, `SKILL.md`, or
-repo-level standards documents. Do not continuously restate formatting
+Stable rules belong in `CLAUDE.md`, `ARCHITECTURE.md`, or the relevant
+`.claude/skills/<name>/SKILL.md`. Do not continuously restate formatting
 conventions, naming rules, stack details, testing expectations, or
 architectural boundaries. Reference them briefly instead:
 
