@@ -195,10 +195,10 @@ function renderFlowHeader(dateKey, activeView) {
       : '';
 
   const segHtml = ['flow', 'log', 'blocks']
-    .map(
-      (v) =>
-        `<button type="button" class="tf-seg-btn${v === activeView ? ' active' : ''}" data-view="${v}">${TF_VIEW_LABELS[v]}</button>`
-    )
+    .map((v) => {
+      const isActive = v === activeView;
+      return `<button type="button" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${v}" aria-pressed="${isActive}">${TF_VIEW_LABELS[v]}</button>`;
+    })
     .join('');
 
   el.innerHTML = `<span class="tf-icon" aria-hidden="true">⏱</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="group" aria-label="Select view">${segHtml}</div>`;

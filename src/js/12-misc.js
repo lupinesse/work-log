@@ -341,7 +341,6 @@ function a11yHeaderKeydown(el) {
   'completedHeader',
   'jiraHeader',
   'notionLinksHeader',
-  'tbHeader',
 ].forEach((id) => {
   a11yHeaderKeydown(document.getElementById(id));
 });
@@ -361,7 +360,6 @@ function a11yHeaderKeydown(el) {
     { sectionId: 'completedSection', headerId: 'completedHeader' },
     { sectionId: 'jiraSection', headerId: 'jiraHeader' },
     { sectionId: 'notionLinksSection', headerId: 'notionLinksHeader' },
-    { sectionId: 'tbSection', headerId: 'tbHeader' },
     { sectionId: 'pomoSection', headerId: 'pomoHeader' },
   ];
   pairs.forEach(({ sectionId, headerId }) => {

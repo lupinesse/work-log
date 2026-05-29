@@ -1588,3 +1588,50 @@ describe('getFlowView / setFlowView', () => {
     assert.equal(sb.getFlowView(), 'flow');
   });
 });
+
+describe('stripPct', () => {
+  it('returns 0 at the left edge (07:00)', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.stripPct(7 * 60), 0);
+  });
+
+  it('returns 100 at the right edge (21:00)', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.stripPct(21 * 60), 100);
+  });
+
+  it('returns 50 at the midpoint (14:00)', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.stripPct(14 * 60), 50);
+  });
+
+  it('clamps values before 07:00 to 0', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.stripPct(5 * 60), 0);
+  });
+
+  it('clamps values after 21:00 to 100', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.stripPct(23 * 60), 100);
+  });
+});
+
+describe('tsToMins', () => {
+  it('returns minutes from midnight in local time', () => {
+    const sb = loadTimeflowSandbox();
+    const ts = new Date('2026-05-29T09:30:00').getTime();
+    assert.equal(sb.tsToMins(ts), 9 * 60 + 30);
+  });
+
+  it('handles midnight correctly', () => {
+    const sb = loadTimeflowSandbox();
+    const ts = new Date('2026-05-29T00:00:00').getTime();
+    assert.equal(sb.tsToMins(ts), 0);
+  });
+
+  it('handles the last minute of the day', () => {
+    const sb = loadTimeflowSandbox();
+    const ts = new Date('2026-05-29T23:59:00').getTime();
+    assert.equal(sb.tsToMins(ts), 23 * 60 + 59);
+  });
+});

@@ -122,7 +122,7 @@
   background: var(--info-text, #0284c7);
   border-radius: 1px;
   transform: translateX(-50%);
-  box-shadow: 0 0 5px rgba(2, 132, 199, 0.45);
+  box-shadow: 0 0 5px color-mix(in srgb, var(--info-text) 45%, transparent);
 }
 
 // ── Gap reminder ────────────────────────────────────────────────────────────
@@ -312,7 +312,22 @@
   &.live {
     background: var(--info-text, #0284c7);
     border-color: var(--info-text, #0284c7);
-    animation: tfPulse 1.6s ease-out infinite;
+    animation: tfDotPulse 1.6s ease-in-out infinite;
+  }
+}
+
+// Dot-specific pulse: scales in place (no translateX baseline like .tf-flow-pulse)
+// and keeps a visible baseline opacity so the live-entry indicator never disappears.
+@keyframes tfDotPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
   }
 }
 

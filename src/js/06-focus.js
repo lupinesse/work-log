@@ -84,9 +84,12 @@ function exitEmergency() {
   const note = document.getElementById('emergencyNext').value.trim();
   if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
   else if (entry) localStorage.removeItem('wl_emergency_next_' + entry.id);
-  // Move pomo back to its original position after tbSection
-  const tbSection = document.getElementById('tbSection');
-  tbSection.parentNode.insertBefore(document.querySelector('.pomo-section'), tbSection.nextSibling);
+  // Move pomo back to its original position after the Today's Flow section
+  const anchor = document.getElementById('todayFlowSection');
+  const pomo = document.querySelector('.pomo-section');
+  if (anchor && anchor.parentNode && pomo) {
+    anchor.parentNode.insertBefore(pomo, anchor.nextSibling);
+  }
   // Auto-expand checkpoints for the active task so user can pick up where they left off
   if (entry) {
     const activeTask = planTasks.find(
