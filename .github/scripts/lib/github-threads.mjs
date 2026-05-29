@@ -149,10 +149,39 @@ export async function unresolveThread({ token, threadId }) {
 }
 
 /**
+ * Fetch all issue comments for a PR, paginating until the API returns fewer
+ * than a full page. Comments are returned oldest-first (API default order).
+ * Callers that need newest-first should reverse the result.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @returns {Promise<object[]>}
+ */
+export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
+  const all = [];
+  let page = 1;
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`,
+      { headers: ghHeaders(token) }
+    );
+    if (!response.ok) throw new Error(`List comments API ${response.status}: ${await response.text()}`);
+    const batch = await response.json();
+    all.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+  }
+  return all;
+}
+
+/**
  * Find the most recent issue comment containing `marker` in its body, then
  * PATCH it with `body`. If no previous comment matches, POST a new one.
  * Used to keep one persistent comment per phase rather than accumulating one
- * per push.
+ * per push. Searches all pages so the marker is found even on high-volume PRs.
  *
  * @param {object} params
  * @param {string} params.token
@@ -164,12 +193,7 @@ export async function unresolveThread({ token, threadId }) {
  * @returns {Promise<{ comment: object, updated: boolean }>}
  */
 export async function upsertIssueComment({ token, owner, repo, prNumber, marker, body }) {
-  const listResp = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
-    { headers: ghHeaders(token) }
-  );
-  if (!listResp.ok) throw new Error(`List comments API ${listResp.status}: ${await listResp.text()}`);
-  const comments = await listResp.json();
+  const comments = await fetchAllIssueComments({ token, owner, repo, prNumber });
 
   // Walk newest-first so we update the latest matching comment.
   let previous = null;

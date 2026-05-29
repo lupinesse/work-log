@@ -31,6 +31,7 @@
 
 import { readFileSync } from 'node:fs';
 import {
+  fetchAllIssueComments,
   fetchAllThreads,
   formatThreadsForPrompt,
   replyToThread,
@@ -152,22 +153,19 @@ const FINAL_REVIEW_MARKER = '<!-- claude-pr-review-comment -->';
 const SYNTHESIS_MARKER_PHRASE = "Claude's synthesis";
 
 /**
- * Fetch Claude's issue comments (synthesis + final /pr-review verdict)
- * from the PR. Identified by body markers, not author login — so the lookup
- * tolerates token-fallback cases where the comment is posted by
- * github-actions[bot] rather than the Claude Reviewer App. Falls back to a
- * "/pr-review" substring match for comments written before the marker was
- * introduced.
+ * Fetch Claude's issue comments (synthesis + final /pr-review verdict) from
+ * the PR, walking all pages so findings are not missed on high-volume PRs.
+ * Identified by body markers, not author login — tolerates token-fallback
+ * cases where the comment is posted by github-actions[bot] rather than the
+ * Claude Reviewer App. Falls back to the stable attribution footer
+ * (`claude.ai/claude-code`) for comments written before the HTML marker was
+ * introduced; this string only appears in Claude-generated output, never in
+ * a bare `/pr-review` user invocation.
  *
  * @returns {Promise<{synthesis: string|null, finalReview: string|null}>}
  */
 async function fetchClaudeIssueComments() {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments?per_page=100`,
-    { headers: GH_HEADERS }
-  );
-  if (!response.ok) die(`Issue comments API ${response.status}: ${await response.text()}`);
-  const comments = await response.json();
+  const comments = await fetchAllIssueComments(GH_CTX);
 
   let synthesis   = null;
   let finalReview = null;
@@ -175,7 +173,7 @@ async function fetchClaudeIssueComments() {
   for (const c of [...comments].reverse()) {
     const body = c.body || '';
     if (!synthesis && body.includes(SYNTHESIS_MARKER_PHRASE)) synthesis = body;
-    if (!finalReview && (body.includes(FINAL_REVIEW_MARKER) || body.includes('/pr-review'))) {
+    if (!finalReview && (body.includes(FINAL_REVIEW_MARKER) || body.includes('claude.ai/claude-code'))) {
       finalReview = body;
     }
     if (synthesis && finalReview) break;
