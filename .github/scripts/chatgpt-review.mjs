@@ -38,6 +38,7 @@ import {
   fetchAllThreads,
   formatThreadsForPrompt,
   replyToThread,
+  unresolveThread,
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
@@ -81,6 +82,11 @@ const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
 
 const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` (reasoning_effort: \`${REASONING_EFFORT}\`) · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
+// Short attribution appended to every inline reply/finding body so the
+// persona is clear regardless of which GitHub account posts it (App token,
+// github-actions[bot] fallback, or a manual gh CLI run).
+const REPLY_ATTRIBUTION = `\n\n<sub>_— ChatGPT \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
+
 const DEFAULT_PROMPT = `You are reviewing a pull request in a personal time-tracking web app (vanilla JavaScript ES modules, SCSS, HTML). The project follows the UK Government Analysis Function Higher QA standard.
 
 You will be shown the diff AND a list of existing review threads already on this PR (from prior runs of this workflow). For each issue you would raise, you must choose ONE of two actions:
@@ -90,8 +96,10 @@ You will be shown the diff AND a list of existing review threads already on this
 
 Bias toward **reply** when in doubt. Duplicate inline comments on the same line/issue are the main thing this workflow is trying to avoid.
 
+When replying to a **resolved** thread, set "unresolve": true if the reply represents a regression / re-raise / "issue is back" — that re-opens the thread so the other reviewer (Claude) re-evaluates it. Leave "unresolve" off (or false) for replies that just add context to an already-fixed thread.
+
 Output your review as a single raw JSON object — no markdown wrapper, no text outside the JSON. Schema:
-{"verdict":"APPROVE"|"REQUEST_CHANGES"|"COMMENT","summary":"2-4 sentence overall assessment","thread_actions":[{"type":"new","path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"},{"type":"reply","thread_index":<integer matching a thread shown below>,"body":"markdown — your follow-up. Reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related issue on this line:')."}]}
+{"verdict":"APPROVE"|"REQUEST_CHANGES"|"COMMENT","summary":"2-4 sentence overall assessment","thread_actions":[{"type":"new","path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"},{"type":"reply","thread_index":<integer matching a thread shown below>,"unresolve":false,"body":"markdown — your follow-up. Reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related issue on this line:')."}]}
 
 Rules: for "new", path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js) and line must be a real line number in the new (right-side) version of that file. For "reply", thread_index must be one of the integers shown in the existing-threads list below. Only include items you can cite specifically; put general observations in summary instead.
 
@@ -164,7 +172,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
 
 /**
  * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
- * @typedef {{ type: 'reply', threadIndex: number, body: string }} ReplyAction
+ * @typedef {{ type: 'reply', threadIndex: number, body: string, unresolve: boolean }} ReplyAction
  * @typedef {NewAction | ReplyAction} ThreadAction
  * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} Review
  */
@@ -225,7 +233,7 @@ function parseReviewOutput(rawText, existingThreadCount) {
         invalidActions.push(a);
         continue;
       }
-      actions.push({ type: 'reply', threadIndex: idx, body });
+      actions.push({ type: 'reply', threadIndex: idx, body, unresolve: a.unresolve === true });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
@@ -346,19 +354,31 @@ async function main() {
   console.log(`${replaced ? 'Replaced' : 'Posted'} review (${review.verdict}): ${reviewResult.html_url}`);
 
   // Dispatch each action: replies go to existing threads, news create them.
+  // Re-raises on resolved threads unresolve them first so Phase 2 picks them
+  // up and Claude posts a fresh verdict.
   const unpostable = [];
   for (const a of review.actions) {
+    const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
     try {
       if (a.type === 'reply') {
         const target = existingThreads[a.threadIndex];
+        if (a.unresolve && target.isResolved) {
+          try {
+            await unresolveThread({ ...GH_CTX, threadId: target.id });
+            console.log(`  unresolved thread ${a.threadIndex} (re-raise)`);
+          } catch (err) {
+            // Non-fatal — post the reply anyway so the regression is visible.
+            console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
+          }
+        }
         const reply = await replyToThread({
           ...GH_CTX,
           commentId: target.firstCommentId,
-          body: a.body,
+          body: bodyWithAttribution,
         });
         console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
       } else {
-        const comment = await postInlineComment(a.path, a.line, a.body);
+        const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {

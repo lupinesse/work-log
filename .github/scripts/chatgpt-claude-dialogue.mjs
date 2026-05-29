@@ -34,6 +34,7 @@ import {
   fetchAllThreads,
   formatThreadsForPrompt,
   replyToThread,
+  unresolveThread,
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
@@ -68,6 +69,11 @@ const MAX_TOKENS       = parseInt(process.env.MAX_TOKENS     || '16384', 10);
 const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
 
 const ATTRIBUTION = `*ChatGPT \`${MODEL}\` responding to Claude's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
+
+// Per-comment attribution so the persona is unambiguous regardless of which
+// GitHub account actually posts the comment (App token, github-actions[bot],
+// or a manual gh CLI run).
+const REPLY_ATTRIBUTION = `\n\n<sub>_— ChatGPT \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
 
 const GH_HEADERS = {
   Authorization:          `token ${GITHUB_TOKEN}`,
@@ -244,6 +250,8 @@ For each concern you have, choose one action:
 - **reply** to an existing thread when the concern overlaps with one already shown above (same file/line, same root cause, related issue on a nearby line, or a follow-up to your own earlier finding). Bias toward replying. This is the main way to keep the comment count under control.
 - **new** only when the concern is genuinely novel — no existing thread touches the same code or root cause.
 
+When replying to a **resolved** thread, set "unresolve": true if your reply is a regression / re-raise (the issue is back despite an earlier verdict). That re-opens the thread so Claude re-evaluates and posts a fresh verdict. Leave "unresolve" off for replies that just add context to an already-fixed thread. Re-raising is reserved for genuine regressions — do not use it to re-litigate a finding Claude rejected with ❌ disagree.
+
 If everything you'd want to say belongs in existing threads (or has already been addressed by Claude), produce an empty thread_actions array and say so in the summary. That is the expected outcome on a thorough review.
 
 Output a single raw JSON object — no markdown wrapper:
@@ -252,7 +260,7 @@ Output a single raw JSON object — no markdown wrapper:
   "summary": "<3-5 sentences: your overall response to Claude's verdict, what still concerns you (only NEW concerns), what you consider resolved>",
   "thread_actions": [
     { "type": "new",   "path": "<file path from diff>", "line": <integer>, "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking>" },
-    { "type": "reply", "thread_index": <integer matching a thread above>, "body": "<your follow-up — reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related concern on this line:')>" }
+    { "type": "reply", "thread_index": <integer matching a thread above>, "unresolve": false, "body": "<your follow-up — reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related concern on this line:')>" }
   ]
 }`;
 
@@ -286,7 +294,7 @@ Output a single raw JSON object — no markdown wrapper:
 
 /**
  * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
- * @typedef {{ type: 'reply', threadIndex: number, body: string }} ReplyAction
+ * @typedef {{ type: 'reply', threadIndex: number, body: string, unresolve: boolean }} ReplyAction
  * @typedef {NewAction | ReplyAction} ThreadAction
  * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
  */
@@ -335,7 +343,7 @@ function parseResponse(rawText, threadCount) {
         invalidActions.push(a);
         continue;
       }
-      actions.push({ type: 'reply', threadIndex: idx, body });
+      actions.push({ type: 'reply', threadIndex: idx, body, unresolve: a.unresolve === true });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
@@ -409,19 +417,30 @@ async function main() {
   console.log(`${replaced ? 'Replaced' : 'Posted'} review (${parsed.verdict}): ${reviewResult.html_url}`);
 
   // Dispatch actions: replies go to existing threads, news create them.
+  // Re-raises on resolved threads unresolve them first so Phase 2 picks them
+  // up next run and Claude posts a fresh verdict.
   const unpostable = [];
   for (const a of parsed.actions) {
+    const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
     try {
       if (a.type === 'reply') {
         const target = claudeContext.threads[a.threadIndex];
+        if (a.unresolve && target.isResolved) {
+          try {
+            await unresolveThread({ ...GH_CTX, threadId: target.id });
+            console.log(`  unresolved thread ${a.threadIndex} (re-raise)`);
+          } catch (err) {
+            console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
+          }
+        }
         const reply = await replyToThread({
           ...GH_CTX,
           commentId: target.firstCommentId,
-          body: a.body,
+          body: bodyWithAttribution,
         });
         console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
       } else {
-        const comment = await postInlineComment(a.path, a.line, a.body);
+        const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {

@@ -128,6 +128,27 @@ export async function replyToThread({ token, owner, repo, prNumber, commentId, b
 }
 
 /**
+ * Re-open a previously-resolved review thread. Used when one bot wants to
+ * raise a regression on a thread the other bot resolved — re-opening signals
+ * to the next dialogue phase that the finding needs fresh attention.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.threadId  GraphQL node id of the thread.
+ */
+export async function unresolveThread({ token, threadId }) {
+  const mutation = `mutation($id:ID!){unresolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}`;
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: ghHeaders(token),
+    body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
+  });
+  if (!response.ok) throw new Error(`Unresolve API ${response.status}: ${await response.text()}`);
+  const data = await response.json();
+  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
+}
+
+/**
  * Find the most recent issue comment containing `marker` in its body, then
  * PATCH it with `body`. If no previous comment matches, POST a new one.
  * Used to keep one persistent comment per phase rather than accumulating one

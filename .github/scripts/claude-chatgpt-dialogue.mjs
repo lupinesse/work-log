@@ -58,6 +58,11 @@ const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
 
 const ATTRIBUTION = `*Claude \`${MODEL}\` responding to ChatGPT's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
+// Per-reply attribution so each verdict reply is clearly authored by Claude
+// regardless of which GitHub account (App token, github-actions[bot], or a
+// manual gh CLI run) actually posts the comment.
+const REPLY_ATTRIBUTION = `\n\n<sub>_— Claude \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
+
 const GH_HEADERS = {
   Authorization:          `token ${GITHUB_TOKEN}`,
   Accept:                 'application/vnd.github+json',
@@ -80,8 +85,15 @@ function loadDiff() {
 // ─────────────────────────── GitHub ───────────────────────────
 
 /**
- * Fetch all unresolved review threads from the ChatGPT Reviewer App.
- * Identifies the bot by its login containing 'chatgpt' (case-insensitive).
+ * Fetch all unresolved review threads from the ChatGPT Reviewer App, with
+ * full reply history. Re-raised threads (unresolved by ChatGPT after Claude
+ * resolved them with an earlier verdict) come back through this query and
+ * will be re-evaluated — the reply history lets Claude see what the prior
+ * verdict was and what ChatGPT said when re-raising.
+ *
+ * Identifies the bot by its login containing 'chatgpt' (case-insensitive)
+ * OR by a 🔴/🟡/🔵 finding-prefix in the body (tolerates token fallback).
+ *
  * @returns {Promise<Array>}
  */
 async function fetchChatGptThreads() {
@@ -93,7 +105,7 @@ async function fetchChatGptThreads() {
             nodes {
               id
               isResolved
-              comments(first:1) {
+              comments(first:20) {
                 nodes {
                   databaseId
                   author { login }
@@ -123,8 +135,10 @@ async function fetchChatGptThreads() {
 
   return data.data.repository.pullRequest.reviewThreads.nodes.filter(t => {
     if (t.isResolved) return false;
-    const login = (t.comments.nodes[0]?.author?.login || '').toLowerCase();
-    return login.includes('chatgpt');
+    const first = t.comments.nodes[0];
+    if (!first) return false;
+    const login = (first.author?.login || '').toLowerCase();
+    return login.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
   });
 }
 
@@ -179,14 +193,26 @@ const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseI
 async function callClaudeApi(diff, threads) {
   const threadList = threads.map((t, i) => {
     const c = t.comments.nodes[0];
-    return `Thread ${i} | ${c.path}:${c.originalLine}\n${c.body}`;
+    // Show the full conversation including any replies. This lets Claude see
+    // its own earlier verdict (if any) and ChatGPT's re-raise on a previously
+    // resolved thread.
+    const replyLines = t.comments.nodes.slice(1).map(r => {
+      const author = (r.author?.login || 'unknown').toLowerCase();
+      return `  ↳ ${author}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`;
+    }).join('\n');
+    const header = `Thread ${i} | ${c.path}:${c.originalLine}`;
+    return replyLines
+      ? `${header}\n${c.body}\n${replyLines}`
+      : `${header}\n${c.body}`;
   }).join('\n\n---\n\n');
 
   const system = `You are Claude, the implementing author of this pull request and also an AI code reviewer. You have already done your own independent review. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
 
 You are the final authority on whether a finding gets fixed: as the author, your call stands. ChatGPT does not get to re-litigate a finding you have rejected. But you owe an explicit, substantive reply on EVERY finding — never resolve with just "agree" or "disagree". The reply will be posted before the thread is resolved, so it must explain your reasoning clearly enough that a human reviewer reading only your reply understands the decision.
 
-For each ChatGPT finding, pick exactly one verdict and write a reply that justifies it:
+**Re-raised threads.** Some threads show reply history (lines starting with "↳"). If you see your own earlier verdict (a reply containing ✅/👍/❌/↔️) followed by a later ChatGPT reply, that means ChatGPT re-opened the thread because the issue is back. Treat this as a fresh request: re-evaluate against the current diff. If the issue genuinely came back (e.g. a later commit reintroduced it), give a new verdict — typically agree_fix. If ChatGPT is just re-litigating a finding you previously rejected with disagree, reply disagree again and explain that your earlier decision still stands.
+
+For each ChatGPT finding (including re-raises), pick exactly one verdict and write a reply that justifies it:
 
 - **agree_fix** — The finding is valid AND you will fix it in this PR. Your reply MUST describe HOW you will fix it (e.g., "Will replace the silent catch with wlLog.warn", "Will rename to descriptiveName"). The thread stays OPEN — the author/merge-gate uses it as a follow-up checklist.
 - **agree_noted** — The finding is valid but you are deliberately not fixing it in this PR. Your reply MUST explain why deferring is OK (e.g., "Out of scope — tracked in #123", "Pre-existing on main, not introduced by this PR"). The thread is RESOLVED.
@@ -312,7 +338,7 @@ async function main() {
 
     const commentId = thread.comments.nodes[0]?.databaseId;
     const emoji = verdictEmoji[tr.verdict] || '💬';
-    const replyBody = `${emoji} ${tr.reply}`;
+    const replyBody = `${emoji} ${tr.reply}${REPLY_ATTRIBUTION}`;
 
     let posted = false;
     try {
