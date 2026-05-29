@@ -1,15 +1,20 @@
 /**
- * Unit tests for normaliseGithubVerdict() in lib/parse-verdict.mjs.
+ * Unit tests for normaliseGithubVerdict() and normaliseGithubSummary() in
+ * lib/parse-verdict.mjs.
  *
  * Regression coverage for malformed-but-truthy values that would otherwise
- * reach upsertReview() with an unsupported state string.
+ * reach upsertReview() with an unsupported state string or blank review body.
  *
  * Run: node --test .github/scripts/test/parse-verdict.test.mjs
  */
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normaliseGithubVerdict, VALID_GITHUB_VERDICTS } from '../lib/parse-verdict.mjs';
+import {
+  normaliseGithubVerdict,
+  normaliseGithubSummary,
+  VALID_GITHUB_VERDICTS,
+} from '../lib/parse-verdict.mjs';
 
 // ─────────────────────────── happy paths ───────────────────────────
 
@@ -96,5 +101,66 @@ describe('normaliseGithubVerdict — malformed-but-truthy values throw', () => {
       msg = err.message;
     }
     assert.ok(msg.includes('approve'), `expected raw value in: ${msg}`);
+  });
+});
+
+// ─────────────────────────── normaliseGithubSummary ───────────────────────────
+
+describe('normaliseGithubSummary — valid input', () => {
+  test('returns the string unchanged when already trimmed', () => {
+    assert.strictEqual(normaliseGithubSummary('Looks good.'), 'Looks good.');
+  });
+
+  test('trims leading and trailing whitespace', () => {
+    assert.strictEqual(normaliseGithubSummary('  ok  '), 'ok');
+  });
+
+  test('accepts a multi-sentence summary', () => {
+    const s = 'Fixed the bug. Tests pass. Ready to merge.';
+    assert.strictEqual(normaliseGithubSummary(s), s);
+  });
+});
+
+describe('normaliseGithubSummary — malformed-but-truthy values throw', () => {
+  test('throws on whitespace-only string (regression: must not post blank review body)', () => {
+    // "   " is truthy, so !parsed.summary passes without the typeof+trim guard.
+    assert.throws(() => normaliseGithubSummary('   '), /invalid summary/);
+    assert.throws(() => normaliseGithubSummary('\t\n'), /invalid summary/);
+  });
+
+  test('throws on empty string', () => {
+    assert.throws(() => normaliseGithubSummary(''), /invalid summary/);
+  });
+
+  test('throws on boolean true (regression: truthy non-string bypasses !check)', () => {
+    // `!true` is false — without the typeof guard, String(true) === 'true'
+    // would be posted as the review body.
+    assert.throws(() => normaliseGithubSummary(true), /invalid summary/);
+  });
+
+  test('throws on a number (regression: String(123) would pass without typeof guard)', () => {
+    assert.throws(() => normaliseGithubSummary(123), /invalid summary/);
+  });
+
+  test('throws on null', () => {
+    assert.throws(() => normaliseGithubSummary(null), /invalid summary/);
+  });
+
+  test('throws on undefined (absent summary field)', () => {
+    assert.throws(() => normaliseGithubSummary(undefined), /invalid summary/);
+  });
+
+  test('throws on an object (regression: String({}) === "[object Object]")', () => {
+    assert.throws(() => normaliseGithubSummary({}), /invalid summary/);
+  });
+
+  test('error message includes the raw value', () => {
+    let msg = '';
+    try {
+      normaliseGithubSummary(true);
+    } catch (err) {
+      msg = err.message;
+    }
+    assert.ok(msg.includes('true'), `expected raw value in: ${msg}`);
   });
 });

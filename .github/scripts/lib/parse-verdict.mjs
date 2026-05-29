@@ -1,5 +1,5 @@
 /**
- * Normalise and validate a top-level GitHub PR review verdict.
+ * Normalise and validate top-level fields of a GitHub PR review response.
  *
  * Extracted so both Phase 1 (chatgpt-review.mjs) and Phase 4
  * (chatgpt-claude-dialogue.mjs) share the same validation rules and cannot
@@ -31,6 +31,31 @@ export function normaliseGithubVerdict(raw) {
   const trimmed = typeof raw === 'string' ? raw.trim() : null;
   if (!trimmed || !VALID_GITHUB_VERDICTS.includes(trimmed)) {
     throw new Error(`invalid GitHub review verdict: ${JSON.stringify(raw)}`);
+  }
+  return trimmed;
+}
+
+/**
+ * Trim and validate a top-level review summary string.
+ *
+ * Rejects whitespace-only strings and non-string truthy values (e.g. `true`,
+ * `123`) that would otherwise pass the `!parsed.summary` truthiness check and
+ * be posted as the review body via `String(parsed.summary)`.
+ *
+ * @param {*} raw Candidate summary from the model's JSON output.
+ * @returns {string} Trimmed, non-empty summary string.
+ * @throws {Error} If `raw` is not a string or trims to empty.
+ * @example
+ * normaliseGithubSummary('Looks good.')  // → 'Looks good.'
+ * normaliseGithubSummary('  ok  ')       // → 'ok'  (trimmed)
+ * normaliseGithubSummary('   ')          // throws — whitespace-only
+ * normaliseGithubSummary(true)           // throws — non-string
+ * normaliseGithubSummary(undefined)      // throws — absent
+ */
+export function normaliseGithubSummary(raw) {
+  const trimmed = typeof raw === 'string' ? raw.trim() : null;
+  if (!trimmed) {
+    throw new Error(`invalid summary: ${JSON.stringify(raw)}`);
   }
   return trimmed;
 }

@@ -43,7 +43,7 @@ import {
   upsertIssueComment,
 } from './lib/github-threads.mjs';
 import { coerceThreadIndex, normaliseReplyAction } from './lib/parse-reply-action.mjs';
-import { normaliseGithubVerdict } from './lib/parse-verdict.mjs';
+import { normaliseGithubVerdict, normaliseGithubSummary } from './lib/parse-verdict.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -202,9 +202,7 @@ function parseReviewOutput(rawText, existingThreadCount) {
   const parsed = JSON.parse(cleaned);
 
   const verdict = normaliseGithubVerdict(parsed.verdict);
-  if (!parsed.summary) {
-    throw new Error('Missing required fields: summary');
-  }
+  const summary = normaliseGithubSummary(parsed.summary);
 
   // Accept either the new `thread_actions` schema or the legacy `findings`
   // schema (treated as all type="new").
@@ -263,7 +261,7 @@ function parseReviewOutput(rawText, existingThreadCount) {
 
   return {
     verdict,
-    summary: String(parsed.summary),
+    summary,
     actions,
     invalidActions,
   };
