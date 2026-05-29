@@ -435,6 +435,137 @@ function validJiraCsvRow(row) {
   return hasKey && hasSummary;
 }
 
+// ── Rapid-capture inline token grammar ───────────────────────────────────────
+
+/**
+ * Signifier shortcode map for quick-capture inline tokens.
+ * Maps `!<shortcode>` tokens to signifier values used on entry objects.
+ * Unmapped tokens are left in the text unchanged.
+ * @type {Object<string, string>}
+ */
+const RAPID_SIG_SHORTCUTS = {
+  event: 'event',
+  ev: 'event',
+  e: 'event',
+  flagged: 'flagged',
+  flag: 'flagged',
+  f: 'flagged',
+  star: 'flagged',
+  migrated: 'migrated',
+  migrate: 'migrated',
+  m: 'migrated',
+  cancelled: 'cancelled',
+  cancel: 'cancelled',
+  x: 'cancelled',
+  drop: 'cancelled',
+  overtime: 'overtime',
+  ot: 'overtime',
+};
+
+/**
+ * Resolves a `>date` shorthand token to a YYYY-MM-DD date key.
+ * Supported tokens: 'today', 'tomorrow', exact 'YYYY-MM-DD', and weekday abbreviations
+ * 'mon'–'sun' (resolves to the next occurrence, never today).
+ *
+ * @param {string} token - Raw date token (without the leading `>`).
+ * @param {Date} [now] - Reference date for relative resolution; defaults to new Date().
+ * @returns {string|null} Resolved date key, or null if the token is unrecognised.
+ */
+function resolveRapidDate(token, now) {
+  const ref = now || new Date();
+  const t = token.toLowerCase();
+
+  if (t === 'today') return dk(ref);
+
+  if (t === 'tomorrow') {
+    const d = new Date(ref);
+    d.setDate(d.getDate() + 1);
+    return dk(d);
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(token)) return token;
+
+  const DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const idx = DOW.indexOf(t.slice(0, 3));
+  if (idx >= 0) {
+    const d = new Date(ref);
+    const diff = (idx - d.getDay() + 7) % 7 || 7; // always NEXT occurrence
+    d.setDate(d.getDate() + diff);
+    return dk(d);
+  }
+
+  return null;
+}
+
+/**
+ * Parses inline shorthand tokens from a raw quick-capture input string and
+ * returns a clean text plus structured token values.
+ *
+ * Supported tokens (each stripped from the returned `text`):
+ * - `#<cat>`  — Category: matched against category ids and labels (case-insensitive;
+ *               prefix match as fallback). Last occurrence wins.
+ * - `!<sig>`  — Signifier shortcode (see RAPID_SIG_SHORTCUTS). Last occurrence wins.
+ * - `><date>` — Date pointer: today, tomorrow, YYYY-MM-DD, or weekday mon–sun
+ *               (next occurrence). Last occurrence wins.
+ *
+ * Unrecognised tokens are left in the text unchanged so the user sees them and can
+ * correct them without data being silently discarded.
+ *
+ * @param {string} raw - Raw input text that may contain inline shorthand tokens.
+ * @param {Array<{id: string, label: string}>} cats - Available categories for `#` resolution.
+ * @param {Date} [now] - Reference date for relative date resolution; defaults to new Date().
+ * @returns {{ text: string, tag: string|null, signifier: string|null, date: string|null }}
+ */
+function parseRapidTokens(raw, cats, now) {
+  let text = raw;
+  let tag = null;
+  let signifier = null;
+  let date = null;
+
+  // ── #category ──────────────────────────────────────────────────────────────
+  text = text.replace(/#([\w-]+)/g, function (match, tok) {
+    const lower = tok.toLowerCase();
+    const catArr = cats || [];
+    // Exact id match → label match → id-prefix match → label-prefix match
+    const resolved =
+      catArr.find((c) => c.id.toLowerCase() === lower) ||
+      catArr.find((c) => c.label.toLowerCase() === lower) ||
+      catArr.find((c) => c.id.toLowerCase().startsWith(lower)) ||
+      catArr.find((c) => c.label.toLowerCase().startsWith(lower)) ||
+      null;
+    if (resolved) {
+      tag = resolved.id;
+      return '';
+    }
+    return match; // unrecognised — leave in text
+  });
+
+  // ── !signifier ─────────────────────────────────────────────────────────────
+  text = text.replace(/!(\w+)/g, function (match, tok) {
+    const key = tok.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(RAPID_SIG_SHORTCUTS, key)) {
+      signifier = RAPID_SIG_SHORTCUTS[key];
+      return '';
+    }
+    return match; // unrecognised — leave in text
+  });
+
+  // ── >date ──────────────────────────────────────────────────────────────────
+  text = text.replace(/>([A-Za-z0-9-]+)/g, function (match, tok) {
+    const resolved = resolveRapidDate(tok, now);
+    if (resolved) {
+      date = resolved;
+      return '';
+    }
+    return match; // unrecognised — leave in text
+  });
+
+  // Collapse extra whitespace produced by token removal
+  text = text.replace(/\s{2,}/g, ' ').trim();
+
+  return { text, tag, signifier, date };
+}
+
 // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
 // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
 // this block is skipped — functions remain as globals in the closure.
@@ -459,5 +590,7 @@ if (typeof module !== 'undefined') {
     validWeatherResponse,
     validCalendarMeeting,
     validJiraCsvRow,
+    resolveRapidDate,
+    parseRapidTokens,
   };
 }

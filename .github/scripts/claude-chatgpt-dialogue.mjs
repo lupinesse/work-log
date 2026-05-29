@@ -61,7 +61,7 @@ const [OWNER, REPO]     = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER         = must('PR_NUMBER');
 const HEAD_SHA          = must('HEAD_SHA');
 
-const MODEL          = process.env.MODEL          || 'claude-opus-4-8';
+const MODEL          = process.env.MODEL          || 'claude-opus-4-7';
 const MAX_TOKENS     = parseInt(process.env.MAX_TOKENS     || '8192',  10);
 const DIFF_PATH      = process.env.DIFF_PATH      || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);

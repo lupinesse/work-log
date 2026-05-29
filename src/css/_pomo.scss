@@ -1,0 +1,265 @@
+/* ── Pomodoro 4-column card layout ── */
+
+/*
+ * Scoped overrides live in this file so they cascade after _features.scss
+ * (which defines the component tokens).  Higher-specificity selectors
+ * (.pomo-col-* .pomo-x) win cleanly without !important.
+ */
+
+/* Canvas fill colours — read by JS via getComputedStyle so they respond to
+ * the OS colour-scheme preference automatically.                              */
+:root {
+  --pomo-spark-fill: #c62828;
+  --pomo-spark-empty: #e8edf4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pomo-spark-fill: #e5615b;
+
+    /* Matches --bg3 in dark mode (_base.scss) */
+    --pomo-spark-empty: #252e3d;
+  }
+}
+
+/* ── Grid container ── */
+.pomo-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr 170px 220px;
+  gap: 0 16px;
+  align-items: start;
+}
+
+/* ── Col 1 — Clock Face [140px] ── */
+.pomo-col-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pomo-col-clock .pomo-durations {
+  gap: 3px;
+  justify-content: center;
+
+  /* Tighter below ring to not crowd the 140px column */
+  margin-bottom: 8px;
+}
+
+.pomo-col-clock .pomo-dur {
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+.pomo-col-clock .pomo-ring-wrap {
+  /* Scale ring down from the default 240×240 to fit the 140px clock rail */
+  width: 120px;
+  height: 120px;
+  margin: 0;
+}
+
+.pomo-col-clock .pomo-svg {
+  width: 120px;
+  height: 120px;
+}
+
+.pomo-col-clock .pomo-time {
+  /* Proportionally smaller inside the 120px ring */
+  font-size: 19px;
+}
+
+.pomo-col-clock .pomo-status {
+  font-size: 10px;
+}
+
+/* ── Col 2 — Composer [1fr] ── */
+.pomo-col-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+/* Label showing the currently running timer task, or "No active task" */
+.pomo-task-label {
+  font-size: 12px;
+  color: var(--text2);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-height: 1.4em;
+  line-height: 1.4;
+}
+
+.pomo-task-label:empty::before {
+  content: 'No active task';
+  color: var(--text3);
+}
+
+/* Flex row for start / reset / sprint buttons */
+.pomo-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Chime row — replaces the inline styles that were on the element */
+.pomo-chime {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.pomo-chime-select {
+  font-size: 11px;
+  background: var(--bg2);
+  color: var(--text2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px 6px;
+  font-family: var(--font);
+}
+
+/* ── Col 3 — Sparkline [170px] ── */
+.pomo-col-sparkline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pomo-spark-title {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.pomo-sparkline-canvas {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-radius: var(--radius);
+}
+
+.pomo-spark-foot {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: right;
+  font-family: var(--mono);
+}
+
+/* ── Col 4 — Recent Bursts Ledger [220px] ── */
+
+/* Strip the top border that .pomo-log gets from _features.scss — the column
+ * divider is already provided by the grid gap.                                */
+.pomo-col-ledger .pomo-log {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* ── Ribbon footer ── */
+.pomo-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--border);
+  margin-top: 14px;
+}
+
+/* Dot sequence: last-5-session progress indicator */
+.pomo-ribbon-dots {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+
+.pomo-rdot {
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+}
+
+.pomo-rdot-filled {
+  color: var(--pomo-spark-fill);
+}
+
+.pomo-rdot-empty {
+  color: var(--bg3);
+}
+
+/* Status pill — "Peak Focus" or "N sessions today" */
+.pomo-ribbon-pill {
+  font-size: 10px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: rgba(198, 40, 40, 0.12);
+  color: var(--pomo-spark-fill);
+  border: 0.5px solid rgba(198, 40, 40, 0.35);
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.pomo-ribbon-pill:empty {
+  display: none;
+}
+
+/* "View all N sessions ↓" link */
+.pomo-ribbon-link {
+  font-size: 10px;
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.pomo-ribbon-link:hover {
+  color: var(--text2);
+}
+
+/* ── Responsive breakpoints ── */
+
+/* Narrow (tablet): collapse sparkline + ledger to full-width second row */
+@media (width <= 700px) {
+  .pomo-grid {
+    grid-template-columns: 140px 1fr;
+  }
+
+  .pomo-col-sparkline,
+  .pomo-col-ledger {
+    grid-column: span 2;
+  }
+}
+
+/* Phone: single column; restore a larger ring */
+@media (width <= 420px) {
+  .pomo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pomo-col-clock .pomo-ring-wrap {
+    width: 160px;
+    height: 160px;
+  }
+
+  .pomo-col-clock .pomo-svg {
+    width: 160px;
+    height: 160px;
+  }
+
+  .pomo-col-clock .pomo-time {
+    font-size: 26px;
+  }
+
+  .pomo-col-sparkline,
+  .pomo-col-ledger {
+    grid-column: auto;
+  }
+}

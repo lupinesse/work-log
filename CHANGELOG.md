@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- **Rapid-logging inline token grammar** — users can type `#<cat>`, `!<sig>`, and `><date>` directly in the quick-capture input to set category, signifier, and entry date without touching the mouse. Recognised tokens are stripped from the saved text; unrecognised tokens are left in place so nothing is silently discarded. A live pill-badge preview (`#qcTokenPreview`) updates on every keystroke. Date tokens support `today`, `tomorrow`, `YYYY-MM-DD`, and weekday abbreviations (`mon`–`sun`, always the *next* occurrence). The category chip auto-activates when a `#cat` token is typed and clears again when the token is deleted.
+- **Pomodoro 4-column card** — the `.pomo-body` is restructured into a CSS grid with four columns: clock face (ring + duration buttons), composer (task label + controls + chime), 28-day focus sparkline, and session ledger. A ribbon footer below the grid shows a 5-dot recent-session indicator, a "Peak Focus" / session-count status pill, and a "View all sessions" scroll link. The sparkline and ribbon refresh after every completed session. All colours respond to the OS dark-mode preference via `--pomo-spark-fill` / `--pomo-spark-empty` CSS variables.
+
 ### Changed
 - **Checkpoint badge format unified to `✓ K/N`** — the badge now shows the fraction in all non-empty states: `K/N` (no steps ticked yet), `✓ K/N` (some done), `✓ N/N` (all done). Previously the all-done state showed `✓ N` (count only, no denominator), making it visually inconsistent with the partial-progress state. The `+ steps` label is unchanged for tasks that have no checkpoints defined.
 

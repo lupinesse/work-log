@@ -200,6 +200,56 @@
   background: var(--bg);
 }
 
+// ── Inline token preview ──────────────────────────────────────────────────────
+// Shown below the search input when the user types a recognised #cat / !sig / >date token.
+// Each pill is colour-coded by token type and hidden when no tokens are active.
+
+.qc-token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 6px 16px 2px;
+}
+
+.qc-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: var(--font);
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+// Category token inherits its color from the inline style set by JS
+.qc-token--cat {
+  font-weight: 500;
+}
+
+.qc-token-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// Signifier token — neutral mono style
+.qc-token--sig {
+  font-family: var(--mono);
+  color: var(--text2);
+}
+
+// Date token — subtle info tint
+.qc-token--date {
+  color: var(--info-text);
+  border-color: rgba(24, 95, 165, 0.25);
+  background: var(--info-bg, var(--bg2));
+}
+
 // ── Category filter chips ─────────────────────────────────────────────────────
 
 .rapid-cats {

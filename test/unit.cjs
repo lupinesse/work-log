@@ -46,6 +46,8 @@ const {
   validWeatherResponse,
   validCalendarMeeting,
   validJiraCsvRow,
+  resolveRapidDate,
+  parseRapidTokens,
 } = sandbox;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -1755,5 +1757,180 @@ describe('fmtHm', () => {
       const sb = loadTimeflowSandbox();
       assert.equal(sb.fmtHm(new Date(iso).getTime()), expected);
     });
+  });
+});
+
+// ── resolveRapidDate ──────────────────────────────────────────────────────────
+// 2026-05-29 is a Friday (getDay() === 5).
+describe('resolveRapidDate', () => {
+  const friday = localDate(2026, 5, 29);
+
+  it('resolves "today"', () => {
+    assert.equal(resolveRapidDate('today', friday), '2026-05-29');
+  });
+
+  it('resolves "TODAY" case-insensitively', () => {
+    assert.equal(resolveRapidDate('TODAY', friday), '2026-05-29');
+  });
+
+  it('resolves "tomorrow"', () => {
+    assert.equal(resolveRapidDate('tomorrow', friday), '2026-05-30');
+  });
+
+  it('resolves "tomorrow" across a month boundary', () => {
+    assert.equal(resolveRapidDate('tomorrow', localDate(2026, 5, 31)), '2026-06-01');
+  });
+
+  it('passes through a valid YYYY-MM-DD verbatim', () => {
+    assert.equal(resolveRapidDate('2026-12-25', friday), '2026-12-25');
+  });
+
+  it('resolves "fri" to the NEXT Friday (not today when today is Friday)', () => {
+    // diff = ((5 - 5 + 7) % 7) || 7 = 0 || 7 = 7
+    assert.equal(resolveRapidDate('fri', friday), '2026-06-05');
+  });
+
+  it('resolves "mon" to the next Monday from a Friday', () => {
+    // diff = ((1 - 5 + 7) % 7) || 7 = 3
+    assert.equal(resolveRapidDate('mon', friday), '2026-06-01');
+  });
+
+  it('resolves weekday abbreviations case-insensitively', () => {
+    assert.equal(resolveRapidDate('FRI', friday), '2026-06-05');
+    assert.equal(resolveRapidDate('Mon', friday), '2026-06-01');
+  });
+
+  it('returns null for an unrecognised token', () => {
+    assert.equal(resolveRapidDate('nextweek', friday), null);
+  });
+
+  it('returns null for a partial ISO date like "2026-05"', () => {
+    assert.equal(resolveRapidDate('2026-05', friday), null);
+  });
+});
+
+// ── parseRapidTokens ──────────────────────────────────────────────────────────
+describe('parseRapidTokens', () => {
+  const cats = [
+    { id: 'work', label: 'Work' },
+    { id: 'personal', label: 'Personal' },
+    { id: 'meeting', label: 'Team Meeting' },
+  ];
+  const friday = localDate(2026, 5, 29);
+
+  it('returns text unchanged when no tokens present', () => {
+    const r = parseRapidTokens('plain text', cats, friday);
+    assert.equal(r.text, 'plain text');
+    assert.equal(r.tag, null);
+    assert.equal(r.signifier, null);
+    assert.equal(r.date, null);
+  });
+
+  it('resolves #category by id', () => {
+    const r = parseRapidTokens('write tests #work', cats, friday);
+    assert.equal(r.tag, 'work');
+    assert.equal(r.text, 'write tests');
+  });
+
+  it('resolves #category by label (case-insensitive)', () => {
+    const r = parseRapidTokens('thing #Work', cats, friday);
+    assert.equal(r.tag, 'work');
+  });
+
+  it('resolves #category by id prefix', () => {
+    const r = parseRapidTokens('task #per', cats, friday);
+    assert.equal(r.tag, 'personal');
+  });
+
+  it('resolves #category by label prefix', () => {
+    const r = parseRapidTokens('standup #team', cats, friday);
+    assert.equal(r.tag, 'meeting');
+  });
+
+  it('leaves unrecognised #token in text', () => {
+    const r = parseRapidTokens('task #unknown', cats, friday);
+    assert.equal(r.text, 'task #unknown');
+    assert.equal(r.tag, null);
+  });
+
+  it('resolves !flag signifier shortcode', () => {
+    const r = parseRapidTokens('review PR !flag', cats, friday);
+    assert.equal(r.signifier, 'flagged');
+    assert.equal(r.text, 'review PR');
+  });
+
+  it('resolves all !sig aliases', () => {
+    const cases = [
+      ['!f', 'flagged'],
+      ['!star', 'flagged'],
+      ['!x', 'cancelled'],
+      ['!drop', 'cancelled'],
+      ['!cancel', 'cancelled'],
+      ['!ot', 'overtime'],
+      ['!ev', 'event'],
+      ['!e', 'event'],
+      ['!m', 'migrated'],
+    ];
+    cases.forEach(([tok, expected]) => {
+      assert.equal(
+        parseRapidTokens(`task ${tok}`, cats, friday).signifier,
+        expected,
+        `${tok} should resolve to ${expected}`
+      );
+    });
+  });
+
+  it('leaves unrecognised !token in text', () => {
+    const r = parseRapidTokens('task !urgent', cats, friday);
+    assert.equal(r.text, 'task !urgent');
+    assert.equal(r.signifier, null);
+  });
+
+  it('resolves >tomorrow date token', () => {
+    const r = parseRapidTokens('prep slides >tomorrow', cats, friday);
+    assert.equal(r.date, '2026-05-30');
+    assert.equal(r.text, 'prep slides');
+  });
+
+  it('resolves >today date token', () => {
+    const r = parseRapidTokens('checkin >today', cats, friday);
+    assert.equal(r.date, '2026-05-29');
+  });
+
+  it('resolves >YYYY-MM-DD exact date token', () => {
+    const r = parseRapidTokens('dentist >2026-07-10', cats, friday);
+    assert.equal(r.date, '2026-07-10');
+  });
+
+  it('leaves unrecognised >token in text', () => {
+    const r = parseRapidTokens('task >nextweek', cats, friday);
+    assert.equal(r.text, 'task >nextweek');
+    assert.equal(r.date, null);
+  });
+
+  it('combines all three tokens and strips extra whitespace', () => {
+    const r = parseRapidTokens('review code #work !flag >tomorrow', cats, friday);
+    assert.equal(r.text, 'review code');
+    assert.equal(r.tag, 'work');
+    assert.equal(r.signifier, 'flagged');
+    assert.equal(r.date, '2026-05-30');
+  });
+
+  it('returns empty text when input contains only recognised tokens', () => {
+    const r = parseRapidTokens('#work !flag', cats, friday);
+    assert.equal(r.text, '');
+    assert.equal(r.tag, 'work');
+    assert.equal(r.signifier, 'flagged');
+  });
+
+  it('last #category token wins', () => {
+    const r = parseRapidTokens('task #work #personal', cats, friday);
+    assert.equal(r.tag, 'personal');
+  });
+
+  it('works with an empty cats array — unresolved token left in text', () => {
+    const r = parseRapidTokens('task #work', [], friday);
+    assert.equal(r.text, 'task #work');
+    assert.equal(r.tag, null);
   });
 });

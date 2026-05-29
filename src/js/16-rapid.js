@@ -55,35 +55,59 @@ function closeRapid() {
 // ── Log-only action ───────────────────────────────────────────────────────────
 
 /**
- * Handles the "Log without tracking" footer button.
- * - Non-empty input → creates a log entry (no timer) and closes.
- * - Empty input → closes the modal and focuses the ad-hoc row in the time log.
+ * Handles the "Log without tracking" footer button and Enter keypress.
+ *
+ * Parses inline shorthand tokens from the input before creating the entry:
+ *   `#<cat>` overrides category, `!<sig>` sets the signifier,
+ *   `><date>` sets the entry date (today / tomorrow / YYYY-MM-DD / weekday).
+ *
+ * - Non-empty text after token stripping → creates a log entry (no timer) and closes.
+ * - Only tokens, no text → refocuses the input so the user adds a description.
+ * - Completely empty input → closes and focuses the ad-hoc row in the time log.
  */
 function _qcLogOnly() {
   const inp = document.getElementById('rapidInput');
-  const text = inp ? inp.value.trim() : '';
-  if (text) {
-    const tag = _qcFilterCat || selectedTag || (categories[0] && categories[0].id) || 'other';
-    /** @type {Object} New log entry flagged uncategorised when no chip was chosen. */
-    const entry = {
-      id: Date.now() + '',
-      text,
-      tag,
-      ts: safeRoundedStart(),
-      date: dk(new Date()),
-      _uncategorised: !_qcFilterCat,
-    };
-    entries.push(entry);
-    save();
-    wlLog.info('_qcLogOnly: log-only entry created', { tag, uncategorised: entry._uncategorised });
-    closeRapid();
-    render();
-  } else {
+  const raw = inp ? inp.value.trim() : '';
+  if (!raw) {
     wlLog.info('_qcLogOnly: empty input, redirecting focus to ad-hoc row');
     closeRapid();
     const adHoc = document.getElementById('tlAdHocInput');
     if (adHoc) adHoc.focus();
+    return;
   }
+
+  const parsed = parseRapidTokens(raw, categories);
+  if (!parsed.text) {
+    // Tokens present but no description — ask the user to add one
+    if (inp) inp.focus();
+    return;
+  }
+
+  const tag =
+    parsed.tag || _qcFilterCat || selectedTag || (categories[0] && categories[0].id) || 'other';
+  const entryDate = parsed.date || dk(new Date());
+
+  /** @type {Object} New log entry; flagged uncategorised when neither a token nor a chip provided a category. */
+  const entry = {
+    id: Date.now() + '',
+    text: parsed.text,
+    tag,
+    ts: safeRoundedStart(),
+    date: entryDate,
+    _uncategorised: !parsed.tag && !_qcFilterCat,
+  };
+  if (parsed.signifier) entry.signifier = parsed.signifier;
+
+  entries.push(entry);
+  save();
+  wlLog.info('_qcLogOnly: entry created', {
+    tag,
+    signifier: parsed.signifier,
+    date: entryDate,
+    uncategorised: entry._uncategorised,
+  });
+  closeRapid();
+  render();
 }
 
 // ── Running-strip ticker ──────────────────────────────────────────────────────
@@ -118,6 +142,7 @@ function _qcRenderAll() {
   _qcRenderRunningStrip();
   _qcRenderCatChips();
   _qcRenderTaskList();
+  _qcRenderTokenPreview({ tag: null, signifier: null, date: null });
 }
 
 /**
@@ -354,6 +379,63 @@ function _qcRenderTaskList() {
   _qcBindTaskListEvents(el);
 }
 
+// ── Token preview ─────────────────────────────────────────────────────────────
+
+/**
+ * Renders colored pill badges below the search input for any recognised inline
+ * tokens in the current input value. Hides the preview container when no tokens
+ * are active (e.g. on modal open or after the field is cleared).
+ *
+ * @param {{ tag: string|null, signifier: string|null, date: string|null }} parsed
+ *   Result of parseRapidTokens() for the current raw input value.
+ */
+function _qcRenderTokenPreview(parsed) {
+  const el = document.getElementById('qcTokenPreview');
+  if (!el) return;
+
+  const chips = [];
+
+  if (parsed.tag) {
+    const cat = getCat(parsed.tag);
+    chips.push(
+      `<span class="qc-token qc-token--cat" style="border-color:${cat.color}33;color:${cat.color}">` +
+        `<span class="qc-token-dot" style="background:${cat.color}" aria-hidden="true"></span>` +
+        `${escHtml(cat.label)}` +
+        `</span>`
+    );
+  }
+
+  if (parsed.signifier) {
+    // SIG_SYMBOL / SIG_TITLE are globals from 10b-signifiers.js, loaded before this file.
+    const symbol =
+      typeof SIG_SYMBOL !== 'undefined'
+        ? SIG_SYMBOL[parsed.signifier] || parsed.signifier
+        : parsed.signifier;
+    const title =
+      typeof SIG_TITLE !== 'undefined'
+        ? SIG_TITLE[parsed.signifier] || parsed.signifier
+        : parsed.signifier;
+    chips.push(
+      `<span class="qc-token qc-token--sig" title="${escHtml(title)}">` +
+        `${escHtml(symbol)} ${escHtml(title)}` +
+        `</span>`
+    );
+  }
+
+  if (parsed.date) {
+    chips.push(`<span class="qc-token qc-token--date">` + `📅 ${escHtml(parsed.date)}` + `</span>`);
+  }
+
+  if (!chips.length) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = chips.join('');
+  el.style.display = 'flex';
+}
+
 // ── Task activation ───────────────────────────────────────────────────────────
 
 /**
@@ -420,12 +502,19 @@ function initRapid() {
   // Log without tracking
   document.getElementById('rapidLogOnly')?.addEventListener('click', _qcLogOnly);
 
-  // Search / filter input
+  // Search / filter input — parse inline tokens on every keystroke
   const inp = document.getElementById('rapidInput');
   if (inp) {
     inp.addEventListener('input', () => {
-      _qcSearch = inp.value;
+      const parsed = parseRapidTokens(inp.value, categories);
+      // Use the token-stripped text for task-list filtering
+      _qcSearch = parsed.text;
+      // Auto-activate the category chip when a #cat token is recognised;
+      // clear it again when the token is removed.
+      _qcFilterCat = parsed.tag || null;
+      _qcRenderCatChips();
       _qcRenderTaskList();
+      _qcRenderTokenPreview(parsed);
     });
     inp.addEventListener('keydown', (e) => {
       // Prevent the Space key from bubbling to the global rapid-open listener

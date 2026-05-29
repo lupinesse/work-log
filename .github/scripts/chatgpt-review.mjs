@@ -70,7 +70,7 @@ const [OWNER, REPO]  = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER      = must('PR_NUMBER');
 const HEAD_SHA       = must('HEAD_SHA');
 
-const MODEL            = process.env.MODEL            || 'gpt-5.5';
+const MODEL            = process.env.MODEL            || 'gpt-5.4';
 // 'medium' balances CoT depth against token budget; 'high' exhausted 8192
 // tokens entirely on reasoning, leaving nothing for visible output.
 const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
