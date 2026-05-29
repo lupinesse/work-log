@@ -188,8 +188,10 @@ function renderRow(t) {
   if (cpDone > 0 && cpDone < cpTotal) cpBadgeClass += ' cp-has-progress';
   else if (cpTotal > 0 && cpDone === cpTotal) cpBadgeClass += ' cp-done-all';
   else if (cpTotal > 0) cpBadgeClass += ` cp-st-${status}`; // has steps but none ticked yet — mirror task status color
+  // Checkmark prefix appears as soon as one step is ticked; fraction K/N is
+  // always shown so the user can see total even when all are complete.
   const cpBadgeLabel =
-    cpTotal === 0 ? '+ steps' : cpDone === cpTotal ? `✓ ${cpTotal}` : `${cpDone}/${cpTotal}`;
+    cpTotal === 0 ? '+ steps' : cpDone > 0 ? `✓ ${cpDone}/${cpTotal}` : `${cpDone}/${cpTotal}`;
 
   let cpAreaHtml = '';
   if (cpOpen || (cpTotal === 0 && cpOpen)) {

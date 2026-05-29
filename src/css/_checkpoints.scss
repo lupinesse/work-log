@@ -4,6 +4,7 @@
   align-items: center;
   gap: 4px;
   font-size: 10px;
+  font-weight: 500;
   padding: 1px 7px;
   border-radius: 99px;
   border: 0.5px solid var(--border2);
@@ -11,6 +12,9 @@
   color: var(--text3);
   cursor: pointer;
   font-family: var(--font);
+
+  /* Prevent layout shift when the digit count changes (e.g. 9→10) */
+  font-variant-numeric: tabular-nums;
   vertical-align: middle;
   margin-left: 5px;
   white-space: nowrap;
@@ -28,12 +32,18 @@
   background: rgba(255, 184, 48, 0.15);
   color: #ef9f27;
   border-color: rgba(255, 184, 48, 0.4);
+
+  /* Slightly heavier weight draws attention to the ✓ prefix */
+  font-weight: 600;
 }
 
 .cp-badge.cp-done-all {
   background: rgba(29, 158, 117, 0.18);
   color: #1d9e75;
   border-color: rgba(29, 158, 117, 0.5);
+
+  /* Bolder weight celebrates full completion */
+  font-weight: 600;
 }
 
 .cp-badge.cp-st-inprogress {
