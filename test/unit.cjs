@@ -2028,6 +2028,23 @@ describe('mergeAdjacentEntries', () => {
     assert.equal(merged.length, 2);
   });
 
+  it('does not merge same-text entries that belong to different categories', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'Standup', tag: 'work', ts: 0, tsEnd: 10 * MIN },
+      { text: 'Standup', tag: 'dev', ts: 11 * MIN, tsEnd: 20 * MIN },
+    ]);
+    assert.equal(merged.length, 2);
+    assert.deepEqual([...merged.map((e) => e.tag)], ['work', 'dev']);
+  });
+
+  it('still merges same-text entries when both lack a tag (both → "other")', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'Email', ts: 0, tsEnd: 10 * MIN },
+      { text: 'Email', ts: 11 * MIN, tsEnd: 20 * MIN },
+    ]);
+    assert.equal(merged.length, 1);
+  });
+
   it('sorts by start time before merging', () => {
     const merged = mergeAdjacentEntries([
       { text: 'A', ts: 30 * MIN, tsEnd: 40 * MIN },
