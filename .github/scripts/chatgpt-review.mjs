@@ -27,10 +27,10 @@
  *
  * Optional env vars (all have sensible defaults):
  *   MODEL              default 'gpt-5.5'
- *   REASONING_EFFORT   default 'high'  (low | medium | high | xhigh)
+ *   REASONING_EFFORT   default 'medium' (low | medium | high) — 'high' exhausted the token budget on CoT
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 50000 — truncate larger diffs
- *   MAX_TOKENS         default '8192' (reasoning models burn tokens on CoT)
+ *   MAX_TOKENS         default '32768' (covers CoT + visible reply at medium effort)
  *   DIFF_PATH          default 'pr.diff'
  *
  * Note: `temperature` is intentionally omitted from the OpenAI request.
@@ -62,12 +62,14 @@ const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
 const MODEL = process.env.MODEL || 'gpt-5.5';
-const REASONING_EFFORT = process.env.REASONING_EFFORT || 'high';
+// 'medium' balances CoT depth against token budget; 'high' exhausted 8192
+// tokens entirely on reasoning, leaving nothing for visible output.
+const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
 // Reasoning models use max_completion_tokens, not max_tokens.
-// gpt-5.5 / o-series models burn reasoning tokens before visible output —
-// 2048 was exhausted by chain-of-thought, leaving nothing to write.
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
+// Budget must cover both internal reasoning tokens and the visible reply.
+// 32768 provides headroom for a thorough review even at medium effort.
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '32768', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const DEFAULT_PROMPT = [
