@@ -18,9 +18,9 @@ const SIG_TITLE = {
 };
 
 /**
- * Returns the display symbol for an entry's signifier (or '·' for none).
+ * Returns the display symbol for an entry's signifier.
  * @param {Object} entry - Log entry object.
- * @returns {string} Emoji or '·'.
+ * @returns {string} Unicode BuJo symbol (○ ★ → ✗ !) or '●' for the billable default.
  */
 function sigSymbol(entry) {
   return SIG_SYMBOL[entry.signifier] || '●';
