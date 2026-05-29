@@ -31,7 +31,7 @@ src/js/00-config.local.js
 timesheets/
 JSON backups/
 
-# Claude Code session data — ignore local state but track shared skills and project CLAUDE.md
+# Claude Code session data — ignore local state but track shared skills and docs
 .claude/*
 !.claude/skills/
-!.claude/CLAUDE.md
+!.claude/token-optimization.md
