@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Checkpoint badge format unified to `✓ K/N`** — the badge now shows the fraction in all non-empty states: `K/N` (no steps ticked yet), `✓ K/N` (some done), `✓ N/N` (all done). Previously the all-done state showed `✓ N` (count only, no denominator), making it visually inconsistent with the partial-progress state. The `+ steps` label is unchanged for tasks that have no checkpoints defined.
+
 ### Added
 - **Today's Flow unified section** — replaces the separate Timeblock and Daily Log tabs with a single `#todayFlowSection` offering three views: Flow (chronological cards with colour-coded accent strips), Log (timeline rail with circle markers), and Blocks (the existing timeblock grid). The section also renders a day-overview strip (hour ticks + entry footprints + live cursor) and a gap reminder when the largest unlogged gap today is ≥ 15 minutes. Closes #44.
 
