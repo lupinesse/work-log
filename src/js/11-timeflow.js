@@ -7,6 +7,9 @@ const TF_STRIP_START = 7 * 60;
 /** 21:00 in minutes from midnight — right edge of the day-overview strip. */
 const TF_STRIP_END = 21 * 60;
 
+/** Ordered list of view ids — drives the segmented control and keyboard nav. */
+const TF_VIEWS = ['flow', 'log', 'blocks'];
+
 /** Display labels for the segmented control. Static so we avoid recomputing on every render. */
 const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks' };
 
@@ -53,8 +56,8 @@ function stripPct(mins) {
  * @returns {number}
  */
 function tsToMins(ts) {
-  const d = new Date(ts);
-  return d.getHours() * 60 + d.getMinutes();
+  const date = new Date(ts);
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 /**
@@ -63,8 +66,23 @@ function tsToMins(ts) {
  * @returns {string}
  */
 function fmtHm(ts) {
-  const d = new Date(ts);
-  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const date = new Date(ts);
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/**
+ * Returns the effective tracked duration (ms) of an active-timer entry,
+ * honouring pause state — matches the formula used by renderFlowHeader so
+ * the strip bar and Flow-view duration freeze while paused.
+ * @param {object} entry
+ * @returns {number} 0 if no timer is active for this entry.
+ */
+function activeTimerDurationMs(entry) {
+  if (!activeTimer || activeTimer.entryId !== entry.id) return 0;
+  if (activeTimer.paused) return activeTimer.accumulatedMs || 0;
+  return Math.max(0, Date.now() - (activeTimer.startTs || entry.ts));
 }
 
 /**
@@ -98,13 +116,15 @@ function renderDayStrip(dateKey) {
     })
     .join('');
 
-  // Live timer footprint
+  // Live timer footprint — endpoint freezes at pause so the bar doesn't keep
+  // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
   if (activeTimer && isToday(viewDate)) {
     const le = entries.find((e) => e.id === activeTimer.entryId);
     if (le && le.date === dateKey) {
+      const liveEndMins = tsToMins(le.ts + activeTimerDurationMs(le));
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(le.ts)));
-      const right = stripPct(Math.min(TF_STRIP_END, nowMins));
+      const right = stripPct(Math.min(TF_STRIP_END, liveEndMins));
       if (right > left) {
         const cat = getCat(le.tag);
         liveBar = `<div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${cat.color}"></div>`;
@@ -124,8 +144,10 @@ function renderDayStrip(dateKey) {
 // ─────────────────────────── gap reminder ───────────────────────────
 
 /**
- * Finds the largest untracked gap (≥ 15 min) between consecutive completed
- * entries for the given day. Returns null for past days — only actionable today.
+ * Finds the largest untracked gap (≥ 15 min) today, including gaps between
+ * consecutive completed entries AND the trailing gap from the most recent
+ * entry's end to now (which is often the most actionable). Returns null for
+ * past days — only actionable today.
  * @param {string} dateKey - YYYY-MM-DD.
  * @returns {{startTs: number, endTs: number, gapMin: number}|null}
  */
@@ -136,12 +158,26 @@ function findLargestGap(dateKey) {
     .sort((a, b) => a.ts - b.ts);
 
   let largest = null;
+
+  // Internal gaps between consecutive completed entries
   for (let i = 0; i < timed.length - 1; i++) {
     const gapMin = Math.floor((timed[i + 1].ts - timed[i].tsEnd) / 60000);
     if (gapMin >= 15 && (!largest || gapMin > largest.gapMin)) {
       largest = { startTs: timed[i].tsEnd, endTs: timed[i + 1].ts, gapMin };
     }
   }
+
+  // Trailing gap: last entry's end → now. Suppressed while a live timer is
+  // running, since the user is actively tracking and the gap will close itself.
+  if (timed.length && !activeTimer) {
+    const last = timed[timed.length - 1];
+    const now = Date.now();
+    const trailingMin = Math.floor((now - last.tsEnd) / 60000);
+    if (trailingMin >= 15 && (!largest || trailingMin > largest.gapMin)) {
+      largest = { startTs: last.tsEnd, endTs: now, gapMin: trailingMin };
+    }
+  }
+
   return largest;
 }
 
@@ -157,9 +193,11 @@ function renderGapReminder(dateKey) {
     el.style.display = 'none';
     return;
   }
-  const h = Math.floor(gap.gapMin / 60),
-    m = gap.gapMin % 60;
-  const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
+  const hours = Math.floor(gap.gapMin / 60);
+  const mins = gap.gapMin % 60;
+  let dur;
+  if (hours > 0) dur = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  else dur = `${mins}m`;
   el.style.display = '';
   el.innerHTML = `<span class="tf-gap-text">${fmtHm(gap.startTs)} – ${fmtHm(gap.endTs)} · ${dur} untracked between blocks</span><button type="button" class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
   document.getElementById('tfGapLogBtn')?.addEventListener('click', () => {
@@ -184,17 +222,17 @@ function renderFlowHeader(dateKey, activeView) {
     (e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled'
   );
   let totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
-  const billMs = dayEntries
+  let billMs = dayEntries
     .filter((e) => isEntryBillable(e))
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 
-  // Include live timer duration so totals update while tracking
+  // Include live timer duration so both totals update while tracking
   if (activeTimer && isToday(viewDate)) {
     const le = entries.find((e) => e.id === activeTimer.entryId);
     if (le && le.date === dateKey && !le.tsEnd) {
-      totalMs += activeTimer.paused
-        ? activeTimer.accumulatedMs || 0
-        : Math.max(0, Date.now() - (activeTimer.startTs || le.ts));
+      const liveMs = activeTimerDurationMs(le);
+      totalMs += liveMs;
+      if (isEntryBillable(le)) billMs += liveMs;
     }
   }
 
@@ -205,33 +243,13 @@ function renderFlowHeader(dateKey, activeView) {
 
   // Segmented control uses ARIA `tablist`/`tab` so screen readers announce the
   // mutually-exclusive selection correctly and link each tab to its pane.
-  const segHtml = ['flow', 'log', 'blocks']
-    .map((v) => {
-      const isActive = v === activeView;
-      return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${v}" id="tfTab-${v}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[v]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[v]}</button>`;
-    })
-    .join('');
+  // Roving tabindex: only the active tab is in the tab order; arrows move within.
+  const segHtml = TF_VIEWS.map((view) => {
+    const isActive = view === activeView;
+    return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${view}" id="tfTab-${view}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[view]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[view]}</button>`;
+  }).join('');
 
   el.innerHTML = `<span class="tf-icon" aria-hidden="true">⏱</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
-
-  bindSegmentListeners();
-}
-
-/**
- * Wires click handlers on the segmented-control tabs. Called after every
- * renderFlowHeader() because the buttons are recreated by innerHTML — kept
- * separate so renderFlowHeader stays single-purpose (markup only).
- */
-function bindSegmentListeners() {
-  document
-    .getElementById('tfSeg')
-    ?.querySelectorAll('.tf-seg-btn')
-    .forEach((btn) => {
-      btn.addEventListener('click', () => {
-        setFlowView(btn.dataset.view);
-        renderTodayFlow();
-      });
-    });
 }
 
 // ─────────────────────────── Flow view ───────────────────────────
@@ -265,11 +283,12 @@ function renderFlowView(dateKey) {
       let durationMin = 0;
       let isLive = false;
       if (entryObj) {
-        const endTs =
-          entryObj.tsEnd ||
-          (activeTimer && activeTimer.entryId === entryObj.id ? Date.now() : null);
-        if (endTs) durationMin = Math.max(1, Math.round((endTs - entryObj.ts) / 60000));
         isLive = !!(activeTimer && activeTimer.entryId === entryObj.id);
+        // Use the paused-aware helper for live entries so the duration freezes
+        // while the timer is paused, matching renderFlowHeader and renderDayStrip.
+        const liveMs = isLive ? activeTimerDurationMs(entryObj) : 0;
+        const durMs = entryObj.tsEnd ? entryObj.tsEnd - entryObj.ts : liveMs;
+        if (durMs > 0) durationMin = Math.max(1, Math.round(durMs / 60000));
       }
 
       // Strip height scales with duration; non-entry items (notes, tasks) get a fixed height
@@ -365,14 +384,53 @@ function renderTodayFlow() {
 }
 
 /**
- * Binds the static log-note input listeners exactly once on DOMContentLoaded.
- * These elements (`#dailyLogNoteBtn`, `#dailyLogNoteInput`) live in static HTML
- * and are never recreated, so attaching here avoids the listener accumulation
- * that occurred when binding happened inside renderLogView().
+ * Selects the view at index `nextIndex` in TF_VIEWS, focuses its tab button,
+ * and re-renders. Shared by the keyboard handler in initTodayFlow().
+ * @param {number} nextIndex
+ */
+function focusTabAt(nextIndex) {
+  const view = TF_VIEWS[nextIndex];
+  setFlowView(view);
+  renderTodayFlow();
+  document.getElementById(`tfTab-${view}`)?.focus();
+}
+
+/**
+ * Binds the static listeners exactly once on DOMContentLoaded:
+ *   - Log-note input/button (static HTML, never recreated)
+ *   - Segmented-control click + keyboard nav, delegated off the stable
+ *     #tfHeader container so we survive its innerHTML being rewritten
+ *     by every renderFlowHeader() call.
+ * Avoids the listener-accumulation bug that occurred when binding happened
+ * inside render functions.
  */
 function initTodayFlow() {
   document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
   document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') addLogNote();
+  });
+
+  const header = document.getElementById('tfHeader');
+  if (!header) return;
+
+  header.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tf-seg-btn');
+    if (!btn) return;
+    setFlowView(btn.dataset.view);
+    renderTodayFlow();
+  });
+
+  // WCAG 2.1.1: Arrow keys + Home/End navigate between tabs in the tablist.
+  header.addEventListener('keydown', (e) => {
+    if (!e.target.classList || !e.target.classList.contains('tf-seg-btn')) return;
+    const current = TF_VIEWS.indexOf(getFlowView());
+    let next;
+    if (e.key === 'ArrowLeft') next = (current - 1 + TF_VIEWS.length) % TF_VIEWS.length;
+    else if (e.key === 'ArrowRight') next = (current + 1) % TF_VIEWS.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = TF_VIEWS.length - 1;
+    else return;
+    e.preventDefault();
+    focusTabAt(next);
   });
 }

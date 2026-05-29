@@ -64,10 +64,10 @@ function assert(name, condition, detail = '') {
 }
 
 function dk(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 async function freshPage(ctx, extraStorage = {}) {
@@ -2455,6 +2455,34 @@ async function runTests() {
     assert(
       'Timeblock grid present inside Blocks view',
       await page.evaluate(() => !!document.getElementById('tbGrid'))
+    );
+
+    // ── WCAG keyboard navigation on the tablist ──
+    // Reset to flow view, focus its tab, then arrow through the views.
+    await page.evaluate(() => {
+      window.__wl.setFlowView('flow');
+      window.__wl.renderTodayFlow();
+      document.getElementById('tfTab-flow')?.focus();
+    });
+    await page.keyboard.press('ArrowRight');
+    assert(
+      'ArrowRight moves tablist to Log view',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'log')
+    );
+    await page.keyboard.press('ArrowRight');
+    assert(
+      'ArrowRight wraps Log → Blocks',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'blocks')
+    );
+    await page.keyboard.press('Home');
+    assert(
+      'Home jumps to first tab (Flow)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'flow')
+    );
+    await page.keyboard.press('End');
+    assert(
+      'End jumps to last tab (Blocks)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'blocks')
     );
 
     await page.close();

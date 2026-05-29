@@ -1568,6 +1568,97 @@ describe('findLargestGap', () => {
     // Cancelled entry has no tsEnd counted — no consecutive pair → null
     assert.equal(sb.findLargestGap(TODAY), null);
   });
+
+  it('returns the trailing gap when the last entry ended ≥ 15 min ago', () => {
+    const now = Date.now();
+    const sb = loadTimeflowSandbox();
+    // Last entry ended 30 minutes ago, no live timer
+    sb.entries = [
+      {
+        date: TODAY,
+        ts: now - 60 * 60000,
+        tsEnd: now - 30 * 60000,
+        signifier: null,
+      },
+    ];
+    sb.activeTimer = null;
+    const gap = sb.findLargestGap(TODAY);
+    assert.ok(gap !== null, 'should detect trailing gap');
+    assert.ok(gap.gapMin >= 30 && gap.gapMin <= 31, `gap was ${gap.gapMin}`);
+  });
+
+  it('suppresses the trailing gap while a timer is active', () => {
+    const now = Date.now();
+    const sb = loadTimeflowSandbox();
+    sb.entries = [
+      {
+        id: 'e1',
+        date: TODAY,
+        ts: now - 60 * 60000,
+        tsEnd: now - 30 * 60000,
+        signifier: null,
+      },
+    ];
+    sb.activeTimer = { entryId: 'live', paused: false, startTs: now - 5 * 60000 };
+    assert.equal(sb.findLargestGap(TODAY), null);
+  });
+
+  it('prefers the trailing gap when it is larger than any internal gap', () => {
+    const now = Date.now();
+    const sb = loadTimeflowSandbox();
+    // 20-min internal gap, 60-min trailing gap
+    sb.entries = [
+      {
+        date: TODAY,
+        ts: now - 180 * 60000,
+        tsEnd: now - 150 * 60000,
+        signifier: null,
+      },
+      {
+        date: TODAY,
+        ts: now - 130 * 60000,
+        tsEnd: now - 60 * 60000,
+        signifier: null,
+      },
+    ];
+    sb.activeTimer = null;
+    const gap = sb.findLargestGap(TODAY);
+    assert.ok(gap !== null);
+    assert.ok(gap.gapMin >= 60, `trailing gap should win, got ${gap.gapMin}`);
+  });
+});
+
+describe('activeTimerDurationMs', () => {
+  it('returns 0 when no timer is active', () => {
+    const sb = loadTimeflowSandbox();
+    sb.activeTimer = null;
+    assert.equal(sb.activeTimerDurationMs({ id: 'e1', ts: Date.now() }), 0);
+  });
+
+  it('returns 0 for an unrelated entry', () => {
+    const sb = loadTimeflowSandbox();
+    sb.activeTimer = { entryId: 'other', paused: false, startTs: Date.now() };
+    assert.equal(sb.activeTimerDurationMs({ id: 'e1', ts: Date.now() }), 0);
+  });
+
+  it('returns accumulatedMs when paused (does not grow)', () => {
+    const sb = loadTimeflowSandbox();
+    sb.activeTimer = {
+      entryId: 'e1',
+      paused: true,
+      accumulatedMs: 5 * 60000,
+      startTs: Date.now() - 60 * 60000, // would be huge if not honoured
+    };
+    assert.equal(sb.activeTimerDurationMs({ id: 'e1', ts: Date.now() }), 5 * 60000);
+  });
+
+  it('returns elapsed since startTs when running', () => {
+    const sb = loadTimeflowSandbox();
+    const now = Date.now();
+    sb.activeTimer = { entryId: 'e1', paused: false, startTs: now - 90000 };
+    const ms = sb.activeTimerDurationMs({ id: 'e1', ts: now - 120000 });
+    assert.ok(ms >= 90000 - 200 && ms <= 90000 + 200, `expected ~90000, got ${ms}`);
+  });
 });
 
 describe('getFlowView / setFlowView', () => {
