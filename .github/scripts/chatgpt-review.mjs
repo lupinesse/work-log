@@ -30,7 +30,7 @@
  *   REASONING_EFFORT   default 'high'  (low | medium | high | xhigh)
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 50000 — truncate larger diffs
- *   MAX_TOKENS         default '2048'
+ *   MAX_TOKENS         default '8192' (reasoning models burn tokens on CoT)
  *   DIFF_PATH          default 'pr.diff'
  *
  * Note: `temperature` is intentionally omitted from the OpenAI request.
@@ -65,7 +65,9 @@ const MODEL = process.env.MODEL || 'gpt-5.5';
 const REASONING_EFFORT = process.env.REASONING_EFFORT || 'high';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
 // Reasoning models use max_completion_tokens, not max_tokens.
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '2048', 10);
+// gpt-5.5 / o-series models burn reasoning tokens before visible output —
+// 2048 was exhausted by chain-of-thought, leaving nothing to write.
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const DEFAULT_PROMPT = [
