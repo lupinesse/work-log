@@ -11,11 +11,9 @@
  * Falls back gracefully: thread replies that fail (permissions, etc.) are
  * collected and included in the synthesis comment so nothing is lost.
  *
- * Required env vars (at least one auth token must be set):
+ * Required env vars:
  *   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`) — uses your
- *                            Claude subscription at no extra API cost; takes precedence
- *                            when both tokens are present.
- *   ANTHROPIC_API_KEY        Anthropic API key — used when CLAUDE_CODE_OAUTH_TOKEN is absent.
+ *                            Claude subscription at no extra API cost.
  *   GITHUB_TOKEN             GitHub auth (Claude Reviewer App token or fallback)
  *   GITHUB_REPOSITORY        "owner/repo" — auto-set by Actions
  *   PR_NUMBER                Pull-request number
@@ -53,12 +51,9 @@ const must = (key) => {
 
 // ─────────────────────────── config ───────────────────────────
 
-// Accept either token; CLAUDE_CODE_OAUTH_TOKEN (Claude subscription, no extra
-// billing) takes precedence over ANTHROPIC_API_KEY when both are present.
 const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
-const ANTHROPIC_API_KEY       = process.env.ANTHROPIC_API_KEY       || '';
-if (!CLAUDE_CODE_OAUTH_TOKEN && !ANTHROPIC_API_KEY) {
-  die('Missing auth: set CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) or ANTHROPIC_API_KEY');
+if (!CLAUDE_CODE_OAUTH_TOKEN) {
+  die('Missing required env var: CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`)');
 }
 
 const GITHUB_TOKEN      = must('GITHUB_TOKEN');
@@ -179,11 +174,8 @@ Output a single raw JSON object — no markdown wrapper:
 
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-  // Build auth header: OAuth bearer token (Claude subscription) or API key.
   // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
-  const authHeader = CLAUDE_CODE_OAUTH_TOKEN
-    ? { 'Authorization': `Bearer ${CLAUDE_CODE_OAUTH_TOKEN}` }
-    : { 'x-api-key': ANTHROPIC_API_KEY };
+  const authHeader = { 'Authorization': `Bearer ${CLAUDE_CODE_OAUTH_TOKEN}` };
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
