@@ -22,8 +22,7 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL                default 'gpt-5.5'
- *   REASONING_EFFORT     default 'medium'
+ *   MODEL                default 'gpt-4.1'
  *   MAX_DIFF_CHARS       default 40000
  *   MAX_TOKENS           default 16384
  *   DIFF_PATH            default 'pr.diff'
@@ -65,9 +64,8 @@ const [OWNER, REPO]  = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER      = must('PR_NUMBER');
 const HEAD_SHA       = must('HEAD_SHA');
 
-const MODEL            = process.env.MODEL            || 'gpt-5.5';
-const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
-const MAX_DIFF_CHARS   = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
+const MODEL          = process.env.MODEL          || 'gpt-4.1';
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
 const MAX_TOKENS       = parseInt(process.env.MAX_TOKENS     || '16384', 10);
 const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
 
@@ -311,7 +309,7 @@ Output a single raw JSON object — no markdown wrapper:
     },
     body: JSON.stringify({
       model:                 MODEL,
-      reasoning_effort:      REASONING_EFFORT,
+      temperature:           0.2,
       max_completion_tokens: MAX_TOKENS,
       messages: [
         { role: 'system', content: system },
