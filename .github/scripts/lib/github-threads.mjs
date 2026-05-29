@@ -149,10 +149,68 @@ export async function unresolveThread({ token, threadId }) {
 }
 
 /**
+ * Mark an open review thread as resolved. Used by Phase 4 when ChatGPT has
+ * verified Claude's promised fix is present in the current diff and posts a
+ * "✅ Verified as fixed" confirmation — closing the thread completes the
+ * audit trail and clears the merge-gate.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.threadId  GraphQL node id of the thread.
+ */
+export async function resolveThread({ token, threadId }) {
+  const mutation = `mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}`;
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: ghHeaders(token),
+    body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
+  });
+  if (!response.ok) throw new Error(`Resolve API ${response.status}: ${await response.text()}`);
+  const data = await response.json();
+  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
+}
+
+/**
+ * Fetch all issue comments for a PR, paginating until the API returns fewer
+ * than a full page. Comments are returned oldest-first (API default order).
+ * Callers that need newest-first should reverse the result.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @returns {Promise<object[]>}
+ */
+export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
+  const MAX_PAGES = 200;
+  const all = [];
+  let page = 1;
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`,
+      { headers: ghHeaders(token) }
+    );
+    if (!response.ok) throw new Error(`List comments API ${response.status}: ${await response.text()}`);
+    const batch = await response.json();
+    all.push(...batch);
+    if (batch.length < 100) break;
+    if (page >= MAX_PAGES) {
+      throw new Error(
+        `fetchAllIssueComments: reached page limit (${MAX_PAGES}) for PR #${prNumber} — ` +
+        'possible API response loop; halting to avoid runaway pagination',
+      );
+    }
+    page++;
+  }
+  return all;
+}
+
+/**
  * Find the most recent issue comment containing `marker` in its body, then
  * PATCH it with `body`. If no previous comment matches, POST a new one.
  * Used to keep one persistent comment per phase rather than accumulating one
- * per push.
+ * per push. Searches all pages so the marker is found even on high-volume PRs.
  *
  * @param {object} params
  * @param {string} params.token
@@ -164,12 +222,7 @@ export async function unresolveThread({ token, threadId }) {
  * @returns {Promise<{ comment: object, updated: boolean }>}
  */
 export async function upsertIssueComment({ token, owner, repo, prNumber, marker, body }) {
-  const listResp = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
-    { headers: ghHeaders(token) }
-  );
-  if (!listResp.ok) throw new Error(`List comments API ${listResp.status}: ${await listResp.text()}`);
-  const comments = await listResp.json();
+  const comments = await fetchAllIssueComments({ token, owner, repo, prNumber });
 
   // Walk newest-first so we update the latest matching comment.
   let previous = null;
@@ -211,12 +264,26 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
  * @returns {Promise<{ review: object, replaced: boolean }>}
  */
 export async function upsertReview({ token, owner, repo, prNumber, headSha, marker, body }) {
-  const listResp = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100`,
-    { headers: ghHeaders(token) }
-  );
-  if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
-  const reviews = await listResp.json();
+  // Paginate to handle PRs that accumulate more than 100 reviews across re-runs.
+  const MAX_PAGES = 50; // 5 000 reviews is an unreachable ceiling in practice
+  const reviews = [];
+  let reviewPage = 1;
+  while (true) {
+    const listResp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100&page=${reviewPage}`,
+      { headers: ghHeaders(token) }
+    );
+    if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
+    const batch = await listResp.json();
+    reviews.push(...batch);
+    if (batch.length < 100) break;
+    if (reviewPage >= MAX_PAGES) {
+      throw new Error(
+        `upsertReview: reached page limit (${MAX_PAGES}) for PR #${prNumber} — halting to avoid runaway pagination`,
+      );
+    }
+    reviewPage++;
+  }
 
   // Pick the most recent matching, non-dismissed review.
   let previous = null;

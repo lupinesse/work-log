@@ -252,7 +252,7 @@ function renderRow(t) {
   const indent = isChild ? ' plan-child-item' : '';
   const childPrefix = isChild ? '<span class="plan-child-arrow">↳</span>' : '';
 
-  return `<div class="plan-item${status === 'done' ? ' done' : ''}${isLive ? ' active-timer' : ''}${indent}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
+  return `<div class="plan-item${status === 'done' ? ' done' : ''}${status === 'inprogress' && !isLive ? ' inprogress' : ''}${isLive ? ' active-timer' : ''}${indent}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
       ${childPrefix}<select class="plan-status ${status === 'done' ? 'done-st' : status}" data-pid="${t.id}">${statusOpts(status)}</select>
       ${billBtnHtml(t, status)}
       <div class="plan-left">

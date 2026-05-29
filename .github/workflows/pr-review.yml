@@ -10,7 +10,7 @@ name: Claude PR Review
 # phase — after Claude has already responded to ChatGPT's findings.
 #
 # Required secrets:
-#   ANTHROPIC_API_KEY           — Anthropic API key (or CLAUDE_CODE_OAUTH_TOKEN)
+#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token (`claude setup-token`)
 #   CLAUDE_REVIEWER_APP_ID      — App ID of the "Claude Reviewer" GitHub App
 #   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
@@ -96,20 +96,18 @@ jobs:
         if: steps.size-gate.outputs.should_run == 'true'
         env:
           OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
+          if [ -n "$OAUTH_TOKEN" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping automated review."
+            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set — skipping automated review."
           fi
 
       - name: Run PR review
         if: steps.key-check.outputs.present == 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           claude -p "/pr-review" \
             --model claude-opus-4-8 \
@@ -138,6 +136,10 @@ jobs:
           # uninstalled App) so the review comment still gets posted — the
           # red mint-step failure in CI is the signal to fix the secret.
           GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
+          # GH_REPO bypasses gh's git-based repo detection; without it, gh
+          # calls `git rev-parse` and crashes when no checkout has run yet
+          # (e.g. the no-API-key fallback path on a large PR).
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
@@ -154,7 +156,7 @@ jobs:
           else
             {
               echo "$MARKER"
-              echo "> ⚠️ Automated review skipped — \`ANTHROPIC_API_KEY\` secret is not set. Add it in **Settings → Secrets and variables → Actions** to enable AI code review."
+              echo "> ⚠️ Automated review skipped — \`CLAUDE_CODE_OAUTH_TOKEN\` secret is not set. Add it in **Settings → Secrets and variables → Actions** to enable AI code review."
             } > comment-body.txt
           fi
 
@@ -168,5 +170,7 @@ jobs:
               --field body=@comment-body.txt
           else
             echo "Posting new comment (no previous found)"
-            gh pr comment "$PR_NUMBER" --body-file comment-body.txt
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+              --method POST \
+              --field body=@comment-body.txt
           fi

@@ -1,21 +1,42 @@
 .esig {
-  font-size: 13px;
-  width: 22px;
+  font-size: 12px;
+  width: 18px;
   text-align: center;
   flex-shrink: 0;
   cursor: pointer;
-  transition: opacity 0.1s;
+  transition: color 0.1s;
+  font-family: var(--mono);
   user-select: none;
   line-height: 1;
 }
 
 .esig:hover {
-  opacity: 0.7;
+  color: var(--text);
 }
 
+/* null signifier = billable default (displayed as ●) */
 .sig-none {
+  color: var(--sig-billable);
+}
+
+.sig-event {
+  color: var(--sig-event);
+}
+
+.sig-flagged {
+  color: var(--sig-flagged);
+}
+
+.sig-migrated {
   color: var(--text3);
-  font-size: 16px;
+}
+
+.sig-cancelled {
+  color: var(--text3);
+}
+
+.sig-overtime {
+  color: var(--sig-overtime);
 }
 
 /* Cancelled entry row */

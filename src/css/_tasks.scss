@@ -325,14 +325,16 @@
   opacity: 0.5;
 }
 
-.plan-item.active-timer {
+.plan-item.active-timer,
+.plan-item.inprogress {
   background: var(--in-progress);
   border-left: 3px solid var(--in-progress-accent);
   padding-left: 6px;
   border-radius: var(--radius);
 }
 
-.plan-item.active-timer:hover {
+.plan-item.active-timer:hover,
+.plan-item.inprogress:hover {
   background: var(--in-progress-highlight);
 }
 
