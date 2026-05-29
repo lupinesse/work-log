@@ -400,12 +400,13 @@
   <div class="tf-gap-reminder" id="tfGapReminder" style="display:none"></div>
 
   <!-- Flow view pane -->
-  <div class="tf-pane" id="tfFlowPane"></div>
+  <div class="tf-pane" id="tfFlowPane" role="tabpanel" aria-labelledby="tfTab-flow"></div>
 
   <!-- Log view pane -->
-  <div class="tf-pane" id="tfLogPane" style="display:none">
+  <div class="tf-pane" id="tfLogPane" role="tabpanel" aria-labelledby="tfTab-log" style="display:none">
     <div class="tf-log-feed" id="tfLogFeed"></div>
     <div class="capture-row" id="dailyLogNoteRow" style="display:none">
+      <label for="dailyLogNoteInput" class="sr-only">Add a note to today&#39;s log</label>
       <input class="capture-input" id="dailyLogNoteInput"
              placeholder="Add a note to today&#39;s log&hellip;" />
       <button class="add-btn" id="dailyLogNoteBtn">+ Note</button>
@@ -413,7 +414,7 @@
   </div>
 
   <!-- Blocks view pane: existing timeblock grid embedded here -->
-  <div class="tf-pane" id="tfBlocksPane" style="display:none">
+  <div class="tf-pane" id="tfBlocksPane" role="tabpanel" aria-labelledby="tfTab-blocks" style="display:none">
     <div class="tb-body" id="tbBody">
       <div class="tb-times" id="tbTimes"></div>
       <div class="tb-grid-wrap">

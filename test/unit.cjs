@@ -1472,7 +1472,13 @@ function loadTimeflowSandbox(overrides = {}) {
     isToday: (d) => d.toDateString() === sandbox.viewDate.toDateString(),
     activeTimer: null,
     fmtDur: (ms) => `${Math.round(ms / 60000)}m`,
-    dk: (d) => d.toISOString().slice(0, 10),
+    // Use local-time formatting to match the app's `dk` (src/js/00-pure-fns.js)
+    dk: (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
     getCat: (id) => ({ id, label: id, color: '#888' }),
     isEntryBillable: () => true,
     renderTodayFlow: () => {},

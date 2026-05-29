@@ -1144,8 +1144,9 @@ async function runTests() {
     assert('Badge shows correct fraction (1/3)', planHtml.includes('1/3'));
     assert('+ steps badge on task with no checkpoints', planHtml.includes('+ steps'));
 
-    // Open checkpoints by clicking the badge
-    await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]')?.click());
+    // Open checkpoints by clicking the badge — fail loudly if the badge is missing
+    await page.waitForSelector('.cp-badge[data-pid="cp1"]');
+    await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
     await page.waitForTimeout(50);
     const openHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('Checkpoint area opens on badge click', openHtml.includes('cp-area'));
@@ -1154,8 +1155,9 @@ async function runTests() {
     assert('Progress bar rendered', openHtml.includes('cp-fill'));
 
     // Tick an unchecked checkpoint — three-state: false → 'partial' → true
+    await page.waitForSelector('.cp-check[data-pid="cp1"][data-cpidx="0"]');
     await page.evaluate(() =>
-      document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]')?.click()
+      document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
     await page.waitForTimeout(50);
     const afterTick1 = await page.evaluate(() =>
@@ -1164,7 +1166,7 @@ async function runTests() {
     assert('First tick sets checkpoint to partial', afterTick1?.checkpoints[0]?.done === 'partial');
 
     await page.evaluate(() =>
-      document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]')?.click()
+      document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
     await page.waitForTimeout(50);
     const afterTick2 = await page.evaluate(() =>
@@ -2458,9 +2460,12 @@ async function runTests() {
     await page.close();
   }
 
-  // Verify persisted view preference is applied on fresh render (simulates page reload)
-  // Note: addInitScript JSON-encodes all values, so wl_flow_view must be set via the API
-  // after page load rather than through freshPage's storage initialiser.
+  // Verify that calling setFlowView() + renderTodayFlow() updates pane visibility.
+  // Note: this does NOT simulate a real page reload — Playwright's addInitScript
+  // JSON-encodes storage values, so a raw 'blocks' string written via freshPage
+  // would be stored as '"blocks"' and getFlowView() would fall back to 'flow'.
+  // A true reload-survival test would need a custom init hook that writes raw
+  // strings; see findLargestGap unit tests for the equivalent direct check.
   {
     const today = dk(new Date());
     const base = Date.now() - 3 * 3600000;
@@ -2482,7 +2487,7 @@ async function runTests() {
       window.__wl.renderTodayFlow();
     });
     assert(
-      'View preference survives page reload',
+      'setFlowView + renderTodayFlow updates pane visibility',
       await page2.evaluate(() => document.getElementById('tfBlocksPane').style.display !== 'none')
     );
     await page2.close();

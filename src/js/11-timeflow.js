@@ -10,6 +10,9 @@ const TF_STRIP_END = 21 * 60;
 /** Display labels for the segmented control. Static so we avoid recomputing on every render. */
 const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks' };
 
+/** Maps each view to the DOM id of the pane that hosts it. */
+const TF_PANE_IDS = { flow: 'tfFlowPane', log: 'tfLogPane', blocks: 'tfBlocksPane' };
+
 // ─────────────────────────── view preference ───────────────────────────
 
 /**
@@ -52,6 +55,16 @@ function stripPct(mins) {
 function tsToMins(ts) {
   const d = new Date(ts);
   return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
+ * Formats a Unix timestamp (ms) as `HH:MM` in local time.
+ * @param {number} ts
+ * @returns {string}
+ */
+function fmtHm(ts) {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
 /**
@@ -144,15 +157,11 @@ function renderGapReminder(dateKey) {
     el.style.display = 'none';
     return;
   }
-  function fmt(ts) {
-    const d = new Date(ts);
-    return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  }
   const h = Math.floor(gap.gapMin / 60),
     m = gap.gapMin % 60;
   const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
   el.style.display = '';
-  el.innerHTML = `<span class="tf-gap-text">${fmt(gap.startTs)} – ${fmt(gap.endTs)} · ${dur} untracked between blocks</span><button type="button" class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
+  el.innerHTML = `<span class="tf-gap-text">${fmtHm(gap.startTs)} – ${fmtHm(gap.endTs)} · ${dur} untracked between blocks</span><button type="button" class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
   document.getElementById('tfGapLogBtn')?.addEventListener('click', () => {
     const inp = document.getElementById('captureInput');
     if (inp) inp.focus();
@@ -194,15 +203,26 @@ function renderFlowHeader(dateKey, activeView) {
       ? `<span class="tf-totals">${fmtDur(totalMs)} tracked${billMs > 0 ? ` · <span class="tf-bill">${fmtDur(billMs)} billable</span>` : ''}</span>`
       : '';
 
+  // Segmented control uses ARIA `tablist`/`tab` so screen readers announce the
+  // mutually-exclusive selection correctly and link each tab to its pane.
   const segHtml = ['flow', 'log', 'blocks']
     .map((v) => {
       const isActive = v === activeView;
-      return `<button type="button" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${v}" aria-pressed="${isActive}">${TF_VIEW_LABELS[v]}</button>`;
+      return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${v}" id="tfTab-${v}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[v]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[v]}</button>`;
     })
     .join('');
 
-  el.innerHTML = `<span class="tf-icon" aria-hidden="true">⏱</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="group" aria-label="Select view">${segHtml}</div>`;
+  el.innerHTML = `<span class="tf-icon" aria-hidden="true">⏱</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
 
+  bindSegmentListeners();
+}
+
+/**
+ * Wires click handlers on the segmented-control tabs. Called after every
+ * renderFlowHeader() because the buttons are recreated by innerHTML — kept
+ * separate so renderFlowHeader stays single-purpose (markup only).
+ */
+function bindSegmentListeners() {
   document
     .getElementById('tfSeg')
     ?.querySelectorAll('.tf-seg-btn')
@@ -334,8 +354,7 @@ function renderTodayFlow() {
   renderDayStrip(dateKey);
   renderGapReminder(dateKey);
 
-  const panes = { flow: 'tfFlowPane', log: 'tfLogPane', blocks: 'tfBlocksPane' };
-  Object.entries(panes).forEach(([view, id]) => {
+  Object.entries(TF_PANE_IDS).forEach(([view, id]) => {
     const pane = document.getElementById(id);
     if (pane) pane.style.display = view === activeView ? '' : 'none';
   });
