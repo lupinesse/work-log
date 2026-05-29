@@ -17,6 +17,38 @@
  */
 
 /**
+ * Coerce a raw thread-index value to a non-negative-capable integer, or
+ * `null` when it cannot be safely interpreted.
+ *
+ * Accepts integers and non-empty numeric strings only. `null`, `undefined`,
+ * booleans, objects and — critically — blank or whitespace-only strings are
+ * rejected: `Number('')` and `Number('   ')` both evaluate to `0`, so without
+ * this guard a malformed model response (e.g. `thread_index: ''`) would
+ * silently route a reply to thread `0` instead of being rejected. Bounds are
+ * NOT checked here — callers validate against their own thread count — so an
+ * in-range-looking but out-of-bounds integer is returned as-is; only
+ * un-coercible values become `null`.
+ *
+ * @param {*} raw Candidate index — an integer or a numeric string.
+ * @returns {number|null} The parsed integer, or `null` if not coercible.
+ * @example
+ * coerceThreadIndex(2)      // → 2
+ * coerceThreadIndex('3')    // → 3
+ * coerceThreadIndex('')     // → null   (would otherwise be Number('') === 0)
+ * coerceThreadIndex('  ')   // → null
+ * coerceThreadIndex('1.5')  // → null
+ * coerceThreadIndex(null)   // → null
+ */
+export function coerceThreadIndex(raw) {
+  if (Number.isInteger(raw)) return raw;
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const parsed = Number(raw.trim());
+    if (Number.isInteger(parsed)) return parsed;
+  }
+  return null;
+}
+
+/**
  * Validate and normalise a raw "reply" action object from the AI model's JSON
  * output.
  *
@@ -41,26 +73,14 @@
  *                 the error message so nothing is silently discarded.
  */
 export function normaliseReplyAction(action, threadCount) {
-  // Only coerce string values — null, undefined, boolean, and object types
-  // must NOT be silently coerced to 0 via Number(), so we restrict the
-  // coercion path to typeof 'string'. Blank and whitespace-only strings also
-  // coerce to 0 via Number('') / Number('   '), so trim first and reject the
-  // empty result before handing to Number(); otherwise a malformed model
-  // response (e.g., thread_index: '') would silently post to thread 0.
-  const rawIdx = action.thread_index;
-  let idx;
-  if (Number.isInteger(rawIdx)) {
-    idx = rawIdx;
-  } else if (typeof rawIdx === 'string' && rawIdx.trim() !== '') {
-    idx = Number(rawIdx.trim());
-  } else {
-    idx = NaN;
-  }
+  // Reject non-integers and blank/whitespace strings instead of silently
+  // coercing them to thread 0 (see coerceThreadIndex for the rationale).
+  const idx = coerceThreadIndex(action.thread_index);
 
-  if (!Number.isInteger(idx) || idx < 0 || idx >= threadCount) {
+  if (idx === null || idx < 0 || idx >= threadCount) {
     throw new Error(
       `thread_index ${JSON.stringify(action.thread_index)} is out of range ` +
-      `(valid: 0..${threadCount - 1})`
+        `(valid: 0..${threadCount - 1})`
     );
   }
 
@@ -71,14 +91,14 @@ export function normaliseReplyAction(action, threadCount) {
   if (action.resolve === true && action.unresolve === true) {
     throw new Error(
       `thread_index ${idx}: resolve and unresolve are mutually exclusive — ` +
-      'never set both on the same reply'
+        'never set both on the same reply'
     );
   }
 
   return {
     threadIndex: idx,
-    body:        String(action.body).trim(),
-    resolve:     action.resolve   === true,
-    unresolve:   action.unresolve === true,
+    body: String(action.body).trim(),
+    resolve: action.resolve === true,
+    unresolve: action.unresolve === true,
   };
 }

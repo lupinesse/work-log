@@ -42,6 +42,7 @@ import {
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
+import { coerceThreadIndex } from './lib/parse-reply-action.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -65,20 +66,20 @@ const must = (key) => {
 // ─────────────────────────── config ───────────────────────────
 
 const OPENAI_API_KEY = must('OPENAI_API_KEY');
-const GITHUB_TOKEN   = must('GITHUB_TOKEN');
-const [OWNER, REPO]  = must('GITHUB_REPOSITORY').split('/');
-const PR_NUMBER      = must('PR_NUMBER');
-const HEAD_SHA       = must('HEAD_SHA');
+const GITHUB_TOKEN = must('GITHUB_TOKEN');
+const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
+const PR_NUMBER = must('PR_NUMBER');
+const HEAD_SHA = must('HEAD_SHA');
 
-const MODEL            = process.env.MODEL            || 'gpt-5.4';
+const MODEL = process.env.MODEL || 'gpt-5.4';
 // 'medium' balances CoT depth against token budget; 'high' exhausted 8192
 // tokens entirely on reasoning, leaving nothing for visible output.
 const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
-const MAX_DIFF_CHARS   = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
 // Budget must cover both internal reasoning tokens and the visible reply.
 // 32768 provides headroom for a thorough review even at medium effort.
-const MAX_TOKENS       = parseInt(process.env.MAX_TOKENS || '32768', 10);
-const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '32768', 10);
+const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` (reasoning_effort: \`${REASONING_EFFORT}\`) · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
@@ -121,9 +122,7 @@ function loadDiff() {
     die(`Could not read diff at '${DIFF_PATH}': ${error.message}`);
   }
   if (!raw.trim()) return null;
-  return raw.length > MAX_DIFF_CHARS
-    ? raw.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]'
-    : raw;
+  return raw.length > MAX_DIFF_CHARS ? raw.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]' : raw;
 }
 
 // ─────────────────────────── OpenAI ───────────────────────────
@@ -157,7 +156,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
       // `reasoning_effort`. Reasoning level is the controlling knob.
       messages: [
         { role: 'system', content: PROMPT },
-        { role: 'user',   content: userContent },
+        { role: 'user', content: userContent },
       ],
     }),
   });
@@ -214,22 +213,30 @@ function parseReviewOutput(rawText, existingThreadCount) {
   const rawActions = Array.isArray(parsed.thread_actions)
     ? parsed.thread_actions
     : Array.isArray(parsed.findings)
-      ? parsed.findings.map(f => ({ type: 'new', ...f }))
+      ? parsed.findings.map((f) => ({ type: 'new', ...f }))
       : [];
 
   const actions = [];
   const invalidActions = [];
 
   for (const a of rawActions) {
-    if (!a || typeof a !== 'object') { invalidActions.push(a); continue; }
+    if (!a || typeof a !== 'object') {
+      invalidActions.push(a);
+      continue;
+    }
     const type = a.type || 'new';
     const body = typeof a.body === 'string' ? a.body : null;
-    if (!body) { invalidActions.push(a); continue; }
+    if (!body) {
+      invalidActions.push(a);
+      continue;
+    }
 
     if (type === 'reply') {
-      const idx = Number.isInteger(a.thread_index) ? a.thread_index : Number(a.thread_index);
-      if (!Number.isInteger(idx) || idx < 0 || idx >= existingThreadCount) {
-        console.warn(`  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid range 0..${existingThreadCount - 1}) — moved to fallback`);
+      const idx = coerceThreadIndex(a.thread_index);
+      if (idx === null || idx < 0 || idx >= existingThreadCount) {
+        console.warn(
+          `  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid range 0..${existingThreadCount - 1}) — moved to fallback`
+        );
         invalidActions.push(a);
         continue;
       }
@@ -237,9 +244,15 @@ function parseReviewOutput(rawText, existingThreadCount) {
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
-      const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
+      const line = Number.isInteger(rawLine)
+        ? rawLine
+        : Number.isInteger(Number(rawLine))
+          ? Number(rawLine)
+          : null;
       if (!path || line === null || line <= 0) {
-        console.warn(`  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
+        console.warn(
+          `  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`
+        );
         invalidActions.push(a);
         continue;
       }
@@ -280,7 +293,11 @@ async function postInlineComment(path, line, body) {
     `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments`,
     {
       method: 'POST',
-      headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `token ${GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ body, commit_id: HEAD_SHA, path, line, side: 'RIGHT' }),
     }
   );
@@ -335,11 +352,11 @@ async function main() {
     return;
   }
 
-  const newCount = review.actions.filter(a => a.type === 'new').length;
-  const replyCount = review.actions.filter(a => a.type === 'reply').length;
+  const newCount = review.actions.filter((a) => a.type === 'new').length;
+  const replyCount = review.actions.filter((a) => a.type === 'reply').length;
   console.log(
     `  verdict: ${review.verdict}, new: ${newCount}, replies: ${replyCount}` +
-    (review.invalidActions.length ? `, invalid (fallback): ${review.invalidActions.length}` : '')
+      (review.invalidActions.length ? `, invalid (fallback): ${review.invalidActions.length}` : '')
   );
 
   // Upsert the top-level review (replaces any previous Phase 1 review from
@@ -351,7 +368,9 @@ async function main() {
     marker: REVIEW_MARKER,
     body: reviewBody,
   });
-  console.log(`${replaced ? 'Replaced' : 'Posted'} review (${review.verdict}): ${reviewResult.html_url}`);
+  console.log(
+    `${replaced ? 'Replaced' : 'Posted'} review (${review.verdict}): ${reviewResult.html_url}`
+  );
 
   // Dispatch each action: replies go to existing threads, news create them.
   // Re-raises on resolved threads unresolve them first so Phase 2 picks them
@@ -376,7 +395,9 @@ async function main() {
           commentId: target.firstCommentId,
           body: bodyWithAttribution,
         });
-        console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
+        console.log(
+          `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
+        );
       } else {
         const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
@@ -391,25 +412,27 @@ async function main() {
   // Build the fallback comment from unpostable actions + invalid actions
   // (parse rejects). Nothing the model produced is silently dropped.
   const fallbackEntries = [
-    ...unpostable.map(a => ({
+    ...unpostable.map((a) => ({
       label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
-      body:  a.body,
+      body: a.body,
     })),
-    ...review.invalidActions.map(a => ({
+    ...review.invalidActions.map((a) => ({
       label: '(malformed action)',
-      body:  typeof a?.body === 'string' ? a.body : JSON.stringify(a),
+      body: typeof a?.body === 'string' ? a.body : JSON.stringify(a),
     })),
   ];
   if (fallbackEntries.length > 0) {
     const sections = fallbackEntries
-      .map(f => `**\`${f.label}\`**\n\n${f.body}`)
+      .map((f) => `**\`${f.label}\`**\n\n${f.body}`)
       .join('\n\n---\n\n');
     const { comment, updated } = await upsertIssueComment({
       ...GH_CTX,
       marker: FALLBACK_MARKER,
       body: `${FALLBACK_MARKER}\nThe following actions could not be posted as inline comments or replies:\n\n${sections}\n\n---\n${ATTRIBUTION}`,
     });
-    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`);
+    console.log(
+      `${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`
+    );
   }
 }
 

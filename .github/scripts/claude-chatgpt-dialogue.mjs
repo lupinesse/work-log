@@ -42,11 +42,15 @@ import {
   selectModel,
   shouldFallThrough,
 } from './lib/anthropic-auth.mjs';
+import { coerceThreadIndex } from './lib/parse-reply-action.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
 /** @param {string} msg */
-const die = (msg) => { console.error(msg); process.exit(1); };
+const die = (msg) => {
+  console.error(msg);
+  process.exit(1);
+};
 
 /**
  * @param {string} key
@@ -71,20 +75,22 @@ if (AUTH_CHAIN.length === 0) {
       'or ANTHROPIC_API_KEY'
   );
 }
-console.log(`Auth: ${AUTH_CHAIN.length} candidate(s) → ${AUTH_CHAIN.map((a) => a.source).join(', ')}`);
+console.log(
+  `Auth: ${AUTH_CHAIN.length} candidate(s) → ${AUTH_CHAIN.map((a) => a.source).join(', ')}`
+);
 
-const GITHUB_TOKEN      = must('GITHUB_TOKEN');
-const [OWNER, REPO]     = must('GITHUB_REPOSITORY').split('/');
-const PR_NUMBER         = must('PR_NUMBER');
-const HEAD_SHA          = must('HEAD_SHA');
+const GITHUB_TOKEN = must('GITHUB_TOKEN');
+const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
+const PR_NUMBER = must('PR_NUMBER');
+const HEAD_SHA = must('HEAD_SHA');
 
 // Model defaults to Opus on the (subscription-covered) OAuth path and to a
 // cheaper model on the (per-token-billed) API-key path; MODEL env overrides
 // both. The effective model depends on which credential actually succeeds, so
 // it is resolved per-attempt inside callClaudeApi.
 const MODEL_OVERRIDE = process.env.MODEL || '';
-const MAX_TOKENS     = parseInt(process.env.MAX_TOKENS     || '8192',  10);
-const DIFF_PATH      = process.env.DIFF_PATH      || 'pr.diff';
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
+const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
 
 /** @param {string} model */
@@ -105,7 +111,11 @@ const buildReplyAttribution = (model) =>
  */
 function loadDiff() {
   let raw;
-  try { raw = readFileSync(DIFF_PATH, 'utf8'); } catch (e) { die(`Cannot read diff: ${e.message}`); }
+  try {
+    raw = readFileSync(DIFF_PATH, 'utf8');
+  } catch (e) {
+    die(`Cannot read diff: ${e.message}`);
+  }
   if (!raw.trim()) return null;
   return raw.length > MAX_DIFF_CHARS ? raw.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]' : raw;
 }
@@ -130,14 +140,13 @@ async function fetchChatGptThreads() {
   const all = await fetchAllThreads({
     token: GITHUB_TOKEN,
     owner: OWNER,
-    repo:  REPO,
+    repo: REPO,
     prNumber: parseInt(PR_NUMBER, 10),
   });
-  return all.filter(t =>
-    !t.isResolved &&
-    (t.author.includes('chatgpt') ||
-     t.body.includes('— ChatGPT') ||
-     /^🔴|^🟡|^🔵/.test(t.body))
+  return all.filter(
+    (t) =>
+      !t.isResolved &&
+      (t.author.includes('chatgpt') || t.body.includes('— ChatGPT') || /^🔴|^🟡|^🔵/.test(t.body))
   );
 }
 
@@ -159,18 +168,18 @@ const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseI
  * @returns {Promise<string>} Raw text response.
  */
 async function callClaudeApi(diff, threads) {
-  const threadList = threads.map((t, i) => {
-    // Show the full conversation including any replies. This lets Claude see
-    // its own earlier verdict (if any) and ChatGPT's re-raise on a previously
-    // resolved thread.
-    const replyLines = t.replies.map(r =>
-      `  ↳ ${r.author || 'unknown'}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`
-    ).join('\n');
-    const header = `Thread ${i} | ${t.path}:${t.line}`;
-    return replyLines
-      ? `${header}\n${t.body}\n${replyLines}`
-      : `${header}\n${t.body}`;
-  }).join('\n\n---\n\n');
+  const threadList = threads
+    .map((t, i) => {
+      // Show the full conversation including any replies. This lets Claude see
+      // its own earlier verdict (if any) and ChatGPT's re-raise on a previously
+      // resolved thread.
+      const replyLines = t.replies
+        .map((r) => `  ↳ ${r.author || 'unknown'}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`)
+        .join('\n');
+      const header = `Thread ${i} | ${t.path}:${t.line}`;
+      return replyLines ? `${header}\n${t.body}\n${replyLines}` : `${header}\n${t.body}`;
+    })
+    .join('\n\n---\n\n');
 
   const system = `You are Claude, the implementing author of this pull request and also an AI code reviewer. You have already done your own independent review. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
 
@@ -211,8 +220,8 @@ Output a single raw JSON object — no markdown wrapper:
       method: 'POST',
       headers: {
         ...auth.headers,
-        'anthropic-version':  '2023-06-01',
-        'content-type':       'application/json',
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
       },
       body: JSON.stringify({
         model,
@@ -265,7 +274,10 @@ Output a single raw JSON object — no markdown wrapper:
  * @throws {Error}
  */
 function parseResponse(rawText) {
-  const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
   const parsed = JSON.parse(cleaned);
 
   if (!Array.isArray(parsed.thread_responses) || !parsed.synthesis) {
@@ -276,18 +288,23 @@ function parseResponse(rawText) {
   const invalidResponses = [];
 
   for (const r of parsed.thread_responses) {
-    if (!r || typeof r !== 'object') { invalidResponses.push(r); continue; }
-    const idx = Number.isInteger(r.index) ? r.index
-              : Number.isInteger(Number(r.index)) ? Number(r.index)
-              : null;
+    if (!r || typeof r !== 'object') {
+      invalidResponses.push(r);
+      continue;
+    }
+    // Reject non-integers and blank/whitespace strings instead of silently
+    // coercing them to thread 0 (see coerceThreadIndex for the rationale).
+    const idx = coerceThreadIndex(r.index);
     const reply = typeof r.reply === 'string' ? r.reply : null;
     if (idx === null || !reply) {
-      console.warn(`  invalid thread_response (index=${JSON.stringify(r.index)}, reply=${typeof r.reply}) — moved to fallback`);
+      console.warn(
+        `  invalid thread_response (index=${JSON.stringify(r.index)}, reply=${typeof r.reply}) — moved to fallback`
+      );
       invalidResponses.push(r);
       continue;
     }
     thread_responses.push({
-      index:   idx,
+      index: idx,
       verdict: r.verdict || 'comment',
       reply,
     });
@@ -302,14 +319,23 @@ async function main() {
   console.log(`Claude→ChatGPT dialogue for ${OWNER}/${REPO} PR #${PR_NUMBER}`);
 
   const diff = loadDiff();
-  if (!diff) { console.log('Empty diff — skipping.'); return; }
+  if (!diff) {
+    console.log('Empty diff — skipping.');
+    return;
+  }
 
   const threads = await fetchChatGptThreads();
   console.log(`  Found ${threads.length} unresolved ChatGPT thread(s)`);
-  if (!threads.length) { console.log('  Nothing to respond to — skipping.'); return; }
+  if (!threads.length) {
+    console.log('  Nothing to respond to — skipping.');
+    return;
+  }
 
   const { text: rawText, model: usedModel } = await callClaudeApi(diff, threads);
-  if (!rawText) { console.warn('Empty Claude response — skipping.'); return; }
+  if (!rawText) {
+    console.warn('Empty Claude response — skipping.');
+    return;
+  }
 
   // Attributions name the model that actually responded (which depends on the
   // credential that succeeded), so they are built after the call.
@@ -409,9 +435,12 @@ async function main() {
   // Pass 3 — post synthesis only after all feasible resolutions are complete.
   let synthesisBody = `## Claude's synthesis\n\n${parsed.synthesis}`;
   if (failed.length) {
-    const extras = failed.map(({ tr, thread }) =>
-      `**${thread.path}:${thread.line}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`
-    ).join('\n\n---\n\n');
+    const extras = failed
+      .map(
+        ({ tr, thread }) =>
+          `**${thread.path}:${thread.line}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`
+      )
+      .join('\n\n---\n\n');
     synthesisBody += `\n\n---\n\n**Responses that could not be posted inline:**\n\n${extras}`;
   }
   // Surface any malformed thread_responses the parser couldn't normalise, so
@@ -419,7 +448,7 @@ async function main() {
   // ChatGPT finding.
   if (parsed.invalidResponses.length) {
     const dropped = parsed.invalidResponses
-      .map(r => `\`\`\`json\n${JSON.stringify(r, null, 2)}\n\`\`\``)
+      .map((r) => `\`\`\`json\n${JSON.stringify(r, null, 2)}\n\`\`\``)
       .join('\n\n');
     synthesisBody += `\n\n---\n\n**Malformed thread_responses (could not match to a ChatGPT thread):**\n\n${dropped}`;
   }
