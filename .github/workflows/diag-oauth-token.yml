@@ -1,0 +1,71 @@
+name: Diagnose Anthropic credentials
+
+# One-shot diagnostic. Each job SUCCEEDS only if its credential returns HTTP 200
+# from the Anthropic API, and FAILS otherwise — so the check-run conclusion
+# alone reports validity. The step log/summary holds the exact HTTP status.
+# Delete this workflow, branch, and PR after reading the result.
+on:
+  pull_request:
+    branches: ['main']
+  push:
+    branches: ['diag/test-oauth-token']
+
+permissions:
+  contents: read
+
+jobs:
+  oauth-token-valid:
+    name: CLAUDE_CODE_OAUTH_TOKEN valid (pass=HTTP200)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe OAuth token
+        env:
+          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          if [ -z "$OAUTH_TOKEN" ]; then
+            echo "::error::CLAUDE_CODE_OAUTH_TOKEN is not set or empty"
+            exit 1
+          fi
+          echo "Token present (${#OAUTH_TOKEN} chars). Probing Anthropic API…"
+          HTTP=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            -X POST https://api.anthropic.com/v1/messages \
+            -H "Authorization: Bearer $OAUTH_TOKEN" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')
+          echo "HTTP status: $HTTP"
+          echo "Response body:"; cat /tmp/resp.txt
+          {
+            echo "### CLAUDE_CODE_OAUTH_TOKEN"
+            echo "- HTTP status: \`$HTTP\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$HTTP" = "200" ] || { echo "::error::OAuth token rejected (HTTP $HTTP)"; exit 1; }
+          echo "::notice::OAuth token is valid (HTTP 200)"
+
+  api-key-valid:
+    name: ANTHROPIC_API_KEY valid (pass=HTTP200)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe API key
+        env:
+          API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$API_KEY" ]; then
+            echo "::error::ANTHROPIC_API_KEY is not set or empty"
+            exit 1
+          fi
+          echo "Key present (${#API_KEY} chars). Probing Anthropic API…"
+          HTTP=$(curl -s -o /tmp/resp.txt -w "%{http_code}" \
+            -X POST https://api.anthropic.com/v1/messages \
+            -H "x-api-key: $API_KEY" \
+            -H "anthropic-version: 2023-06-01" \
+            -H "content-type: application/json" \
+            -d '{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}')
+          echo "HTTP status: $HTTP"
+          echo "Response body:"; cat /tmp/resp.txt
+          {
+            echo "### ANTHROPIC_API_KEY"
+            echo "- HTTP status: \`$HTTP\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$HTTP" = "200" ] || { echo "::error::API key rejected (HTTP $HTTP)"; exit 1; }
+          echo "::notice::API key is valid (HTTP 200)"
