@@ -105,7 +105,7 @@ Output your review as a single raw JSON object — no markdown wrapper, no text 
 
 Rules: for "new", path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js) and line must be a real line number in the new (right-side) version of that file. For "reply", thread_index must be one of the integers shown in the existing-threads list below. Only include items you can cite specifically; put general observations in summary instead.
 
-Focus on: correctness (logic errors, edge cases, null/undefined), single-purpose functions (flag any doing more than one thing), informative naming (flag single-letter variables outside tight map/filter chains), error handling (use wlLog.warn/error — never silent catch), test coverage (every new exported function needs a unit test in test/unit.cjs). Ignore auto-generated files: script.js, styles.css, docs/*.html. Be direct and specific; cite file and line for every finding.`;
+Focus on: correctness (logic errors, edge cases, null/undefined), single-purpose functions (flag any doing more than one thing), informative naming (flag single-letter variables outside tight map/filter chains), error handling (use wlLog.warn/error — never silent catch), test coverage (every new exported function in .github/scripts/lib/ needs a unit test — tests live in .github/scripts/test/*.test.mjs, not test/unit.cjs which does not exist). Ignore auto-generated files: script.js, styles.css, docs/*.html. Be direct and specific; cite file and line for every finding.`;
 
 const PROMPT = process.env.PROMPT || DEFAULT_PROMPT;
 
