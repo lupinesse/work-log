@@ -34,9 +34,9 @@ function loadPlan() {
         total: all.length,
         kept: planTasks.length,
       });
-  } catch (e) {
+  } catch (err) {
     planTasks = [];
-    wlLog.error('loadPlan: failed to parse plan tasks from localStorage', e);
+    wlLog.error('loadPlan: failed to parse plan tasks from localStorage', err);
   }
 }
 
@@ -60,36 +60,38 @@ function flatSort(tasks) {
   // Assumption: STATUS_ORDER defines the canonical sort priority for visible task sections.
   // 'done' sorts last so completed work doesn't push active items down.
   const STATUS_ORDER = { inprogress: 0, todo: 1, pending: 2, blocked: 3, done: 4 };
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   const liveText = liveEntry ? liveEntry.text.toLowerCase() : null;
 
-  const parents = tasks.filter((t) => !t.parentId);
-  const children = tasks.filter((t) => !!t.parentId);
-  const sorted = [...parents].sort((a, b) => {
-    const aLive = liveText && a.text.toLowerCase() === liveText;
-    const bLive = liveText && b.text.toLowerCase() === liveText;
+  const parents = tasks.filter((task) => !task.parentId);
+  const children = tasks.filter((task) => !!task.parentId);
+  const sorted = [...parents].sort((taskA, taskB) => {
+    const aLive = liveText && taskA.text.toLowerCase() === liveText;
+    const bLive = liveText && taskB.text.toLowerCase() === liveText;
     if (aLive && !bLive) return -1;
     if (!aLive && bLive) return 1;
-    const aOrd = STATUS_ORDER[a.status || 'todo'] ?? 1;
-    const bOrd = STATUS_ORDER[b.status || 'todo'] ?? 1;
+    const aOrd = STATUS_ORDER[taskA.status || 'todo'] ?? 1;
+    const bOrd = STATUS_ORDER[taskB.status || 'todo'] ?? 1;
     if (aOrd !== bOrd) return aOrd - bOrd;
     // Within the same status: higher priority first (high=1, normal=0, low=-1)
-    const aPri = a.priority || 0;
-    const bPri = b.priority || 0;
+    const aPri = taskA.priority || 0;
+    const bPri = taskB.priority || 0;
     if (aPri !== bPri) return bPri - aPri;
-    return a.text.localeCompare(b.text);
+    return taskA.text.localeCompare(taskB.text);
   });
   // Insert children right after their parent
   const result = [];
-  sorted.forEach((p) => {
-    result.push(p);
+  sorted.forEach((parentTask) => {
+    result.push(parentTask);
     const kids = children
-      .filter((c) => c.parentId === p.id)
-      .sort((a, b) => a.text.localeCompare(b.text));
-    kids.forEach((k) => result.push(k));
+      .filter((child) => child.parentId === parentTask.id)
+      .sort((childA, childB) => childA.text.localeCompare(childB.text));
+    kids.forEach((kid) => result.push(kid));
   });
   // Orphaned children (parent deleted/moved) go at end
-  children.filter((c) => !parents.find((p) => p.id === c.parentId)).forEach((c) => result.push(c));
+  children
+    .filter((child) => !parents.find((parent) => parent.id === child.parentId))
+    .forEach((orphan) => result.push(orphan));
   return result;
 }
 
@@ -119,8 +121,8 @@ function addPlanTask() {
 
 // Event listeners bound at parse time — safe because script runs after DOM is built.
 document.getElementById('planAddBtn').addEventListener('click', addPlanTask);
-document.getElementById('planInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addPlanTask();
+document.getElementById('planInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') addPlanTask();
 });
 document.getElementById('planHeader').addEventListener('click', () => {
   planCollapsed = !planCollapsed;
