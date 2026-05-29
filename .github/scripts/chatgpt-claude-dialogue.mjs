@@ -255,27 +255,41 @@ async function callOpenAI(diff, claudeContext) {
 **CRITICAL — Claude is the implementing author. Claude's verdict on a finding is FINAL:**
 
 - If Claude rejected a finding with ❌ \`disagree\`: do NOT re-raise it. Move on.
-- If Claude accepted with ✅ \`agree_fix\`: trust the stated fix. Only follow up if the diff clearly does NOT contain the promised fix.
+- If Claude accepted with ✅ \`agree_fix\`: do NOT trust the claim blind. Claude's reply describes WHAT was changed (e.g., "Will replace the silent catch with wlLog.warn") — locate that exact change in the current diff at the relevant file/line. Then:
+  - **Fix is present, thread does NOT yet show your verification reply** → post a reply starting with "✅ Verified as fixed" (briefly say what you checked, e.g., "wlLog.warn now in place at 12-meetings.js:73") and set \`resolve: true\` so the thread closes and the merge-gate clears.
+  - **Fix is present, thread already shows "✅ Verified as fixed" from a prior Phase 4 run** → omit. Do not re-post the same confirmation; you are idempotent.
+  - **Fix is absent** (the change Claude described isn't in the diff, or a later commit reverted it) → post a reply starting with "🔁 Reopened —" and quote the line(s) where the fix should appear but doesn't. Set \`unresolve: true\` if the thread is currently resolved. That tells Claude's next Phase 2 run to re-evaluate.
+  - The same verification rule applies when Claude's synthesis or \`/pr-review\` verdict claims something is "now fixed" or "addressed in commit X": confirm against the diff before trusting.
 - If Claude accepted with 👍 \`agree_noted\` (acknowledged but deferred): do not re-raise.
 - If Claude responded ↔️ \`partial\`: you may follow up on the rejected part, but only with new evidence — not a restatement.
 
-**CRITICAL — never duplicate an existing thread:**
+**CRITICAL — scan ALL threads (resolved AND open) before raising anything:**
+
+The threads list above shows every review thread on this PR with its resolution state and Claude's verdict reply. Walk it before choosing any action — re-raising a finding an earlier thread already covered (even as a "new" thread on a different line) is the most common Phase 4 failure mode.
 
 For each concern you have, choose one action:
-- **reply** to an existing thread when the concern overlaps with one already shown above (same file/line, same root cause, related issue on a nearby line, or a follow-up to your own earlier finding). Bias toward replying. This is the main way to keep the comment count under control.
-- **new** only when the concern is genuinely novel — no existing thread touches the same code or root cause.
+- **reply with \`resolve: true\`** — when you've verified Claude's \`agree_fix\` change is present in the current diff and the thread does NOT already show your "✅ Verified as fixed" confirmation. Body must start with "✅ Verified as fixed" and briefly state what you checked. This both audits the verification and closes the thread for the merge-gate.
+- **reply with \`unresolve: true\`** — when the issue regressed: the thread was resolved (or already showed your "Verified as fixed" from a prior run) but Claude's promised change is no longer in the diff. Body must start with "🔁 Reopened —" and quote the missing change. Reserved for genuine regressions; do not use it to re-litigate a finding Claude rejected with ❌ \`disagree\`.
+- **omit entirely** (do not add to thread_actions) when the thread is already in a stable state — you previously posted "✅ Verified as fixed" and nothing has changed, OR Claude resolved it with \`disagree\` / \`agree_noted\` and you accept that. Silence is the correct signal once verification is on record; re-posting the same confirmation every run is noise.
+- **reply** (no flag) when the concern overlaps with an existing thread (same file/line, same root cause, related issue on a nearby line, follow-up to your own earlier finding) but is NOT fully addressed. Bias toward replying — this is the main way to keep the comment count under control.
+- **new** only when the concern is genuinely novel — no existing thread (resolved or open) touches the same code or root cause. If you have to argue with yourself that "this is technically different from thread N", choose reply instead.
 
-When replying to a **resolved** thread, set "unresolve": true if your reply is a regression / re-raise (the issue is back despite an earlier verdict). That re-opens the thread so Claude re-evaluates and posts a fresh verdict. Leave "unresolve" off for replies that just add context to an already-fixed thread. Re-raising is reserved for genuine regressions — do not use it to re-litigate a finding Claude rejected with ❌ disagree.
+**Verdict:** pick **APPROVE** when every concern you'd otherwise raise is already covered (resolved with a visible fix, freshly verified with "✅ Verified as fixed", or open with Claude's ✅ \`agree_fix\` verdict — those open threads are tracked by the merge-gate and don't justify a REQUEST_CHANGES from you). Pick **REQUEST_CHANGES** only when at least one \`new\` action is a genuinely novel, blocking concern, or you posted a "🔁 Reopened" on a regression of a blocking finding. Pick **COMMENT** for non-blocking observations or when you're only posting verification confirmations and replies.
 
-If everything you'd want to say belongs in existing threads (or has already been addressed by Claude), produce an empty thread_actions array and say so in the summary. That is the expected outcome on a thorough review.
+**Reply flags (\`resolve\` / \`unresolve\`):** mutually exclusive — never set both on the same reply.
+- \`resolve: true\` — close the thread after posting. Use only with a "✅ Verified as fixed" reply. No-op if the thread is already resolved.
+- \`unresolve: true\` — re-open a resolved thread before posting. Use only with a "🔁 Reopened —" regression reply. No-op if the thread is already open.
+- Neither set — reply is added with no change to resolution state.
+
+If everything you'd want to say belongs in existing threads (or has already been addressed by Claude and you've already posted the verification on a prior run), produce an empty thread_actions array and say so in the summary. That is the expected outcome on a thorough review with no regressions.
 
 Output a single raw JSON object — no markdown wrapper:
 {
   "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
-  "summary": "<3-5 sentences: your overall response to Claude's verdict, what still concerns you (only NEW concerns), what you consider resolved>",
+  "summary": "<3-5 sentences: your overall response to Claude's verdict, what you verified as fixed, what regressed (if anything), what new concerns remain>",
   "thread_actions": [
     { "type": "new",   "path": "<file path from diff>", "line": <integer>, "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking>" },
-    { "type": "reply", "thread_index": <integer matching a thread above>, "unresolve": false, "body": "<your follow-up — reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related concern on this line:')>" }
+    { "type": "reply", "thread_index": <integer matching a thread above>, "resolve": false, "unresolve": false, "body": "<for verifications: '✅ Verified as fixed — <what you checked>'. For regressions: '🔁 Reopened — <quote missing change>'. For other follow-ups: plain markdown.>" }
   ]
 }`;
 
