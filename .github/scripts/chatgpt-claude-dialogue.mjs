@@ -66,8 +66,8 @@ const HEAD_SHA       = must('HEAD_SHA');
 
 const MODEL          = process.env.MODEL          || 'gpt-4.1';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
-const MAX_TOKENS       = parseInt(process.env.MAX_TOKENS     || '16384', 10);
-const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
+const MAX_TOKENS     = parseInt(process.env.MAX_TOKENS     || '16384', 10);
+const DIFF_PATH      = process.env.DIFF_PATH      || 'pr.diff';
 
 const ATTRIBUTION = `*ChatGPT \`${MODEL}\` responding to Claude's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
