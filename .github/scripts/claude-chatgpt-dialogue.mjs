@@ -91,8 +91,11 @@ function loadDiff() {
  * will be re-evaluated — the reply history lets Claude see what the prior
  * verdict was and what ChatGPT said when re-raising.
  *
- * Identifies the bot by its login containing 'chatgpt' (case-insensitive)
- * OR by a 🔴/🟡/🔵 finding-prefix in the body (tolerates token fallback).
+ * Identifies the bot by its login containing 'chatgpt' (case-insensitive),
+ * OR by the '— ChatGPT' attribution text that chatgpt-review.mjs always
+ * appends (REPLY_ATTRIBUTION), OR by a 🔴/🟡/🔵 finding-prefix in the body.
+ * The attribution check is the most reliable fallback when running under the
+ * default github-actions[bot] token, where the login test fails.
  *
  * @returns {Promise<Array>}
  */
@@ -138,7 +141,10 @@ async function fetchChatGptThreads() {
     const first = t.comments.nodes[0];
     if (!first) return false;
     const login = (first.author?.login || '').toLowerCase();
-    return login.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
+    const bodyText = first.body || '';
+    return login.includes('chatgpt') ||
+           bodyText.includes('— ChatGPT') ||
+           /^🔴|^🟡|^🔵/.test(bodyText);
   });
 }
 
@@ -259,10 +265,17 @@ Output a single raw JSON object — no markdown wrapper:
 
 /**
  * @typedef {{ index: number, verdict: string, reply: string }} ThreadResponse
- * @typedef {{ thread_responses: ThreadResponse[], synthesis: string }} DialogueResponse
+ * @typedef {{ thread_responses: ThreadResponse[], invalidResponses: unknown[], synthesis: string }} DialogueResponse
  */
 
 /**
+ * Parse Claude's raw response. Normalises recoverable values (numeric-string
+ * indices are coerced; missing verdict defaults to "comment") and collects
+ * unrecoverable entries in `invalidResponses` so the caller can surface them
+ * in the synthesis comment instead of silently dropping them — keeping the
+ * "every finding gets a reply" guarantee even when the model occasionally
+ * returns a malformed entry.
+ *
  * @param {string} rawText
  * @returns {DialogueResponse}
  * @throws {Error}
@@ -274,16 +287,29 @@ function parseResponse(rawText) {
   if (!Array.isArray(parsed.thread_responses) || !parsed.synthesis) {
     throw new Error('Missing required fields: thread_responses, synthesis');
   }
-  return {
-    thread_responses: parsed.thread_responses
-      .filter(r => Number.isInteger(r.index) && typeof r.reply === 'string')
-      .map(r => ({
-        index:   r.index,
-        verdict: r.verdict || 'comment',
-        reply:   r.reply,
-      })),
-    synthesis: String(parsed.synthesis),
-  };
+
+  const thread_responses = [];
+  const invalidResponses = [];
+
+  for (const r of parsed.thread_responses) {
+    if (!r || typeof r !== 'object') { invalidResponses.push(r); continue; }
+    const idx = Number.isInteger(r.index) ? r.index
+              : Number.isInteger(Number(r.index)) ? Number(r.index)
+              : null;
+    const reply = typeof r.reply === 'string' ? r.reply : null;
+    if (idx === null || !reply) {
+      console.warn(`  invalid thread_response (index=${JSON.stringify(r.index)}, reply=${typeof r.reply}) — moved to fallback`);
+      invalidResponses.push(r);
+      continue;
+    }
+    thread_responses.push({
+      index:   idx,
+      verdict: r.verdict || 'comment',
+      reply,
+    });
+  }
+
+  return { thread_responses, invalidResponses, synthesis: String(parsed.synthesis) };
 }
 
 // ─────────────────────────── main ───────────────────────────
@@ -399,6 +425,15 @@ async function main() {
       return `**${c.path}:${c.originalLine}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`;
     }).join('\n\n---\n\n');
     synthesisBody += `\n\n---\n\n**Responses that could not be posted inline:**\n\n${extras}`;
+  }
+  // Surface any malformed thread_responses the parser couldn't normalise, so
+  // a missing/garbled entry doesn't silently swallow a verdict on a real
+  // ChatGPT finding.
+  if (parsed.invalidResponses.length) {
+    const dropped = parsed.invalidResponses
+      .map(r => `\`\`\`json\n${JSON.stringify(r, null, 2)}\n\`\`\``)
+      .join('\n\n');
+    synthesisBody += `\n\n---\n\n**Malformed thread_responses (could not match to a ChatGPT thread):**\n\n${dropped}`;
   }
   synthesisBody += `\n\n---\n${ATTRIBUTION}`;
 

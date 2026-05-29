@@ -142,9 +142,23 @@ function claudeVerdictForThread(thread) {
   return null;
 }
 
+// Markers Claude's other phases write into their issue comments. The
+// final-review marker is the HTML comment that pr-review.yml and the
+// claude-final-review job in chatgpt-pr-review.yml insert at the top of
+// every /pr-review verdict comment; checking it directly is more robust
+// than substring-matching "/pr-review" in the attribution footer (which
+// would break if the attribution wording changed).
+const FINAL_REVIEW_MARKER = '<!-- claude-pr-review-comment -->';
+const SYNTHESIS_MARKER_PHRASE = "Claude's synthesis";
+
 /**
  * Fetch Claude's issue comments (synthesis + final /pr-review verdict)
- * from the PR.
+ * from the PR. Identified by body markers, not author login — so the lookup
+ * tolerates token-fallback cases where the comment is posted by
+ * github-actions[bot] rather than the Claude Reviewer App. Falls back to a
+ * "/pr-review" substring match for comments written before the marker was
+ * introduced.
+ *
  * @returns {Promise<{synthesis: string|null, finalReview: string|null}>}
  */
 async function fetchClaudeIssueComments() {
@@ -157,11 +171,13 @@ async function fetchClaudeIssueComments() {
 
   let synthesis   = null;
   let finalReview = null;
-  // Walk newest-first; identify by body content only so the lookup tolerates
-  // token-fallback cases (comment posted by github-actions[bot]).
+  // Walk newest-first so we pick up the latest version of each.
   for (const c of [...comments].reverse()) {
-    if (!synthesis && c.body.includes("Claude's synthesis")) synthesis = c.body;
-    if (!finalReview && c.body.includes('/pr-review')) finalReview = c.body;
+    const body = c.body || '';
+    if (!synthesis && body.includes(SYNTHESIS_MARKER_PHRASE)) synthesis = body;
+    if (!finalReview && (body.includes(FINAL_REVIEW_MARKER) || body.includes('/pr-review'))) {
+      finalReview = body;
+    }
     if (synthesis && finalReview) break;
   }
   return { synthesis, finalReview };
