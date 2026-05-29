@@ -179,7 +179,7 @@ describe('postInlineComment', () => {
     assert.deepStrictEqual(result, payload);
   });
 
-  test('sends X-GitHub-Api-Version: 2022-11-28 (regression — was missing before lib extraction)', async (t) => {
+  test('includes X-GitHub-Api-Version: 2022-11-28 in the request headers', async (t) => {
     const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
       makeResponse({ id: 1, html_url: 'https://github.com/' })
     );
