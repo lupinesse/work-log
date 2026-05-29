@@ -509,8 +509,9 @@ function initRapid() {
       const parsed = parseRapidTokens(inp.value, categories);
       // Use the token-stripped text for task-list filtering
       _qcSearch = parsed.text;
-      // Auto-activate the category chip when a #cat token is recognised
-      if (parsed.tag) _qcFilterCat = parsed.tag;
+      // Auto-activate the category chip when a #cat token is recognised;
+      // clear it again when the token is removed.
+      _qcFilterCat = parsed.tag || null;
       _qcRenderCatChips();
       _qcRenderTaskList();
       _qcRenderTokenPreview(parsed);

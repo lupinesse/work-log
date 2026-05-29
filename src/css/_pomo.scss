@@ -184,7 +184,7 @@
 }
 
 .pomo-rdot-filled {
-  color: #c62828;
+  color: var(--pomo-spark-fill);
 }
 
 .pomo-rdot-empty {
@@ -197,7 +197,7 @@
   padding: 2px 9px;
   border-radius: 99px;
   background: rgba(198, 40, 40, 0.12);
-  color: #c62828;
+  color: var(--pomo-spark-fill);
   border: 0.5px solid rgba(198, 40, 40, 0.35);
   white-space: nowrap;
   font-weight: 500;
