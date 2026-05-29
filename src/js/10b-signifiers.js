@@ -1,13 +1,13 @@
 // ── 10b-signifiers.js — Entry signifiers ──
 
-// null/undefined = no signifier (neutral). Cycle: none → event → … → overtime → none
+// null/undefined = billable (default, displayed as ●). Cycle: none → event → … → overtime → none
 const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
 const SIG_SYMBOL = {
-  event: '📅',
-  flagged: '🚩',
-  migrated: '📤',
-  cancelled: '❌',
-  overtime: '⏰',
+  event: '○',
+  flagged: '★',
+  migrated: '→',
+  cancelled: '✗',
+  overtime: '!',
 };
 const SIG_TITLE = {
   event: 'Meeting / event',
@@ -23,7 +23,7 @@ const SIG_TITLE = {
  * @returns {string} Emoji or '·'.
  */
 function sigSymbol(entry) {
-  return SIG_SYMBOL[entry.signifier] || '·';
+  return SIG_SYMBOL[entry.signifier] || '●';
 }
 
 /**
@@ -32,7 +32,7 @@ function sigSymbol(entry) {
  * @returns {string}
  */
 function sigTitle(entry) {
-  return SIG_TITLE[entry.signifier] || 'No signifier';
+  return SIG_TITLE[entry.signifier] || 'Billable';
 }
 
 /**
