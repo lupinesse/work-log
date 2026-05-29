@@ -10,8 +10,15 @@ const POMO_SPARKLINE_DAYS = 28;
 const POMO_RIBBON_DOT_COUNT = 5;
 
 /**
+ * @typedef {Object} PomoSessionEntry
+ * @property {number} ts - Unix timestamp ms when the session was logged.
+ * @property {number} mins - Duration of the session in minutes.
+ * @property {string|null} task - Task name linked to the session, or null if none.
+ */
+
+/**
  * Returns the number of completed pomodoro sessions on the given date.
- * @param {Array<{ts:number,mins:number,task:string|null}>} log - Session log.
+ * @param {PomoSessionEntry[]} log - Session log.
  * @param {string} dateKey - Date in YYYY-MM-DD format.
  * @returns {number}
  */
