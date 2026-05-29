@@ -41,6 +41,7 @@ import {
   upsertIssueComment,
 } from './lib/github-threads.mjs';
 import { normaliseReplyAction, coerceThreadIndex } from './lib/parse-reply-action.mjs';
+import { normaliseGithubVerdict } from './lib/parse-verdict.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -369,12 +370,9 @@ function parseResponse(rawText, threadCount) {
     .trim();
   const parsed = JSON.parse(cleaned);
 
-  if (!parsed.verdict || !parsed.summary) {
-    throw new Error('Missing required fields: verdict, summary');
-  }
-  const validVerdicts = ['APPROVE', 'REQUEST_CHANGES', 'COMMENT'];
-  if (!validVerdicts.includes(parsed.verdict)) {
-    throw new Error(`Unexpected verdict value: ${JSON.stringify(parsed.verdict)}`);
+  const verdict = normaliseGithubVerdict(parsed.verdict);
+  if (!parsed.summary) {
+    throw new Error('Missing required fields: summary');
   }
 
   const rawActions = Array.isArray(parsed.thread_actions)
@@ -391,7 +389,15 @@ function parseResponse(rawText, threadCount) {
       invalidActions.push(a);
       continue;
     }
-    const type = a.type || 'new';
+    // Trim and validate type; absent type defaults to 'new'. Unknown values
+    // (e.g. true, "NEW", "new ") are rejected to invalidActions so they don't
+    // silently post as inline comments.
+    const type = typeof a.type === 'string' ? a.type.trim() : 'new';
+    if (type !== 'new' && type !== 'reply') {
+      console.warn(`  unknown action type ${JSON.stringify(a.type)} — moved to fallback`);
+      invalidActions.push(a);
+      continue;
+    }
     const body = typeof a.body === 'string' ? a.body.trim() : null;
     if (!body) {
       invalidActions.push(a);
@@ -424,7 +430,7 @@ function parseResponse(rawText, threadCount) {
   }
 
   return {
-    verdict: parsed.verdict,
+    verdict,
     summary: String(parsed.summary),
     actions,
     invalidActions,
