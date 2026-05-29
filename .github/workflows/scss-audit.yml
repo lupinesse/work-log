@@ -1,0 +1,123 @@
+name: SCSS Architecture Audit
+
+# Runs the /scss-audit skill on every PR push that touches SCSS files and
+# posts a report of BEM violations, excessive nesting, !important usage,
+# magic numbers, and undeclared variables.
+#
+# Required secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token; optional if ANTHROPIC_API_KEY is set
+#   ANTHROPIC_API_KEY           — Anthropic API key; fallback when OAuth token is absent or expired
+#   CLAUDE_REVIEWER_APP_ID      — App ID of the "Claude Reviewer" GitHub App
+#   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "src/css/**"
+
+jobs:
+  scss-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Write diff to pr.diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Check auth is present
+        id: key-check
+        env:
+          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping SCSS audit."
+          fi
+
+      - name: Run SCSS audit
+        if: steps.key-check.outputs.present == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            unset CLAUDE_CODE_OAUTH_TOKEN
+          fi
+          claude -p "/scss-audit" \
+            --model claude-sonnet-4-6 \
+            --allowedTools "Read" "Grep" "Glob" \
+                           "Bash(cat:*)" "Bash(wc:*)" \
+            > scss-output.txt 2>&1
+          echo "SCSS audit complete ($(wc -l < scss-output.txt) lines)"
+
+      - name: Mint Claude Reviewer App token
+        id: claude-token
+        if: always() && steps.key-check.conclusion != 'skipped'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
+
+      - name: Post or update SCSS report as PR comment
+        if: always() && steps.key-check.conclusion != 'skipped'
+        env:
+          GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
+          GH_REPO:    ${{ github.repository }}
+          PR_NUMBER:  ${{ github.event.pull_request.number }}
+          HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
+          REPO:       ${{ github.repository }}
+        run: |
+          MARKER='<!-- claude-scss-audit-comment -->'
+          if [ -f scss-output.txt ]; then
+            {
+              echo "$MARKER"
+              cat scss-output.txt
+              echo ""
+              echo "---"
+              echo "*Automated audit by [Claude Code](https://claude.ai/claude-code) \`/scss-audit\` · commit \`${HEAD_SHA::7}\`*"
+            } > comment-body.txt
+          else
+            {
+              echo "$MARKER"
+              echo "> ⚠️ SCSS audit skipped — no API credentials configured."
+            } > comment-body.txt
+          fi
+
+          PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
+
+          if [ -n "$PREV_ID" ]; then
+            echo "Updating existing comment $PREV_ID"
+            gh api "repos/$REPO/issues/comments/$PREV_ID" \
+              --method PATCH \
+              --field body=@comment-body.txt
+          else
+            echo "Posting new comment"
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+              --method POST \
+              --field body=@comment-body.txt
+          fi

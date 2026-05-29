@@ -1,0 +1,58 @@
+name: Dead Code Detection
+
+# Runs the /dead-code skill on a weekly schedule and on manual dispatch.
+# Maps all exports in src/js/ against all import sites to find symbols
+# that are never consumed. Commits the dated report to docs/dead-code-reports/.
+#
+# Required secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN — Claude subscription token; optional if ANTHROPIC_API_KEY is set
+#   ANTHROPIC_API_KEY       — Anthropic API key; fallback when OAuth token is absent or expired
+
+on:
+  schedule:
+    # 09:30 UTC every Monday — runs after weekly-qa-review.yml (09:00 UTC)
+    - cron: "30 9 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  dead-code:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run dead code detection
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            unset CLAUDE_CODE_OAUTH_TOKEN
+          fi
+          claude -p "/dead-code" \
+            --model claude-sonnet-4-6 \
+            --allowedTools "Read" "Grep" "Glob" "Write" \
+                           "Bash(cat:*)" "Bash(wc:*)"
+
+      - name: Commit the report
+        run: |
+          git config user.name "dead-code-bot"
+          git config user.email "dead-code-bot@users.noreply.github.com"
+          if [ -n "$(git status --porcelain docs/dead-code-reports/)" ]; then
+            git add docs/dead-code-reports/
+            git commit -m "Add weekly dead code report"
+            git push
+          else
+            echo "No new report to commit."
+          fi
