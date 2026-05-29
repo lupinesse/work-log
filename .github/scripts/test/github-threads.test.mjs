@@ -27,7 +27,7 @@ function makeResponse(body, status = 200) {
     ok:   status >= 200 && status < 300,
     status,
     text: async () => bodyText,
-    json: async () => (typeof body === 'string' ? body : body),
+    json: async () => body,
   };
 }
 
@@ -96,12 +96,9 @@ describe('fetchAllIssueComments', () => {
     const page1 = Array.from({ length: 100 }, (_, i) => ({ id: i + 1 }));
     const page2 = [{ id: 101, body: 'last comment' }];
 
-    const fetchMock = t.mock.method(globalThis, 'fetch', async (url) => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
       callCount++;
-      // Verify the page query parameter increments correctly.
-      const pageParam = new URL(url).searchParams.get('page');
       return makeResponse(callCount === 1 ? page1 : page2);
-      void pageParam; // validated implicitly via callCount
     });
 
     const result = await fetchAllIssueComments(ctx);

@@ -381,7 +381,7 @@ function parseResponse(rawText, threadCount) {
         invalidActions.push(a);
         continue;
       }
-      actions.push({ type: 'reply', body, ...normalised });
+      actions.push({ type: 'reply', ...normalised });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
