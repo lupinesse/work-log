@@ -566,6 +566,127 @@ function parseRapidTokens(raw, cats, now) {
   return { text, tag, signifier, date };
 }
 
+/* ── Export grouping ── */
+
+/**
+ * Removes a leading Jira issue key (e.g. `ABC-123: ` or `ABC-123 `) from a task
+ * label, leaving the human-readable summary. Used when building the pasteable
+ * billable summary so issue keys do not clutter the client-facing line.
+ * @param {string} text - The raw task label.
+ * @returns {string} The label with any leading Jira key stripped and trimmed.
+ * @example
+ * stripJiraPrefix('PROJ-42: Fix login')  // → 'Fix login'
+ * stripJiraPrefix('Write tests')         // → 'Write tests'
+ */
+function stripJiraPrefix(text) {
+  return text.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
+}
+
+/**
+ * Groups a day's log entries by category and, within each category, by task
+ * (case-insensitively), preserving first-seen order. Accumulates tracked time
+ * (where `tsEnd > ts`) per task and per category.
+ *
+ * Pure data transform — reads only entry fields and performs no formatting, so
+ * the caller decides how to render the durations and labels.
+ *
+ * @param {Array<Object>} dayEntries - Entries for the viewed day.
+ * @returns {{catOrder: string[], catGrouped: Object}} `catOrder` is the list of
+ *   category keys in first-seen order; `catGrouped[catKey]` is
+ *   `{ totalMs, tasks: { [taskKey]: { label, totalMs, hasTime } }, taskOrder }`.
+ */
+function groupEntriesByCategory(dayEntries) {
+  const catOrder = [];
+  const catGrouped = {};
+  dayEntries.forEach((entry) => {
+    const catKey = entry.tag || 'other';
+    const taskKey = entry.text.toLowerCase();
+    if (!catGrouped[catKey]) {
+      catOrder.push(catKey);
+      catGrouped[catKey] = { totalMs: 0, tasks: {}, taskOrder: [] };
+    }
+    if (!catGrouped[catKey].tasks[taskKey]) {
+      catGrouped[catKey].taskOrder.push(taskKey);
+      catGrouped[catKey].tasks[taskKey] = { label: entry.text, totalMs: 0, hasTime: false };
+    }
+    if (entry.tsEnd && entry.tsEnd > entry.ts) {
+      const ms = entry.tsEnd - entry.ts;
+      catGrouped[catKey].totalMs += ms;
+      catGrouped[catKey].tasks[taskKey].totalMs += ms;
+      catGrouped[catKey].tasks[taskKey].hasTime = true;
+    }
+  });
+  return { catOrder, catGrouped };
+}
+
+/**
+ * Merges same-task entries that are separated by no more than `gapMs` into a
+ * single block, carrying the merged end time on a `_end` property.
+ *
+ * Rationale: the default 30-minute gap matches the billing rounding unit —
+ * splitting a task at a gap shorter than one slot would produce two entries that
+ * each round to the same half-hour anyway, while making the summary harder to
+ * read. Input is not mutated; entries are sorted by start time first.
+ *
+ * @param {Array<Object>} entries - Entries to merge (each with `ts`, optional `tsEnd`, `text`).
+ * @param {number} [gapMs=1800000] - Maximum gap, in ms, to bridge (default 30 min).
+ * @returns {Array<Object>} New entry objects, each with a `_end` timestamp.
+ */
+function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
+  const sorted = [...entries].sort((a, b) => a.ts - b.ts);
+  const out = [];
+  for (const entry of sorted) {
+    const prev = out[out.length - 1];
+    if (
+      prev &&
+      prev.text.toLowerCase() === entry.text.toLowerCase() &&
+      entry.ts - (prev._end || prev.ts) <= gapMs
+    ) {
+      prev._end = Math.max(prev._end || prev.ts, entry.tsEnd || entry.ts);
+    } else {
+      out.push({ ...entry, _end: entry.tsEnd || entry.ts });
+    }
+  }
+  return out;
+}
+
+/**
+ * Builds the parts of the pasteable billable summary from merged billable
+ * entries. Categorised tasks are grouped as `Category (task1, task2)`;
+ * uncategorised tasks (no tag or `other`) are listed bare. Order of first
+ * appearance is preserved and duplicate task names are de-duplicated.
+ *
+ * @param {Array<Object>} mergedEntries - Output of {@link mergeAdjacentEntries}.
+ * @param {(tag: string) => string} getCatLabel - Resolves a category key to its
+ *   display label. Injected so this function stays free of global state.
+ * @returns {string[]} Summary parts, ready to be joined with `, `.
+ */
+function buildBillableSummaryParts(mergedEntries, getCatLabel) {
+  const summaryOrder = [];
+  const summaryGroups = {};
+  const summaryUngrouped = [];
+  mergedEntries.forEach((entry) => {
+    const taskName = stripJiraPrefix(entry.text);
+    if (!entry.tag || entry.tag === 'other') {
+      if (!summaryUngrouped.includes(taskName)) summaryUngrouped.push(taskName);
+    } else {
+      if (!summaryGroups[entry.tag]) {
+        summaryOrder.push(entry.tag);
+        summaryGroups[entry.tag] = { label: getCatLabel(entry.tag), tasks: [] };
+      }
+      if (!summaryGroups[entry.tag].tasks.includes(taskName)) {
+        summaryGroups[entry.tag].tasks.push(taskName);
+      }
+    }
+  });
+  return [
+    ...summaryOrder.map(
+      (key) => `${summaryGroups[key].label} (${summaryGroups[key].tasks.join(', ')})`
+    ),
+    ...summaryUngrouped,
+  ];
+}
+
 // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
 // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
 // this block is skipped — functions remain as globals in the closure.
@@ -592,5 +713,9 @@ if (typeof module !== 'undefined') {
     validJiraCsvRow,
     resolveRapidDate,
     parseRapidTokens,
+    stripJiraPrefix,
+    groupEntriesByCategory,
+    mergeAdjacentEntries,
+    buildBillableSummaryParts,
   };
 }

@@ -48,6 +48,10 @@ const {
   validJiraCsvRow,
   resolveRapidDate,
   parseRapidTokens,
+  stripJiraPrefix,
+  groupEntriesByCategory,
+  mergeAdjacentEntries,
+  buildBillableSummaryParts,
 } = sandbox;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -1933,4 +1937,158 @@ describe('parseRapidTokens', () => {
     assert.equal(r.text, 'task #work');
     assert.equal(r.tag, null);
   });
+});
+
+// ── stripJiraPrefix ───────────────────────────────────────────────────────────
+describe('stripJiraPrefix', () => {
+  it('strips a "KEY-123: " prefix', () =>
+    assert.equal(stripJiraPrefix('PROJ-42: Fix login'), 'Fix login'));
+  it('strips a "KEY-123 " prefix (space separator)', () =>
+    assert.equal(stripJiraPrefix('ABC-7 Write docs'), 'Write docs'));
+  it('handles alphanumeric project keys', () =>
+    assert.equal(stripJiraPrefix('AB12-9: Task'), 'Task'));
+  it('leaves text without a Jira key unchanged', () =>
+    assert.equal(stripJiraPrefix('Write tests'), 'Write tests'));
+  it('does not strip a lowercase pseudo-key', () =>
+    assert.equal(stripJiraPrefix('proj-42: keep'), 'proj-42: keep'));
+  it('trims surrounding whitespace', () => assert.equal(stripJiraPrefix('  spaced  '), 'spaced'));
+});
+
+// ── groupEntriesByCategory ─────────────────────────────────────────────────────
+describe('groupEntriesByCategory', () => {
+  it('groups by category and task, preserving first-seen order', () => {
+    const entries = [
+      { text: 'A', tag: 'work', ts: 0, tsEnd: 1000 },
+      { text: 'B', tag: 'admin', ts: 2000, tsEnd: 3000 },
+      { text: 'A', tag: 'work', ts: 4000, tsEnd: 5000 },
+    ];
+    const { catOrder, catGrouped } = groupEntriesByCategory(entries);
+    assert.deepEqual([...catOrder], ['work', 'admin']);
+    assert.deepEqual([...catGrouped.work.taskOrder], ['a']);
+    assert.equal(catGrouped.work.totalMs, 2000);
+    assert.equal(catGrouped.work.tasks.a.totalMs, 2000);
+    assert.equal(catGrouped.work.tasks.a.label, 'A');
+    assert.equal(catGrouped.work.tasks.a.hasTime, true);
+  });
+
+  it('treats a missing tag as "other"', () => {
+    const { catOrder } = groupEntriesByCategory([{ text: 'X', ts: 0, tsEnd: 10 }]);
+    assert.deepEqual([...catOrder], ['other']);
+  });
+
+  it('marks entries with no duration as hasTime=false and totalMs=0', () => {
+    const { catGrouped } = groupEntriesByCategory([{ text: 'X', tag: 'work', ts: 100 }]);
+    assert.equal(catGrouped.work.tasks.x.hasTime, false);
+    assert.equal(catGrouped.work.totalMs, 0);
+  });
+
+  it('keeps the original-case label from the first occurrence', () => {
+    const { catGrouped } = groupEntriesByCategory([
+      { text: 'Task One', tag: 'work', ts: 0, tsEnd: 1 },
+      { text: 'task one', tag: 'work', ts: 2, tsEnd: 3 },
+    ]);
+    assert.equal(catGrouped.work.tasks['task one'].label, 'Task One');
+  });
+
+  it('returns empty structures for no entries', () => {
+    const { catOrder, catGrouped } = groupEntriesByCategory([]);
+    assert.equal(catOrder.length, 0);
+    assert.equal(Object.keys(catGrouped).length, 0);
+  });
+});
+
+// ── mergeAdjacentEntries ───────────────────────────────────────────────────────
+describe('mergeAdjacentEntries', () => {
+  const MIN = 60000;
+
+  it('merges same-task entries within the default 30-min gap', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'A', ts: 0, tsEnd: 10 * MIN },
+      { text: 'A', ts: 30 * MIN, tsEnd: 40 * MIN },
+    ]);
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0]._end, 40 * MIN);
+  });
+
+  it('does not merge across a gap larger than the threshold', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'A', ts: 0, tsEnd: 10 * MIN },
+      { text: 'A', ts: 50 * MIN, tsEnd: 60 * MIN },
+    ]);
+    assert.equal(merged.length, 2);
+  });
+
+  it('does not merge different tasks even when adjacent', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'A', ts: 0, tsEnd: 10 * MIN },
+      { text: 'B', ts: 11 * MIN, tsEnd: 12 * MIN },
+    ]);
+    assert.equal(merged.length, 2);
+  });
+
+  it('sorts by start time before merging', () => {
+    const merged = mergeAdjacentEntries([
+      { text: 'A', ts: 30 * MIN, tsEnd: 40 * MIN },
+      { text: 'A', ts: 0, tsEnd: 10 * MIN },
+    ]);
+    assert.equal(merged.length, 1);
+    assert.equal(merged[0].ts, 0);
+    assert.equal(merged[0]._end, 40 * MIN);
+  });
+
+  it('respects a custom gap argument', () => {
+    // 6-minute gap between the first end (10 min) and the second start (16 min)
+    const entries = [
+      { text: 'A', ts: 0, tsEnd: 10 * MIN },
+      { text: 'A', ts: 16 * MIN, tsEnd: 20 * MIN },
+    ];
+    assert.equal(mergeAdjacentEntries(entries, 5 * MIN).length, 2); // gap exceeds 5 min
+    assert.equal(mergeAdjacentEntries(entries, 10 * MIN).length, 1); // gap within 10 min
+  });
+
+  it('does not mutate the input array or its objects', () => {
+    const input = [{ text: 'A', ts: 0, tsEnd: 10 }];
+    const snapshot = JSON.stringify(input);
+    mergeAdjacentEntries(input);
+    assert.equal(JSON.stringify(input), snapshot);
+  });
+});
+
+// ── buildBillableSummaryParts ──────────────────────────────────────────────────
+describe('buildBillableSummaryParts', () => {
+  const label = (tag) => ({ work: 'Work', dev: 'Dev' })[tag] || tag;
+
+  it('groups categorised tasks as "Category (task, task)"', () => {
+    const parts = buildBillableSummaryParts(
+      [
+        { text: 'PROJ-1: Build', tag: 'work' },
+        { text: 'Review', tag: 'work' },
+      ],
+      label
+    );
+    assert.deepEqual([...parts], ['Work (Build, Review)']);
+  });
+
+  it('lists uncategorised tasks bare (no tag or "other")', () => {
+    const parts = buildBillableSummaryParts(
+      [{ text: 'Standup', tag: 'other' }, { text: 'Email' }],
+      label
+    );
+    assert.deepEqual([...parts], ['Standup', 'Email']);
+  });
+
+  it('preserves first-seen category order and de-duplicates task names', () => {
+    const parts = buildBillableSummaryParts(
+      [
+        { text: 'Code', tag: 'dev' },
+        { text: 'Plan', tag: 'work' },
+        { text: 'Code', tag: 'dev' },
+      ],
+      label
+    );
+    assert.deepEqual([...parts], ['Dev (Code)', 'Work (Plan)']);
+  });
+
+  it('returns an empty array for no entries', () =>
+    assert.equal(buildBillableSummaryParts([], label).length, 0));
 });
