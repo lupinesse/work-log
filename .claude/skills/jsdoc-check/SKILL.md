@@ -54,8 +54,11 @@ A block is **complete** if it has all of the following:
 1. A non-empty description on the first line (not just `@param` tags).
 2. One `@param {type} name — description` tag for each parameter in the
    signature (variadic `...args` counts as one param).
-3. A `@returns {type} description` tag if the function has a `return`
-   statement (void functions: `@returns` optional but appreciated).
+3. A `@returns {type} description` tag if the function returns a value.
+   This includes functions with an explicit `return` statement AND
+   concise arrow functions with an implicit return body
+   (e.g. `export const fn = (x) => x + 1` — no `return` keyword but
+   still returns a value). Void functions: `@returns` optional.
 
 Classify each exported symbol:
 

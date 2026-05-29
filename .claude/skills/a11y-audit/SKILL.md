@@ -30,8 +30,9 @@ wc -l pr.diff 2>/dev/null || echo "missing"
   Read `pr.diff` to identify changed `.html`, `.js`, and `.scss` files.
 - **Local run** (`pr.diff` absent): scan all of the following:
   - `work-log.html` (the main HTML entry point)
-  - `src/js/*.js` (for dynamically created DOM)
-  - `src/css/*.scss` (for visibility, focus, and contrast issues)
+  - `src/**/*.html` (any HTML files under src/)
+  - `src/js/**/*.js` (for dynamically created DOM)
+  - `src/css/**/*.scss` (for visibility, focus, and contrast issues)
 
 ## Step 2 — HTML static checks
 

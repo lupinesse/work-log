@@ -76,14 +76,14 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: always() && steps.key-check.conclusion != 'skipped'
+        if: steps.key-check.outputs.present == 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Post or update JSDoc report as PR comment
-        if: always() && steps.key-check.conclusion != 'skipped'
+        if: steps.key-check.outputs.present == 'true'
         env:
           GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
           GH_REPO:    ${{ github.repository }}

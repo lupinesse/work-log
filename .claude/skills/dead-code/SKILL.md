@@ -53,6 +53,7 @@ elsewhere.
 
 For each exported symbol `<file>:<name>`:
 
+**Named exports** (`export function foo`, `export const foo`, `export class foo`):
 1. Grep for `<name>` across all other `src/js/` files, `build.js`,
    `build-portable.js`, `smoke-tests.cjs`, and `test/unit.cjs`.
 2. If zero references found outside the declaring file → **Dead export**.
@@ -60,6 +61,21 @@ For each exported symbol `<file>:<name>`:
    → **Test-only export** (note separately — may be intentional).
 4. If the declaring module is listed as a dynamic import target → **Possibly
    used** (cannot confirm statically).
+
+**Default exports** (`export default function`, `export default class`, etc.):
+Do NOT grep for the literal string `default` — that matches unrelated code
+(switch-case defaults, etc.). Instead, grep for the module's **file path** (or
+its basename without extension) to find import sites:
+
+```
+Grep: from './<basename>' OR from "../<basename>" across src/js/
+```
+
+If a file imports the module under any local alias
+(`import renderer from './05-render.js'`), that counts as a consumed default
+export. If no import site references the file path → **Possibly dead default
+export** (mark as ⚠️ since default exports are harder to confirm statically
+than named exports).
 
 **Note:** `export default` functions used as the module's public API may be
 called by the build concatenation rather than via ES imports. Cross-check
