@@ -26,7 +26,12 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { upsertIssueComment } from './lib/github-threads.mjs';
+import {
+  fetchAllThreads,
+  replyToThread,
+  resolveThread,
+  upsertIssueComment,
+} from './lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -63,13 +68,6 @@ const ATTRIBUTION = `*Claude \`${MODEL}\` responding to ChatGPT's review · comm
 // manual gh CLI run) actually posts the comment.
 const REPLY_ATTRIBUTION = `\n\n<sub>_— Claude \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
 
-const GH_HEADERS = {
-  Authorization:          `token ${GITHUB_TOKEN}`,
-  Accept:                 'application/vnd.github+json',
-  'X-GitHub-Api-Version': '2022-11-28',
-  'Content-Type':         'application/json',
-};
-
 // ─────────────────────────── diff ───────────────────────────
 
 /**
@@ -85,98 +83,32 @@ function loadDiff() {
 // ─────────────────────────── GitHub ───────────────────────────
 
 /**
- * Fetch all unresolved review threads from the ChatGPT Reviewer App, with
- * full reply history. Re-raised threads (unresolved by ChatGPT after Claude
- * resolved them with an earlier verdict) come back through this query and
- * will be re-evaluated — the reply history lets Claude see what the prior
- * verdict was and what ChatGPT said when re-raising.
+ * Fetch all unresolved review threads posted by the ChatGPT Reviewer App.
  *
- * Identifies the bot by its login containing 'chatgpt' (case-insensitive),
- * OR by the '— ChatGPT' attribution text that chatgpt-review.mjs always
- * appends (REPLY_ATTRIBUTION), OR by a 🔴/🟡/🔵 finding-prefix in the body.
- * The attribution check is the most reliable fallback when running under the
- * default github-actions[bot] token, where the login test fails.
+ * Delegates to the shared {@link fetchAllThreads} helper, then filters for
+ * ChatGPT-authored threads by login, attribution text, or finding-prefix
+ * emoji. The attribution check is the most reliable fallback when running
+ * under the default github-actions[bot] token, where the login test fails.
  *
- * @returns {Promise<Array>}
+ * Threads are returned as {@link import('./lib/github-threads.mjs').ThreadSummary}
+ * objects — callers use `.firstCommentId`, `.path`, `.line`, `.body`, and
+ * `.replies` rather than the raw GraphQL `comments.nodes` shape.
+ *
+ * @returns {Promise<import('./lib/github-threads.mjs').ThreadSummary[]>}
  */
 async function fetchChatGptThreads() {
-  const query = `
-    query($owner:String!, $name:String!, $number:Int!) {
-      repository(owner:$owner, name:$name) {
-        pullRequest(number:$number) {
-          reviewThreads(first:100) {
-            nodes {
-              id
-              isResolved
-              comments(first:20) {
-                nodes {
-                  databaseId
-                  author { login }
-                  body
-                  path
-                  originalLine
-                }
-              }
-            }
-          }
-        }
-      }
-    }`;
-
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: GH_HEADERS,
-    body: JSON.stringify({
-      query,
-      variables: { owner: OWNER, name: REPO, number: parseInt(PR_NUMBER, 10) },
-    }),
+  const all = await fetchAllThreads({
+    token: GITHUB_TOKEN,
+    owner: OWNER,
+    repo:  REPO,
+    prNumber: parseInt(PR_NUMBER, 10),
   });
-
-  if (!response.ok) die(`GitHub GraphQL ${response.status}: ${await response.text()}`);
-  const data = await response.json();
-  if (data.errors) die(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-
-  return data.data.repository.pullRequest.reviewThreads.nodes.filter(t => {
-    if (t.isResolved) return false;
-    const first = t.comments.nodes[0];
-    if (!first) return false;
-    const login = (first.author?.login || '').toLowerCase();
-    const bodyText = first.body || '';
-    return login.includes('chatgpt') ||
-           bodyText.includes('— ChatGPT') ||
-           /^🔴|^🟡|^🔵/.test(bodyText);
-  });
-}
-
-/**
- * Post a reply into an existing inline review thread.
- * @param {number} commentId  REST API integer ID of the first comment in the thread.
- * @param {string} body
- * @returns {Promise<object>}
- */
-async function replyToThread(commentId, body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/comments/${commentId}/replies`,
-    { method: 'POST', headers: GH_HEADERS, body: JSON.stringify({ body }) }
+  return all.filter(t =>
+    !t.isResolved &&
+    (t.author.includes('chatgpt') ||
+     t.body.includes('— ChatGPT') ||
+     /^🔴|^🟡|^🔵/.test(t.body))
   );
-  if (!response.ok) throw new Error(`Reply API ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
-/**
- * Resolve a review thread via GraphQL.
- * @param {string} threadId  GraphQL node ID.
- */
-async function resolveThread(threadId) {
-  const mutation = `mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}`;
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: GH_HEADERS,
-    body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
-  });
-  if (!response.ok) throw new Error(`Resolve API ${response.status}: ${await response.text()}`);
-  const data = await response.json();
-  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
 }
 
 // Marker for the synthesis comment. Stable across runs so the comment is
@@ -198,18 +130,16 @@ const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseI
  */
 async function callClaudeApi(diff, threads) {
   const threadList = threads.map((t, i) => {
-    const c = t.comments.nodes[0];
     // Show the full conversation including any replies. This lets Claude see
     // its own earlier verdict (if any) and ChatGPT's re-raise on a previously
     // resolved thread.
-    const replyLines = t.comments.nodes.slice(1).map(r => {
-      const author = (r.author?.login || 'unknown').toLowerCase();
-      return `  ↳ ${author}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`;
-    }).join('\n');
-    const header = `Thread ${i} | ${c.path}:${c.originalLine}`;
+    const replyLines = t.replies.map(r =>
+      `  ↳ ${r.author || 'unknown'}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`
+    ).join('\n');
+    const header = `Thread ${i} | ${t.path}:${t.line}`;
     return replyLines
-      ? `${header}\n${c.body}\n${replyLines}`
-      : `${header}\n${c.body}`;
+      ? `${header}\n${t.body}\n${replyLines}`
+      : `${header}\n${t.body}`;
   }).join('\n\n---\n\n');
 
   const system = `You are Claude, the implementing author of this pull request and also an AI code reviewer. You have already done your own independent review. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
@@ -362,13 +292,13 @@ async function main() {
       continue;
     }
 
-    const commentId = thread.comments.nodes[0]?.databaseId;
+    const commentId = thread.firstCommentId;
     const emoji = verdictEmoji[tr.verdict] || '💬';
     const replyBody = `${emoji} ${tr.reply}${REPLY_ATTRIBUTION}`;
 
     let posted = false;
     try {
-      const reply = await replyToThread(commentId, replyBody);
+      const reply = await replyToThread({ ...GH_CTX, commentId, body: replyBody });
       posted = true;
       console.log(`  replied thread[${tr.index}]: ${reply.html_url}`);
     } catch (err) {
@@ -385,7 +315,7 @@ async function main() {
   for (const [idx, { posted, thread, verdict }] of replyResults) {
     if (posted && RESOLVABLE.has(verdict)) {
       try {
-        await resolveThread(thread.id);
+        await resolveThread({ token: GITHUB_TOKEN, threadId: thread.id });
         console.log(`  resolved thread[${idx}]`);
       } catch (err) {
         console.warn(`  resolve failed thread[${idx}]: ${err.message}`);
@@ -409,7 +339,7 @@ async function main() {
     const verdict = verdictById.get(t.id);
     if (verdict && RESOLVABLE.has(verdict)) {
       try {
-        await resolveThread(t.id);
+        await resolveThread({ token: GITHUB_TOKEN, threadId: t.id });
         console.log(`  retroactive resolve: ${t.id.slice(-8)}`);
       } catch (err) {
         console.warn(`  retroactive resolve failed: ${err.message}`);
@@ -420,10 +350,9 @@ async function main() {
   // Pass 3 — post synthesis only after all feasible resolutions are complete.
   let synthesisBody = `## Claude's synthesis\n\n${parsed.synthesis}`;
   if (failed.length) {
-    const extras = failed.map(({ tr, thread }) => {
-      const c = thread.comments.nodes[0];
-      return `**${c.path}:${c.originalLine}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`;
-    }).join('\n\n---\n\n');
+    const extras = failed.map(({ tr, thread }) =>
+      `**${thread.path}:${thread.line}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`
+    ).join('\n\n---\n\n');
     synthesisBody += `\n\n---\n\n**Responses that could not be posted inline:**\n\n${extras}`;
   }
   // Surface any malformed thread_responses the parser couldn't normalise, so

@@ -168,5 +168,7 @@ jobs:
               --field body=@comment-body.txt
           else
             echo "Posting new comment (no previous found)"
-            gh pr comment "$PR_NUMBER" --body-file comment-body.txt
+            gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+              --method POST \
+              --field body=@comment-body.txt
           fi
