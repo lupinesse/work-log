@@ -1200,6 +1200,17 @@ async function runTests() {
           { id: 'c3', text: 'Step three', done: false },
         ],
       },
+      {
+        id: 'cp3',
+        text: 'Zero progress task',
+        tag: 'work',
+        status: 'todo',
+        date: today,
+        checkpoints: [
+          { id: 'c4', text: 'Unticked A', done: false },
+          { id: 'c5', text: 'Unticked B', done: false },
+        ],
+      },
       { id: 'cp2', text: 'Task no steps', tag: 'work', status: 'todo', date: today },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
@@ -1207,7 +1218,12 @@ async function runTests() {
 
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('cp-badge rendered for task with checkpoints', planHtml.includes('cp-badge'));
-    assert('Badge shows correct fraction (1/3)', planHtml.includes('1/3'));
+    // Phase 3: badge uses ✓ K/N format when progress exists, plain K/N otherwise
+    assert(
+      'Badge shows ✓-prefixed fraction when progress exists (✓ 1/3)',
+      planHtml.includes('✓ 1/3')
+    );
+    assert('Badge shows plain fraction when nothing done (0/2)', planHtml.includes('0/2'));
     assert('+ steps badge on task with no checkpoints', planHtml.includes('+ steps'));
 
     // Open checkpoints by clicking the badge — fail loudly if the badge is missing
