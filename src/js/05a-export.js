@@ -70,6 +70,28 @@ function exportTxt() {
 /* ── JSON backup / restore ── */
 
 /**
+ * Reads and parses an optional JSON-array log from localStorage for inclusion
+ * in a backup. If the stored value is present but not valid JSON, the failure
+ * is logged via {@link wlLog} (so the data loss is diagnosable rather than
+ * silent) and an empty array is returned so the rest of the backup still
+ * succeeds. Absent keys legitimately yield an empty array.
+ * @param {string} storeKey - The localStorage key to read.
+ * @param {string} label    - Human-readable log name for the warning message.
+ * @returns {Array} The parsed array, or `[]` if absent or unparseable.
+ */
+function readOptionalLogForBackup(storeKey, label) {
+  try {
+    return JSON.parse(localStorage.getItem(storeKey) || '[]');
+  } catch (e) {
+    wlLog.warn(
+      `exportBackup: ${label} in localStorage is not valid JSON — backing up an empty array for it; the corrupt data is excluded from this backup`,
+      e
+    );
+    return [];
+  }
+}
+
+/**
  * Exports a full JSON backup of all application state: entries, categories,
  * plan tasks, time blocks, pomodoro log, dev log, distractions, and hidden
  * quick-pick items. Triggers a file download or writes to the save folder.
@@ -82,27 +104,9 @@ function exportBackup() {
     categories,
     planTasks,
     blocks,
-    pomoLog: (() => {
-      try {
-        return JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-      } catch (e) {
-        return [];
-      }
-    })(),
-    devLog: (() => {
-      try {
-        return JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-      } catch (e) {
-        return [];
-      }
-    })(),
-    distractions: (() => {
-      try {
-        return JSON.parse(localStorage.getItem(STORE_DISTRACTIONS) || '[]');
-      } catch (e) {
-        return [];
-      }
-    })(),
+    pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
+    devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),
+    distractions: readOptionalLogForBackup(STORE_DISTRACTIONS, 'distractions'),
     qpHidden: [...qpHidden],
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });

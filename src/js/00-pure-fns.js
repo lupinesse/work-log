@@ -623,12 +623,18 @@ function groupEntriesByCategory(dayEntries) {
  * Merges same-task entries that are separated by no more than `gapMs` into a
  * single block, carrying the merged end time on a `_end` property.
  *
- * Rationale: the default 30-minute gap matches the billing rounding unit —
- * splitting a task at a gap shorter than one slot would produce two entries that
- * each round to the same half-hour anyway, while making the summary harder to
- * read. Input is not mutated; entries are sorted by start time first.
+ * Two entries merge only when they share the same task text *and* the same
+ * category (`tag`, with a missing tag normalised to `other`). Category is part
+ * of the key so that two adjacent entries with the same label but different
+ * categories are not collapsed — otherwise the later category would be lost from
+ * the exported billable summary, which reads `tag` from the merged block.
  *
- * @param {Array<Object>} entries - Entries to merge (each with `ts`, optional `tsEnd`, `text`).
+ * Rationale for the gap: the default 30-minute window matches the billing
+ * rounding unit — splitting a task at a gap shorter than one slot would produce
+ * two entries that each round to the same half-hour anyway, while making the
+ * summary harder to read. Input is not mutated; entries are sorted by start time first.
+ *
+ * @param {Array<Object>} entries - Entries to merge (each with `ts`, optional `tsEnd`, `text`, `tag`).
  * @param {number} [gapMs=1800000] - Maximum gap, in ms, to bridge (default 30 min).
  * @returns {Array<Object>} New entry objects, each with a `_end` timestamp.
  */
@@ -640,6 +646,7 @@ function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
     if (
       prev &&
       prev.text.toLowerCase() === entry.text.toLowerCase() &&
+      (prev.tag || 'other') === (entry.tag || 'other') &&
       entry.ts - (prev._end || prev.ts) <= gapMs
     ) {
       prev._end = Math.max(prev._end || prev.ts, entry.tsEnd || entry.ts);

@@ -30,9 +30,13 @@ async function getSavedDir() {
         _cachedDirHandle = get.result || null;
         res(_cachedDirHandle);
       };
-      get.onerror = () => res(null);
+      get.onerror = () => {
+        wlLog.warn('getSavedDir: IndexedDB read failed; treating as no saved folder', get.error);
+        res(null);
+      };
     });
   } catch (e) {
+    wlLog.warn('getSavedDir: could not open IndexedDB; treating as no saved folder', e);
     return null;
   }
 }
@@ -51,7 +55,13 @@ async function storeDirHandle(handle) {
       const tx = db.transaction('handles', 'readwrite');
       tx.objectStore('handles').put(handle, 'saveDir');
       tx.oncomplete = () => res();
-      tx.onerror = () => res();
+      tx.onerror = () => {
+        wlLog.warn(
+          'storeDirHandle: IndexedDB write failed; the chosen folder will not persist across sessions',
+          tx.error
+        );
+        res();
+      };
     });
   } catch (e) {
     wlLog.warn('saveDirHandle: failed to persist FSA handle to IndexedDB', e);
@@ -104,7 +114,7 @@ async function writeExportFile(subfolder, filename, blob) {
         return;
       }
     } catch (e) {
-      console.warn('[wl] FSA write failed, falling back to download:', e);
+      wlLog.warn('writeExportFile: FSA write failed, falling back to browser download', e);
     }
   }
   // Fallback: browser download
@@ -136,7 +146,8 @@ async function pickSaveFolder() {
     await storeDirHandle(handle);
     renderFolderStatus();
   } catch (e) {
-    if (e.name !== 'AbortError') console.error(e);
+    // AbortError = user dismissed the folder picker; not an error worth logging
+    if (e.name !== 'AbortError') wlLog.error('pickSaveFolder: folder selection failed', e);
   }
 }
 
