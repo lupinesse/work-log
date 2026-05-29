@@ -65,19 +65,19 @@ function flatSort(tasks) {
 
   const parents = tasks.filter((task) => !task.parentId);
   const children = tasks.filter((task) => !!task.parentId);
-  const sorted = [...parents].sort((a, b) => {
-    const aLive = liveText && a.text.toLowerCase() === liveText;
-    const bLive = liveText && b.text.toLowerCase() === liveText;
+  const sorted = [...parents].sort((taskA, taskB) => {
+    const aLive = liveText && taskA.text.toLowerCase() === liveText;
+    const bLive = liveText && taskB.text.toLowerCase() === liveText;
     if (aLive && !bLive) return -1;
     if (!aLive && bLive) return 1;
-    const aOrd = STATUS_ORDER[a.status || 'todo'] ?? 1;
-    const bOrd = STATUS_ORDER[b.status || 'todo'] ?? 1;
+    const aOrd = STATUS_ORDER[taskA.status || 'todo'] ?? 1;
+    const bOrd = STATUS_ORDER[taskB.status || 'todo'] ?? 1;
     if (aOrd !== bOrd) return aOrd - bOrd;
     // Within the same status: higher priority first (high=1, normal=0, low=-1)
-    const aPri = a.priority || 0;
-    const bPri = b.priority || 0;
+    const aPri = taskA.priority || 0;
+    const bPri = taskB.priority || 0;
     if (aPri !== bPri) return bPri - aPri;
-    return a.text.localeCompare(b.text);
+    return taskA.text.localeCompare(taskB.text);
   });
   // Insert children right after their parent
   const result = [];
@@ -85,7 +85,7 @@ function flatSort(tasks) {
     result.push(parentTask);
     const kids = children
       .filter((child) => child.parentId === parentTask.id)
-      .sort((a, b) => a.text.localeCompare(b.text));
+      .sort((childA, childB) => childA.text.localeCompare(childB.text));
     kids.forEach((kid) => result.push(kid));
   });
   // Orphaned children (parent deleted/moved) go at end
