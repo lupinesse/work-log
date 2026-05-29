@@ -128,7 +128,7 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: always() && steps.key-check.result != 'skipped'
+        if: always() && steps.key-check.conclusion != 'skipped'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
@@ -137,7 +137,7 @@ jobs:
       - name: Post or update review as PR comment
         # Updates the previous /pr-review comment in place (matched by marker)
         # rather than stacking a new one per push. Keeps the PR thread clean.
-        if: always() && steps.key-check.result != 'skipped'
+        if: always() && steps.key-check.conclusion != 'skipped'
         env:
           # App-installation token; comment posts as the "Claude Reviewer" App
           # rather than the generic github-actions[bot]. Falls back to the
