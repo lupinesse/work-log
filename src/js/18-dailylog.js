@@ -6,7 +6,7 @@
  * Entry items include `entryId` so the Today's Flow renderers can look up the
  * underlying entry object for live-timer state.
  * @param {string} dateKey - YYYY-MM-DD date string.
- * @returns {Array<{ts: number, type: string, entryId?: string, color: string, text: string, sub: string}>}
+ * @returns {Array<{ts: number, type: string, entryId: (string|undefined), color: string, text: string, sub: string}>}
  */
 function buildDailyLogItems(dateKey) {
   const items = [];
