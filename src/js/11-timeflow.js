@@ -23,8 +23,8 @@ const TF_PANE_IDS = { flow: 'tfFlowPane', log: 'tfLogPane', blocks: 'tfBlocksPan
  * @returns {'flow'|'log'|'blocks'}
  */
 function getFlowView() {
-  const v = localStorage.getItem(STORE_FLOW_VIEW);
-  return v === 'log' || v === 'blocks' ? v : 'flow';
+  const stored = localStorage.getItem(STORE_FLOW_VIEW);
+  return stored === 'log' || stored === 'blocks' ? stored : 'flow';
 }
 
 /**
@@ -120,13 +120,13 @@ function renderDayStrip(dateKey) {
   // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
   if (activeTimer && isToday(viewDate)) {
-    const le = entries.find((e) => e.id === activeTimer.entryId);
-    if (le && le.date === dateKey) {
-      const liveEndMins = tsToMins(le.ts + activeTimerDurationMs(le));
-      const left = stripPct(Math.max(TF_STRIP_START, tsToMins(le.ts)));
+    const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+    if (liveEntry && liveEntry.date === dateKey) {
+      const liveEndMins = tsToMins(liveEntry.ts + activeTimerDurationMs(liveEntry));
+      const left = stripPct(Math.max(TF_STRIP_START, tsToMins(liveEntry.ts)));
       const right = stripPct(Math.min(TF_STRIP_END, liveEndMins));
       if (right > left) {
-        const cat = getCat(le.tag);
+        const cat = getCat(liveEntry.tag);
         liveBar = `<div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${cat.color}"></div>`;
       }
     }
@@ -224,11 +224,11 @@ function renderFlowHeader(dateKey, activeView) {
 
   // Include live timer duration so both totals update while tracking
   if (activeTimer && isToday(viewDate)) {
-    const le = entries.find((e) => e.id === activeTimer.entryId);
-    if (le && le.date === dateKey && !le.tsEnd) {
-      const liveMs = activeTimerDurationMs(le);
+    const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+    if (liveEntry && liveEntry.date === dateKey && !liveEntry.tsEnd) {
+      const liveMs = activeTimerDurationMs(liveEntry);
       totalMs += liveMs;
-      if (isEntryBillable(le)) billMs += liveMs;
+      if (isEntryBillable(liveEntry)) billMs += liveMs;
     }
   }
 
