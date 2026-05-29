@@ -4,27 +4,21 @@
  *
  * 1. Fetch all unresolved inline threads posted by the ChatGPT Reviewer App.
  * 2. Call Claude API with the diff + all threads as context.
- * 3. Claude evaluates each finding (agree / disagree / partial) and replies.
- * 4. Post each reply to the thread, then resolve the thread.
- * 5. Post Claude's synthesis as a PR issue comment.
- *
- * Falls back gracefully: thread replies that fail (permissions, etc.) are
- * collected and included in the synthesis comment so nothing is lost.
+ * 3. Claude evaluates each finding and replies inline (agree_fix / agree_noted
+ *    / disagree / partial). Disagree and agree_noted threads are resolved.
+ * 4. Posts a fallback issue comment ONLY when replies fail to post inline.
  *
  * Required env vars:
  *   One Anthropic credential (OAuth token preferred, API key as fallback):
- *     CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`) — uses your
- *                              Claude subscription at no extra API cost.
- *     ANTHROPIC_API_KEY        Standard Anthropic API key — used only when the
- *                              OAuth token is absent (billed per-token).
+ *     CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`)
+ *     ANTHROPIC_API_KEY        Standard Anthropic API key (fallback)
  *   GITHUB_TOKEN             GitHub auth (Claude Reviewer App token or fallback)
  *   GITHUB_REPOSITORY        "owner/repo" — auto-set by Actions
  *   PR_NUMBER                Pull-request number
  *   HEAD_SHA                 Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL              overrides the per-source default (OAuth → 'claude-opus-4-7',
- *                      API key → 'claude-haiku-4-5' to limit per-token cost)
+ *   MODEL              Override model (default 'claude-sonnet-4-6')
  *   MAX_TOKENS         default 8192
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 40000
@@ -84,10 +78,7 @@ const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
-// Model defaults to Opus on the (subscription-covered) OAuth path and to a
-// cheaper model on the (per-token-billed) API-key path; MODEL env overrides
-// both. The effective model depends on which credential actually succeeds, so
-// it is resolved per-attempt inside callClaudeApi.
+// Both credential paths default to claude-sonnet-4-6; MODEL env overrides.
 const MODEL_OVERRIDE = process.env.MODEL || '';
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
@@ -150,9 +141,7 @@ async function fetchChatGptThreads() {
   );
 }
 
-// Marker for the synthesis comment. Stable across runs so the comment is
-// updated in place rather than stacking a new one per push.
-const SYNTHESIS_MARKER = "Claude's synthesis";
+const FALLBACK_MARKER = '<!-- claude-phase2-fallback -->';
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
 
 // ─────────────────────────── Claude API ───────────────────────────
@@ -202,8 +191,7 @@ Output a single raw JSON object — no markdown wrapper:
       "verdict": "agree_fix" | "agree_noted" | "disagree" | "partial",
       "reply": "<2-4 sentences — must include the reasoning required by the verdict above. Never just 'agree' or 'disagree'.>"
     }
-  ],
-  "synthesis": "<3-5 sentences: key issues in the PR, how ChatGPT's findings compare to your own read, what still needs attention>"
+  ]
 }`;
 
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
@@ -290,18 +278,16 @@ async function main() {
     parsed = parseResponse(rawText, threads.length);
   } catch (e) {
     console.warn(`JSON parse failed (${e.message}) — posting raw as fallback.`);
-    // Use the synthesis marker so a parse-failure run still replaces (rather
-    // than duplicates) the previous synthesis comment.
     const { comment, updated } = await upsertIssueComment({
       ...GH_CTX,
-      marker: SYNTHESIS_MARKER,
-      body: `${SYNTHESIS_MARKER} (parse failed)\n\n${rawText}\n\n---\n${attribution}`,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\n${rawText}\n\n---\n${attribution}`,
     });
     console.log(`${updated ? 'Updated' : 'Posted'} fallback comment: ${comment.html_url}`);
     return;
   }
 
-  console.log(`  ${parsed.thread_responses.length} response(s) + synthesis`);
+  console.log(`  ${parsed.thread_responses.length} response(s)`);
 
   const verdictEmoji = { agree_fix: '✅', agree_noted: '👍', disagree: '❌', partial: '↔️' };
   // Only auto-resolve threads where no fix is required. agree_fix and partial
@@ -375,8 +361,9 @@ async function main() {
     }
   }
 
-  // Pass 3 — post synthesis only after all feasible resolutions are complete.
-  let synthesisBody = `## Claude's synthesis\n\n${parsed.synthesis}`;
+  // Post a fallback comment only when replies failed or the parser dropped
+  // entries — preserves every finding rather than silently discarding it.
+  const fallbackParts = [];
   if (failed.length) {
     const extras = failed
       .map(
@@ -384,25 +371,24 @@ async function main() {
           `**${thread.path}:${thread.line}** (could not reply inline)\n\n${verdictEmoji[tr.verdict] || '💬'} ${tr.reply}`
       )
       .join('\n\n---\n\n');
-    synthesisBody += `\n\n---\n\n**Responses that could not be posted inline:**\n\n${extras}`;
+    fallbackParts.push(`**Responses that could not be posted inline:**\n\n${extras}`);
   }
-  // Surface any malformed thread_responses the parser couldn't normalise, so
-  // a missing/garbled entry doesn't silently swallow a verdict on a real
-  // ChatGPT finding.
   if (parsed.invalidResponses.length) {
     const dropped = parsed.invalidResponses
       .map((r) => `\`\`\`json\n${JSON.stringify(r, null, 2)}\n\`\`\``)
       .join('\n\n');
-    synthesisBody += `\n\n---\n\n**Malformed thread_responses (could not match to a ChatGPT thread):**\n\n${dropped}`;
+    fallbackParts.push(
+      `**Malformed thread_responses (could not match to a ChatGPT thread):**\n\n${dropped}`
+    );
   }
-  synthesisBody += `\n\n---\n${attribution}`;
-
-  const { comment: synthesis, updated } = await upsertIssueComment({
-    ...GH_CTX,
-    marker: SYNTHESIS_MARKER,
-    body: synthesisBody,
-  });
-  console.log(`  ${updated ? 'Updated' : 'Posted'} synthesis: ${synthesis.html_url}`);
+  if (fallbackParts.length) {
+    const { comment: fallback, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\n\n${fallbackParts.join('\n\n---\n\n')}\n\n---\n${attribution}`,
+    });
+    console.log(`  ${updated ? 'Updated' : 'Posted'} fallback: ${fallback.html_url}`);
+  }
 }
 
 main().catch((err) => die(`Unhandled error: ${err.stack || err.message}`));

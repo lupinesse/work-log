@@ -119,7 +119,7 @@ jobs:
             unset CLAUDE_CODE_OAUTH_TOKEN
           fi
           claude -p "/pr-review" \
-            --model claude-opus-4-7 \
+            --model claude-sonnet-4-6 \
             --allowedTools "Read" "Grep" "Glob" \
                            "Bash(git log:*)" "Bash(git diff:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \

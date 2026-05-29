@@ -33,15 +33,13 @@ import {
   fetchAllIssueComments,
   fetchAllThreads,
   formatThreadsForPrompt,
-  postInlineComment,
+  ghHeaders,
   replyToThread,
   resolveThread,
   unresolveThread,
-  upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
 import { normaliseReplyAction, coerceThreadIndex } from './lib/parse-reply-action.mjs';
-import { normaliseGithubVerdict, normaliseGithubSummary } from './lib/parse-verdict.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -99,10 +97,6 @@ function loadDiff() {
 
 // ─────────────────────────── GitHub ───────────────────────────
 
-// Markers that identify this phase's persistent comments across runs.
-// upsertReview / upsertIssueComment locate the previous match and update it
-// in place rather than stacking a new comment per push.
-const REVIEW_MARKER = "responding to Claude's review";
 const FALLBACK_MARKER = '<!-- chatgpt-phase4-fallback -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
@@ -279,8 +273,6 @@ If everything you'd want to say belongs in existing threads (or has already been
 
 Output a single raw JSON object — no markdown wrapper:
 {
-  "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
-  "summary": "<3-5 sentences: your overall response to Claude's verdict, what you verified as fixed, what regressed (if anything), what new concerns remain>",
   "thread_actions": [
     { "type": "new",   "path": "<file path from diff>", "line": <integer>, "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking>" },
     { "type": "reply", "thread_index": <integer matching a thread above>, "resolve": false, "unresolve": false, "body": "<for verifications: '✅ Verified as fixed — <what you checked>'. For regressions: '🔁 Reopened — <quote missing change>'. For other follow-ups: plain markdown.>" }
@@ -319,7 +311,7 @@ Output a single raw JSON object — no markdown wrapper:
  * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
  * @typedef {{ type: 'reply', threadIndex: number, body: string, resolve: boolean, unresolve: boolean }} ReplyAction
  * @typedef {NewAction | ReplyAction} ThreadAction
- * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
+ * @typedef {{ actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
  */
 
 /**
@@ -338,9 +330,6 @@ function parseResponse(rawText, threadCount) {
     .replace(/\s*```$/, '')
     .trim();
   const parsed = JSON.parse(cleaned);
-
-  const verdict = normaliseGithubVerdict(parsed.verdict);
-  const summary = normaliseGithubSummary(parsed.summary);
 
   const rawActions = Array.isArray(parsed.thread_actions)
     ? parsed.thread_actions
@@ -398,11 +387,41 @@ function parseResponse(rawText, threadCount) {
   }
 
   return {
-    verdict,
-    summary,
     actions,
     invalidActions,
   };
+}
+
+// ─────────────────────────── GitHub posting ───────────────────────────
+
+/**
+ * Post all new findings as a single batched review so the PR shows one
+ * "reviewed" banner regardless of how many findings there are.
+ *
+ * @param {Array<{path: string, line: number, body: string}>} findings
+ * @returns {Promise<object>} GitHub API review object.
+ */
+async function postBatchedReview(findings) {
+  const response = await fetch(
+    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
+    {
+      method: 'POST',
+      headers: ghHeaders(GITHUB_TOKEN),
+      body: JSON.stringify({
+        commit_id: HEAD_SHA,
+        event: 'COMMENT',
+        comments: findings.map((f) => ({
+          path: f.path,
+          line: f.line,
+          side: 'RIGHT',
+          body: f.body,
+        })),
+      }),
+    }
+  );
+  if (!response.ok)
+    throw new Error(`Batch review API ${response.status}: ${await response.text()}`);
+  return response.json();
 }
 
 // ─────────────────────────── main ───────────────────────────
@@ -451,72 +470,89 @@ async function main() {
 
   const newCount = parsed.actions.filter((a) => a.type === 'new').length;
   const replyCount = parsed.actions.filter((a) => a.type === 'reply').length;
-  console.log(`  verdict: ${parsed.verdict}, new: ${newCount}, replies: ${replyCount}`);
+  console.log(`  new: ${newCount}, replies: ${replyCount}`);
 
-  // Upsert the top-level response review (replaces any previous Phase 4 review
-  // from this bot rather than stacking one per push).
-  const reviewBody = `**${parsed.verdict}** — ${parsed.summary}\n\n---\n${ATTRIBUTION}`;
-  const { review: reviewResult, replaced } = await upsertReview({
-    ...GH_CTX,
-    headSha: HEAD_SHA,
-    marker: REVIEW_MARKER,
-    body: reviewBody,
-  });
-  console.log(
-    `${replaced ? 'Replaced' : 'Posted'} review (${parsed.verdict}): ${reviewResult.html_url}`
-  );
-
-  // Dispatch actions: replies go to existing threads, news create them.
-  // Re-raises on resolved threads unresolve them first so Phase 2 picks them
-  // up next run and Claude posts a fresh verdict.
+  // Pass 1 — replies go to existing threads individually.
   const unpostable = [];
-  for (const a of parsed.actions) {
+  for (const a of parsed.actions.filter((x) => x.type === 'reply')) {
     const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
     try {
-      if (a.type === 'reply') {
-        const target = claudeContext.threads[a.threadIndex];
-        // Unresolve first so a "🔁 Reopened" reply lands on an open thread —
-        // Claude's Phase 2 picks it up on the next run and re-evaluates.
-        if (a.unresolve && target.isResolved) {
-          try {
-            await unresolveThread({ ...GH_CTX, threadId: target.id });
-            console.log(`  unresolved thread ${a.threadIndex} (reopened)`);
-          } catch (err) {
-            console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
-          }
+      const target = claudeContext.threads[a.threadIndex];
+      // Unresolve first so a "🔁 Reopened" reply lands on an open thread —
+      // Claude's Phase 2 picks it up on the next run and re-evaluates.
+      if (a.unresolve && target.isResolved) {
+        try {
+          await unresolveThread({ ...GH_CTX, threadId: target.id });
+          console.log(`  unresolved thread ${a.threadIndex} (reopened)`);
+        } catch (err) {
+          console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
         }
-        const reply = await replyToThread({
-          ...GH_CTX,
-          commentId: target.firstCommentId,
-          body: bodyWithAttribution,
-        });
-        console.log(
-          `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
-        );
-        // Resolve AFTER posting so the "✅ Verified as fixed" confirmation is
-        // visible on the thread before it closes — clears the merge-gate.
-        if (a.resolve && !target.isResolved) {
-          try {
-            await resolveThread({ ...GH_CTX, threadId: target.id });
-            console.log(`  resolved thread ${a.threadIndex} (verified fix)`);
-          } catch (err) {
-            console.warn(`  could not resolve thread ${a.threadIndex}: ${err.message}`);
-          }
+      }
+      const reply = await replyToThread({
+        ...GH_CTX,
+        commentId: target.firstCommentId,
+        body: bodyWithAttribution,
+      });
+      console.log(
+        `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
+      );
+      // Resolve AFTER posting so the "✅ Verified as fixed" confirmation is
+      // visible on the thread before it closes — clears the merge-gate.
+      if (a.resolve && !target.isResolved) {
+        try {
+          await resolveThread({ ...GH_CTX, threadId: target.id });
+          console.log(`  resolved thread ${a.threadIndex} (verified fix)`);
+        } catch (err) {
+          console.warn(`  could not resolve thread ${a.threadIndex}: ${err.message}`);
         }
-      } else {
-        const comment = await postInlineComment({
-          ...GH_CTX,
-          headSha: HEAD_SHA,
-          path: a.path,
-          line: a.line,
-          body: bodyWithAttribution,
-        });
-        console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {
-      const where = a.type === 'reply' ? `reply thread[${a.threadIndex}]` : `${a.path}:${a.line}`;
-      console.warn(`  could not post ${where} — ${err.message}`);
+      console.warn(`  could not post reply thread[${a.threadIndex}] — ${err.message}`);
       unpostable.push(a);
+    }
+  }
+
+  // Pass 2 — new findings batched into one review (one "reviewed" banner).
+  const newActions = parsed.actions.filter((x) => x.type === 'new');
+  if (newActions.length > 0) {
+    const findings = newActions.map((a) => ({
+      path: a.path,
+      line: a.line,
+      body: `${a.body}${REPLY_ATTRIBUTION}`,
+    }));
+    try {
+      const batchResult = await postBatchedReview(findings);
+      console.log(`  batched ${findings.length} new finding(s): ${batchResult.html_url}`);
+    } catch (batchErr) {
+      console.warn(`  batch review failed (${batchErr.message}) — retrying individually`);
+      for (const f of findings) {
+        let retryError = '';
+        try {
+          const resp = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
+            {
+              method: 'POST',
+              headers: ghHeaders(GITHUB_TOKEN),
+              body: JSON.stringify({
+                commit_id: HEAD_SHA,
+                event: 'COMMENT',
+                comments: [{ path: f.path, line: f.line, side: 'RIGHT', body: f.body }],
+              }),
+            }
+          );
+          if (resp.ok) {
+            console.log(`  individual retry: ${f.path}:${f.line}`);
+          } else {
+            retryError = `HTTP ${resp.status}: ${await resp.text()}`;
+          }
+        } catch (retryErr) {
+          retryError = retryErr.message;
+        }
+        if (retryError) {
+          console.warn(`  could not post ${f.path}:${f.line} — ${retryError}`);
+          unpostable.push({ path: f.path, line: f.line, body: f.body });
+        }
+      }
     }
   }
 

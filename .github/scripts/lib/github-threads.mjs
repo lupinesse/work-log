@@ -391,7 +391,7 @@ export function formatThreadsForPrompt(threads) {
       const replyLines = t.replies.length
         ? '\n' +
           t.replies
-            .map((r) => `  ↳ ${r.author}: ${r.body.slice(0, 200).replace(/\n/g, ' ')}`)
+            .map((r) => `  ↳ ${r.author}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`)
             .join('\n')
         : '';
       const state = t.isResolved ? 'resolved' : 'open';

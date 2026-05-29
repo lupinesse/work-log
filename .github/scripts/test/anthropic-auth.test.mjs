@@ -141,28 +141,25 @@ describe('shouldFallThrough', () => {
 });
 
 describe('selectModel', () => {
-  test('defaults the subscription (OAuth) path to Opus', () => {
-    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN'), 'claude-opus-4-7');
+  test('defaults the OAuth path to claude-sonnet-4-6', () => {
+    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN'), 'claude-sonnet-4-6');
   });
 
-  test('defaults the per-token (API key) path to the cheaper Haiku model', () => {
-    assert.equal(selectModel('ANTHROPIC_API_KEY'), 'claude-haiku-4-5');
-    // Guard against an accidental future edit putting Opus back on the metered path
-    assert.notEqual(selectModel('ANTHROPIC_API_KEY'), 'claude-opus-4-7');
+  test('defaults the API-key path to claude-sonnet-4-6', () => {
+    assert.equal(selectModel('ANTHROPIC_API_KEY'), 'claude-sonnet-4-6');
   });
 
   test('an explicit override wins over the per-source default', () => {
-    assert.equal(selectModel('ANTHROPIC_API_KEY', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
-    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
+    assert.equal(selectModel('ANTHROPIC_API_KEY', 'claude-haiku-4-5'), 'claude-haiku-4-5');
+    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN', 'claude-opus-4-7'), 'claude-opus-4-7');
   });
 
-  test('falls back to the cheaper API-key default for an unrecognised source', () => {
-    // Unknown source may be a metered path — default to cost-safe model.
+  test('falls back to the API-key default for an unrecognised source', () => {
     assert.equal(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.ANTHROPIC_API_KEY);
-    assert.notEqual(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN);
+    assert.equal(selectModel('SOMETHING_ELSE'), 'claude-sonnet-4-6');
   });
 
   test('an empty override is ignored in favour of the default', () => {
-    assert.equal(selectModel('ANTHROPIC_API_KEY', ''), 'claude-haiku-4-5');
+    assert.equal(selectModel('ANTHROPIC_API_KEY', ''), 'claude-sonnet-4-6');
   });
 });
