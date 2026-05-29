@@ -42,6 +42,16 @@ function stripPct(mins) {
 }
 
 /**
+ * Converts a Unix timestamp (ms) to minutes-from-midnight in local time.
+ * @param {number} ts
+ * @returns {number}
+ */
+function tsToMins(ts) {
+  const d = new Date(ts);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
  * Renders the compact day-overview strip: hour-tick labels, entry footprints,
  * and (today only) a live "now" cursor.
  * @param {string} dateKey - YYYY-MM-DD.
@@ -50,10 +60,8 @@ function renderDayStrip(dateKey) {
   const el = document.getElementById('tfDayStrip');
   if (!el) return;
 
-  function tsToMins(ts) {
-    const d = new Date(ts);
-    return d.getHours() * 60 + d.getMinutes();
-  }
+  // Capture wall-clock time once so the live bar and now-cursor stay consistent
+  const nowMins = tsToMins(Date.now());
 
   // Hour-tick labels at two-hour intervals
   const ticks = [7, 9, 11, 13, 15, 17, 19, 21]
@@ -79,7 +87,6 @@ function renderDayStrip(dateKey) {
   if (activeTimer && isToday(viewDate)) {
     const le = entries.find((e) => e.id === activeTimer.entryId);
     if (le && le.date === dateKey) {
-      const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(le.ts)));
       const right = stripPct(Math.min(TF_STRIP_END, nowMins));
       if (right > left) {
@@ -91,11 +98,8 @@ function renderDayStrip(dateKey) {
 
   // Now cursor (today only)
   let nowCursor = '';
-  if (isToday(viewDate)) {
-    const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-    if (nowMins >= TF_STRIP_START && nowMins <= TF_STRIP_END) {
-      nowCursor = `<div class="tf-now-cursor" style="left:${stripPct(nowMins)}%"></div>`;
-    }
+  if (isToday(viewDate) && nowMins >= TF_STRIP_START && nowMins <= TF_STRIP_END) {
+    nowCursor = `<div class="tf-now-cursor" style="left:${stripPct(nowMins)}%"></div>`;
   }
 
   el.innerHTML = `<div class="tf-strip-ticks">${ticks}</div><div class="tf-strip-bar">${bars}${liveBar}${nowCursor}</div>`;

@@ -167,7 +167,6 @@ document.getElementById('timerPause').addEventListener('click', () => {
 });
 initHero();
 initRapid();
-// initDailyLog() removed — Daily Log is now the Log view in #todayFlowSection.
 initMonthlyLog();
 initMigration();
 initSprints();
