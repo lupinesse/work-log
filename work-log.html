@@ -399,11 +399,12 @@
   </div>
   <div class="tf-gap-reminder" id="tfGapReminder" style="display:none"></div>
 
-  <!-- Flow view pane -->
-  <div class="tf-pane" id="tfFlowPane" role="tabpanel" aria-labelledby="tfTab-flow"></div>
+  <!-- Flow view pane — tabindex=0 makes the panel itself keyboard-reachable
+       since it has no focusable children (WCAG 2.1.1) -->
+  <div class="tf-pane" id="tfFlowPane" role="tabpanel" aria-labelledby="tfTab-flow" tabindex="0"></div>
 
   <!-- Log view pane -->
-  <div class="tf-pane" id="tfLogPane" role="tabpanel" aria-labelledby="tfTab-log" style="display:none">
+  <div class="tf-pane" id="tfLogPane" role="tabpanel" aria-labelledby="tfTab-log" tabindex="0" style="display:none">
     <div class="tf-log-feed" id="tfLogFeed"></div>
     <div class="capture-row" id="dailyLogNoteRow" style="display:none">
       <label for="dailyLogNoteInput" class="sr-only">Add a note to today&#39;s log</label>
@@ -414,7 +415,7 @@
   </div>
 
   <!-- Blocks view pane: existing timeblock grid embedded here -->
-  <div class="tf-pane" id="tfBlocksPane" role="tabpanel" aria-labelledby="tfTab-blocks" style="display:none">
+  <div class="tf-pane" id="tfBlocksPane" role="tabpanel" aria-labelledby="tfTab-blocks" tabindex="0" style="display:none">
     <div class="tb-body" id="tbBody">
       <div class="tb-times" id="tbTimes"></div>
       <div class="tb-grid-wrap">

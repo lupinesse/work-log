@@ -1,35 +1,36 @@
 name: ChatGPT PR Review
 
-# Posts an automated ChatGPT code review as a PR comment.
-# Calls OpenAI's chat-completions API from `.github/scripts/chatgpt-review.mjs`,
-# replacing the unmaintained anc95/ChatGPT-CodeReview action (Node.js 20,
-# silently failed to post reviews). Logic lives in a standalone .mjs file
-# rather than inline YAML so it can be read, tested, and modified with
-# proper tooling.
+# Three-phase AI review dialogue:
+#
+#   Phase 1 — chatgpt-review: ChatGPT reads the diff and posts independent
+#   inline threads. Claude's own independent review (pr-review.yml) runs in
+#   parallel, triggered by the same pull_request event.
+#
+#   Phase 2 — claude-responds: Claude reads ChatGPT's inline threads, replies
+#   to each one with agree/disagree/partial, resolves them, then posts a
+#   synthesis comment summarising the overall picture.
+#
+#   Phase 3 — chatgpt-responds: ChatGPT reads Claude's synthesis and either
+#   confirms the resolutions or opens new inline threads for anything Claude
+#   missed or got wrong.
 #
 # Triggers three ways:
 #   1. 'labeled' event with label == 'chatgpt-review'  — manual labeling
-#   2. 'opened' or 'reopened' — size thresholds evaluated inline so the review
-#      runs even when the label was applied by auto-label-pr.yml (which uses
-#      GITHUB_TOKEN; GitHub suppresses the resulting labeled event for other
-#      workflows, so chatgpt-pr-review would never fire without this path).
-#   3. 'synchronize' (new commits pushed) — re-evaluates the same size
-#      thresholds as opened/reopened. Re-reviews if the current diff still
-#      qualifies; skips if the PR has been cleaned up below both thresholds.
+#   2. 'opened' or 'reopened' — size thresholds evaluated inline
+#   3. 'synchronize' (new commits pushed) — re-evaluates size thresholds;
+#      re-reviews if still qualifies, skips if the PR has been cleaned up.
 #
-# Size thresholds (matching auto-label-pr.yml, evaluated on all non-label events):
+# Size thresholds (matching auto-label-pr.yml):
 #   ≥ 200 source-line changes  OR  ≥ 4 source files changed
 #   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
 # Required secrets:
-#   OPENAI_API_KEY               — OpenAI API key for the ChatGPT review call
+#   OPENAI_API_KEY               — OpenAI API key
+#   ANTHROPIC_API_KEY            — Anthropic API key
 #   CHATGPT_REVIEWER_APP_ID      — Client ID of the "ChatGPT Reviewer" GitHub App
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
-# The GitHub App must be installed on this repo with permissions:
-#   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token@v3
-# so PR comments are attributed to the App (custom name + avatar) instead of
-# github-actions[bot]. Falls back to github.token if the mint step fails.
+#   CLAUDE_REVIEWER_APP_ID       — Client ID of the "Claude Reviewer" GitHub App
+#   CLAUDE_REVIEWER_PRIVATE_KEY  — .pem private key of the same App
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
@@ -38,17 +39,21 @@ on:
   pull_request:
     types: [labeled, opened, reopened, synchronize]
 
-# One run per PR at a time; do not cancel an in-progress review.
+# One full dialogue cycle per PR at a time; do not cancel in-progress runs.
 concurrency:
   group: chatgpt-review-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
+
+  # ─── Phase 1: ChatGPT independent review ──────────────────────────────────
   chatgpt-review:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
 
     steps:
       - name: Decide whether to run
@@ -76,8 +81,6 @@ jobs:
             // synchronize re-evaluates the threshold on every push so that a PR
             // cleaned up below both limits stops getting re-reviewed, and one
             // that grows above them starts being reviewed.
-            // The label from auto-label-pr.yml won't propagate here via GITHUB_TOKEN,
-            // so we re-evaluate the thresholds ourselves.
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
@@ -136,7 +139,6 @@ jobs:
         # `always()` keeps the review running even if the mint step failed —
         # GITHUB_TOKEN falls back to github.token so the review still posts
         # (under github-actions[bot]) rather than being silently skipped.
-        # The red mint-step failure in CI is the signal to fix the secret.
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
@@ -144,7 +146,101 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
-          # Optional overrides for MODEL / REASONING_EFFORT / PROMPT /
-          # MAX_DIFF_CHARS / MAX_TOKENS / DIFF_PATH live in
-          # .github/scripts/chatgpt-review.mjs with sensible defaults.
         run: node .github/scripts/chatgpt-review.mjs
+
+  # ─── Phase 2: Claude responds to ChatGPT's findings ───────────────────────
+  claude-responds:
+    needs: chatgpt-review
+    if: needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write filtered diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!script.js' ':!styles.css' ':!docs/*.html' ':!package-lock.json' \
+            > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Mint Claude Reviewer App token
+        id: claude-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Claude responds to ChatGPT's findings
+        # `always()` ensures the script runs even if the token mint step failed;
+        # the script falls back to github.token so the synthesis is still posted.
+        if: always()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.claude-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/claude-chatgpt-dialogue.mjs
+
+  # ─── Phase 3: ChatGPT responds to Claude's synthesis ──────────────────────
+  chatgpt-responds:
+    needs: [chatgpt-review, claude-responds]
+    if: needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write filtered diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!script.js' ':!styles.css' ':!docs/*.html' ':!package-lock.json' \
+            > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Mint ChatGPT Reviewer App token
+        id: chatgpt-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: ChatGPT responds to Claude's synthesis
+        # `always()` ensures the script runs even if the token mint step failed.
+        if: always()
+        env:
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.chatgpt-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/chatgpt-claude-dialogue.mjs

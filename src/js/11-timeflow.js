@@ -200,10 +200,6 @@ function renderGapReminder(dateKey) {
   else dur = `${mins}m`;
   el.style.display = '';
   el.innerHTML = `<span class="tf-gap-text">${fmtHm(gap.startTs)} – ${fmtHm(gap.endTs)} · ${dur} untracked between blocks</span><button type="button" class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
-  document.getElementById('tfGapLogBtn')?.addEventListener('click', () => {
-    const inp = document.getElementById('captureInput');
-    if (inp) inp.focus();
-  });
 }
 
 // ─────────────────────────── section header ───────────────────────────
@@ -272,9 +268,7 @@ function renderFlowView(dateKey) {
 
   el.innerHTML = items
     .map((item) => {
-      const time = new Date(item.ts);
-      const hh = String(time.getHours()).padStart(2, '0');
-      const mm = String(time.getMinutes()).padStart(2, '0');
+      const startLabel = fmtHm(item.ts);
 
       // Look up the underlying entry object for entry-type items
       const entryObj =
@@ -297,7 +291,7 @@ function renderFlowView(dateKey) {
       return `
         <div class="tf-flow-row${isLive ? ' live' : ''}">
           <div class="tf-flow-time">
-            <span class="tf-flow-hm">${hh}:${mm}</span>
+            <span class="tf-flow-hm">${startLabel}</span>
             ${durationMin > 0 ? `<span class="tf-flow-dur">${fmtDur(durationMin * 60000)}</span>` : ''}
           </div>
           <div class="tf-flow-strip" style="height:${stripH}px;background:${item.color}">
@@ -329,9 +323,7 @@ function renderLogView(dateKey) {
   } else {
     feedEl.innerHTML = items
       .map((item, i) => {
-        const time = new Date(item.ts);
-        const hh = String(time.getHours()).padStart(2, '0');
-        const mm = String(time.getMinutes()).padStart(2, '0');
+        const startLabel = fmtHm(item.ts);
         const isLive = item.type === 'entry' && activeTimer && item.entryId === activeTimer.entryId;
 
         const dot = isLive
@@ -340,7 +332,7 @@ function renderLogView(dateKey) {
 
         return `
           <div class="tf-log-row">
-            <div class="tf-log-time"><span class="tf-log-hm">${hh}:${mm}</span></div>
+            <div class="tf-log-time"><span class="tf-log-hm">${startLabel}</span></div>
             <div class="tf-log-dot-col">
               ${dot}
               ${i < items.length - 1 ? '<div class="tf-log-line"></div>' : ''}
@@ -408,6 +400,13 @@ function initTodayFlow() {
   document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
   document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') addLogNote();
+  });
+
+  // Gap-reminder "+ log it" button: delegated from the stable #tfGapReminder
+  // container so renderGapReminder() stays single-purpose (markup only).
+  document.getElementById('tfGapReminder')?.addEventListener('click', (e) => {
+    if (!e.target.closest('#tfGapLogBtn')) return;
+    document.getElementById('captureInput')?.focus();
   });
 
   const header = document.getElementById('tfHeader');

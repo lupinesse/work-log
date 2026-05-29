@@ -1524,9 +1524,16 @@ describe('findLargestGap', () => {
     assert.equal(sb.findLargestGap(TODAY), null);
   });
 
+  // These four tests use hardcoded `base` timestamps and so would also hit the
+  // trailing-gap branch as wall-clock time advances past the fixtures. We
+  // explicitly set activeTimer (whose presence suppresses the trailing-gap
+  // branch) so each test measures only the internal-gap logic it intends to.
+  const TIMER_PRESENT = { entryId: 'dummy', paused: false, startTs: 0 };
+
   it('returns null when the only gap is < 15 min', () => {
     const base = new Date('2026-05-29T09:00:00').getTime();
     const sb = loadTimeflowSandbox();
+    sb.activeTimer = TIMER_PRESENT;
     sb.entries = [
       { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
       { date: TODAY, ts: base + 40 * 60000, tsEnd: base + 70 * 60000, signifier: null },
@@ -1537,6 +1544,7 @@ describe('findLargestGap', () => {
   it('returns the gap when exactly 15 min', () => {
     const base = new Date('2026-05-29T09:00:00').getTime();
     const sb = loadTimeflowSandbox();
+    sb.activeTimer = TIMER_PRESENT;
     sb.entries = [
       { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
       { date: TODAY, ts: base + 45 * 60000, tsEnd: base + 75 * 60000, signifier: null },
@@ -1549,6 +1557,7 @@ describe('findLargestGap', () => {
   it('returns the largest gap when multiple qualify', () => {
     const base = new Date('2026-05-29T09:00:00').getTime();
     const sb = loadTimeflowSandbox();
+    sb.activeTimer = TIMER_PRESENT;
     sb.entries = [
       { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
       { date: TODAY, ts: base + 50 * 60000, tsEnd: base + 80 * 60000, signifier: null }, // 20 min gap
@@ -1561,6 +1570,7 @@ describe('findLargestGap', () => {
   it('ignores entries with signifier === "cancelled"', () => {
     const base = new Date('2026-05-29T09:00:00').getTime();
     const sb = loadTimeflowSandbox();
+    sb.activeTimer = TIMER_PRESENT;
     sb.entries = [
       { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: 'cancelled' },
       { date: TODAY, ts: base + 60 * 60000, tsEnd: base + 90 * 60000, signifier: null },

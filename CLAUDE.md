@@ -158,26 +158,37 @@ git push -u origin <branch-name>
 gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
 ```
 
-### Step 5b — Fetch the ChatGPT review, act on it, and resolve each thread
+### Step 5b — Wait for the automated review dialogue to finish
 
-The `chatgpt-review` CI check posts its findings as **inline PR review comment
-threads** (one resolvable thread per finding on the relevant file and line)
-plus a top-level review body with the overall verdict. ChatGPT is a second set
-of eyes — treat its findings with the same weight as `/pr-review`; do not
-skip or silently ignore them.
+The `chatgpt-pr-review` workflow runs a three-phase AI dialogue automatically
+after the PR is opened. No manual fetching or thread resolution is needed —
+the pipeline handles it. Your job is to wait for all phases to complete, then
+triage any unresolved findings that remain.
+
+**How the dialogue works:**
+1. **Phase 1 (`chatgpt-review` job):** ChatGPT posts independent inline
+   threads, one per finding, plus a top-level review verdict.
+2. **Phase 2 (`claude-responds` job):** Claude reads ChatGPT's threads,
+   replies to each with agree/disagree/partial, resolves them, and posts a
+   synthesis comment. This runs after Phase 1 completes; Claude's own
+   independent review (`pr-review.yml`) runs in parallel to Phase 1.
+3. **Phase 3 (`chatgpt-responds` job):** ChatGPT reads Claude's synthesis
+   and posts any remaining concerns as new inline threads, or confirms
+   resolution if satisfied.
 
 > **Placeholder convention:** `<N>` is the PR number. `{owner}` and `{repo}`
-> in curly braces are `gh`-template placeholders expanded automatically from
-> the current git remote — leave them literal.
+> in curly braces are `gh`-template placeholders expanded from the current
+> git remote — leave them literal.
 
 ```bash
-gh pr checks <N> --watch          # blocks until all checks finish
+# Block until all three phases complete (typically 3-5 minutes total)
+gh pr checks <N> --watch
 
-# Overall verdict and summary (last review body that mentions ChatGPT)
-gh api repos/{owner}/{repo}/pulls/<N>/reviews \
-  --jq '[.[] | select(.body | contains("Automated review by ChatGPT"))] | last | .body'
+# Read Claude's synthesis (Phase 2 output)
+gh api repos/{owner}/{repo}/issues/<N>/comments \
+  --jq '[.[] | select(.body | contains("Claude'\''s synthesis"))] | last | .body'
 
-# Inline findings with GraphQL node IDs (needed to resolve each thread)
+# Check for any unresolved threads remaining after Phase 3
 gh api graphql \
   -F owner='{owner}' -F name='{repo}' -F number=<N> \
   -f query='
@@ -186,8 +197,7 @@ gh api graphql \
         pullRequest(number:$number) {
           reviewThreads(first:50) {
             nodes {
-              id
-              isResolved
+              id isResolved
               comments(first:1) {
                 nodes { author { login } body path originalLine }
               }
@@ -199,23 +209,15 @@ gh api graphql \
   --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
 ```
 
-After acting on each unresolved finding, resolve its thread:
-
-```bash
-gh api graphql \
-  -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}' \
-  -F id='<THREAD_NODE_ID>'
-```
-
-Triage every unresolved thread before continuing:
+Triage any unresolved threads remaining after Phase 3:
 - **Blocking** concerns: fix before continuing, same as Step 4.
 - **Non-blocking** you agree with: fix in the same PR, or open a follow-up PR
   if `/pr-review` has already approved and you don't want to rerun the cycle.
-- **Findings you disagree with**: reply with your reasoning, then resolve.
+- **Findings you disagree with**: reply with your reasoning, then resolve the
+  thread manually via `gh api graphql` with the `resolveReviewThread` mutation.
 
-Do not leave ChatGPT review threads unresolved. If the `chatgpt-review` check
-did not run (PR below size threshold) or the reviews list shows no ChatGPT
-entry, say so explicitly rather than skipping the step.
+If the `chatgpt-review` check did not run (PR below size threshold), all three
+jobs are skipped — say so explicitly rather than skipping the step silently.
 
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge

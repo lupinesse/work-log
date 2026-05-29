@@ -357,6 +357,13 @@
   margin-top: 2px;
 }
 
+// Bold the task name in task-update feed rows so it stands out from
+// the dash-separated status text. Emitted by buildDailyLogItems() in
+// src/js/18-dailylog.js for entries derived from plan-task status comments.
+.tl-task-name {
+  font-weight: 500;
+}
+
 // ── Blocks view ─────────────────────────────────────────────────────────────
 // The existing timeblock grid renders into #tbBody / #tbGrid inside #tfBlocksPane.
 // No additional overrides required — _timeblock.scss styles remain intact.
