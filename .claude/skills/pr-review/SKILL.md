@@ -62,8 +62,7 @@ This file is absent for local runs — ignore the step if it's not there.
 
 ### Step 2 — Read the quality standard
 
-- Read `CLAUDE.md` (repo root) and `.claude/CLAUDE.md` for the operative
-  quality rules.
+- Read `CLAUDE.md` (repo root) for the operative quality rules.
 - These are the criteria you will audit against. Every finding must cite a
   specific rule from one of these files.
 
