@@ -86,6 +86,20 @@ export function isAuthFailureStatus(status) {
 }
 
 /**
+ * Whether a failed HTTP response should cause the caller to fall through to
+ * the next credential in the chain. True for both hard auth failures (401/403)
+ * and rate-limit responses (429) — a rate-limited credential and a rejected
+ * one are both worth retrying with a different key, since they use separate
+ * quota buckets.
+ *
+ * @param {number} status - HTTP response status code.
+ * @returns {boolean}
+ */
+export function shouldFallThrough(status) {
+  return isAuthFailureStatus(status) || status === 429;
+}
+
+/**
  * Default model per auth source.
  *
  * The OAuth path is covered by the Claude subscription at a flat cost, so it

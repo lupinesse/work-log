@@ -15,6 +15,7 @@ import {
   resolveAnthropicAuth,
   resolveAnthropicAuthChain,
   isAuthFailureStatus,
+  shouldFallThrough,
   selectModel,
   DEFAULT_MODEL_BY_SOURCE,
 } from '../lib/anthropic-auth.mjs';
@@ -121,6 +122,20 @@ describe('isAuthFailureStatus', () => {
   test('treats other statuses as not auth failures (do not switch credential)', () => {
     for (const status of [200, 400, 404, 429, 500, 529]) {
       assert.equal(isAuthFailureStatus(status), false);
+    }
+  });
+});
+
+describe('shouldFallThrough', () => {
+  test('falls through on 401, 403, and 429', () => {
+    assert.equal(shouldFallThrough(401), true);
+    assert.equal(shouldFallThrough(403), true);
+    assert.equal(shouldFallThrough(429), true);
+  });
+
+  test('does not fall through on transient server errors or success', () => {
+    for (const status of [200, 400, 404, 500, 529]) {
+      assert.equal(shouldFallThrough(status), false);
     }
   });
 });

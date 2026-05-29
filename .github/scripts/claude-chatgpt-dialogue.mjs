@@ -40,7 +40,7 @@ import {
 import {
   resolveAnthropicAuthChain,
   selectModel,
-  isAuthFailureStatus,
+  shouldFallThrough,
 } from './lib/anthropic-auth.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
@@ -231,7 +231,7 @@ Output a single raw JSON object — no markdown wrapper:
 
     const body = await response.text();
     const nextAuth = AUTH_CHAIN[i + 1];
-    if ((isAuthFailureStatus(response.status) || response.status === 429) && nextAuth) {
+    if (shouldFallThrough(response.status) && nextAuth) {
       console.warn(
         `Auth: ${auth.source} returned HTTP ${response.status}; falling back to ${nextAuth.source}`
       );
