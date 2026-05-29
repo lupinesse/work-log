@@ -149,6 +149,28 @@ export async function unresolveThread({ token, threadId }) {
 }
 
 /**
+ * Mark an open review thread as resolved. Used by Phase 4 when ChatGPT has
+ * verified Claude's promised fix is present in the current diff and posts a
+ * "✅ Verified as fixed" confirmation — closing the thread completes the
+ * audit trail and clears the merge-gate.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.threadId  GraphQL node id of the thread.
+ */
+export async function resolveThread({ token, threadId }) {
+  const mutation = `mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}`;
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: ghHeaders(token),
+    body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
+  });
+  if (!response.ok) throw new Error(`Resolve API ${response.status}: ${await response.text()}`);
+  const data = await response.json();
+  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
+}
+
+/**
  * Fetch all issue comments for a PR, paginating until the API returns fewer
  * than a full page. Comments are returned oldest-first (API default order).
  * Callers that need newest-first should reverse the result.

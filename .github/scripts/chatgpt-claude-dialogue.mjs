@@ -35,6 +35,7 @@ import {
   fetchAllThreads,
   formatThreadsForPrompt,
   replyToThread,
+  resolveThread,
   unresolveThread,
   upsertReview,
   upsertIssueComment,
@@ -308,7 +309,7 @@ Output a single raw JSON object — no markdown wrapper:
 
 /**
  * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
- * @typedef {{ type: 'reply', threadIndex: number, body: string, unresolve: boolean }} ReplyAction
+ * @typedef {{ type: 'reply', threadIndex: number, body: string, resolve: boolean, unresolve: boolean }} ReplyAction
  * @typedef {NewAction | ReplyAction} ThreadAction
  * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
  */
@@ -357,7 +358,21 @@ function parseResponse(rawText, threadCount) {
         invalidActions.push(a);
         continue;
       }
-      actions.push({ type: 'reply', threadIndex: idx, body, unresolve: a.unresolve === true });
+      // resolve and unresolve are mutually exclusive — if a buggy model sets
+      // both, drop the action rather than picking one arbitrarily, so the
+      // mistake surfaces in the fallback block.
+      if (a.resolve === true && a.unresolve === true) {
+        console.warn(`  invalid reply action (thread_index=${idx}, both resolve and unresolve set) — moved to fallback`);
+        invalidActions.push(a);
+        continue;
+      }
+      actions.push({
+        type:        'reply',
+        threadIndex: idx,
+        body,
+        resolve:     a.resolve === true,
+        unresolve:   a.unresolve === true,
+      });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
@@ -439,10 +454,12 @@ async function main() {
     try {
       if (a.type === 'reply') {
         const target = claudeContext.threads[a.threadIndex];
+        // Unresolve first so a "🔁 Reopened" reply lands on an open thread —
+        // Claude's Phase 2 picks it up on the next run and re-evaluates.
         if (a.unresolve && target.isResolved) {
           try {
             await unresolveThread({ ...GH_CTX, threadId: target.id });
-            console.log(`  unresolved thread ${a.threadIndex} (re-raise)`);
+            console.log(`  unresolved thread ${a.threadIndex} (reopened)`);
           } catch (err) {
             console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
           }
@@ -453,6 +470,16 @@ async function main() {
           body: bodyWithAttribution,
         });
         console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
+        // Resolve AFTER posting so the "✅ Verified as fixed" confirmation is
+        // visible on the thread before it closes — clears the merge-gate.
+        if (a.resolve && !target.isResolved) {
+          try {
+            await resolveThread({ ...GH_CTX, threadId: target.id });
+            console.log(`  resolved thread ${a.threadIndex} (verified fix)`);
+          } catch (err) {
+            console.warn(`  could not resolve thread ${a.threadIndex}: ${err.message}`);
+          }
+        }
       } else {
         const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
