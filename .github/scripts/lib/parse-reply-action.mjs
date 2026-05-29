@@ -77,7 +77,7 @@ export function normaliseReplyAction(action, threadCount) {
 
   return {
     threadIndex: idx,
-    body:        String(action.body),
+    body:        String(action.body).trim(),
     resolve:     action.resolve   === true,
     unresolve:   action.unresolve === true,
   };

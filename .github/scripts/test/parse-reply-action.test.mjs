@@ -66,6 +66,14 @@ describe('normaliseReplyAction — valid actions', () => {
     const result = normaliseReplyAction({ thread_index: 9, body: 'last' }, 10);
     assert.strictEqual(result.threadIndex, 9);
   });
+
+  test('trims leading and trailing whitespace from body', () => {
+    const result = normaliseReplyAction(
+      { thread_index: 0, body: '  ✅ Verified as fixed — wlLog.warn now at line 42.  ' },
+      3
+    );
+    assert.strictEqual(result.body, '✅ Verified as fixed — wlLog.warn now at line 42.');
+  });
 });
 
 // ─────────────────────────── resolve / unresolve guard ───────────────────────────
