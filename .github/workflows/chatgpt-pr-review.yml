@@ -7,14 +7,17 @@ name: ChatGPT PR Review
 # rather than inline YAML so it can be read, tested, and modified with
 # proper tooling.
 #
-# Triggers two ways:
+# Triggers three ways:
 #   1. 'labeled' event with label == 'chatgpt-review'  — manual labeling
 #   2. 'opened' or 'reopened' — size thresholds evaluated inline so the review
 #      runs even when the label was applied by auto-label-pr.yml (which uses
 #      GITHUB_TOKEN; GitHub suppresses the resulting labeled event for other
 #      workflows, so chatgpt-pr-review would never fire without this path).
+#   3. 'synchronize' (new commits pushed) — re-reviews only PRs that already
+#      carry the 'chatgpt-review' label, i.e. those that met the initial
+#      size threshold. Skips small PRs that were never labelled.
 #
-# Size thresholds (matching auto-label-pr.yml):
+# Size thresholds (matching auto-label-pr.yml, evaluated on opened/reopened):
 #   ≥ 200 source-line changes  OR  ≥ 4 source files changed
 #   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
@@ -33,7 +36,7 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [labeled, opened, reopened]
+    types: [labeled, opened, reopened, synchronize]
 
 # One run per PR at a time; do not cancel an in-progress review.
 concurrency:
@@ -66,6 +69,19 @@ jobs:
                 ? 'Triggered by chatgpt-review label — will review.'
                 : `Label "${context.payload.label.name}" applied — not chatgpt-review, skipping.`);
               core.setOutput('should_run', String(triggered));
+              return;
+            }
+
+            // Path 3 — synchronize: re-review only if the label is already present.
+            // Avoids re-running the size check on every push — the label applied
+            // at open time is the durable record of whether this PR qualifies.
+            if (action === 'synchronize') {
+              const labels = context.payload.pull_request.labels.map(l => l.name);
+              const hasLabel = labels.includes(LABEL);
+              core.info(hasLabel
+                ? `Label '${LABEL}' present — re-reviewing after push.`
+                : `Label '${LABEL}' absent — skipping re-review for small PR.`);
+              core.setOutput('should_run', String(hasLabel));
               return;
             }
 
