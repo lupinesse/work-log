@@ -324,6 +324,36 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
 }
 
 /**
+ * Post a single inline pull-request review comment on a specific file line.
+ * Each call creates a separate resolvable thread. Used only when no existing
+ * thread is appropriate to reply to.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @param {string} params.headSha   Commit SHA to attach the comment to.
+ * @param {string} params.path      File path relative to the repo root.
+ * @param {number} params.line      Line number in the new (right-side) version of the file.
+ * @param {string} params.body      Comment body (markdown).
+ * @returns {Promise<object>} GitHub API response object.
+ * @throws {Error} if the API rejects the comment (e.g. line not in the diff).
+ */
+export async function postInlineComment({ token, owner, repo, prNumber, headSha, path, line, body }) {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+    {
+      method: 'POST',
+      headers: ghHeaders(token),
+      body: JSON.stringify({ body, commit_id: headSha, path, line, side: 'RIGHT' }),
+    }
+  );
+  if (!response.ok) throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
+  return response.json();
+}
+
+/**
  * Build a compact, indexed summary of existing threads for an AI prompt.
  * Each entry includes index, path:line, author, resolution state, finding
  * body, and any replies — enough for the model to decide whether a new
