@@ -2679,6 +2679,137 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 43. Analytics sub-row HTML structure ─────────────────────────────────
+  console.log('\n43. Analytics sub-row HTML structure');
+  {
+    const today = dk(new Date());
+    const tsStart = Date.now() - 5400000; // 90 min ago
+    const tsEnd = Date.now() - 3600000; // 60 min ago → 30 min logged
+    const entries = [
+      {
+        id: 'sr1',
+        text: 'AITO-99 Review test cases',
+        tag: 'work',
+        ts: tsStart,
+        tsEnd,
+        date: today,
+      },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+
+    // Open analytics section so sub-rows render
+    await page.evaluate(() => {
+      const section = document.getElementById('analyticsSection');
+      if (section && section.classList.contains('collapsed')) {
+        document.getElementById('analyticsHeader').click();
+      }
+    });
+
+    const todaySubHasTitleDiv = await page.evaluate(
+      () => !!document.querySelector('#statTodaySub .stat-sub-title')
+    );
+    assert('stat-sub today: .stat-sub-title div present for Jira task', todaySubHasTitleDiv);
+
+    const todaySubHasValueDiv = await page.evaluate(
+      () => !!document.querySelector('#statTodaySub .stat-sub-value')
+    );
+    assert('stat-sub today: .stat-sub-value div present', todaySubHasValueDiv);
+
+    const titleText = await page.evaluate(() => {
+      const el = document.querySelector('#statTodaySub .stat-sub-title');
+      return el ? el.textContent.trim() : null;
+    });
+    assert(
+      'stat-sub today: .stat-sub-title shows task name (Jira title stripped)',
+      titleText === 'Review test cases',
+      `got "${titleText}"`
+    );
+
+    const valueText = await page.evaluate(() => {
+      const el = document.querySelector('#statTodaySub .stat-sub-value');
+      return el ? el.textContent.trim() : null;
+    });
+    assert(
+      'stat-sub today: .stat-sub-value shows non-empty duration',
+      typeof valueText === 'string' && valueText.length > 0,
+      `got "${valueText}"`
+    );
+
+    await page.close();
+  }
+
+  // Non-Jira label path: .stat-sub-title should show the full label as-is
+  {
+    const today = dk(new Date());
+    const tsStart = Date.now() - 5400000;
+    const tsEnd = Date.now() - 3600000;
+    const entries = [
+      { id: 'sr2', text: 'Review presentation', tag: 'work', ts: tsStart, tsEnd, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+
+    await page.evaluate(() => {
+      const section = document.getElementById('analyticsSection');
+      if (section && section.classList.contains('collapsed')) {
+        document.getElementById('analyticsHeader').click();
+      }
+    });
+
+    const titleText = await page.evaluate(() => {
+      const el = document.querySelector('#statTodaySub .stat-sub-title');
+      return el ? el.textContent.trim() : null;
+    });
+    assert(
+      'stat-sub today: non-Jira label shown verbatim in .stat-sub-title',
+      titleText === 'Review presentation',
+      `got "${titleText}"`
+    );
+
+    const hasValue = await page.evaluate(
+      () => !!document.querySelector('#statTodaySub .stat-sub-value')
+    );
+    assert('stat-sub today: non-Jira path emits .stat-sub-value', hasValue);
+
+    await page.close();
+  }
+
+  // Streak sub-row: yesterday entry should produce .stat-sub-title + .stat-sub-value in #statStreakSub
+  {
+    const yesterday = dk(new Date(Date.now() - 86400000));
+    const yStart = new Date(yesterday + 'T09:00:00').getTime();
+    const yEnd = new Date(yesterday + 'T11:00:00').getTime();
+    const entries = [
+      {
+        id: 'sr3',
+        text: 'Morning planning',
+        tag: 'work',
+        ts: yStart,
+        tsEnd: yEnd,
+        date: yesterday,
+      },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+
+    await page.evaluate(() => {
+      const section = document.getElementById('analyticsSection');
+      if (section && section.classList.contains('collapsed')) {
+        document.getElementById('analyticsHeader').click();
+      }
+    });
+
+    const streakSubHasTitle = await page.evaluate(
+      () => !!document.querySelector('#statStreakSub .stat-sub-title')
+    );
+    assert('stat-sub streak: .stat-sub-title div present', streakSubHasTitle);
+
+    const streakSubHasValue = await page.evaluate(
+      () => !!document.querySelector('#statStreakSub .stat-sub-value')
+    );
+    assert('stat-sub streak: .stat-sub-value div present', streakSubHasValue);
+
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
