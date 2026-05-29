@@ -103,8 +103,9 @@ export const DEFAULT_MODEL_BY_SOURCE = {
 
 /**
  * Choose the Anthropic model id for a run. An explicit override (e.g. the
- * `MODEL` env var) always wins; otherwise the per-source default applies, with
- * the subscription default as the final fallback for an unrecognised source.
+ * `MODEL` env var) always wins; otherwise the per-source default applies.
+ * An unrecognised source defaults to the cheaper Haiku model — an unknown
+ * auth source may be a metered path, so the cost-safe choice wins.
  *
  * @param {string} source - Auth source label from {@link resolveAnthropicAuth}.
  * @param {string} [override] - Explicit model id; takes precedence when truthy.
@@ -113,8 +114,9 @@ export const DEFAULT_MODEL_BY_SOURCE = {
  * selectModel('ANTHROPIC_API_KEY')            // → 'claude-haiku-4-5' (cheap)
  * selectModel('CLAUDE_CODE_OAUTH_TOKEN')      // → 'claude-opus-4-7'
  * selectModel('ANTHROPIC_API_KEY', 'x-model') // → 'x-model' (override wins)
+ * selectModel('UNKNOWN_SOURCE')               // → 'claude-haiku-4-5' (safe)
  */
 export function selectModel(source, override) {
   if (override) return override;
-  return DEFAULT_MODEL_BY_SOURCE[source] || DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN;
+  return DEFAULT_MODEL_BY_SOURCE[source] ?? DEFAULT_MODEL_BY_SOURCE.ANTHROPIC_API_KEY;
 }

@@ -141,8 +141,10 @@ describe('selectModel', () => {
     assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
   });
 
-  test('falls back to the subscription default for an unrecognised source', () => {
-    assert.equal(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN);
+  test('falls back to the cheaper API-key default for an unrecognised source', () => {
+    // Unknown source may be a metered path — default to cost-safe model.
+    assert.equal(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.ANTHROPIC_API_KEY);
+    assert.notEqual(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN);
   });
 
   test('an empty override is ignored in favour of the default', () => {
