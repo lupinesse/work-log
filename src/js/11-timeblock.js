@@ -13,7 +13,6 @@ const TB_END = 21; // 21:00
 const TB_SLOTS = (TB_END - TB_START) * 2; // 28 half-hour slots
 const TB_SLOT_H = 36; // px per slot
 
-let tbCollapsed = false;
 let tbDragSource = null; // 'grid' | 'plan'
 let tbDragId = null; // block id when dragging from grid
 let tbDragText = null; // text when dragging from plan
@@ -88,7 +87,6 @@ function timeToSlot(hhmm, m2) {
 function renderTimeblock() {
   const dateKey = dk(viewDate);
   const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
-  // Collapse state no longer used — section visibility is handled by the view toggle.
 
   // Time labels
   const timesEl = document.getElementById('tbTimes');
@@ -434,12 +432,6 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
   if (!unique.length) return '';
   return unique.map((t) => `"${t}"`).join(', ');
 }
-
-// Meeting form removed — no event listeners needed
-document.getElementById('tbHeader')?.addEventListener('click', () => {
-  tbCollapsed = !tbCollapsed;
-  renderTimeblock();
-});
 
 /**
  * Opens a floating emoji picker anchored below `anchor` for a time block.

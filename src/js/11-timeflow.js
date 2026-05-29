@@ -7,6 +7,9 @@ const TF_STRIP_START = 7 * 60;
 /** 21:00 in minutes from midnight — right edge of the day-overview strip. */
 const TF_STRIP_END = 21 * 60;
 
+/** Display labels for the segmented control. Static so we avoid recomputing on every render. */
+const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks' };
+
 // ─────────────────────────── view preference ───────────────────────────
 
 /**
@@ -149,7 +152,7 @@ function renderGapReminder(dateKey) {
     m = gap.gapMin % 60;
   const dur = h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
   el.style.display = '';
-  el.innerHTML = `<span class="tf-gap-text">${fmt(gap.startTs)} – ${fmt(gap.endTs)} · ${dur} untracked between blocks</span><button class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
+  el.innerHTML = `<span class="tf-gap-text">${fmt(gap.startTs)} – ${fmt(gap.endTs)} · ${dur} untracked between blocks</span><button type="button" class="tf-gap-btn" id="tfGapLogBtn">＋ log it</button>`;
   document.getElementById('tfGapLogBtn')?.addEventListener('click', () => {
     const inp = document.getElementById('captureInput');
     if (inp) inp.focus();
@@ -194,7 +197,7 @@ function renderFlowHeader(dateKey, activeView) {
   const segHtml = ['flow', 'log', 'blocks']
     .map(
       (v) =>
-        `<button class="tf-seg-btn${v === activeView ? ' active' : ''}" data-view="${v}">${v.charAt(0).toUpperCase() + v.slice(1)}</button>`
+        `<button type="button" class="tf-seg-btn${v === activeView ? ' active' : ''}" data-view="${v}">${TF_VIEW_LABELS[v]}</button>`
     )
     .join('');
 
@@ -314,11 +317,6 @@ function renderLogView(dateKey) {
 
   const noteRow = document.getElementById('dailyLogNoteRow');
   if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
-
-  document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
-  document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addLogNote();
-  });
 }
 
 // ─────────────────────────── main render ───────────────────────────
@@ -345,4 +343,17 @@ function renderTodayFlow() {
   if (activeView === 'flow') renderFlowView(dateKey);
   else if (activeView === 'log') renderLogView(dateKey);
   else renderTimeblock(); // blocks: delegate to existing timeblock renderer
+}
+
+/**
+ * Binds the static log-note input listeners exactly once on DOMContentLoaded.
+ * These elements (`#dailyLogNoteBtn`, `#dailyLogNoteInput`) live in static HTML
+ * and are never recreated, so attaching here avoids the listener accumulation
+ * that occurred when binding happened inside renderLogView().
+ */
+function initTodayFlow() {
+  document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
+  document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addLogNote();
+  });
 }

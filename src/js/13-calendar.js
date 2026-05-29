@@ -495,6 +495,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     setFlowView,
     getFlowView,
     renderTodayFlow,
+    initTodayFlow,
     findLargestGap,
   };
   // Live viewDate getter/setter so tests can change the view date
