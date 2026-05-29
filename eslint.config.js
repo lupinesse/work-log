@@ -62,6 +62,27 @@ export default [
     },
   },
 
+  // CI dialogue scripts — ES modules running in Node (GitHub Actions).
+  // These power the chatgpt/claude PR-review pipeline. They use Node globals
+  // (process, console, fetch). detect-non-literal-fs-filename: any file paths
+  // here are derived from internal config or trusted CI output, not external
+  // input. detect-object-injection: bracket lookups key off internal source
+  // labels and parsed CI data, never untrusted user input at that point.
+  {
+    files: ['.github/scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
   // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
   // detect-non-literal-fs-filename: paths come from internal config, not external input.
