@@ -106,10 +106,10 @@ async function fetchClaudeContext() {
   let finalReview = null;
 
   // Walk newest-first so we pick up the latest version of each type.
+  // Identify Claude's comments by body content only — not by login — so the
+  // lookup is resilient to token-fallback cases where the comment is posted
+  // by github-actions[bot] instead of the Claude Reviewer App.
   for (const c of [...comments].reverse()) {
-    const login = (c.user?.login || '').toLowerCase();
-    if (!login.includes('claude')) continue;
-
     if (!synthesis && c.body.includes("Claude's synthesis")) {
       synthesis = c.body;
     }
@@ -229,6 +229,7 @@ Rules for new_findings: only include a finding if Claude's response did not addr
 
   const user = `${claudeContext_}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
+  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {

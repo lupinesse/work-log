@@ -54,6 +54,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write      # postIssueComment fallback when inline posting fails
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
 
@@ -153,6 +154,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write      # postIssueComment for synthesis + fallback replies
 
     steps:
       - name: Check out repository
@@ -287,6 +289,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write      # postIssueComment for fallback and unpostable findings
 
     steps:
       - name: Check out repository
@@ -346,7 +349,7 @@ jobs:
               query($owner:String!, $name:String!, $number:Int!) {
                 repository(owner:$owner, name:$name) {
                   pullRequest(number:$number) {
-                    reviewThreads(first:50) {
+                    reviewThreads(first:100) {
                       nodes {
                         isResolved
                         comments(first:1) {

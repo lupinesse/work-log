@@ -88,7 +88,7 @@ async function fetchChatGptThreads() {
     query($owner:String!, $name:String!, $number:Int!) {
       repository(owner:$owner, name:$name) {
         pullRequest(number:$number) {
-          reviewThreads(first:50) {
+          reviewThreads(first:100) {
             nodes {
               id
               isResolved
@@ -208,6 +208,7 @@ Output a single raw JSON object — no markdown wrapper:
 
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
+  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -288,8 +289,15 @@ async function main() {
   console.log(`  ${parsed.thread_responses.length} response(s) + synthesis`);
 
   const verdictEmoji = { agree_fix: '✅', agree_noted: '👍', disagree: '❌', partial: '↔️' };
-  const failed = [];
+  // Only auto-resolve threads where no fix is required. agree_fix and partial
+  // threads stay open so the author knows what still needs to be addressed.
+  const RESOLVABLE = new Set(['disagree', 'agree_noted']);
 
+  const failed = [];
+  /** @type {Map<number, {posted: boolean, thread: object, verdict: string}>} */
+  const replyResults = new Map();
+
+  // Pass 1 — post all replies before resolving anything.
   for (const tr of parsed.thread_responses) {
     const thread = threads[tr.index];
     if (!thread) {
@@ -301,25 +309,58 @@ async function main() {
     const emoji = verdictEmoji[tr.verdict] || '💬';
     const replyBody = `${emoji} ${tr.reply}`;
 
-    // Post reply
+    let posted = false;
     try {
       const reply = await replyToThread(commentId, replyBody);
+      posted = true;
       console.log(`  replied thread[${tr.index}]: ${reply.html_url}`);
     } catch (err) {
       console.warn(`  reply failed thread[${tr.index}]: ${err.message}`);
       failed.push({ tr, thread });
     }
 
-    // Resolve thread (best-effort — proceed even if it fails)
-    try {
-      await resolveThread(thread.id);
-      console.log(`  resolved thread[${tr.index}]`);
-    } catch (err) {
-      console.warn(`  resolve failed thread[${tr.index}]: ${err.message}`);
+    replyResults.set(tr.index, { posted, thread, verdict: tr.verdict });
+  }
+
+  // Pass 2 — resolve only threads where the reply posted successfully and the
+  // verdict requires no further action. agree_fix/partial threads stay open so
+  // the author and merge-gate can see what still needs fixing.
+  for (const [idx, { posted, thread, verdict }] of replyResults) {
+    if (posted && RESOLVABLE.has(verdict)) {
+      try {
+        await resolveThread(thread.id);
+        console.log(`  resolved thread[${idx}]`);
+      } catch (err) {
+        console.warn(`  resolve failed thread[${idx}]: ${err.message}`);
+      }
+    } else if (!RESOLVABLE.has(verdict)) {
+      console.log(`  thread[${idx}] left open (${verdict} — fix required)`);
+    } else {
+      console.log(`  thread[${idx}] left open (reply did not post)`);
     }
   }
 
-  // Build synthesis, appending any replies that couldn't be posted inline.
+  // Retroactive pass — re-query for any threads that should have been resolved
+  // but weren't (failed earlier, race condition, or pre-existing threads from
+  // previous CI runs that were included in this session). Ensures the synthesis
+  // is only posted after all feasible resolutions are complete.
+  const verdictById = new Map(
+    [...replyResults.values()].map(({ thread, verdict }) => [thread.id, verdict])
+  );
+  const stillUnresolved = await fetchChatGptThreads();
+  for (const t of stillUnresolved) {
+    const verdict = verdictById.get(t.id);
+    if (verdict && RESOLVABLE.has(verdict)) {
+      try {
+        await resolveThread(t.id);
+        console.log(`  retroactive resolve: ${t.id.slice(-8)}`);
+      } catch (err) {
+        console.warn(`  retroactive resolve failed: ${err.message}`);
+      }
+    }
+  }
+
+  // Pass 3 — post synthesis only after all feasible resolutions are complete.
   let synthesisBody = `## Claude's synthesis\n\n${parsed.synthesis}`;
   if (failed.length) {
     const extras = failed.map(({ tr, thread }) => {
