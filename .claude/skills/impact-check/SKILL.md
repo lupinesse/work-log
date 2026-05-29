@@ -50,8 +50,14 @@ the build in numeric order. Later modules can import from earlier ones using
 named exports; earlier modules cannot import later ones without a circular
 dependency.
 
+First, list all source modules using the Glob tool:
+
+```
+Glob: src/js/*.js
+```
+
 For each **changed** module basename, search all other source files for
-references to it:
+references to it using the Grep tool:
 
 ```
 Grep: the basename (without extension) across src/js/
