@@ -26,6 +26,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { upsertIssueComment } from './lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -158,19 +159,10 @@ async function resolveThread(threadId) {
   if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
 }
 
-/**
- * Post a plain issue comment (used for the synthesis and as a fallback).
- * @param {string} body
- * @returns {Promise<object>}
- */
-async function postIssueComment(body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments`,
-    { method: 'POST', headers: GH_HEADERS, body: JSON.stringify({ body }) }
-  );
-  if (!response.ok) die(`Issue comment API ${response.status}: ${await response.text()}`);
-  return response.json();
-}
+// Marker for the synthesis comment. Stable across runs so the comment is
+// updated in place rather than stacking a new one per push.
+const SYNTHESIS_MARKER = "Claude's synthesis";
+const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
 
 // ─────────────────────────── Claude API ───────────────────────────
 
@@ -288,8 +280,14 @@ async function main() {
     parsed = parseResponse(rawText);
   } catch (e) {
     console.warn(`JSON parse failed (${e.message}) — posting raw as fallback.`);
-    const c = await postIssueComment(`${rawText}\n\n---\n${ATTRIBUTION}`);
-    console.log(`Fallback comment: ${c.html_url}`);
+    // Use the synthesis marker so a parse-failure run still replaces (rather
+    // than duplicates) the previous synthesis comment.
+    const { comment, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: SYNTHESIS_MARKER,
+      body: `${SYNTHESIS_MARKER} (parse failed)\n\n${rawText}\n\n---\n${ATTRIBUTION}`,
+    });
+    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment: ${comment.html_url}`);
     return;
   }
 
@@ -378,8 +376,12 @@ async function main() {
   }
   synthesisBody += `\n\n---\n${ATTRIBUTION}`;
 
-  const synthesis = await postIssueComment(synthesisBody);
-  console.log(`  Synthesis: ${synthesis.html_url}`);
+  const { comment: synthesis, updated } = await upsertIssueComment({
+    ...GH_CTX,
+    marker: SYNTHESIS_MARKER,
+    body: synthesisBody,
+  });
+  console.log(`  ${updated ? 'Updated' : 'Posted'} synthesis: ${synthesis.html_url}`);
 }
 
 main().catch((err) => die(`Unhandled error: ${err.stack || err.message}`));

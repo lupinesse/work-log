@@ -34,6 +34,13 @@
  */
 
 import { readFileSync } from 'node:fs';
+import {
+  fetchAllThreads,
+  formatThreadsForPrompt,
+  replyToThread,
+  upsertReview,
+  upsertIssueComment,
+} from './lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -76,10 +83,17 @@ const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` (reasoning_effort
 
 const DEFAULT_PROMPT = `You are reviewing a pull request in a personal time-tracking web app (vanilla JavaScript ES modules, SCSS, HTML). The project follows the UK Government Analysis Function Higher QA standard.
 
-Output your review as a single raw JSON object — no markdown wrapper, no text outside the JSON. Schema:
-{"verdict":"APPROVE"|"REQUEST_CHANGES"|"COMMENT","summary":"2-4 sentence overall assessment","findings":[{"path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"}]}
+You will be shown the diff AND a list of existing review threads already on this PR (from prior runs of this workflow). For each issue you would raise, you must choose ONE of two actions:
 
-Rules for findings: path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js). line must be a real line number in the new (right-side) version of that file — pick the last line of the relevant block if the issue spans multiple lines. Only include a finding when you can cite a specific line; put general observations in summary instead.
+- **reply** — the issue is the same as, or directly related to, an existing thread. Continue the conversation in that thread instead of creating a new one. Use this for: identical findings, the same root cause flagged on a nearby line, an old finding now reappearing in modified code, or a clarification on a thread you previously opened.
+- **new** — the issue is genuinely new and does not overlap with any existing thread.
+
+Bias toward **reply** when in doubt. Duplicate inline comments on the same line/issue are the main thing this workflow is trying to avoid.
+
+Output your review as a single raw JSON object — no markdown wrapper, no text outside the JSON. Schema:
+{"verdict":"APPROVE"|"REQUEST_CHANGES"|"COMMENT","summary":"2-4 sentence overall assessment","thread_actions":[{"type":"new","path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"},{"type":"reply","thread_index":<integer matching a thread shown below>,"body":"markdown — your follow-up. Reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related issue on this line:')."}]}
+
+Rules: for "new", path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js) and line must be a real line number in the new (right-side) version of that file. For "reply", thread_index must be one of the integers shown in the existing-threads list below. Only include items you can cite specifically; put general observations in summary instead.
 
 Focus on: correctness (logic errors, edge cases, null/undefined), single-purpose functions (flag any doing more than one thing), informative naming (flag single-letter variables outside tight map/filter chains), error handling (use wlLog.warn/error — never silent catch), test coverage (every new exported function needs a unit test in test/unit.cjs). Ignore auto-generated files: script.js, styles.css, docs/*.html. Be direct and specific; cite file and line for every finding.`;
 
@@ -107,11 +121,20 @@ function loadDiff() {
 // ─────────────────────────── OpenAI ───────────────────────────
 
 /**
- * Send the diff to OpenAI and return the raw text of the model's reply.
+ * Send the diff and existing-thread context to OpenAI and return the raw
+ * text of the model's reply.
+ *
  * @param {string} diff
+ * @param {import('./lib/github-threads.mjs').ThreadSummary[]} existingThreads
  * @returns {Promise<string>}
  */
-async function reviewWithOpenAI(diff) {
+async function reviewWithOpenAI(diff, existingThreads) {
+  const threadBlock = formatThreadsForPrompt(existingThreads);
+  const userContent =
+    `Existing review threads on this PR (reply to one of these if your finding overlaps; otherwise post new):\n\n${threadBlock}\n\n` +
+    `PR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
+
+  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -126,10 +149,7 @@ async function reviewWithOpenAI(diff) {
       // `reasoning_effort`. Reasoning level is the controlling knob.
       messages: [
         { role: 'system', content: PROMPT },
-        {
-          role: 'user',
-          content: `Review this diff:\n\n\`\`\`diff\n${diff}\n\`\`\``,
-        },
+        { role: 'user',   content: userContent },
       ],
     }),
   });
@@ -143,21 +163,29 @@ async function reviewWithOpenAI(diff) {
 // ─────────────────────────── output parsing ───────────────────────────
 
 /**
- * @typedef {{ path: string, line: number, body: string }} Finding
- * @typedef {{ verdict: string, summary: string, findings: Finding[], invalidFindings: unknown[] }} Review
+ * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
+ * @typedef {{ type: 'reply', threadIndex: number, body: string }} ReplyAction
+ * @typedef {NewAction | ReplyAction} ThreadAction
+ * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} Review
  */
 
 /**
  * Parse the raw OpenAI response into a structured review object.
  * Strips any accidental markdown code-fence wrapping before JSON.parse.
  * Normalises recoverable values (e.g. numeric string → integer line number).
- * Unrecoverable findings are collected in `invalidFindings` so the caller
+ * Unrecoverable actions are collected in `invalidActions` so the caller
  * can include them in a fallback comment instead of silently dropping them.
+ *
+ * Accepts the new dual-mode schema (`thread_actions`) and falls back to the
+ * legacy `findings` schema for backwards compatibility — older model output
+ * is treated as all "new" actions.
+ *
  * @param {string} rawText
+ * @param {number} existingThreadCount  Used to validate reply thread_index.
  * @returns {Review}
  * @throws {Error} if JSON is malformed or required fields are missing.
  */
-function parseReviewOutput(rawText) {
+function parseReviewOutput(rawText, existingThreadCount) {
   const cleaned = rawText
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '')
@@ -172,68 +200,67 @@ function parseReviewOutput(rawText) {
   if (!validVerdicts.includes(parsed.verdict)) {
     throw new Error(`Unexpected verdict value: ${JSON.stringify(parsed.verdict)}`);
   }
-  if (!Array.isArray(parsed.findings)) parsed.findings = [];
 
-  const findings = [];
-  const invalidFindings = [];
+  // Accept either the new `thread_actions` schema or the legacy `findings`
+  // schema (treated as all type="new").
+  const rawActions = Array.isArray(parsed.thread_actions)
+    ? parsed.thread_actions
+    : Array.isArray(parsed.findings)
+      ? parsed.findings.map(f => ({ type: 'new', ...f }))
+      : [];
 
-  for (const f of parsed.findings) {
-    if (!f) continue;
+  const actions = [];
+  const invalidActions = [];
 
-    const path = typeof f.path === 'string' ? f.path.trim() : null;
-    // Normalise: accept numeric strings (e.g. "42") as integer line numbers
-    const rawLine = f.line;
-    const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
-    const body = typeof f.body === 'string' ? f.body : null;
+  for (const a of rawActions) {
+    if (!a || typeof a !== 'object') { invalidActions.push(a); continue; }
+    const type = a.type || 'new';
+    const body = typeof a.body === 'string' ? a.body : null;
+    if (!body) { invalidActions.push(a); continue; }
 
-    if (path && line !== null && line > 0 && body) {
-      findings.push({ path, line, body });
+    if (type === 'reply') {
+      const idx = Number.isInteger(a.thread_index) ? a.thread_index : Number(a.thread_index);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= existingThreadCount) {
+        console.warn(`  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid range 0..${existingThreadCount - 1}) — moved to fallback`);
+        invalidActions.push(a);
+        continue;
+      }
+      actions.push({ type: 'reply', threadIndex: idx, body });
     } else {
-      console.warn(`  invalid finding (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
-      invalidFindings.push(f);
+      const path = typeof a.path === 'string' ? a.path.trim() : null;
+      const rawLine = a.line;
+      const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
+      if (!path || line === null || line <= 0) {
+        console.warn(`  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
+        invalidActions.push(a);
+        continue;
+      }
+      actions.push({ type: 'new', path, line, body });
     }
   }
 
   return {
     verdict: parsed.verdict,
     summary: String(parsed.summary),
-    findings,
-    invalidFindings,
+    actions,
+    invalidActions,
   };
 }
 
 // ─────────────────────────── GitHub ───────────────────────────
 
-const GH_HEADERS = {
-  Authorization:          `token ${GITHUB_TOKEN}`,
-  Accept:                 'application/vnd.github+json',
-  'X-GitHub-Api-Version': '2022-11-28',
-  'Content-Type':         'application/json',
-};
+// Identifies this phase's top-level review for upsert across runs. The
+// attribution footer is included in every review body and is stable enough
+// to use as a marker — Phase 4's review uses "responding to Claude" instead.
+const REVIEW_MARKER = 'Automated review by ChatGPT';
+const FALLBACK_MARKER = '<!-- chatgpt-phase1-fallback -->';
 
-/**
- * Post the overall PR review (verdict label + summary body, no inline comments).
- * Always uses 'COMMENT' event so the bot review never blocks merge via
- * required-reviewer rules.
- * @param {string} body  Markdown body for the review.
- * @returns {Promise<object>} GitHub API response object.
- */
-async function postReview(body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
-    {
-      method: 'POST',
-      headers: GH_HEADERS,
-      body: JSON.stringify({ commit_id: HEAD_SHA, body, event: 'COMMENT' }),
-    }
-  );
-  if (!response.ok) die(`GitHub reviews API ${response.status}: ${await response.text()}`);
-  return response.json();
-}
+const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
 
 /**
  * Post a single inline pull-request review comment on a specific file line.
- * Each call creates a separate resolvable thread.
+ * Each call creates a separate resolvable thread. Used only when no related
+ * existing thread is appropriate.
  * @param {string} path  File path relative to the repo root.
  * @param {number} line  Line number in the new (right-side) version of the file.
  * @param {string} body  Comment body (markdown).
@@ -245,33 +272,13 @@ async function postInlineComment(path, line, body) {
     `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments`,
     {
       method: 'POST',
-      headers: GH_HEADERS,
+      headers: { Authorization: `token ${GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ body, commit_id: HEAD_SHA, path, line, side: 'RIGHT' }),
     }
   );
   if (!response.ok) {
     throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
   }
-  return response.json();
-}
-
-/**
- * Post a plain issue comment.
- * Used as a fallback when JSON parsing fails or when inline posting fails
- * for a finding — ensures nothing is silently lost.
- * @param {string} body
- * @returns {Promise<object>} GitHub API response object.
- */
-async function postIssueComment(body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments`,
-    {
-      method: 'POST',
-      headers: GH_HEADERS,
-      body: JSON.stringify({ body }),
-    }
-  );
-  if (!response.ok) die(`GitHub issues API ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
@@ -292,7 +299,13 @@ async function main() {
   }
   console.log(`  diff size: ${diff.length} chars`);
 
-  const rawText = await reviewWithOpenAI(diff);
+  // Pull existing threads so the model can choose to reply rather than
+  // duplicate. We only show threads (not Claude's issue comments) — those
+  // would dilute the dedup signal without helping much.
+  const existingThreads = await fetchAllThreads(GH_CTX);
+  console.log(`  existing threads on PR: ${existingThreads.length}`);
+
+  const rawText = await reviewWithOpenAI(diff, existingThreads);
   if (!rawText) {
     console.warn('OpenAI returned an empty review — skipping comment.');
     return;
@@ -302,57 +315,81 @@ async function main() {
   // so the review is never silently lost.
   let review;
   try {
-    review = parseReviewOutput(rawText);
+    review = parseReviewOutput(rawText, existingThreads.length);
   } catch (parseErr) {
     console.warn(`JSON parse failed (${parseErr.message}) — posting as plain issue comment.`);
-    const comment = await postIssueComment(`${rawText}\n\n---\n${ATTRIBUTION}`);
-    console.log(`Posted fallback comment: ${comment.html_url}`);
+    const { comment, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\n${rawText}\n\n---\n${ATTRIBUTION}`,
+    });
+    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment: ${comment.html_url}`);
     return;
   }
 
+  const newCount = review.actions.filter(a => a.type === 'new').length;
+  const replyCount = review.actions.filter(a => a.type === 'reply').length;
   console.log(
-    `  verdict: ${review.verdict}, findings: ${review.findings.length}` +
-    (review.invalidFindings.length ? `, invalid (fallback): ${review.invalidFindings.length}` : '')
+    `  verdict: ${review.verdict}, new: ${newCount}, replies: ${replyCount}` +
+    (review.invalidActions.length ? `, invalid (fallback): ${review.invalidActions.length}` : '')
   );
 
-  // Post the top-level review: verdict label + overall summary.
+  // Upsert the top-level review (replaces any previous Phase 1 review from
+  // this bot rather than stacking one per push).
   const reviewBody = `**${review.verdict}** — ${review.summary}\n\n---\n${ATTRIBUTION}`;
-  const reviewResult = await postReview(reviewBody);
-  console.log(`Posted review (${review.verdict}): ${reviewResult.html_url}`);
+  const { review: reviewResult, replaced } = await upsertReview({
+    ...GH_CTX,
+    headSha: HEAD_SHA,
+    marker: REVIEW_MARKER,
+    body: reviewBody,
+  });
+  console.log(`${replaced ? 'Replaced' : 'Posted'} review (${review.verdict}): ${reviewResult.html_url}`);
 
-  // Post each finding as an individual inline comment thread.
-  // Failures (e.g. line not in diff) are collected for a fallback comment
-  // rather than silently dropped.
+  // Dispatch each action: replies go to existing threads, news create them.
   const unpostable = [];
-  for (const finding of review.findings) {
+  for (const a of review.actions) {
     try {
-      const comment = await postInlineComment(finding.path, finding.line, finding.body);
-      console.log(`  inline: ${finding.path}:${finding.line} → ${comment.html_url}`);
+      if (a.type === 'reply') {
+        const target = existingThreads[a.threadIndex];
+        const reply = await replyToThread({
+          ...GH_CTX,
+          commentId: target.firstCommentId,
+          body: a.body,
+        });
+        console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
+      } else {
+        const comment = await postInlineComment(a.path, a.line, a.body);
+        console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
+      }
     } catch (err) {
-      console.warn(`  could not post inline on ${finding.path}:${finding.line} — ${err.message}`);
-      unpostable.push(finding);
+      const where = a.type === 'reply' ? `reply thread[${a.threadIndex}]` : `${a.path}:${a.line}`;
+      console.warn(`  could not post ${where} — ${err.message}`);
+      unpostable.push(a);
     }
   }
 
-  // Findings that failed inline posting (GitHub API rejected) and findings with
-  // unrecoverable parse errors both go into a single follow-up issue comment so
-  // they are visible and resolvable rather than silently lost.
-  const fallbackFindings = [
-    ...unpostable,
-    ...review.invalidFindings.map(f => ({
-      path: String(f?.path ?? '(unknown path)'),
-      line: String(f?.line ?? '(unknown line)'),
-      body: typeof f?.body === 'string' ? f.body : `(malformed finding) ${JSON.stringify(f)}`,
+  // Build the fallback comment from unpostable actions + invalid actions
+  // (parse rejects). Nothing the model produced is silently dropped.
+  const fallbackEntries = [
+    ...unpostable.map(a => ({
+      label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
+      body:  a.body,
+    })),
+    ...review.invalidActions.map(a => ({
+      label: '(malformed action)',
+      body:  typeof a?.body === 'string' ? a.body : JSON.stringify(a),
     })),
   ];
-  if (fallbackFindings.length > 0) {
-    const sections = fallbackFindings
-      .map(f => `**\`${f.path}:${f.line}\`**\n\n${f.body}`)
+  if (fallbackEntries.length > 0) {
+    const sections = fallbackEntries
+      .map(f => `**\`${f.label}\`**\n\n${f.body}`)
       .join('\n\n---\n\n');
-    const fallback = await postIssueComment(
-      `The following findings could not be posted as inline comments:\n\n${sections}`
-    );
-    console.log(`  fallback comment for ${fallbackFindings.length} finding(s): ${fallback.html_url}`);
+    const { comment, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\nThe following actions could not be posted as inline comments or replies:\n\n${sections}\n\n---\n${ATTRIBUTION}`,
+    });
+    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`);
   }
 }
 

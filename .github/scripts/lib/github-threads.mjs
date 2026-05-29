@@ -1,0 +1,256 @@
+/**
+ * Shared helpers for the AI review dialogue: fetching review threads with
+ * full history, replying to existing threads, and updating issue comments
+ * in place across runs (so each phase produces at most one comment per PR
+ * rather than accumulating one per push).
+ *
+ * Consumed by chatgpt-review.mjs, chatgpt-claude-dialogue.mjs, and
+ * claude-chatgpt-dialogue.mjs.
+ *
+ * All HTTP via native `fetch` (Node ≥ 22).
+ */
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   isResolved: boolean,
+ *   firstCommentId: number,
+ *   author: string,
+ *   path: string,
+ *   line: number,
+ *   body: string,
+ *   replies: Array<{ author: string, body: string }>,
+ * }} ThreadSummary
+ */
+
+/**
+ * Build the standard headers for the GitHub REST API.
+ * @param {string} token
+ * @returns {Record<string, string>}
+ */
+export function ghHeaders(token) {
+  return {
+    Authorization:          `token ${token}`,
+    Accept:                 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type':         'application/json',
+  };
+}
+
+/**
+ * Fetch all review threads on the PR with full comment history.
+ * Each thread includes its first comment (the finding) and any replies
+ * (including verdict replies from the other AI).
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @returns {Promise<ThreadSummary[]>}
+ */
+export async function fetchAllThreads({ token, owner, repo, prNumber }) {
+  const query = `
+    query($owner:String!, $name:String!, $number:Int!) {
+      repository(owner:$owner, name:$name) {
+        pullRequest(number:$number) {
+          reviewThreads(first:100) {
+            nodes {
+              id
+              isResolved
+              comments(first:20) {
+                nodes {
+                  databaseId
+                  author { login }
+                  body
+                  path
+                  originalLine
+                }
+              }
+            }
+          }
+        }
+      }
+    }`;
+
+  const response = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: ghHeaders(token),
+    body: JSON.stringify({
+      query,
+      variables: { owner, name: repo, number: prNumber },
+    }),
+  });
+  if (!response.ok) throw new Error(`GitHub GraphQL ${response.status}: ${await response.text()}`);
+  const data = await response.json();
+  if (data.errors) throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+
+  const threads = [];
+  for (const t of data.data.repository.pullRequest.reviewThreads.nodes) {
+    const comments = t.comments.nodes;
+    if (!comments.length) continue;
+    const first = comments[0];
+    threads.push({
+      id:             t.id,
+      isResolved:     t.isResolved,
+      firstCommentId: first.databaseId,
+      author:         (first.author?.login || '').toLowerCase(),
+      path:           first.path,
+      line:           first.originalLine,
+      body:           first.body || '',
+      replies: comments.slice(1).map(c => ({
+        author: (c.author?.login || '').toLowerCase(),
+        body:   c.body || '',
+      })),
+    });
+  }
+  return threads;
+}
+
+/**
+ * Post a reply into an existing inline review thread.
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @param {number} params.commentId  REST integer id of the first comment in the thread.
+ * @param {string} params.body
+ * @returns {Promise<object>}
+ */
+export async function replyToThread({ token, owner, repo, prNumber, commentId, body }) {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments/${commentId}/replies`,
+    { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ body }) }
+  );
+  if (!response.ok) throw new Error(`Reply API ${response.status}: ${await response.text()}`);
+  return response.json();
+}
+
+/**
+ * Find the most recent issue comment containing `marker` in its body, then
+ * PATCH it with `body`. If no previous comment matches, POST a new one.
+ * Used to keep one persistent comment per phase rather than accumulating one
+ * per push.
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @param {string} params.marker   Substring that uniquely identifies this phase's comment.
+ * @param {string} params.body     New body content.
+ * @returns {Promise<{ comment: object, updated: boolean }>}
+ */
+export async function upsertIssueComment({ token, owner, repo, prNumber, marker, body }) {
+  const listResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100`,
+    { headers: ghHeaders(token) }
+  );
+  if (!listResp.ok) throw new Error(`List comments API ${listResp.status}: ${await listResp.text()}`);
+  const comments = await listResp.json();
+
+  // Walk newest-first so we update the latest matching comment.
+  let previous = null;
+  for (const c of [...comments].reverse()) {
+    if (c.body && c.body.includes(marker)) { previous = c; break; }
+  }
+
+  if (previous) {
+    const patchResp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/comments/${previous.id}`,
+      { method: 'PATCH', headers: ghHeaders(token), body: JSON.stringify({ body }) }
+    );
+    if (!patchResp.ok) throw new Error(`PATCH comment API ${patchResp.status}: ${await patchResp.text()}`);
+    return { comment: await patchResp.json(), updated: true };
+  }
+
+  const postResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
+    { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ body }) }
+  );
+  if (!postResp.ok) throw new Error(`POST comment API ${postResp.status}: ${await postResp.text()}`);
+  return { comment: await postResp.json(), updated: false };
+}
+
+/**
+ * Find the most recent PR review by `marker` in its body and DISMISS it,
+ * then post a fresh review. GitHub's reviews API doesn't allow editing the
+ * body of a submitted review, so dismiss-and-replace is the closest we can
+ * get to "one review per phase".
+ *
+ * @param {object} params
+ * @param {string} params.token
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.prNumber
+ * @param {string} params.headSha   Required for posting a new review.
+ * @param {string} params.marker    Substring that uniquely identifies this phase's review.
+ * @param {string} params.body
+ * @returns {Promise<{ review: object, replaced: boolean }>}
+ */
+export async function upsertReview({ token, owner, repo, prNumber, headSha, marker, body }) {
+  const listResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100`,
+    { headers: ghHeaders(token) }
+  );
+  if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
+  const reviews = await listResp.json();
+
+  // Pick the most recent matching, non-dismissed review.
+  let previous = null;
+  for (const r of [...reviews].reverse()) {
+    if (r.state !== 'DISMISSED' && r.body && r.body.includes(marker)) { previous = r; break; }
+  }
+
+  let replaced = false;
+  if (previous) {
+    // Dismissals require a reason; the API rejects an empty string.
+    const dismissResp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews/${previous.id}/dismissals`,
+      {
+        method: 'PUT',
+        headers: ghHeaders(token),
+        body: JSON.stringify({ message: 'Superseded by a newer review from this bot.' }),
+      }
+    );
+    if (dismissResp.ok) {
+      replaced = true;
+    } else {
+      // Non-fatal — fall through and post a new review anyway so we never
+      // lose the verdict. The stale review just stays visible.
+      console.warn(`  could not dismiss previous review #${previous.id}: ${dismissResp.status} ${await dismissResp.text()}`);
+    }
+  }
+
+  const postResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+    {
+      method: 'POST',
+      headers: ghHeaders(token),
+      body: JSON.stringify({ commit_id: headSha, body, event: 'COMMENT' }),
+    }
+  );
+  if (!postResp.ok) throw new Error(`POST review API ${postResp.status}: ${await postResp.text()}`);
+  return { review: await postResp.json(), replaced };
+}
+
+/**
+ * Build a compact, indexed summary of existing threads for an AI prompt.
+ * Each entry includes index, path:line, author, resolution state, finding
+ * body, and any replies — enough for the model to decide whether a new
+ * finding overlaps with an existing thread.
+ *
+ * @param {ThreadSummary[]} threads
+ * @returns {string}
+ */
+export function formatThreadsForPrompt(threads) {
+  if (!threads.length) return '(no existing review threads on this PR)';
+  return threads.map((t, i) => {
+    const replyLines = t.replies.length
+      ? '\n' + t.replies.map(r => `  ↳ ${r.author}: ${r.body.slice(0, 200).replace(/\n/g, ' ')}`).join('\n')
+      : '';
+    const state = t.isResolved ? 'resolved' : 'open';
+    return `[Thread ${i}] ${t.path}:${t.line} (by ${t.author}, ${state})\n${t.body.slice(0, 400)}${replyLines}`;
+  }).join('\n\n---\n\n');
+}

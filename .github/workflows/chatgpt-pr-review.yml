@@ -340,24 +340,46 @@ jobs:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
-      - name: Post review as PR comment
+      - name: Post or update review as PR comment
+        # Finds the previous /pr-review comment by marker and PATCHes it in
+        # place, so we keep one persistent review comment per PR rather than
+        # stacking a new one per push.
         if: always() && steps.key-check.result != 'skipped'
         env:
           GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
+          REPO:       ${{ github.repository }}
         run: |
+          MARKER='<!-- claude-pr-review-comment -->'
           if [ -f review-output.txt ]; then
             {
+              echo "$MARKER"
               cat review-output.txt
               echo ""
               echo "---"
               echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
             } > comment-body.txt
           else
-            echo "> ⚠️ Automated review skipped — auth not configured." > comment-body.txt
+            {
+              echo "$MARKER"
+              echo "> ⚠️ Automated review skipped — auth not configured."
+            } > comment-body.txt
           fi
-          gh pr comment "$PR_NUMBER" --body-file comment-body.txt
+
+          # Find the most recent issue comment containing our marker.
+          PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
+
+          if [ -n "$PREV_ID" ]; then
+            echo "Updating existing comment $PREV_ID"
+            gh api "repos/$REPO/issues/comments/$PREV_ID" \
+              --method PATCH \
+              --field body=@comment-body.txt
+          else
+            echo "Posting new comment (no previous found)"
+            gh pr comment "$PR_NUMBER" --body-file comment-body.txt
+          fi
 
   # ─── Phase 4: ChatGPT responds to Claude's final verdict ──────────────────
   chatgpt-responds:

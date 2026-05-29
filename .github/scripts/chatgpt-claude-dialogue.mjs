@@ -30,6 +30,13 @@
  */
 
 import { readFileSync } from 'node:fs';
+import {
+  fetchAllThreads,
+  formatThreadsForPrompt,
+  replyToThread,
+  upsertReview,
+  upsertIssueComment,
+} from './lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -83,19 +90,21 @@ function loadDiff() {
 
 // ─────────────────────────── GitHub ───────────────────────────
 
+// Markers that identify this phase's persistent comments across runs.
+// upsertReview / upsertIssueComment locate the previous match and update it
+// in place rather than stacking a new comment per push.
+const REVIEW_MARKER   = "responding to Claude's review";
+const FALLBACK_MARKER = '<!-- chatgpt-phase4-fallback -->';
+
+const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
+
 /**
- * @typedef {{
- *   path: string,
- *   line: number,
- *   chatgptBody: string,
- *   claudeVerdict: string|null,
- *   claudeReply: string|null,
- * }} ThreadHistoryEntry
+ * @typedef {import('./lib/github-threads.mjs').ThreadSummary} ThreadSummary
  *
  * @typedef {{
  *   synthesis: string|null,
  *   finalReview: string|null,
- *   threadHistory: ThreadHistoryEntry[],
+ *   threads: ThreadSummary[],
  * }} ClaudeContext
  */
 
@@ -115,85 +124,21 @@ function parseVerdictFromReply(reply) {
 }
 
 /**
- * Fetch Phase 1 thread history: each ChatGPT-authored review thread, with
- * Claude's verdict reply if one was posted in Phase 2.
- *
- * Used to tell ChatGPT in Phase 4 exactly what Claude already addressed, so
- * it does not re-raise rejected findings.
- *
- * @returns {Promise<ThreadHistoryEntry[]>}
+ * Find the Claude verdict (if any) recorded in a thread's replies.
+ * @param {ThreadSummary} thread
+ * @returns {string|null}
  */
-async function fetchThreadHistory() {
-  const query = `
-    query($owner:String!, $name:String!, $number:Int!) {
-      repository(owner:$owner, name:$name) {
-        pullRequest(number:$number) {
-          reviewThreads(first:100) {
-            nodes {
-              comments(first:10) {
-                nodes {
-                  author { login }
-                  body
-                  path
-                  originalLine
-                }
-              }
-            }
-          }
-        }
-      }
-    }`;
-
-  const response = await fetch('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: GH_HEADERS,
-    body: JSON.stringify({
-      query,
-      variables: { owner: OWNER, name: REPO, number: parseInt(PR_NUMBER, 10) },
-    }),
-  });
-  if (!response.ok) die(`GitHub GraphQL ${response.status}: ${await response.text()}`);
-  const data = await response.json();
-  if (data.errors) die(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-
-  const history = [];
-  for (const t of data.data.repository.pullRequest.reviewThreads.nodes) {
-    const comments = t.comments.nodes;
-    if (!comments.length) continue;
-    const first = comments[0];
-    const firstLogin = (first.author?.login || '').toLowerCase();
-    // Only include threads whose first comment is from the ChatGPT Reviewer App.
-    // Tolerates token fallback (github-actions[bot]) by also matching body markers.
-    const isChatGpt = firstLogin.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
-    if (!isChatGpt) continue;
-
-    // Find Claude's reply — the first non-ChatGPT reply with a recognised verdict emoji.
-    let claudeVerdict = null;
-    let claudeReply = null;
-    for (const c of comments.slice(1)) {
-      const v = parseVerdictFromReply(c.body || '');
-      if (v) { claudeVerdict = v; claudeReply = c.body; break; }
-    }
-
-    history.push({
-      path: first.path,
-      line: first.originalLine,
-      chatgptBody: first.body,
-      claudeVerdict,
-      claudeReply,
-    });
+function claudeVerdictForThread(thread) {
+  for (const r of thread.replies) {
+    const v = parseVerdictFromReply(r.body);
+    if (v) return v;
   }
-  return history;
+  return null;
 }
 
 /**
- * Fetch Claude's context from PR issue comments:
- * - synthesis: Phase 2 output — how Claude responded to ChatGPT's threads.
- * - finalReview: Phase 3 output — Claude's independent /pr-review verdict,
- *   posted by the claude-final-review job after the thread resolution.
- *
- * Both are identified by their attribution footers and the Claude Reviewer
- * bot login. Returns the most recent match for each.
+ * Fetch Claude's issue comments (synthesis + final /pr-review verdict)
+ * from the PR.
  * @returns {Promise<{synthesis: string|null, finalReview: string|null}>}
  */
 async function fetchClaudeIssueComments() {
@@ -206,54 +151,28 @@ async function fetchClaudeIssueComments() {
 
   let synthesis   = null;
   let finalReview = null;
-
-  // Walk newest-first so we pick up the latest version of each type.
-  // Identify Claude's comments by body content only — not by login — so the
-  // lookup is resilient to token-fallback cases where the comment is posted
-  // by github-actions[bot] instead of the Claude Reviewer App.
+  // Walk newest-first; identify by body content only so the lookup tolerates
+  // token-fallback cases (comment posted by github-actions[bot]).
   for (const c of [...comments].reverse()) {
-    if (!synthesis && c.body.includes("Claude's synthesis")) {
-      synthesis = c.body;
-    }
-    if (!finalReview && c.body.includes('/pr-review')) {
-      finalReview = c.body;
-    }
+    if (!synthesis && c.body.includes("Claude's synthesis")) synthesis = c.body;
+    if (!finalReview && c.body.includes('/pr-review')) finalReview = c.body;
     if (synthesis && finalReview) break;
   }
-
   return { synthesis, finalReview };
 }
 
 /**
- * Convenience wrapper — fetches issue comments and thread history in parallel
- * and returns the full ClaudeContext for the OpenAI prompt.
+ * Build the full ClaudeContext: synthesis, final review, and all PR threads
+ * (so Phase 4 can choose to reply to an existing thread rather than open a
+ * duplicate).
  * @returns {Promise<ClaudeContext>}
  */
 async function fetchClaudeContext() {
-  const [issueComments, threadHistory] = await Promise.all([
+  const [issueComments, threads] = await Promise.all([
     fetchClaudeIssueComments(),
-    fetchThreadHistory(),
+    fetchAllThreads(GH_CTX),
   ]);
-  return { ...issueComments, threadHistory };
-}
-
-/**
- * Post the overall PR review (verdict label + summary body).
- * Uses 'COMMENT' so it never blocks merge via required-reviewer rules.
- * @param {string} body
- * @returns {Promise<object>}
- */
-async function postReview(body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
-    {
-      method: 'POST',
-      headers: GH_HEADERS,
-      body: JSON.stringify({ commit_id: HEAD_SHA, body, event: 'COMMENT' }),
-    }
-  );
-  if (!response.ok) die(`GitHub reviews API ${response.status}: ${await response.text()}`);
-  return response.json();
+  return { ...issueComments, threads };
 }
 
 /**
@@ -279,20 +198,6 @@ async function postInlineComment(path, line, body) {
   return response.json();
 }
 
-/**
- * Post a plain issue comment.
- * @param {string} body
- * @returns {Promise<object>}
- */
-async function postIssueComment(body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments`,
-    { method: 'POST', headers: GH_HEADERS, body: JSON.stringify({ body }) }
-  );
-  if (!response.ok) die(`Issue comment API ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 // ─────────────────────────── OpenAI ───────────────────────────
 
 /**
@@ -305,55 +210,49 @@ async function postIssueComment(body) {
  * @returns {Promise<string>} Raw text response.
  */
 async function callOpenAI(diff, claudeContext) {
-  const { synthesis, finalReview, threadHistory } = claudeContext;
+  const { synthesis, finalReview, threads } = claudeContext;
 
   // Build the context block shown to ChatGPT — include whatever is available.
+  // The threads block is the dedup signal (each thread is indexed so the model
+  // can reply to it instead of opening a new one).
   const contextBlocks = [];
-
-  if (threadHistory.length) {
-    const historyLines = threadHistory.map((h, i) => {
-      const verdict = h.claudeVerdict || '(no reply)';
-      const reply = h.claudeReply ? h.claudeReply.trim() : '(Claude did not reply)';
-      return `### Thread ${i + 1} — \`${h.path}:${h.line}\`\n\n**Your original finding:**\n${h.chatgptBody}\n\n**Claude's verdict:** \`${verdict}\`\n\n**Claude's reply:** ${reply}`;
-    }).join('\n\n---\n\n');
-    contextBlocks.push(`**Phase 1 thread history (your findings + Claude's per-thread verdicts):**\n\n${historyLines}`);
-  }
+  contextBlocks.push(`**All existing review threads on this PR (each shows path:line, author, resolution state, the original finding, and any replies including Claude's verdict emoji):**\n\n${formatThreadsForPrompt(threads)}`);
   if (synthesis) {
-    contextBlocks.push(`**Claude's synthesis (response to your Phase 1 threads):**\n\n${synthesis}`);
+    contextBlocks.push(`**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${synthesis}`);
   }
   if (finalReview) {
-    contextBlocks.push(`**Claude's final /pr-review verdict (posted after resolving your threads):**\n\n${finalReview}`);
+    contextBlocks.push(`**Claude's final /pr-review verdict (Phase 3 — posted after resolving your threads):**\n\n${finalReview}`);
   }
   const claudeContext_ = contextBlocks.join('\n\n---\n\n');
 
   const system = `You are ChatGPT, an AI code reviewer. You have already posted your own independent inline review findings on this pull request. Now you are reading Claude's full response:
 
-1. Claude replied to each of your inline threads with a verdict (agree_fix / agree_noted / disagree / partial) and explanation.
+1. Claude replied to each of your inline threads with a verdict (agree_fix / agree_noted / disagree / partial) — visible as emoji prefixes (✅ 👍 ❌ ↔️) in the thread replies shown to you.
 2. Claude posted a synthesis comment.
 3. Claude then ran its own complete /pr-review and posted that verdict.
 
 **CRITICAL — Claude is the implementing author. Claude's verdict on a finding is FINAL:**
 
-- If Claude rejected a finding with \`disagree\`: do NOT re-raise the same finding, do not re-litigate it, do not flag the same line for the same reason in different words. Claude has read your concern and explained why it does not apply. Move on.
-- If Claude accepted with \`agree_fix\`: trust the stated fix plan. Only push back if Claude's reply contradicts the diff (e.g. Claude said "will fix in this PR" but the diff clearly does not fix it).
-- If Claude accepted with \`agree_noted\` (acknowledged but deferred): do not re-raise.
-- If Claude responded \`partial\`: you may push back on the part Claude rejected, but only with new evidence — not a restatement of the original finding.
+- If Claude rejected a finding with ❌ \`disagree\`: do NOT re-raise it. Move on.
+- If Claude accepted with ✅ \`agree_fix\`: trust the stated fix. Only follow up if the diff clearly does NOT contain the promised fix.
+- If Claude accepted with 👍 \`agree_noted\` (acknowledged but deferred): do not re-raise.
+- If Claude responded ↔️ \`partial\`: you may follow up on the rejected part, but only with new evidence — not a restatement.
 
-Your task:
-1. Identify ONLY issues that are genuinely new — things Claude's review (per-thread replies, synthesis, and /pr-review) did not address at all. Each must be anchored to a specific file path and line number from the diff.
-2. If the diff has new commits since Phase 1 (visible at the top of the diff), it is fair game to flag issues introduced by those new commits.
-3. If you have no new findings, say so clearly in the summary and return an empty new_findings array. That is the expected outcome when Claude's review was thorough.
+**CRITICAL — never duplicate an existing thread:**
+
+For each concern you have, choose one action:
+- **reply** to an existing thread when the concern overlaps with one already shown above (same file/line, same root cause, related issue on a nearby line, or a follow-up to your own earlier finding). Bias toward replying. This is the main way to keep the comment count under control.
+- **new** only when the concern is genuinely novel — no existing thread touches the same code or root cause.
+
+If everything you'd want to say belongs in existing threads (or has already been addressed by Claude), produce an empty thread_actions array and say so in the summary. That is the expected outcome on a thorough review.
 
 Output a single raw JSON object — no markdown wrapper:
 {
   "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
   "summary": "<3-5 sentences: your overall response to Claude's verdict, what still concerns you (only NEW concerns), what you consider resolved>",
-  "new_findings": [
-    {
-      "path": "<exact file path from diff header>",
-      "line": <integer line in new file>,
-      "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking. Must NOT duplicate a finding already in the thread history above.>"
-    }
+  "thread_actions": [
+    { "type": "new",   "path": "<file path from diff>", "line": <integer>, "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking>" },
+    { "type": "reply", "thread_index": <integer matching a thread above>, "body": "<your follow-up — reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related concern on this line:')>" }
   ]
 }`;
 
@@ -386,16 +285,23 @@ Output a single raw JSON object — no markdown wrapper:
 // ─────────────────────────── output parsing ───────────────────────────
 
 /**
- * @typedef {{ path: string, line: number, body: string }} Finding
- * @typedef {{ verdict: string, summary: string, new_findings: Finding[] }} DialogueResponse
+ * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
+ * @typedef {{ type: 'reply', threadIndex: number, body: string }} ReplyAction
+ * @typedef {NewAction | ReplyAction} ThreadAction
+ * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
  */
 
 /**
+ * Parse OpenAI's response. Accepts both the new `thread_actions` schema and
+ * the legacy `new_findings` schema (treated as all type="new") for
+ * backwards compatibility.
+ *
  * @param {string} rawText
+ * @param {number} threadCount  Used to validate reply thread_index range.
  * @returns {DialogueResponse}
  * @throws {Error}
  */
-function parseResponse(rawText) {
+function parseResponse(rawText, threadCount) {
   const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const parsed = JSON.parse(cleaned);
 
@@ -406,20 +312,48 @@ function parseResponse(rawText) {
   if (!validVerdicts.includes(parsed.verdict)) {
     throw new Error(`Unexpected verdict value: ${JSON.stringify(parsed.verdict)}`);
   }
-  if (!Array.isArray(parsed.new_findings)) parsed.new_findings = [];
+
+  const rawActions = Array.isArray(parsed.thread_actions)
+    ? parsed.thread_actions
+    : Array.isArray(parsed.new_findings)
+      ? parsed.new_findings.map(f => ({ type: 'new', ...f }))
+      : [];
+
+  const actions = [];
+  const invalidActions = [];
+
+  for (const a of rawActions) {
+    if (!a || typeof a !== 'object') { invalidActions.push(a); continue; }
+    const type = a.type || 'new';
+    const body = typeof a.body === 'string' ? a.body : null;
+    if (!body) { invalidActions.push(a); continue; }
+
+    if (type === 'reply') {
+      const idx = Number.isInteger(a.thread_index) ? a.thread_index : Number(a.thread_index);
+      if (!Number.isInteger(idx) || idx < 0 || idx >= threadCount) {
+        console.warn(`  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid 0..${threadCount - 1}) — moved to fallback`);
+        invalidActions.push(a);
+        continue;
+      }
+      actions.push({ type: 'reply', threadIndex: idx, body });
+    } else {
+      const path = typeof a.path === 'string' ? a.path.trim() : null;
+      const rawLine = a.line;
+      const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
+      if (!path || line === null || line <= 0) {
+        console.warn(`  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
+        invalidActions.push(a);
+        continue;
+      }
+      actions.push({ type: 'new', path, line, body });
+    }
+  }
 
   return {
     verdict: parsed.verdict,
     summary: String(parsed.summary),
-    new_findings: parsed.new_findings
-      .filter(f =>
-        f &&
-        typeof f.path === 'string' &&
-        Number.isInteger(f.line) &&
-        f.line > 0 &&
-        typeof f.body === 'string'
-      )
-      .map(f => ({ path: f.path.trim(), line: f.line, body: f.body })),
+    actions,
+    invalidActions,
   };
 }
 
@@ -436,10 +370,10 @@ async function main() {
     console.log("  No Claude comments found (synthesis or /pr-review) — skipping.");
     return;
   }
-  const rejectedCount = claudeContext.threadHistory.filter(h => h.claudeVerdict === 'disagree').length;
+  const rejected = claudeContext.threads.filter(t => claudeVerdictForThread(t) === 'disagree').length;
   console.log(
     `  Claude context: synthesis=${!!claudeContext.synthesis}, finalReview=${!!claudeContext.finalReview}, ` +
-    `threadHistory=${claudeContext.threadHistory.length} (rejected=${rejectedCount})`
+    `threads=${claudeContext.threads.length} (claude_disagreed=${rejected})`
   );
 
   const rawText = await callOpenAI(diff, claudeContext);
@@ -447,41 +381,76 @@ async function main() {
 
   let parsed;
   try {
-    parsed = parseResponse(rawText);
+    parsed = parseResponse(rawText, claudeContext.threads.length);
   } catch (e) {
     console.warn(`JSON parse failed (${e.message}) — posting raw as fallback.`);
-    const c = await postIssueComment(`${rawText}\n\n---\n${ATTRIBUTION}`);
-    console.log(`Fallback comment: ${c.html_url}`);
+    const { comment, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\n${rawText}\n\n---\n${ATTRIBUTION}`,
+    });
+    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment: ${comment.html_url}`);
     return;
   }
 
-  console.log(`  verdict: ${parsed.verdict}, new findings: ${parsed.new_findings.length}`);
+  const newCount = parsed.actions.filter(a => a.type === 'new').length;
+  const replyCount = parsed.actions.filter(a => a.type === 'reply').length;
+  console.log(`  verdict: ${parsed.verdict}, new: ${newCount}, replies: ${replyCount}`);
 
-  // Post the top-level response as a review.
+  // Upsert the top-level response review (replaces any previous Phase 4 review
+  // from this bot rather than stacking one per push).
   const reviewBody = `**${parsed.verdict}** — ${parsed.summary}\n\n---\n${ATTRIBUTION}`;
-  const reviewResult = await postReview(reviewBody);
-  console.log(`Posted review (${parsed.verdict}): ${reviewResult.html_url}`);
+  const { review: reviewResult, replaced } = await upsertReview({
+    ...GH_CTX,
+    headSha: HEAD_SHA,
+    marker: REVIEW_MARKER,
+    body: reviewBody,
+  });
+  console.log(`${replaced ? 'Replaced' : 'Posted'} review (${parsed.verdict}): ${reviewResult.html_url}`);
 
-  // Post any new findings as inline threads.
+  // Dispatch actions: replies go to existing threads, news create them.
   const unpostable = [];
-  for (const finding of parsed.new_findings) {
+  for (const a of parsed.actions) {
     try {
-      const comment = await postInlineComment(finding.path, finding.line, finding.body);
-      console.log(`  inline: ${finding.path}:${finding.line} → ${comment.html_url}`);
+      if (a.type === 'reply') {
+        const target = claudeContext.threads[a.threadIndex];
+        const reply = await replyToThread({
+          ...GH_CTX,
+          commentId: target.firstCommentId,
+          body: a.body,
+        });
+        console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
+      } else {
+        const comment = await postInlineComment(a.path, a.line, a.body);
+        console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
+      }
     } catch (err) {
-      console.warn(`  could not post inline on ${finding.path}:${finding.line} — ${err.message}`);
-      unpostable.push(finding);
+      const where = a.type === 'reply' ? `reply thread[${a.threadIndex}]` : `${a.path}:${a.line}`;
+      console.warn(`  could not post ${where} — ${err.message}`);
+      unpostable.push(a);
     }
   }
 
-  if (unpostable.length > 0) {
-    const sections = unpostable
-      .map(f => `**\`${f.path}:${f.line}\`**\n\n${f.body}`)
+  const fallbackEntries = [
+    ...unpostable.map(a => ({
+      label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
+      body:  a.body,
+    })),
+    ...parsed.invalidActions.map(a => ({
+      label: '(malformed action)',
+      body:  typeof a?.body === 'string' ? a.body : JSON.stringify(a),
+    })),
+  ];
+  if (fallbackEntries.length > 0) {
+    const sections = fallbackEntries
+      .map(f => `**\`${f.label}\`**\n\n${f.body}`)
       .join('\n\n---\n\n');
-    const fallback = await postIssueComment(
-      `The following new findings could not be posted as inline comments:\n\n${sections}\n\n---\n${ATTRIBUTION}`
-    );
-    console.log(`  fallback comment for ${unpostable.length} finding(s): ${fallback.html_url}`);
+    const { comment, updated } = await upsertIssueComment({
+      ...GH_CTX,
+      marker: FALLBACK_MARKER,
+      body: `${FALLBACK_MARKER}\nThe following actions could not be posted as inline comments or replies:\n\n${sections}\n\n---\n${ATTRIBUTION}`,
+    });
+    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`);
   }
 }
 
