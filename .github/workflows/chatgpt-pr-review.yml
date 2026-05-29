@@ -28,7 +28,10 @@ name: ChatGPT PR Review
 #
 # Required secrets:
 #   OPENAI_API_KEY               — OpenAI API key
-#   CLAUDE_CODE_OAUTH_TOKEN      — Claude subscription token (`claude setup-token`)
+#   CLAUDE_CODE_OAUTH_TOKEN      — Claude subscription token (`claude setup-token`); optional
+#                                  if ANTHROPIC_API_KEY is set
+#   ANTHROPIC_API_KEY            — Anthropic API key; used as fallback when OAuth token is
+#                                  absent or expired (phases 2 and 3)
 #   CHATGPT_REVIEWER_APP_ID      — Client ID of the "ChatGPT Reviewer" GitHub App
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 #   CLAUDE_REVIEWER_APP_ID       — Client ID of the "Claude Reviewer" GitHub App
@@ -310,19 +313,25 @@ jobs:
         id: key-check
         env:
           OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$OAUTH_TOKEN" ]; then
+          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set — skipping Claude review."
+            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping Claude review."
           fi
 
       - name: Run /pr-review
         if: steps.key-check.outputs.present == 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          # Prefer ANTHROPIC_API_KEY when available — the OAuth token may be expired.
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            unset CLAUDE_CODE_OAUTH_TOKEN
+          fi
           claude -p "/pr-review" \
             --model claude-opus-4-7 \
             --allowedTools "Read" "Grep" "Glob" \
