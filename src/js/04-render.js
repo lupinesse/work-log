@@ -42,6 +42,14 @@ function render() {
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
+  // Collapsed summary: mirrors the three values into a single header line so
+  // the section communicates its data without needing to be opened.
+  document.getElementById('analyticsSummary').textContent = [
+    `${document.getElementById('statToday').textContent} tasks today`,
+    `${document.getElementById('statWeek').textContent} epics this week`,
+    `${document.getElementById('statStreak').textContent}-day streak`,
+  ].join(' · ');
+
   /* ── 4. Sub-stat tiles (most-tracked task today / this week / best streak day) ── */
   // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic
   function taskSubHtml(label, ms) {

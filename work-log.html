@@ -207,10 +207,12 @@
   <button class="emergency-exit" id="emergencyExit">exit focus mode</button>
 </div>
 
-<!-- Analytics section (streak, task count, epic count) -->
-<div class="analytics-section plan-section" id="analyticsSection">
-  <div class="plan-header analytics-header" id="analyticsHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="analyticsBody">
+<!-- Analytics section (streak, task count, epic count) — default collapsed -->
+<div class="analytics-section plan-section collapsed" id="analyticsSection">
+  <div class="plan-header analytics-header" id="analyticsHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="analyticsBody">
     <span class="plan-header-title">analytics</span>
+    <!-- Inline summary visible when the section is collapsed -->
+    <span class="analytics-summary" id="analyticsSummary" aria-hidden="true"></span>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="plan-body analytics-body" id="analyticsBody">
