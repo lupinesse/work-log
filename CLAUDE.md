@@ -158,15 +158,13 @@ git push -u origin <branch-name>
 gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
 ```
 
-### Step 5b — Fetch the ChatGPT review and triage findings
+### Step 5b — Fetch the ChatGPT review, act on it, and resolve each thread
 
-After the PR is open, the `chatgpt-review` CI check runs and posts its findings
-as a **PR issue comment** (the same timeline as the `/pr-review` comment, not
-inline). Do not skip these — they often catch refactor opportunities and naming
-issues that `/pr-review` overlooks.
-
-Wait for the check to complete (typically 30–90 s), then fetch the latest PR
-comments to read the ChatGPT review:
+The `chatgpt-review` CI check posts its findings as **inline PR review comment
+threads** (one resolvable thread per finding on the relevant file and line)
+plus a top-level review body with the overall verdict. ChatGPT is a second set
+of eyes — treat its findings with the same weight as `/pr-review`; do not
+skip or silently ignore them.
 
 > **Placeholder convention:** `<N>` is the PR number. `{owner}` and `{repo}`
 > in curly braces are `gh`-template placeholders expanded automatically from
@@ -174,24 +172,50 @@ comments to read the ChatGPT review:
 
 ```bash
 gh pr checks <N> --watch          # blocks until all checks finish
-gh api repos/{owner}/{repo}/issues/<N>/comments \
-  --jq '.[-3:] | .[] | {author: .user.login, body: .body}'
+
+# Overall verdict and summary (last review body that mentions ChatGPT)
+gh api repos/{owner}/{repo}/pulls/<N>/reviews \
+  --jq '[.[] | select(.body | contains("Automated review by ChatGPT"))] | last | .body'
+
+# Inline findings with GraphQL node IDs (needed to resolve each thread)
+gh api graphql \
+  -F owner='{owner}' -F name='{repo}' -F number=<N> \
+  -f query='
+    query($owner:String!,$name:String!,$number:Int!) {
+      repository(owner:$owner, name:$name) {
+        pullRequest(number:$number) {
+          reviewThreads(first:50) {
+            nodes {
+              id
+              isResolved
+              comments(first:1) {
+                nodes { author { login } body path originalLine }
+              }
+            }
+          }
+        }
+      }
+    }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
 ```
 
-Summarise the findings as a short follow-up to the `/pr-review` output from
-Step 4:
-- **Blocking** concerns (correctness bugs, security issues, broken tests):
-  fix before continuing, same as Step 4.
-- **Non-blocking** concerns you agree with (including any that overlap with
-  `/pr-review` findings): fix in the same PR, or open a follow-up PR if
-  `/pr-review` has already approved and you don't want to rerun the cycle.
-- **Style/refactor nitpicks** you disagree with: state your reasoning and
-  move on; don't silently ignore them.
+After acting on each unresolved finding, resolve its thread:
 
-ChatGPT posts a single issue comment — there are no inline review threads to
-resolve via `reviewThreads` or `resolveReviewThread`. If the `chatgpt-review`
-check did not run (PR below size threshold) or the comment list shows no
-ChatGPT entry, say so explicitly rather than skipping the step.
+```bash
+gh api graphql \
+  -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}' \
+  -F id='<THREAD_NODE_ID>'
+```
+
+Triage every unresolved thread before continuing:
+- **Blocking** concerns: fix before continuing, same as Step 4.
+- **Non-blocking** you agree with: fix in the same PR, or open a follow-up PR
+  if `/pr-review` has already approved and you don't want to rerun the cycle.
+- **Findings you disagree with**: reply with your reasoning, then resolve.
+
+Do not leave ChatGPT review threads unresolved. If the `chatgpt-review` check
+did not run (PR below size threshold) or the reviews list shows no ChatGPT
+entry, say so explicitly rather than skipping the step.
 
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge

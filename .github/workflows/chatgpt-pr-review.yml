@@ -13,11 +13,11 @@ name: ChatGPT PR Review
 #      runs even when the label was applied by auto-label-pr.yml (which uses
 #      GITHUB_TOKEN; GitHub suppresses the resulting labeled event for other
 #      workflows, so chatgpt-pr-review would never fire without this path).
-#   3. 'synchronize' (new commits pushed) — re-reviews only PRs that already
-#      carry the 'chatgpt-review' label, i.e. those that met the initial
-#      size threshold. Skips small PRs that were never labelled.
+#   3. 'synchronize' (new commits pushed) — re-evaluates the same size
+#      thresholds as opened/reopened. Re-reviews if the current diff still
+#      qualifies; skips if the PR has been cleaned up below both thresholds.
 #
-# Size thresholds (matching auto-label-pr.yml, evaluated on opened/reopened):
+# Size thresholds (matching auto-label-pr.yml, evaluated on all non-label events):
 #   ≥ 200 source-line changes  OR  ≥ 4 source files changed
 #   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
@@ -72,20 +72,10 @@ jobs:
               return;
             }
 
-            // Path 3 — synchronize: re-review only if the label is already present.
-            // Avoids re-running the size check on every push — the label applied
-            // at open time is the durable record of whether this PR qualifies.
-            if (action === 'synchronize') {
-              const labels = context.payload.pull_request.labels.map(l => l.name);
-              const hasLabel = labels.includes(LABEL);
-              core.info(hasLabel
-                ? `Label '${LABEL}' present — re-reviewing after push.`
-                : `Label '${LABEL}' absent — skipping re-review for small PR.`);
-              core.setOutput('should_run', String(hasLabel));
-              return;
-            }
-
-            // Path 2 — opened / reopened: inline size check (mirrors auto-label-pr.yml).
+            // Path 2 — opened / reopened / synchronize: inline size check.
+            // synchronize re-evaluates the threshold on every push so that a PR
+            // cleaned up below both limits stops getting re-reviewed, and one
+            // that grows above them starts being reviewed.
             // The label from auto-label-pr.yml won't propagate here via GITHUB_TOKEN,
             // so we re-evaluate the thresholds ourselves.
             const files = await github.paginate(
