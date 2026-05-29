@@ -35,7 +35,7 @@ describe('parseResponse — valid input', () => {
   });
 
   test('strips a markdown code fence before parsing', () => {
-    const inner = makeRaw([{ index: 0, verdict: 'agree_fix', reply: 'Fixed.' }]);
+    const inner = makeRaw([{ index: 0, verdict: 'agree', reply: 'Fixed.' }]);
     const fenced = `\`\`\`json\n${inner}\n\`\`\``;
     const result = parseResponse(fenced, 1);
     assert.strictEqual(result.thread_responses.length, 1);
@@ -184,6 +184,36 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
     const raw = makeRaw([{ index: 3, reply: 'x' }]);
     const result = parseResponse(raw, 3);
     assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('moves an unknown verdict string to invalidResponses (regression: must not pass through to workflow)', () => {
+    // 'resolved' is not one of agree/disagree/comment — the workflow would
+    // silently ignore or mishandle the resolution step.
+    const raw = makeRaw([{ index: 0, verdict: 'resolved', reply: 'ok' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses.length, 0);
+    assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('moves a non-string verdict (e.g. true) to invalidResponses', () => {
+    const raw = makeRaw([{ index: 0, verdict: true, reply: 'ok' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses.length, 0);
+    assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('moves an empty-string verdict to invalidResponses', () => {
+    const raw = makeRaw([{ index: 0, verdict: '', reply: 'ok' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses.length, 0);
+    assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('accepts verdict with surrounding whitespace by trimming it (regression: agree  is agree)', () => {
+    const raw = makeRaw([{ index: 0, verdict: '  agree  ', reply: 'ok' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses.length, 1);
+    assert.strictEqual(result.thread_responses[0].verdict, 'agree');
   });
 
   test('separates valid and invalid entries in the same response', () => {

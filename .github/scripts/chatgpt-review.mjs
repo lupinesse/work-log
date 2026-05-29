@@ -42,7 +42,7 @@ import {
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { coerceThreadIndex } from './lib/parse-reply-action.mjs';
+import { coerceThreadIndex, normaliseReplyAction } from './lib/parse-reply-action.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -232,15 +232,14 @@ function parseReviewOutput(rawText, existingThreadCount) {
     }
 
     if (type === 'reply') {
-      const idx = coerceThreadIndex(a.thread_index);
-      if (idx === null || idx < 0 || idx >= existingThreadCount) {
-        console.warn(
-          `  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid range 0..${existingThreadCount - 1}) — moved to fallback`
-        );
+      try {
+        const normalised = normaliseReplyAction(a, existingThreadCount);
+        actions.push({ type: 'reply', ...normalised });
+      } catch (err) {
+        console.warn(`  invalid reply action — ${err.message} — moved to fallback`);
         invalidActions.push(a);
         continue;
       }
-      actions.push({ type: 'reply', threadIndex: idx, body, unresolve: a.unresolve === true });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;

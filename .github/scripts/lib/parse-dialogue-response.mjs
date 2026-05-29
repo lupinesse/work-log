@@ -9,6 +9,9 @@
 
 import { coerceThreadIndex } from './parse-reply-action.mjs';
 
+/** Verdicts the downstream workflow understands. Any other value is a model error. */
+const VALID_VERDICTS = new Set(['agree', 'disagree', 'comment']);
+
 /**
  * @typedef {{ index: number, verdict: string, reply: string }} ThreadResponse
  * @typedef {{ thread_responses: ThreadResponse[], invalidResponses: unknown[], synthesis: string }} DialogueResponse
@@ -65,9 +68,24 @@ export function parseResponse(rawText, threadCount) {
       invalidResponses.push(r);
       continue;
     }
+    // Normalise verdict: absent/null defaults to 'comment'; present values must
+    // be trimmed and validated — unknown strings (e.g. 'agree ', 'resolved',
+    // non-strings like true) are rejected to invalidResponses so the caller
+    // can surface them rather than silently passing them to the workflow.
+    let verdict;
+    if (r.verdict == null) {
+      verdict = 'comment';
+    } else {
+      const trimmed = typeof r.verdict === 'string' ? r.verdict.trim() : '';
+      if (!VALID_VERDICTS.has(trimmed)) {
+        invalidResponses.push(r);
+        continue;
+      }
+      verdict = trimmed;
+    }
     thread_responses.push({
       index: idx,
-      verdict: r.verdict || 'comment',
+      verdict,
       reply,
     });
   }
