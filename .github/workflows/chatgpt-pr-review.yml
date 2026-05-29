@@ -342,7 +342,7 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: always() && steps.key-check.result != 'skipped'
+        if: always() && steps.key-check.conclusion != 'skipped'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
@@ -352,7 +352,7 @@ jobs:
         # Finds the previous /pr-review comment by marker and PATCHes it in
         # place, so we keep one persistent review comment per PR rather than
         # stacking a new one per push.
-        if: always() && steps.key-check.result != 'skipped'
+        if: always() && steps.key-check.conclusion != 'skipped'
         env:
           GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
