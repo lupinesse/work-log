@@ -2247,6 +2247,40 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Rapid Logging — inline token grammar ─────────────────────────────────
+  console.log('\nRapid Logging — inline token grammar');
+  {
+    const page = await freshPage(ctx);
+    await page.click('#rapidOpenBtn');
+    await page.waitForSelector('#rapidInput:visible');
+
+    // Type an entry with a signifier token and the first available category prefix
+    // The default category set always includes 'work', so #work resolves.
+    await page.fill('#rapidInput', 'Deploy hotfix #work !flag');
+    await page.click('#rapidLogOnly');
+
+    const entry = await page.evaluate(() => {
+      const state = window.__wl.getState();
+      return state.entries[state.entries.length - 1];
+    });
+    assert(
+      'Token grammar: entry text has tokens stripped',
+      entry && entry.text === 'Deploy hotfix',
+      `got text="${entry && entry.text}"`
+    );
+    assert(
+      'Token grammar: #category token sets tag',
+      entry && entry.tag === 'work',
+      `got tag="${entry && entry.tag}"`
+    );
+    assert(
+      'Token grammar: !sig token sets signifier',
+      entry && entry.signifier === 'flagged',
+      `got signifier="${entry && entry.signifier}"`
+    );
+    await page.close();
+  }
+
   // ── Migration ─────────────────────────────────────────────────────────────
   console.log('\nMigration');
   {
@@ -2619,6 +2653,27 @@ async function runTests() {
       await page2.evaluate(() => document.getElementById('tfBlocksPane').style.display !== 'none')
     );
     await page2.close();
+  }
+
+  // ── Pomodoro dashboard grid ───────────────────────────────────────────────
+  console.log('\nPomodoro dashboard grid');
+  {
+    const page = await freshPage(ctx);
+    const hasGrid = await page.evaluate(() => !!document.querySelector('.pomo-grid'));
+    assert('Pomo 4-column grid present in DOM', hasGrid);
+    const hasSparkline = await page.evaluate(() => !!document.getElementById('pomoSparkline'));
+    assert('Sparkline canvas element present', hasSparkline);
+    const hasRibbon = await page.evaluate(() => !!document.getElementById('pomoRibbonDots'));
+    assert('Ribbon dots element present', hasRibbon);
+    const dotCount = await page.evaluate(
+      () => document.getElementById('pomoRibbonDots').querySelectorAll('.pomo-rdot').length
+    );
+    assert(
+      'Ribbon renders exactly 5 dots with empty session log',
+      dotCount === 5,
+      `got ${dotCount}`
+    );
+    await page.close();
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

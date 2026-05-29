@@ -252,6 +252,7 @@ function updatePomoDisplay() {
     startBtn.classList.remove('running');
     statusEl.textContent = pomoLeft === pomoTotal ? 'ready' : 'paused';
   }
+  if (typeof updatePomoTaskLabel === 'function') updatePomoTaskLabel();
 }
 
 document.getElementById('pomoStart').addEventListener('click', () => {

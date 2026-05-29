@@ -475,41 +475,66 @@
     <span class="pomo-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="pomo-body" id="pomoBody">
-    <div class="pomo-durations" role="group" aria-labelledby="pomoHeader">
-      <button class="pomo-dur active" data-min="5">5 min</button>
-      <button class="pomo-dur" data-min="10">10 min</button>
-      <button class="pomo-dur" data-min="20">20 min</button>
-    </div>
-    <div class="pomo-ring-wrap">
-      <svg id="pomoSvg" class="pomo-svg" viewBox="0 0 200 200">
-        <circle class="pomo-bg"     cx="100" cy="100" r="90"/>
-        <!-- segments inserted by JS between bg and hole -->
-        <circle class="pomo-hole"   cx="100" cy="100" r="52" id="pomoHole"/>
-        <circle class="pomo-border" cx="100" cy="100" r="90"/>
-      </svg>
-      <div class="pomo-center">
-        <div class="pomo-time" id="pomoTime">05:00</div>
-        <div class="pomo-status" id="pomoStatus">ready</div>
+    <div class="pomo-grid">
+      <!-- Col 1: Clock face -->
+      <div class="pomo-col-clock">
+        <div class="pomo-durations" role="group" aria-labelledby="pomoHeader">
+          <button class="pomo-dur active" data-min="5">5</button>
+          <button class="pomo-dur" data-min="10">10</button>
+          <button class="pomo-dur" data-min="20">20</button>
+        </div>
+        <div class="pomo-ring-wrap">
+          <svg id="pomoSvg" class="pomo-svg" viewBox="0 0 200 200">
+            <circle class="pomo-bg"     cx="100" cy="100" r="90"/>
+            <!-- segments inserted by JS between bg and hole -->
+            <circle class="pomo-hole"   cx="100" cy="100" r="52" id="pomoHole"/>
+            <circle class="pomo-border" cx="100" cy="100" r="90"/>
+          </svg>
+          <div class="pomo-center">
+            <div class="pomo-time" id="pomoTime">05:00</div>
+            <div class="pomo-status" id="pomoStatus">ready</div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="pomo-controls">
-      <button class="pomo-btn pomo-start" id="pomoStart">start</button>
-      <button class="pomo-btn" id="pomoReset">reset</button>
-      <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
-    </div>
-    <div class="pomo-chime" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--text3)">
-      🔔 time chime every
-      <select id="chimeIntervalSel" aria-label="Time chime interval" style="font-size:11px;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border);border-radius:var(--radius);padding:2px 6px;font-family:var(--font)">
-        <option value="0">off</option>
-        <option value="15">15 min</option>
-        <option value="30" selected>30 min</option>
-        <option value="45">45 min</option>
-        <option value="60">60 min</option>
-      </select>
-    </div>
-    <div class="pomo-log">
-      <div class="pomo-log-title">session log</div>
-      <div id="pomoLog"></div>
+      <!-- Col 2: Composer -->
+      <div class="pomo-col-composer">
+        <div class="pomo-task-label" id="pomoTaskLabel"></div>
+        <div class="pomo-controls">
+          <button class="pomo-btn pomo-start" id="pomoStart">start</button>
+          <button class="pomo-btn" id="pomoReset">reset</button>
+          <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
+        </div>
+        <div class="pomo-chime">
+          🔔 time chime every
+          <select id="chimeIntervalSel" class="pomo-chime-select" aria-label="Time chime interval">
+            <option value="0">off</option>
+            <option value="15">15 min</option>
+            <option value="30" selected>30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+      </div>
+      <!-- Col 3: 28-day sparkline -->
+      <div class="pomo-col-sparkline">
+        <div class="pomo-spark-title">28-day focus</div>
+        <canvas id="pomoSparkline" class="pomo-sparkline-canvas"
+                aria-label="28-day pomodoro session density" role="img"></canvas>
+        <div class="pomo-spark-foot" id="pomoSparkFoot"></div>
+      </div>
+      <!-- Col 4: Session ledger -->
+      <div class="pomo-col-ledger">
+        <div class="pomo-log">
+          <div class="pomo-log-title">session log</div>
+          <div id="pomoLog"></div>
+        </div>
+      </div>
+    </div><!-- /.pomo-grid -->
+    <!-- Ribbon footer: last-5 dots + status pill + view-all link -->
+    <div class="pomo-ribbon">
+      <div class="pomo-ribbon-dots" id="pomoRibbonDots" aria-hidden="true"></div>
+      <span class="pomo-ribbon-pill" id="pomoRibbonPill"></span>
+      <button class="pomo-ribbon-link" id="pomoRibbonLink">No sessions yet</button>
     </div>
   </div>
 </div>
@@ -758,6 +783,9 @@
              autocomplete="off"
              aria-label="Filter tasks, or type a description to log" />
     </div>
+
+    <!-- ── Inline token preview (hidden until a token is typed) ─────────── -->
+    <div class="qc-token-row" id="qcTokenPreview" aria-live="polite" style="display:none"></div>
 
     <!-- ── Category filter chips ──────────────────────────────────────── -->
     <div class="rapid-cats" id="rapidCats" role="group" aria-label="Filter by category"></div>
