@@ -275,13 +275,14 @@ function renderFlowView(dateKey) {
         item.type === 'entry' && item.entryId ? entries.find((e) => e.id === item.entryId) : null;
 
       let durationMin = 0;
+      let durMs = 0;
       let isLive = false;
       if (entryObj) {
         isLive = !!(activeTimer && activeTimer.entryId === entryObj.id);
         // Use the paused-aware helper for live entries so the duration freezes
         // while the timer is paused, matching renderFlowHeader and renderDayStrip.
         const liveMs = isLive ? activeTimerDurationMs(entryObj) : 0;
-        const durMs = entryObj.tsEnd ? entryObj.tsEnd - entryObj.ts : liveMs;
+        durMs = entryObj.tsEnd ? entryObj.tsEnd - entryObj.ts : liveMs;
         if (durMs > 0) durationMin = Math.max(1, Math.round(durMs / 60000));
       }
 
@@ -292,7 +293,7 @@ function renderFlowView(dateKey) {
         <div class="tf-flow-row${isLive ? ' live' : ''}">
           <div class="tf-flow-time">
             <span class="tf-flow-hm">${startLabel}</span>
-            ${durationMin > 0 ? `<span class="tf-flow-dur">${fmtDur(durationMin * 60000)}</span>` : ''}
+            ${durMs > 0 ? `<span class="tf-flow-dur">${fmtDur(durMs)}</span>` : ''}
           </div>
           <div class="tf-flow-strip" style="height:${stripH}px;background:${item.color}">
             ${isLive ? '<span class="tf-flow-pulse" aria-hidden="true"></span>' : ''}

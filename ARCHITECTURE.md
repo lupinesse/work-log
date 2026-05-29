@@ -404,10 +404,21 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **18-dailylog.js** — Daily Log Feed
-**Responsibility**: A unified chronological feed tab merging time entries, log notes, and task status comments for the currently viewed day.
+#### **11-timeflow.js** — Today's Flow Unified Section
+**Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
-**Key functions**: `buildDailyLogItems(dateKey)`, `renderDailyLog()`, `addLogNote()`
+**Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
+
+**localStorage key**: `wl_flow_view` (`'flow' | 'log' | 'blocks'`, default `'flow'`).
+
+**ARIA**: The segmented control uses `role="tablist"` with `role="tab"` buttons, `aria-selected`, `aria-controls`, and roving `tabindex`. Arrow/Home/End keys navigate. Panes use `role="tabpanel"` with `tabindex="0"`.
+
+---
+
+#### **18-dailylog.js** — Daily-log feed builder + note input
+**Responsibility**: Pure data helper for the unified Today's Flow Log view. Builds chronological feed items by merging time entries, log notes, and task status comments for the given day; persists user-typed notes.
+
+**Key functions**: `buildDailyLogItems(dateKey)`, `addLogNote()`
 
 **localStorage key**: `wl_lognotes_v1`
 

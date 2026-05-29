@@ -1742,3 +1742,18 @@ describe('tsToMins', () => {
     assert.equal(sb.tsToMins(ts), 23 * 60 + 59);
   });
 });
+
+describe('fmtHm', () => {
+  const cases = [
+    ['2026-05-29T00:00:00', '00:00'],
+    ['2026-05-29T09:05:00', '09:05'],
+    ['2026-05-29T14:30:00', '14:30'],
+    ['2026-05-29T23:59:00', '23:59'],
+  ];
+  cases.forEach(([iso, expected]) => {
+    it(`formats ${iso} as ${expected}`, () => {
+      const sb = loadTimeflowSandbox();
+      assert.equal(sb.fmtHm(new Date(iso).getTime()), expected);
+    });
+  });
+});
