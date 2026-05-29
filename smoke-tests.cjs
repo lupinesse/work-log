@@ -600,6 +600,11 @@ async function runTests() {
       () => document.querySelector('.plan-item.active-timer') === null
     );
     assert('No .active-timer class when timer is absent', noActiveTimer);
+    const hasLeftBorder = await page.evaluate(() => {
+      const el = document.querySelector('.plan-item.inprogress');
+      return el ? getComputedStyle(el).borderLeftWidth !== '0px' : false;
+    });
+    assert('Inprogress task row has left border highlight', hasLeftBorder);
     await page.close();
   }
 

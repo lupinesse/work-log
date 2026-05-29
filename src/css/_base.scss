@@ -1,4 +1,4 @@
-*,
+﻿*,
 *::before,
 *::after {
   box-sizing: border-box;
@@ -51,6 +51,12 @@
   --epic-purple: #7c3aed; /* Epic label — violet */
   --epic-blue: #2563eb; /* Epic label — blue */
   --epic-red: #dc2626; /* Epic label — red */
+
+  /* ── Signifier state colours ── */
+  --sig-billable: #378add; /* ● default / billable */
+  --sig-event: #1d9e75; /* ○ meeting / event */
+  --sig-flagged: #ef9f27; /* ★ flagged for review */
+  --sig-overtime: #d32f2f; /* ! overtime */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -95,6 +101,12 @@
     --epic-purple: #a78bfa;
     --epic-blue: #60a5fa;
     --epic-red: #f87171;
+
+    /* ── Signifier state colours — dark mode ── */
+    --sig-billable: #60a5fa; /* brighter blue on dark bg */
+    --sig-event: #34d399; /* brighter green on dark bg */
+    --sig-flagged: #fbbf24; /* brighter amber on dark bg */
+    --sig-overtime: #f87171; /* brighter red on dark bg */
   }
 }
 
