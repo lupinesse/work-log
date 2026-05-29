@@ -1,4 +1,4 @@
-.esig {
+﻿.esig {
   font-size: 12px;
   width: 18px;
   text-align: center;
@@ -14,17 +14,17 @@
   color: var(--text);
 }
 
-/* null signifier = billable default (displayed as ●) */
+/* null signifier = billable default (displayed as â—) */
 .sig-none {
-  color: #378add;
+  color: var(--sig-billable);
 }
 
 .sig-event {
-  color: #1d9e75;
+  color: var(--sig-event);
 }
 
 .sig-flagged {
-  color: #ef9f27;
+  color: var(--sig-flagged);
 }
 
 .sig-migrated {
@@ -36,7 +36,7 @@
 }
 
 .sig-overtime {
-  color: #d32f2f;
+  color: var(--sig-overtime);
 }
 
 /* Cancelled entry row */

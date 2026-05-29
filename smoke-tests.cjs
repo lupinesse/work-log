@@ -580,6 +580,34 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 12b. In-progress task highlighting (no active timer) ─────────────────
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'ip1', text: 'In progress task', tag: 'work', status: 'inprogress', date: today },
+      { id: 'ip2', text: 'Todo task', tag: 'work', status: 'todo', date: today },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    const hasInprogressClass = await page.evaluate(
+      () => document.querySelector('.plan-item.inprogress') !== null
+    );
+    assert('Non-live inprogress task has .inprogress class', hasInprogressClass);
+    const todoHasNoInprogress = await page.evaluate(
+      () => document.querySelectorAll('.plan-item.inprogress').length === 1
+    );
+    assert('Only the inprogress task gets .inprogress class (not todo)', todoHasNoInprogress);
+    const noActiveTimer = await page.evaluate(
+      () => document.querySelector('.plan-item.active-timer') === null
+    );
+    assert('No .active-timer class when timer is absent', noActiveTimer);
+    const hasLeftBorder = await page.evaluate(() => {
+      const el = document.querySelector('.plan-item.inprogress');
+      return el ? getComputedStyle(el).borderLeftWidth !== '0px' : false;
+    });
+    assert('Inprogress task row has left border highlight', hasLeftBorder);
+    await page.close();
+  }
+
   // ── 13. Tab title updates with timer ──────────────────────────────────────
   console.log('\n13. Tab title');
   {
