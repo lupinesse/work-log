@@ -10,7 +10,7 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveThread, fetchAllIssueComments } from '../lib/github-threads.mjs';
+import { postInlineComment, resolveThread, fetchAllIssueComments } from '../lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -128,6 +128,65 @@ describe('fetchAllIssueComments', () => {
 
     await assert.rejects(fetchAllIssueComments(ctx), (err) => {
       assert.ok(err.message.includes('401'), `expected 401 in: ${err.message}`);
+      return true;
+    });
+  });
+});
+
+// ─────────────────────────── postInlineComment ───────────────────────────
+
+describe('postInlineComment', () => {
+  const params = {
+    token: 'tok-123',
+    owner: 'acme',
+    repo: 'app',
+    prNumber: 42,
+    headSha: 'abc1234',
+    path: 'src/index.js',
+    line: 10,
+    body: 'A test comment.',
+  };
+
+  test('sends the correct URL, method, and body', async (t) => {
+    const payload = { id: 1, html_url: 'https://github.com/acme/app/pull/42#discussion_r1' };
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(payload));
+
+    const result = await postInlineComment(params);
+
+    assert.strictEqual(fetchMock.mock.calls.length, 1);
+    const [url, opts] = fetchMock.mock.calls[0].arguments;
+    assert.strictEqual(url, 'https://api.github.com/repos/acme/app/pulls/42/comments');
+    assert.strictEqual(opts.method, 'POST');
+
+    const sent = JSON.parse(opts.body);
+    assert.strictEqual(sent.commit_id, 'abc1234');
+    assert.strictEqual(sent.path, 'src/index.js');
+    assert.strictEqual(sent.line, 10);
+    assert.strictEqual(sent.side, 'RIGHT');
+    assert.strictEqual(sent.body, 'A test comment.');
+    assert.deepStrictEqual(result, payload);
+  });
+
+  test('includes X-GitHub-Api-Version: 2022-11-28 in the request headers', async (t) => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
+      makeResponse({ id: 1, html_url: 'https://github.com/' })
+    );
+
+    await postInlineComment(params);
+
+    const [, opts] = fetchMock.mock.calls[0].arguments;
+    assert.strictEqual(
+      opts.headers['X-GitHub-Api-Version'],
+      '2022-11-28',
+      'X-GitHub-Api-Version header must be present'
+    );
+  });
+
+  test('throws when the API returns a non-ok status', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Unprocessable Entity', 422));
+
+    await assert.rejects(postInlineComment(params), (err) => {
+      assert.ok(err.message.includes('422'), `expected 422 in: ${err.message}`);
       return true;
     });
   });

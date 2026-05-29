@@ -101,6 +101,26 @@ export default [
     },
   },
 
+  // CI dialogue scripts — standalone Node ES modules running in GitHub Actions.
+  // detect-non-literal-fs-filename: paths come from internal CI config (env vars
+  //   set in the workflow file), never from untrusted external input.
+  // detect-object-injection: bracket-notation keys (env var names, model-source
+  //   lookups) are internal constants, not user-controlled data.
+  {
+    files: ['.github/scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   {
     ignores: ['node_modules/', 'dist/', 'portable/', 'script.js'],
   },

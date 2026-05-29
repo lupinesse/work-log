@@ -32,6 +32,7 @@ import { readFileSync } from 'node:fs';
 import {
   fetchAllThreads,
   formatThreadsForPrompt,
+  postInlineComment,
   replyToThread,
   unresolveThread,
   upsertReview,
@@ -266,35 +267,6 @@ const FALLBACK_MARKER = '<!-- chatgpt-phase1-fallback -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
 
-/**
- * Post a single inline pull-request review comment on a specific file line.
- * Each call creates a separate resolvable thread. Used only when no related
- * existing thread is appropriate.
- * @param {string} path  File path relative to the repo root.
- * @param {number} line  Line number in the new (right-side) version of the file.
- * @param {string} body  Comment body (markdown).
- * @returns {Promise<object>} GitHub API response object.
- * @throws {Error} if the API rejects the comment (e.g. line not in the diff).
- */
-async function postInlineComment(path, line, body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ body, commit_id: HEAD_SHA, path, line, side: 'RIGHT' }),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
-  }
-  return response.json();
-}
-
 // ─────────────────────────── main ───────────────────────────
 
 async function main() {
@@ -387,7 +359,13 @@ async function main() {
           `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
         );
       } else {
-        const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
+        const comment = await postInlineComment({
+          ...GH_CTX,
+          headSha: HEAD_SHA,
+          path: a.path,
+          line: a.line,
+          body: bodyWithAttribution,
+        });
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {

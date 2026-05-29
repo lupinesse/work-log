@@ -33,6 +33,7 @@ import {
   fetchAllIssueComments,
   fetchAllThreads,
   formatThreadsForPrompt,
+  postInlineComment,
   replyToThread,
   resolveThread,
   unresolveThread,
@@ -79,13 +80,6 @@ const ATTRIBUTION = `*ChatGPT \`${MODEL}\` responding to Claude's review · comm
 // GitHub account actually posts the comment (App token, github-actions[bot],
 // or a manual gh CLI run).
 const REPLY_ATTRIBUTION = `\n\n<sub>_— ChatGPT \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
-
-const GH_HEADERS = {
-  Authorization: `token ${GITHUB_TOKEN}`,
-  Accept: 'application/vnd.github+json',
-  'X-GitHub-Api-Version': '2022-11-28',
-  'Content-Type': 'application/json',
-};
 
 // ─────────────────────────── diff ───────────────────────────
 
@@ -211,29 +205,6 @@ async function fetchClaudeContext() {
     fetchAllThreads(GH_CTX),
   ]);
   return { ...issueComments, threads };
-}
-
-/**
- * Post a single inline pull-request review comment on a specific file line.
- * @param {string} path
- * @param {number} line
- * @param {string} body
- * @returns {Promise<object>}
- * @throws {Error} if the API rejects the comment (e.g. line not in diff).
- */
-async function postInlineComment(path, line, body) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments`,
-    {
-      method: 'POST',
-      headers: GH_HEADERS,
-      body: JSON.stringify({ body, commit_id: HEAD_SHA, path, line, side: 'RIGHT' }),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
-  }
-  return response.json();
 }
 
 // ─────────────────────────── OpenAI ───────────────────────────
@@ -533,7 +504,13 @@ async function main() {
           }
         }
       } else {
-        const comment = await postInlineComment(a.path, a.line, bodyWithAttribution);
+        const comment = await postInlineComment({
+          ...GH_CTX,
+          headSha: HEAD_SHA,
+          path: a.path,
+          line: a.line,
+          body: bodyWithAttribution,
+        });
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+- **ESLint now covers `.github/scripts/**/*.mjs`** — the CI dialogue scripts (`chatgpt-review.mjs`, `claude-chatgpt-dialogue.mjs`, `chatgpt-claude-dialogue.mjs`, and the shared `lib/` modules) were previously invisible to the `lint` CI job, meaning any lint errors in those files produced a false green. A new flat-config block in `eslint.config.js` applies `globals.node` (giving `process`, `console`, `fetch`, `URL` etc.) and suppresses `security/detect-non-literal-fs-filename` and `security/detect-object-injection` for the same trusted-input reasons documented on the existing Node blocks. The `lint` script glob is updated to match.
+
+### Fixed
+- **`postInlineComment` moved to `lib/github-threads.mjs` and now sends `X-GitHub-Api-Version: 2022-11-28`** — the function existed as a private duplicate in both `chatgpt-review.mjs` and `chatgpt-claude-dialogue.mjs`, and the Phase 1 copy was building GitHub headers manually, omitting `X-GitHub-Api-Version: 2022-11-28`. Extracted to a single exported `postInlineComment()` in the shared lib (matching the JSDoc style of `replyToThread`), updated both callers to import it, and removed the now-unused `GH_HEADERS` constant from `chatgpt-claude-dialogue.mjs`. A regression test (`github-threads.test.mjs`) asserts the header is present — the test fails against the old private implementation. `format` and `format:check` scripts extended to cover `.github/scripts/**/*.mjs` alongside the existing `lint` coverage.
+
 ### Added
 - **Five automated code-quality agents** — new slash commands and matching GitHub Actions workflows that run on every PR push (or weekly, for dead-code detection):
   - `/impact-check` — traces which `src/js/` modules depend on the changed files and surfaces test-coverage gaps; posts an impact report as a PR comment.
