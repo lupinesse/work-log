@@ -140,6 +140,32 @@ describe('normaliseReplyAction — thread_index bounds', () => {
     );
   });
 
+  test('throws when thread_index is an empty string (regression: must not coerce to 0)', () => {
+    // Regression test for the silent-coercion bug ChatGPT caught on PR #72:
+    // Number('') returns 0, which would post the reply to thread 0 instead
+    // of being routed to the invalid-actions bucket. Trim-and-reject before
+    // Number() prevents this.
+    assert.throws(
+      () => normaliseReplyAction({ thread_index: '', body: 'x' }, 5),
+      /out of range/
+    );
+  });
+
+  test('throws when thread_index is whitespace-only (regression: must not coerce to 0)', () => {
+    // Same bug class as the empty-string case: Number('   ') === 0.
+    assert.throws(
+      () => normaliseReplyAction({ thread_index: '   ', body: 'x' }, 5),
+      /out of range/
+    );
+  });
+
+  test('still accepts a whitespace-padded numeric string (e.g., " 3 ")', () => {
+    // Trim-before-Number must not regress the documented numeric-string
+    // coercion: a model that emits "  3  " should still map to thread 3.
+    const result = normaliseReplyAction({ thread_index: '  3  ', body: 'reply' }, 5);
+    assert.strictEqual(result.threadIndex, 3);
+  });
+
   test('error message for out-of-range index includes the raw value', () => {
     let thrownMessage = '';
     try {

@@ -43,11 +43,19 @@
 export function normaliseReplyAction(action, threadCount) {
   // Only coerce string values — null, undefined, boolean, and object types
   // must NOT be silently coerced to 0 via Number(), so we restrict the
-  // coercion path to typeof 'string'.
+  // coercion path to typeof 'string'. Blank and whitespace-only strings also
+  // coerce to 0 via Number('') / Number('   '), so trim first and reject the
+  // empty result before handing to Number(); otherwise a malformed model
+  // response (e.g., thread_index: '') would silently post to thread 0.
   const rawIdx = action.thread_index;
-  const idx = Number.isInteger(rawIdx)
-    ? rawIdx
-    : (typeof rawIdx === 'string' ? Number(rawIdx) : NaN);
+  let idx;
+  if (Number.isInteger(rawIdx)) {
+    idx = rawIdx;
+  } else if (typeof rawIdx === 'string' && rawIdx.trim() !== '') {
+    idx = Number(rawIdx.trim());
+  } else {
+    idx = NaN;
+  }
 
   if (!Number.isInteger(idx) || idx < 0 || idx >= threadCount) {
     throw new Error(
