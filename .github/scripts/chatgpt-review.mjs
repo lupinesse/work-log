@@ -220,12 +220,13 @@ function parseReviewOutput(rawText, existingThreadCount) {
       invalidActions.push(a);
       continue;
     }
-    // Trim and validate type; absent type defaults to 'new'. Unknown values
-    // (e.g. true, "NEW", "new ") are rejected to invalidActions so they don't
-    // silently post as inline comments.
-    const type = typeof a.type === 'string' ? a.type.trim() : 'new';
-    if (type !== 'new' && type !== 'reply') {
-      console.warn(`  unknown action type ${JSON.stringify(a.type)} — moved to fallback`);
+    // Absent type (undefined/null) defaults to 'new' for legacy-schema compat.
+    // Non-string non-null values (e.g. true, 123) are model errors and go to
+    // fallback. Unknown strings ("NEW", "new ") also go to fallback.
+    const rawType = a.type;
+    const type = rawType == null ? 'new' : typeof rawType === 'string' ? rawType.trim() : null;
+    if (type === null || (type !== 'new' && type !== 'reply')) {
+      console.warn(`  unknown action type ${JSON.stringify(rawType)} — moved to fallback`);
       invalidActions.push(a);
       continue;
     }
