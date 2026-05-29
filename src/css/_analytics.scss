@@ -6,7 +6,7 @@
 /* ── Collapsed summary ─────────────────────────────────────────────────────── */
 
 // Hidden by default; becomes visible when the section carries .collapsed.
-// aria-hidden="true" keeps screen readers focused on the live stat tiles.
+// Intentionally not aria-hidden — screen readers receive the same summary text as sighted users.
 .analytics-summary {
   display: none;
   flex: 1;
