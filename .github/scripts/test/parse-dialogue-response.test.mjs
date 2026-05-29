@@ -47,6 +47,12 @@ describe('parseResponse — valid input', () => {
     assert.strictEqual(result.thread_responses[0].verdict, 'comment');
   });
 
+  test('stores the trimmed reply text (not the raw padded string)', () => {
+    const raw = makeRaw([{ index: 0, reply: '  Fixed in this commit.  ' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses[0].reply, 'Fixed in this commit.');
+  });
+
   test('coerces a numeric-string index to an integer', () => {
     const raw = makeRaw([{ index: '1', verdict: 'disagree', reply: 'ok' }]);
     const result = parseResponse(raw, 3);
@@ -107,6 +113,21 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
 
   test('moves an entry with a non-string reply to invalidResponses', () => {
     const raw = makeRaw([{ index: 0, reply: 42 }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('moves a whitespace-only reply to invalidResponses (regression: must not post empty comment)', () => {
+    // typeof '   ' === 'string' and Boolean('   ') is truthy, so without
+    // .trim() the empty text would pass validation and post a blank reply.
+    const raw = makeRaw([{ index: 0, reply: '   ' }]);
+    const result = parseResponse(raw, 1);
+    assert.strictEqual(result.thread_responses.length, 0);
+    assert.strictEqual(result.invalidResponses.length, 1);
+  });
+
+  test('moves an empty-string reply to invalidResponses', () => {
+    const raw = makeRaw([{ index: 0, reply: '' }]);
     const result = parseResponse(raw, 1);
     assert.strictEqual(result.invalidResponses.length, 1);
   });

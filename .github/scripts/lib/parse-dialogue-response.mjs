@@ -58,7 +58,7 @@ export function parseResponse(rawText, threadCount) {
     // Reject non-integers, blank/whitespace strings, and out-of-range indices
     // so the dispatch loop never receives an index with no matching thread.
     const idx = coerceThreadIndex(r.index);
-    const reply = typeof r.reply === 'string' ? r.reply : null;
+    const reply = typeof r.reply === 'string' ? r.reply.trim() : null;
     if (idx === null || idx < 0 || idx >= threadCount || !reply) {
       invalidResponses.push(r);
       continue;

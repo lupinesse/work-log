@@ -225,7 +225,7 @@ function parseReviewOutput(rawText, existingThreadCount) {
       continue;
     }
     const type = a.type || 'new';
-    const body = typeof a.body === 'string' ? a.body : null;
+    const body = typeof a.body === 'string' ? a.body.trim() : null;
     if (!body) {
       invalidActions.push(a);
       continue;
