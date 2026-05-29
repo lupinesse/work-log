@@ -24,10 +24,13 @@
 
 /* ── Stat card refinements ─────────────────────────────────────────────────── */
 
-// Add a hairline border so each card reads as a distinct surface in both
-// light and dark mode. The base .stat already sets background and padding.
+// White surface + hairline border so each card pops against the section
+// background in both light and dark mode. Slightly more generous padding
+// matches the design spec's 14px 16px rhythm.
 .analytics-section .stat {
-  border: 0.5px solid var(--border);
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  padding: 14px 16px;
 }
 
 // Monospace + tabular-nums prevents the surrounding layout from reflowing
@@ -35,4 +38,19 @@
 .analytics-section .stat-val {
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+}
+
+// Sub-row inside each stat card (below the hairline divider in .stat-sub).
+// Three tiers: jira link (uses .jira-key-link), secondary title, bold value.
+.stat-sub-title {
+  color: var(--text2);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.stat-sub-value {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
 }
