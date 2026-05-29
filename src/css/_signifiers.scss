@@ -1,4 +1,4 @@
-﻿.esig {
+.esig {
   font-size: 12px;
   width: 18px;
   text-align: center;
@@ -14,7 +14,7 @@
   color: var(--text);
 }
 
-/* null signifier = billable default (displayed as â—) */
+/* null signifier = billable default (displayed as ●) */
 .sig-none {
   color: var(--sig-billable);
 }
