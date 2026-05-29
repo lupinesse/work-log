@@ -35,3 +35,4 @@ JSON backups/
 .claude/*
 !.claude/skills/
 !.claude/CLAUDE.md
+!.claude/token-optimization.md
