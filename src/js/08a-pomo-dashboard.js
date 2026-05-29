@@ -63,9 +63,10 @@ function renderPomoSparkline() {
 
   const dpr = window.devicePixelRatio || 1;
 
-  // Fixed canvas dimensions match the CSS (.pomo-sparkline-canvas height: 72px)
-  const cssW = 170;
-  const cssH = 72;
+  // Read live layout width so the drawing stays sharp if the column ever changes.
+  // Fall back to 170 in headless environments where getBoundingClientRect returns 0.
+  const cssW = canvas.getBoundingClientRect().width || 170;
+  const cssH = 72; // matches .pomo-sparkline-canvas { height: 72px } in _pomo.scss
   canvas.width = cssW * dpr;
   canvas.height = cssH * dpr;
 

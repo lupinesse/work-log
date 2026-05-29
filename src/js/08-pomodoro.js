@@ -145,6 +145,7 @@ function pomoDone() {
   log.unshift({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
   localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
   renderPomoLog();
+  if (typeof refreshPomoDashboard === 'function') refreshPomoDashboard();
   if (typeof notifyPomodoroEnd === 'function') notifyPomodoroEnd();
 }
 
