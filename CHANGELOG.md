@@ -3,6 +3,14 @@
 ## Unreleased
 
 ### Added
+- **Five automated code-quality agents** — new slash commands and matching GitHub Actions workflows that run on every PR push (or weekly, for dead-code detection):
+  - `/impact-check` — traces which `src/js/` modules depend on the changed files and surfaces test-coverage gaps; posts an impact report as a PR comment.
+  - `/jsdoc-check` — scans exported functions in changed `src/js/` files for missing or incomplete JSDoc (`@param`, `@returns`); posts a PASS / WARN / FAIL verdict.
+  - `/a11y-audit` — static WCAG 2.1 AA analysis of changed HTML, JS DOM creation, and SCSS focus rules; posts findings by severity.
+  - `/scss-audit` — checks changed SCSS for BEM violations, nesting depth > 3, `!important`, magic numbers, and undeclared variables.
+  - `/dead-code` — maps all exports vs. imports across `src/js/` and commits a dated report to `docs/dead-code-reports/` every Monday at 09:30 UTC.
+  All PR workflows post idempotent comments (updated on re-push) via the Claude Reviewer GitHub App and use the OAuth + API-key fallback auth pattern.
+### Added
 - **Rapid-logging inline token grammar** — users can type `#<cat>`, `!<sig>`, and `><date>` directly in the quick-capture input to set category, signifier, and entry date without touching the mouse. Recognised tokens are stripped from the saved text; unrecognised tokens are left in place so nothing is silently discarded. A live pill-badge preview (`#qcTokenPreview`) updates on every keystroke. Date tokens support `today`, `tomorrow`, `YYYY-MM-DD`, and weekday abbreviations (`mon`–`sun`, always the *next* occurrence). The category chip auto-activates when a `#cat` token is typed and clears again when the token is deleted.
 - **Pomodoro 4-column card** — the `.pomo-body` is restructured into a CSS grid with four columns: clock face (ring + duration buttons), composer (task label + controls + chime), 28-day focus sparkline, and session ledger. A ribbon footer below the grid shows a 5-dot recent-session indicator, a "Peak Focus" / session-count status pill, and a "View all sessions" scroll link. The sparkline and ribbon refresh after every completed session. All colours respond to the OS dark-mode preference via `--pomo-spark-fill` / `--pomo-spark-empty` CSS variables.
 
