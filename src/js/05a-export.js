@@ -1,59 +1,6 @@
 /* ── Text export ── */
 
 /**
- * Computes the day's start and end timestamps for the export header.
- *
- * Start: the configured day start (today only) or, failing that, the earliest
- * entry start. End: the latest tracked end among timed entries, extended by the
- * active timer's effective end so "Ended:" reflects work still in progress.
- *
- * @param {Array<Object>} dayEntries   - All entries for the viewed day.
- * @param {Array<Object>} timedEntries - Entries with a real tracked duration.
- * @param {boolean} isViewingToday     - Whether the viewed day is today.
- * @returns {{dayStartTs: (number|null), dayEndTs: (number|null)}} Day bounds in ms.
- */
-function computeDayBounds(dayEntries, timedEntries, isViewingToday) {
-  let dayStartTs = isViewingToday ? getDayStart() : null;
-  if (!dayStartTs && dayEntries.length) {
-    dayStartTs = Math.min(...dayEntries.map((entry) => entry.ts));
-  }
-  let dayEndTs = timedEntries.length ? Math.max(...timedEntries.map((entry) => entry.tsEnd)) : null;
-  // Factor in the active timer's effective end so "Ended:" reflects live work
-  if (activeTimer && isViewingToday) {
-    const timerEntry = dayEntries.find((entry) => entry.id === activeTimer.entryId);
-    if (timerEntry) {
-      const liveEnd = activeTimer.paused
-        ? timerEntry.ts + (activeTimer.accumulatedMs || 0) // paused → start + accumulated
-        : Math.max(Date.now(), activeTimer.startTs || timerEntry.ts); // running → now (or startTs if test setup is ahead of wall clock)
-      dayEndTs = dayEndTs ? Math.max(dayEndTs, liveEnd) : liveEnd;
-    }
-  }
-  return { dayStartTs, dayEndTs };
-}
-
-/**
- * Renders the grouped-by-category structure into indented text lines: one
- * line per category (with its total), each followed by its indented task lines.
- * @param {string[]} catOrder   - Category keys in display order.
- * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
- * @returns {string[]} The body lines for the export file.
- */
-function formatGroupedLines(catOrder, catGrouped) {
-  const lines = [];
-  catOrder.forEach((catKey) => {
-    const { totalMs, tasks, taskOrder } = catGrouped[catKey];
-    const catTimeStr = totalMs > 0 ? fmtDurLong(totalMs) : '--';
-    lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
-    taskOrder.forEach((taskKey) => {
-      const { label, totalMs: taskMs, hasTime } = tasks[taskKey];
-      const taskTimeStr = hasTime ? fmtDurLong(taskMs) : '--';
-      lines.push(`    ${taskTimeStr} - ${label}`);
-    });
-  });
-  return lines;
-}
-
-/**
  * Exports the currently viewed day's log as a plaintext file.
  * Groups entries by category and task, includes a header with day start/end
  * times and tracked time totals, and appends a pasteable billable summary.
@@ -70,7 +17,12 @@ function exportTxt() {
     (entry) => entry.tsEnd && entry.tsEnd > entry.ts && entry.signifier !== 'cancelled'
   );
 
-  const { dayStartTs, dayEndTs } = computeDayBounds(dayEntries, timedEntries, isViewingToday);
+  const { dayStartTs, dayEndTs } = computeDayBounds(dayEntries, timedEntries, {
+    isViewingToday,
+    dayStart: isViewingToday ? getDayStart() : null,
+    activeTimer,
+    now: Date.now(),
+  });
 
   const fmtTsHM = (ts) => {
     const d = new Date(ts);
@@ -79,7 +31,7 @@ function exportTxt() {
 
   // Body: tracked time grouped by category, then task (first-seen order)
   const { catOrder, catGrouped } = groupEntriesByCategory(dayEntries);
-  const lines = formatGroupedLines(catOrder, catGrouped);
+  const lines = formatGroupedLines(catOrder, catGrouped, fmtDurLong, getCatLabel);
 
   // Billable / non-billable breakdown
   const totalTrackedMs = timedEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);

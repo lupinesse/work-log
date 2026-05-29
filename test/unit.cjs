@@ -52,6 +52,8 @@ const {
   groupEntriesByCategory,
   mergeAdjacentEntries,
   buildBillableSummaryParts,
+  computeDayBounds,
+  formatGroupedLines,
 } = sandbox;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -2091,4 +2093,105 @@ describe('buildBillableSummaryParts', () => {
 
   it('returns an empty array for no entries', () =>
     assert.equal(buildBillableSummaryParts([], label).length, 0));
+});
+
+// ── computeDayBounds ───────────────────────────────────────────────────────────
+describe('computeDayBounds', () => {
+  const base = { isViewingToday: false, dayStart: null, activeTimer: null, now: 0 };
+
+  it('uses the supplied day start when viewing today', () => {
+    const { dayStartTs } = computeDayBounds([{ ts: 5000 }], [], {
+      ...base,
+      isViewingToday: true,
+      dayStart: 1000,
+    });
+    assert.equal(dayStartTs, 1000);
+  });
+
+  it('falls back to the earliest entry start when no day start is given', () => {
+    const { dayStartTs } = computeDayBounds([{ ts: 5000 }, { ts: 2000 }], [], base);
+    assert.equal(dayStartTs, 2000);
+  });
+
+  it('ignores the day start when not viewing today', () => {
+    const { dayStartTs } = computeDayBounds([{ ts: 9000 }], [], {
+      ...base,
+      isViewingToday: false,
+      dayStart: 1000,
+    });
+    assert.equal(dayStartTs, 9000);
+  });
+
+  it('takes the latest tracked end as the day end', () => {
+    const timed = [
+      { ts: 0, tsEnd: 3000 },
+      { ts: 4000, tsEnd: 8000 },
+    ];
+    const { dayEndTs } = computeDayBounds(timed, timed, base);
+    assert.equal(dayEndTs, 8000);
+  });
+
+  it('extends the end to a running timer using `now`', () => {
+    const entries = [{ id: 't1', ts: 1000 }];
+    const { dayEndTs } = computeDayBounds(entries, [], {
+      ...base,
+      isViewingToday: true,
+      activeTimer: { entryId: 't1', paused: false, startTs: 1000 },
+      now: 9999,
+    });
+    assert.equal(dayEndTs, 9999);
+  });
+
+  it('uses accumulated time for a paused timer', () => {
+    const entries = [{ id: 't1', ts: 1000 }];
+    const { dayEndTs } = computeDayBounds(entries, [], {
+      ...base,
+      isViewingToday: true,
+      activeTimer: { entryId: 't1', paused: true, accumulatedMs: 2500 },
+      now: 9999,
+    });
+    assert.equal(dayEndTs, 3500); // start (1000) + accumulated (2500)
+  });
+
+  it('returns null bounds for an empty day', () => {
+    const { dayStartTs, dayEndTs } = computeDayBounds([], [], base);
+    assert.equal(dayStartTs, null);
+    assert.equal(dayEndTs, null);
+  });
+});
+
+// ── formatGroupedLines ─────────────────────────────────────────────────────────
+describe('formatGroupedLines', () => {
+  const fmt = (ms) => `${ms}ms`;
+  const label = (tag) => `[${tag}]`;
+
+  it('renders a category header line followed by indented task lines', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 3000,
+        taskOrder: ['a', 'b'],
+        tasks: {
+          a: { label: 'Task A', totalMs: 1000, hasTime: true },
+          b: { label: 'Task B', totalMs: 2000, hasTime: true },
+        },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label);
+    assert.deepEqual([...lines], ['3000ms - [work]', '    1000ms - Task A', '    2000ms - Task B']);
+  });
+
+  it('shows -- for categories and tasks with no tracked time', () => {
+    const catGrouped = {
+      admin: {
+        totalMs: 0,
+        taskOrder: ['x'],
+        tasks: { x: { label: 'Untimed', totalMs: 0, hasTime: false } },
+      },
+    };
+    const lines = formatGroupedLines(['admin'], catGrouped, fmt, label);
+    assert.deepEqual([...lines], ['-- - [admin]', '    -- - Untimed']);
+  });
+
+  it('returns no lines for an empty category order', () =>
+    assert.equal(formatGroupedLines([], {}, fmt, label).length, 0));
 });

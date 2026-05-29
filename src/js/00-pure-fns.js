@@ -687,6 +687,73 @@ function buildBillableSummaryParts(mergedEntries, getCatLabel) {
   ];
 }
 
+/**
+ * Computes the day's start and end timestamps for the plaintext export header.
+ *
+ * Start: the supplied day start (today only) or, failing that, the earliest
+ * entry start. End: the latest tracked end among timed entries, extended by the
+ * active timer's effective end so "Ended:" reflects work still in progress.
+ *
+ * Pure: all environmental inputs (day start, the active timer, the current time)
+ * are injected via `opts` so the function can be unit-tested without globals.
+ *
+ * @param {Array<Object>} dayEntries   - All entries for the viewed day.
+ * @param {Array<Object>} timedEntries - Entries with a real tracked duration (`tsEnd`).
+ * @param {Object} opts                - Injected environment.
+ * @param {boolean} opts.isViewingToday - Whether the viewed day is today.
+ * @param {number|null} opts.dayStart   - Configured day-start ts, or null if not today.
+ * @param {Object|null} opts.activeTimer - The running/paused timer, or null.
+ * @param {number} opts.now             - Current time in ms (`Date.now()`).
+ * @returns {{dayStartTs: (number|null), dayEndTs: (number|null)}} Day bounds in ms.
+ */
+function computeDayBounds(dayEntries, timedEntries, opts) {
+  const { isViewingToday, dayStart, activeTimer, now } = opts;
+  let dayStartTs = isViewingToday ? dayStart : null;
+  if (!dayStartTs && dayEntries.length) {
+    dayStartTs = Math.min(...dayEntries.map((entry) => entry.ts));
+  }
+  let dayEndTs = timedEntries.length ? Math.max(...timedEntries.map((entry) => entry.tsEnd)) : null;
+  // Factor in the active timer's effective end so "Ended:" reflects live work
+  if (activeTimer && isViewingToday) {
+    const timerEntry = dayEntries.find((entry) => entry.id === activeTimer.entryId);
+    if (timerEntry) {
+      const liveEnd = activeTimer.paused
+        ? timerEntry.ts + (activeTimer.accumulatedMs || 0) // paused → start + accumulated
+        : Math.max(now, activeTimer.startTs || timerEntry.ts); // running → now (or startTs if test setup is ahead of wall clock)
+      dayEndTs = dayEndTs ? Math.max(dayEndTs, liveEnd) : liveEnd;
+    }
+  }
+  return { dayStartTs, dayEndTs };
+}
+
+/**
+ * Renders the grouped-by-category structure into indented text lines: one line
+ * per category (with its total), each followed by its indented task lines.
+ *
+ * Pure: the duration formatter and category-label resolver are injected so this
+ * function has no dependency on global state and can be unit-tested directly.
+ *
+ * @param {string[]} catOrder   - Category keys in display order.
+ * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
+ * @param {(ms: number) => string} fmtDuration  - Formats a duration in ms (e.g. `fmtDurLong`).
+ * @param {(tag: string) => string} getCatLabel - Resolves a category key to its label.
+ * @returns {string[]} The body lines for the export file.
+ */
+function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
+  const lines = [];
+  catOrder.forEach((catKey) => {
+    const { totalMs, tasks, taskOrder } = catGrouped[catKey];
+    const catTimeStr = totalMs > 0 ? fmtDuration(totalMs) : '--';
+    lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
+    taskOrder.forEach((taskKey) => {
+      const { label, totalMs: taskMs, hasTime } = tasks[taskKey];
+      const taskTimeStr = hasTime ? fmtDuration(taskMs) : '--';
+      lines.push(`    ${taskTimeStr} - ${label}`);
+    });
+  });
+  return lines;
+}
+
 // ── CommonJS export (Node / unit tests only) ─────────────────────────────────
 // In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
 // this block is skipped — functions remain as globals in the closure.
@@ -717,5 +784,7 @@ if (typeof module !== 'undefined') {
     groupEntriesByCategory,
     mergeAdjacentEntries,
     buildBillableSummaryParts,
+    computeDayBounds,
+    formatGroupedLines,
   };
 }

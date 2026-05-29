@@ -57,17 +57,17 @@ function addEntry(withTimer) {
  * If the default should change to non-billable, a migration of existing
  * localStorage data is required (see DATA.md § wl_entries).
  *
- * @param {Object} e - Log entry object.
+ * @param {Object} entry - Log entry object.
  * @returns {boolean} True if the entry should be counted as billable.
  */
-function isEntryBillable(e) {
-  if (e.signifier === 'cancelled') return false;
-  if (e.billable !== undefined) return e.billable;
+function isEntryBillable(entry) {
+  if (entry.signifier === 'cancelled') return false;
+  if (entry.billable !== undefined) return entry.billable;
   const task = planTasks.find(
-    (planTask) => planTask.text.toLowerCase().trim() === e.text.toLowerCase().trim()
+    (planTask) => planTask.text.toLowerCase().trim() === entry.text.toLowerCase().trim()
   );
   // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
   if (task) return task.billable !== false;
   // Same `!== false` convention for categories — undefined → billable.
-  return getCat(e.tag || 'other').billable !== false;
+  return getCat(entry.tag || 'other').billable !== false;
 }
