@@ -19,41 +19,70 @@
  */
 
 /**
- * Resolve the Anthropic auth header from the available credentials.
+ * Resolve every usable Anthropic credential, in preference order.
  *
- * Preference order: `CLAUDE_CODE_OAUTH_TOKEN` (Bearer) first, then
- * `ANTHROPIC_API_KEY` (`x-api-key`). Whitespace-only values are treated as
- * absent. Returns `null` when neither credential is present so the caller can
- * fail fast with an actionable message.
+ * Order: `CLAUDE_CODE_OAUTH_TOKEN` (Bearer) first, then `ANTHROPIC_API_KEY`
+ * (`x-api-key`). Whitespace-only values are treated as absent. Returns the
+ * options as a list so a caller can try them in turn — falling through to the
+ * next when one is rejected (e.g. an expired OAuth token returns 401), which a
+ * single-credential resolver cannot recover from.
  *
  * @param {Record<string, string|undefined>} env - Environment bag (e.g. `process.env`).
- * @returns {AnthropicAuth|null} The header to merge into the request plus a
- *   `source` label, or `null` if no usable credential is set.
+ * @returns {AnthropicAuth[]} Ordered auth options; empty array if none are set.
  * @example
- * resolveAnthropicAuth({ CLAUDE_CODE_OAUTH_TOKEN: 'abc' })
- * // → { headers: { Authorization: 'Bearer abc' }, source: 'CLAUDE_CODE_OAUTH_TOKEN' }
- * resolveAnthropicAuth({ ANTHROPIC_API_KEY: 'sk-x' })
- * // → { headers: { 'x-api-key': 'sk-x' }, source: 'ANTHROPIC_API_KEY' }
- * resolveAnthropicAuth({}) // → null
+ * resolveAnthropicAuthChain({ CLAUDE_CODE_OAUTH_TOKEN: 'abc', ANTHROPIC_API_KEY: 'sk-x' })
+ * // → [ { headers: { Authorization: 'Bearer abc' }, source: 'CLAUDE_CODE_OAUTH_TOKEN' },
+ * //     { headers: { 'x-api-key': 'sk-x' },         source: 'ANTHROPIC_API_KEY' } ]
+ * resolveAnthropicAuthChain({}) // → []
  */
-export function resolveAnthropicAuth(env) {
+export function resolveAnthropicAuthChain(env) {
+  const chain = [];
+
   const oauthToken = (env.CLAUDE_CODE_OAUTH_TOKEN || '').trim();
   if (oauthToken) {
-    return {
+    chain.push({
       headers: { Authorization: `Bearer ${oauthToken}` },
       source: 'CLAUDE_CODE_OAUTH_TOKEN',
-    };
+    });
   }
 
   const apiKey = (env.ANTHROPIC_API_KEY || '').trim();
   if (apiKey) {
-    return {
+    chain.push({
       headers: { 'x-api-key': apiKey },
       source: 'ANTHROPIC_API_KEY',
-    };
+    });
   }
 
-  return null;
+  return chain;
+}
+
+/**
+ * Resolve the single preferred Anthropic auth — the first entry of
+ * {@link resolveAnthropicAuthChain}, or `null` when no credential is set.
+ *
+ * Note: this picks by *presence*, not validity. An expired-but-present OAuth
+ * token still wins here; callers that need to recover from a rejected
+ * credential should iterate the full chain instead.
+ *
+ * @param {Record<string, string|undefined>} env - Environment bag (e.g. `process.env`).
+ * @returns {AnthropicAuth|null}
+ */
+export function resolveAnthropicAuth(env) {
+  return resolveAnthropicAuthChain(env)[0] || null;
+}
+
+/**
+ * Whether an HTTP status indicates the credential itself was rejected (as
+ * opposed to a transient or request error), and so a different credential is
+ * worth trying. `401 Unauthorized` and `403 Forbidden` are the auth-failure
+ * statuses the Anthropic API returns for a bad/expired key or token.
+ *
+ * @param {number} status - HTTP response status code.
+ * @returns {boolean} True for 401/403.
+ */
+export function isAuthFailureStatus(status) {
+  return status === 401 || status === 403;
 }
 
 /**

@@ -13,6 +13,8 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resolveAnthropicAuth,
+  resolveAnthropicAuthChain,
+  isAuthFailureStatus,
   selectModel,
   DEFAULT_MODEL_BY_SOURCE,
 } from '../lib/anthropic-auth.mjs';
@@ -61,6 +63,65 @@ describe('resolveAnthropicAuth', () => {
       resolveAnthropicAuth({ CLAUDE_CODE_OAUTH_TOKEN: ' ', ANTHROPIC_API_KEY: '\t' }),
       null
     );
+  });
+});
+
+describe('resolveAnthropicAuthChain', () => {
+  test('lists both credentials with OAuth first when both are set', () => {
+    const chain = resolveAnthropicAuthChain({
+      CLAUDE_CODE_OAUTH_TOKEN: 'oauth-abc',
+      ANTHROPIC_API_KEY: 'sk-key',
+    });
+    assert.equal(chain.length, 2);
+    assert.deepStrictEqual(
+      chain.map((a) => a.source),
+      ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY']
+    );
+    assert.equal(chain[0].headers.Authorization, 'Bearer oauth-abc');
+    assert.equal(chain[1].headers['x-api-key'], 'sk-key');
+  });
+
+  test('returns a single entry when only one credential is set', () => {
+    assert.deepStrictEqual(
+      resolveAnthropicAuthChain({ ANTHROPIC_API_KEY: 'sk-key' }).map((a) => a.source),
+      ['ANTHROPIC_API_KEY']
+    );
+  });
+
+  test('returns an empty array when no credential is set', () => {
+    assert.deepStrictEqual(resolveAnthropicAuthChain({}), []);
+  });
+
+  test('skips whitespace-only credentials', () => {
+    const chain = resolveAnthropicAuthChain({
+      CLAUDE_CODE_OAUTH_TOKEN: '   ',
+      ANTHROPIC_API_KEY: 'sk-key',
+    });
+    assert.deepStrictEqual(
+      chain.map((a) => a.source),
+      ['ANTHROPIC_API_KEY']
+    );
+  });
+
+  test('resolveAnthropicAuth returns the first chain entry (preferred credential)', () => {
+    const auth = resolveAnthropicAuth({
+      CLAUDE_CODE_OAUTH_TOKEN: 'oauth-abc',
+      ANTHROPIC_API_KEY: 'sk-key',
+    });
+    assert.equal(auth.source, 'CLAUDE_CODE_OAUTH_TOKEN');
+  });
+});
+
+describe('isAuthFailureStatus', () => {
+  test('treats 401 and 403 as auth failures (try the next credential)', () => {
+    assert.equal(isAuthFailureStatus(401), true);
+    assert.equal(isAuthFailureStatus(403), true);
+  });
+
+  test('treats other statuses as not auth failures (do not switch credential)', () => {
+    for (const status of [200, 400, 404, 429, 500, 529]) {
+      assert.equal(isAuthFailureStatus(status), false);
+    }
   });
 });
 
