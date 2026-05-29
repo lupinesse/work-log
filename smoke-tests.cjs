@@ -2665,6 +2665,8 @@ async function runTests() {
     assert('Sparkline canvas element present', hasSparkline);
     const hasRibbon = await page.evaluate(() => !!document.getElementById('pomoRibbonDots'));
     assert('Ribbon dots element present', hasRibbon);
+    // Guard prevents uncaught exception when assert() is non-throwing and
+    // hasRibbon is false — null produces a readable "got null" failure message.
     const dotCount = await page.evaluate(() => {
       const el = document.getElementById('pomoRibbonDots');
       return el ? el.querySelectorAll('.pomo-rdot').length : null;
