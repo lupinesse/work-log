@@ -11,7 +11,11 @@
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveAnthropicAuth } from '../lib/anthropic-auth.mjs';
+import {
+  resolveAnthropicAuth,
+  selectModel,
+  DEFAULT_MODEL_BY_SOURCE,
+} from '../lib/anthropic-auth.mjs';
 
 describe('resolveAnthropicAuth', () => {
   test('prefers the OAuth token (Bearer) when present', () => {
@@ -57,5 +61,30 @@ describe('resolveAnthropicAuth', () => {
       resolveAnthropicAuth({ CLAUDE_CODE_OAUTH_TOKEN: ' ', ANTHROPIC_API_KEY: '\t' }),
       null
     );
+  });
+});
+
+describe('selectModel', () => {
+  test('defaults the subscription (OAuth) path to Opus', () => {
+    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN'), 'claude-opus-4-7');
+  });
+
+  test('defaults the per-token (API key) path to the cheaper Haiku model', () => {
+    assert.equal(selectModel('ANTHROPIC_API_KEY'), 'claude-haiku-4-5');
+    // Guard against an accidental future edit putting Opus back on the metered path
+    assert.notEqual(selectModel('ANTHROPIC_API_KEY'), 'claude-opus-4-7');
+  });
+
+  test('an explicit override wins over the per-source default', () => {
+    assert.equal(selectModel('ANTHROPIC_API_KEY', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
+    assert.equal(selectModel('CLAUDE_CODE_OAUTH_TOKEN', 'claude-sonnet-4-6'), 'claude-sonnet-4-6');
+  });
+
+  test('falls back to the subscription default for an unrecognised source', () => {
+    assert.equal(selectModel('SOMETHING_ELSE'), DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN);
+  });
+
+  test('an empty override is ignored in favour of the default', () => {
+    assert.equal(selectModel('ANTHROPIC_API_KEY', ''), 'claude-haiku-4-5');
   });
 });
