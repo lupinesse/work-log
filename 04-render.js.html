@@ -79,7 +79,8 @@ function render() {
   ].join(' · ');
 
   /* ── 4. Sub-stat tiles (most-tracked task today / this week / best streak day) ── */
-  // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic
+  // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic.
+  // Emits structured divs so each line gets its own color token (link, title, value).
   function taskSubHtml(label, ms) {
     // Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
     // eslint-disable-next-line security/detect-unsafe-regex
@@ -90,8 +91,8 @@ function render() {
       ? `&lt;a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}&lt;/a>`
       : null;
     return keyHtml
-      ? `${keyHtml}${name ? `&lt;br>${escHtml(name)}` : ''}&lt;br>&lt;strong>${fmtDur(ms)}&lt;/strong>`
-      : `${escHtml(label)}&lt;br>&lt;strong>${fmtDur(ms)}&lt;/strong>`;
+      ? `${keyHtml}${name ? `&lt;div class="stat-sub-title">${escHtml(name)}&lt;/div>` : ''}&lt;div class="stat-sub-value">${fmtDur(ms)}&lt;/div>`
+      : `&lt;div class="stat-sub-title">${escHtml(label)}&lt;/div>&lt;div class="stat-sub-value">${fmtDur(ms)}&lt;/div>`;
   }
 
   // Today: task with most tracked time
@@ -160,7 +161,7 @@ function render() {
       const dayName = isToday(d3)
         ? 'today'
         : d3.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
-      streakSub.innerHTML = `&lt;strong>Longest date tracked&lt;/strong>&lt;br>${escHtml(dayName)}&lt;br>&lt;strong>${fmtDur(bestMs)}&lt;/strong>`;
+      streakSub.innerHTML = `&lt;div class="stat-sub-title">Longest date tracked&lt;/div>&lt;div class="stat-sub-title">${escHtml(dayName)}&lt;/div>&lt;div class="stat-sub-value">${fmtDur(bestMs)}&lt;/div>`;
       streakSub.style.display = '';
     } else {
       streakSub.style.display = 'none';
