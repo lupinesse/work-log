@@ -21,16 +21,11 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars (all have sensible defaults):
- *   MODEL              default 'gpt-5.4'
- *   REASONING_EFFORT   default 'medium' (low | medium | high) — 'high' exhausted the token budget on CoT
+ *   MODEL              default 'gpt-4.1'
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 50000 — truncate larger diffs
- *   MAX_TOKENS         default '32768' (covers CoT + visible reply at medium effort)
+ *   MAX_TOKENS         default '32768'
  *   DIFF_PATH          default 'pr.diff'
- *
- * Note: `temperature` is intentionally omitted from the OpenAI request.
- * Reasoning-class models (GPT-5 family) reject it when `reasoning_effort`
- * is also set — sending both is an API error.
  */
 
 import { readFileSync } from 'node:fs';
@@ -72,17 +67,12 @@ const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
-const MODEL = process.env.MODEL || 'gpt-5.4';
-// 'medium' balances CoT depth against token budget; 'high' exhausted 8192
-// tokens entirely on reasoning, leaving nothing for visible output.
-const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
+const MODEL = process.env.MODEL || 'gpt-4.1';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '50000', 10);
-// Budget must cover both internal reasoning tokens and the visible reply.
-// 32768 provides headroom for a thorough review even at medium effort.
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '32768', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
-const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` (reasoning_effort: \`${REASONING_EFFORT}\`) · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
+const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
 // Short attribution appended to every inline reply/finding body so the
 // persona is clear regardless of which GitHub account posts it (App token,
@@ -151,10 +141,8 @@ async function reviewWithOpenAI(diff, existingThreads) {
     },
     body: JSON.stringify({
       model: MODEL,
-      reasoning_effort: REASONING_EFFORT,
+      temperature: 0.2,
       max_completion_tokens: MAX_TOKENS,
-      // No `temperature` — GPT-5 reasoning models reject it alongside
-      // `reasoning_effort`. Reasoning level is the controlling knob.
       messages: [
         { role: 'system', content: PROMPT },
         { role: 'user', content: userContent },
@@ -313,7 +301,7 @@ async function main() {
   console.log(
     `ChatGPT review for ${OWNER}/${REPO} PR #${PR_NUMBER} (head ${HEAD_SHA.slice(0, 7)})`
   );
-  console.log(`  model: ${MODEL}, reasoning_effort: ${REASONING_EFFORT}`);
+  console.log(`  model: ${MODEL}`);
 
   const diff = loadDiff();
   if (!diff) {

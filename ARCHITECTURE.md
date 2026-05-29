@@ -3,9 +3,9 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.8.4 |
-| Covers app version | v1.8.4 |
-| Last reviewed | 2026-05-27 |
+| Document version | 1.8.9 |
+| Covers app version | v1.8.9 |
+| Last reviewed | 2026-05-29 |
 | Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
 | Status | **Approved** — reflects current implementation |
 
@@ -13,7 +13,7 @@
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (28 source files across 23 numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (37 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -136,13 +136,24 @@ render() → {
 
 ### Feature Modules
 
-#### **05-entries.js** (267 lines) — Work Log Entry Management
-**Responsibility**: Create, modify, export work log entries
+#### **05-entries.js** — Work Log Entry Management
+**Responsibility**: Create new log entries and apply the billable rule. Export/import and File System Access persistence were split to `05a-export.js` and `05b-filesystem.js`.
 
 **Key Functions**:
 - `addEntry(withTimer)` — Create new entry from capture input
 - `isEntryBillable(e)` — Check if entry is billable
-- `exportTxt()` — Generate end-of-day text export with time summary
+
+**Data Validation**:
+- Each entry must have: id, text, ts (timestamp), date
+- Optional: tsEnd (end timestamp), billable flag, tag (category)
+
+---
+
+#### **05a-export.js** — Text Export
+**Responsibility**: Generate and download the end-of-day plaintext export.
+
+**Key Functions**:
+- `exportTxt()` — Orchestrates the export: groups entries by category, computes day bounds, builds the billable summary, and writes the file via `05b-filesystem.js` or a browser download fallback.
 
 **Text Export Format**:
 ```
@@ -155,9 +166,19 @@ Started: 08:45 | Ended: 17:30 | Workday: 8h 45min
 ...
 ```
 
-**Data Validation**:
-- Each entry must have: id, text, ts (timestamp), date
-- Optional: tsEnd (end timestamp), billable flag, tag (category)
+Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`) live in `00-pure-fns.js` and are unit-tested there.
+
+---
+
+#### **05b-filesystem.js** — File System Access Persistence
+**Responsibility**: Persist the user's chosen save folder and write export files via the browser File System Access API; falls back to a `<a download>` click when FSA is unavailable.
+
+**Key Functions**:
+- `getSavedDir()` — Retrieve the persisted `FileSystemDirectoryHandle` from IndexedDB (in-memory cached).
+- `saveToDir(filename, text)` — Write a text file to the saved directory or trigger a browser download.
+- `pickSaveDir()` — Open the directory picker and persist the chosen handle.
+
+**Persistence**: Directory handles stored in IndexedDB (`wl_fs_v1`) so the user is not re-prompted on every export.
 
 ---
 
@@ -178,6 +199,27 @@ parkedThoughts     → List of captured thoughts
 ```
 
 **Keyboard**: Escape key exits focus mode
+
+---
+
+#### **06a-hero.js** — Hero Card State Machine
+**Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
+
+**States**:
+| State | Appearance |
+|---|---|
+| `idle` | Logged-today total, last-session time, task-composer input, 3 recent-task chips |
+| `running` | Large elapsed clock, pulsing dot, category + task title, note row, Break/Lunch/Meeting pills |
+| `paused` | Amber border wash, frozen clock, resume/stop button pair |
+| `stopped` | 6-second confirmation window with session summary (range, total today), undo, note, done |
+
+**Key Functions**:
+- `renderHeroCard()` — Full re-render; called after any state change.
+- `heroUpdateClock()` — Updates the running clock label every tick (called from `tickTimer`).
+- `heroEnterStopped()` — Transitions to stopped state; called by `stopTimer()`.
+- `initHero()` — Binds button events; called once from `DOMContentLoaded`.
+
+**Compat**: Legacy IDs (`#timerStop`, `#timerPause`, `#emergencyBtn`, etc.) are preserved as hidden stubs so `06-focus.js` and other modules need no changes.
 
 ---
 
@@ -212,6 +254,31 @@ parkedThoughts     → List of captured thoughts
 - Session log with timestamps
 
 **Separate from Main Timer**: Pomodoro runs independently, doesn't affect work log timer
+
+---
+
+#### **08a-pomo-dashboard.js** — Pomodoro 4-Column Dashboard
+**Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
+
+**Layout columns** (CSS grid in `_pomo.scss`):
+| Col | Width | Content |
+|---|---|---|
+| Clock face | 140 px | Ring SVG + duration buttons |
+| Composer | 1fr | Task label, controls, chime selector |
+| Sparkline | 170 px | 28-day focus density bar chart (`<canvas>`) |
+| Ledger | 220 px | Recent-session log |
+
+**Key Functions**:
+- `renderPomoSparkline()` — Draws the 28-day `<canvas>` bar chart; reads `--pomo-spark-fill`/`--pomo-spark-empty` CSS variables so it responds to dark-mode automatically.
+- `renderPomoRibbon()` — Updates the ribbon footer: last-5-session dot sequence (`#pomoRibbonDots`), Peak Focus / session-count pill (`#pomoRibbonPill`), and "View all sessions" scroll link.
+- `updatePomoTaskLabel()` — Shows the currently running timer task name in the composer column.
+- `refreshPomoDashboard()` — Orchestrator; called on load and after every session completion.
+
+**CSS variables** (defined in `_pomo.scss`):
+```css
+--pomo-spark-fill:  #c62828   /* dark: #e5615b */
+--pomo-spark-empty: #e8edf4   /* dark: #252e3d */
+```
 
 ---
 
@@ -397,10 +464,26 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
+#### **10a-tasks-render.js** — Task Rendering
+**Responsibility**: HTML generation for the plan list — status `<select>`, priority button, checkpoint badge, deadline picker, and the full task row template. Split from `10-tasks.js` to isolate rendering from business logic.
+
+**Key Functions**: `statusOpts(cur)`, `prioBtnHtml(t)`, `renderPlan()`
+
+---
+
+#### **10b-tasks-events.js** — Task Event Binding
+**Responsibility**: Attaches all event listeners to the rendered plan list — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Split from `10-tasks.js` to isolate DOM binding from logic.
+
+**Key Functions**: `bindPlanEvents(lists)`
+
+---
+
 #### **16-rapid.js** — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
-**Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`
+**Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
+
+**Inline token grammar**: Users can type `#<cat>`, `!<sig>`, and `><date>` tokens in the capture input to set category, signifier, and entry date without the mouse. Recognised tokens are stripped from the saved text; a live pill-badge preview (`#qcTokenPreview`) updates on every keystroke. Date tokens support `today`, `tomorrow`, `YYYY-MM-DD`, and weekday abbreviations.
 
 ---
 
@@ -637,16 +720,16 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (133 tests via Node assert):
-- `test/unit.cjs` — 16 describe blocks covering all pure functions in `00-pure-fns.js`, `validateBackupFile`, and schema migrations
+**Unit Tests** (311 tests via Node assert):
+- `test/unit.cjs` — 42 describe blocks covering pure functions in `00-pure-fns.js`, `validateBackupFile`, schema migrations; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
 
-**Smoke Tests** (211 tests via Playwright):
+**Smoke Tests** (272 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**Total: 344 tests (133 unit + 211 smoke)**
+**Total: 583 tests (311 unit + 272 smoke)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
