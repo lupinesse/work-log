@@ -2667,7 +2667,7 @@ async function runTests() {
     assert('Ribbon dots element present', hasRibbon);
     const dotCount = await page.evaluate(() => {
       const el = document.getElementById('pomoRibbonDots');
-      return el ? el.querySelectorAll('.pomo-rdot').length : -1;
+      return el ? el.querySelectorAll('.pomo-rdot').length : null;
     });
     assert(
       'Ribbon renders exactly 5 dots with empty session log',
