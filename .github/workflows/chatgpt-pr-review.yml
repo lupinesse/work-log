@@ -227,6 +227,84 @@ jobs:
           git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
           echo "Diff size: $(wc -l < pr.diff) lines"
 
+      # Fetch Phase 1 ChatGPT findings so /pr-review can group duplicates as
+      # "Also raised by ChatGPT" rather than presenting them as novel. The
+      # skill reads chatgpt-findings.md when present.
+      - name: Fetch ChatGPT's Phase 1 findings
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const result = await github.graphql(`
+              query($owner:String!, $name:String!, $number:Int!) {
+                repository(owner:$owner, name:$name) {
+                  pullRequest(number:$number) {
+                    reviewThreads(first:100) {
+                      nodes {
+                        isResolved
+                        comments(first:10) {
+                          nodes {
+                            author { login }
+                            body
+                            path
+                            originalLine
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner:  context.repo.owner,
+              name:   context.repo.repo,
+              number: context.payload.pull_request.number,
+            });
+
+            const threads = result.repository.pullRequest.reviewThreads.nodes
+              .map(t => {
+                const first = t.comments.nodes[0];
+                if (!first) return null;
+                const login = (first.author?.login || '').toLowerCase();
+                const isChatGpt = login.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
+                if (!isChatGpt) return null;
+
+                // Find Claude's reply verdict if present (Phase 2 reply emojis).
+                const claudeReply = t.comments.nodes.slice(1).find(c =>
+                  /^\s*(✅|👍|❌|↔️)/.test(c.body || '')
+                );
+                const verdict = !claudeReply ? 'no reply'
+                  : claudeReply.body.trimStart().startsWith('✅') ? 'agree_fix'
+                  : claudeReply.body.trimStart().startsWith('👍') ? 'agree_noted'
+                  : claudeReply.body.trimStart().startsWith('❌') ? 'disagree'
+                  : 'partial';
+
+                return {
+                  path: first.path,
+                  line: first.originalLine,
+                  resolved: t.isResolved,
+                  verdict,
+                  body: first.body,
+                  claudeReply: claudeReply ? claudeReply.body : null,
+                };
+              })
+              .filter(Boolean);
+
+            if (threads.length === 0) {
+              core.info('No prior ChatGPT findings — /pr-review will run without a duplicate-suppression file.');
+              return;
+            }
+
+            const sections = threads.map(t => {
+              const status = t.resolved ? `resolved · Claude ${t.verdict}` : 'unresolved';
+              const replyBlock = t.claudeReply ? `\n\n**Claude's reply:** ${t.claudeReply.trim()}` : '';
+              return `## \`${t.path}:${t.line}\` (${status})\n\n${t.body.trim()}${replyBlock}`;
+            }).join('\n\n---\n\n');
+
+            const md = `# ChatGPT's Phase 1 findings — already raised\n\nDo NOT present these as new findings in your /pr-review output. If you would have flagged the same line for the same reason, mention it as "Also raised by ChatGPT" (and note Claude's verdict if one is shown). Only present truly NEW findings as your own.\n\n${sections}\n`;
+            fs.writeFileSync('chatgpt-findings.md', md);
+            core.info(`Wrote chatgpt-findings.md (${threads.length} prior finding(s))`);
+
       - name: Check auth is present
         id: key-check
         env:

@@ -190,9 +190,16 @@ async function callClaudeApi(diff, threads) {
     return `Thread ${i} | ${c.path}:${c.originalLine}\n${c.body}`;
   }).join('\n\n---\n\n');
 
-  const system = `You are Claude, an AI code reviewer. You have already done your own independent review of this pull request. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
+  const system = `You are Claude, the implementing author of this pull request and also an AI code reviewer. You have already done your own independent review. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
 
-For each of ChatGPT's findings, state whether you agree, disagree, or partially agree, and give a brief direct explanation. Then provide an overall synthesis.
+You are the final authority on whether a finding gets fixed: as the author, your call stands. ChatGPT does not get to re-litigate a finding you have rejected. But you owe an explicit, substantive reply on EVERY finding — never resolve with just "agree" or "disagree". The reply will be posted before the thread is resolved, so it must explain your reasoning clearly enough that a human reviewer reading only your reply understands the decision.
+
+For each ChatGPT finding, pick exactly one verdict and write a reply that justifies it:
+
+- **agree_fix** — The finding is valid AND you will fix it in this PR. Your reply MUST describe HOW you will fix it (e.g., "Will replace the silent catch with wlLog.warn", "Will rename to descriptiveName"). The thread stays OPEN — the author/merge-gate uses it as a follow-up checklist.
+- **agree_noted** — The finding is valid but you are deliberately not fixing it in this PR. Your reply MUST explain why deferring is OK (e.g., "Out of scope — tracked in #123", "Pre-existing on main, not introduced by this PR"). The thread is RESOLVED.
+- **disagree** — The finding does not apply or is wrong. Your reply MUST explain WHY (e.g., "Line 26 has no variable v — refers to a stale diff state", "This pattern is intentional because X"). The thread is RESOLVED and your decision is final.
+- **partial** — Part of the finding is valid. Your reply MUST separate what you agree with (and how you'll fix it) from what you reject (and why). The thread stays OPEN.
 
 Output a single raw JSON object — no markdown wrapper:
 {
@@ -200,7 +207,7 @@ Output a single raw JSON object — no markdown wrapper:
     {
       "index": <integer matching the thread index above>,
       "verdict": "agree_fix" | "agree_noted" | "disagree" | "partial",
-      "reply": "<1-3 direct sentences — your assessment of this specific finding>"
+      "reply": "<2-4 sentences — must include the reasoning required by the verdict above. Never just 'agree' or 'disagree'.>"
     }
   ],
   "synthesis": "<3-5 sentences: key issues in the PR, how ChatGPT's findings compare to your own read, what still needs attention>"

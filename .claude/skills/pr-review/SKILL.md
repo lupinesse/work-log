@@ -41,6 +41,25 @@ Skip auto-generated files: `script.js`, `styles.css`, `docs/**/*.html`,
 `package-lock.json`. Flag if those files appear to have been edited directly
 (that itself is a finding).
 
+### Step 1b — Check for prior ChatGPT findings (CI only)
+
+If `chatgpt-findings.md` exists, ChatGPT already posted independent findings
+on this PR before you ran. Read it and keep a list of `(path, line, gist)`
+for each prior finding.
+
+When writing your review:
+- If a finding you would have raised matches a prior ChatGPT finding (same
+  file/line, same root cause), DO NOT present it as your own. Instead, list
+  it under a separate **"Also raised by ChatGPT"** section with a one-line
+  reference (e.g. `**[file.js line N]** — _matches ChatGPT's earlier finding (Claude verdict: agree_fix)_`).
+- Only items not in `chatgpt-findings.md` go under your blocking / non-blocking
+  / nitpick sections as new findings.
+- If every issue you would have flagged is already in `chatgpt-findings.md`,
+  your verdict should reflect that — the review is mostly an acknowledgement
+  that ChatGPT covered the ground already.
+
+This file is absent for local runs — ignore the step if it's not there.
+
 ### Step 2 — Read the quality standard
 
 - Read `CLAUDE.md` (repo root) and `.claude/CLAUDE.md` for the operative
@@ -88,20 +107,26 @@ Output clean markdown formatted for a GitHub PR comment. Use this structure:
 ---
 
 ### 🔴 Blocking issues
-<!-- Items that must be fixed before merge. Omit section if none. -->
+<!-- NEW items only (not in chatgpt-findings.md). Omit section if none. -->
 
 **[file.js line N]** Description of the problem.
 Rule: _"quote the relevant CLAUDE.md rule"_
 
 ### 🟡 Non-blocking issues
-<!-- Real problems that should be fixed soon but are not merge-blockers. -->
+<!-- NEW items only. Real problems that should be fixed soon. -->
 
 **[file.js line N]** Description.
 
 ### 🔵 Nitpicks
-<!-- Style, naming, minor improvements. Easy to fix, low stakes. -->
+<!-- NEW items only. Style, naming, minor improvements. -->
 
 **[file.js line N]** Suggestion.
+
+### ↪ Also raised by ChatGPT
+<!-- Findings already in chatgpt-findings.md that you would have raised too.
+     Omit section if chatgpt-findings.md was absent or had no overlap. -->
+
+**[file.js line N]** — _matches ChatGPT's earlier finding (Claude verdict: agree_fix)_
 
 ---
 
@@ -122,8 +147,13 @@ Rule: _"quote the relevant CLAUDE.md rule"_
 
 - If a section has no findings, omit it entirely — do not write "None found."
 - Every finding must include a file name and line number.
-- Every finding must cite the CLAUDE.md rule it violates.
-- Verdict is APPROVE only if there are zero blocking issues and zero
+- Every finding must cite the CLAUDE.md rule it violates (except in the
+  "Also raised by ChatGPT" section, where ChatGPT's body already carries it).
+- Verdict counts only NEW blocking / non-blocking issues — items moved to
+  "Also raised by ChatGPT" do not count toward REQUEST CHANGES. The reason
+  is that those threads already exist on the PR and have their own resolution
+  path; double-counting would let one issue block twice.
+- Verdict is APPROVE only if there are zero NEW blocking issues and zero NEW
   non-blocking issues. Nitpicks alone → APPROVE with a note.
 - If `pr.diff` is empty or only touches auto-generated files, output:
   `## Verdict: APPROVE — diff contains no reviewable source changes.`
