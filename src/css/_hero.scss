@@ -32,6 +32,7 @@
 
 .hero-card--running {
   border-left-color: var(--live);
+  background: var(--live-softer);
 }
 
 .hero-card--paused {
@@ -41,6 +42,7 @@
 
 .hero-card--stopped {
   border-left-color: var(--stopped);
+  background: color-mix(in srgb, var(--stopped) 6%, var(--bg) 94%);
 }
 
 // ── Inner layout ──────────────────────────────────────────────────────────────
