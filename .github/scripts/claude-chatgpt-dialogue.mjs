@@ -12,8 +12,11 @@
  * collected and included in the synthesis comment so nothing is lost.
  *
  * Required env vars:
- *   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`) — uses your
- *                            Claude subscription at no extra API cost.
+ *   One Anthropic credential (OAuth token preferred, API key as fallback):
+ *     CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`) — uses your
+ *                              Claude subscription at no extra API cost.
+ *     ANTHROPIC_API_KEY        Standard Anthropic API key — used only when the
+ *                              OAuth token is absent (billed per-token).
  *   GITHUB_TOKEN             GitHub auth (Claude Reviewer App token or fallback)
  *   GITHUB_REPOSITORY        "owner/repo" — auto-set by Actions
  *   PR_NUMBER                Pull-request number
@@ -33,6 +36,7 @@ import {
   resolveThread,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
+import { resolveAnthropicAuth } from './lib/anthropic-auth.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -51,10 +55,16 @@ const must = (key) => {
 
 // ─────────────────────────── config ───────────────────────────
 
-const CLAUDE_CODE_OAUTH_TOKEN = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
-if (!CLAUDE_CODE_OAUTH_TOKEN) {
-  die('Missing required env var: CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`)');
+// Prefer the Claude subscription OAuth token; fall back to a standard API key.
+// Fail fast only when neither credential is configured.
+const ANTHROPIC_AUTH = resolveAnthropicAuth(process.env);
+if (!ANTHROPIC_AUTH) {
+  die(
+    'Missing Anthropic credentials: set CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`) ' +
+      'or ANTHROPIC_API_KEY'
+  );
 }
+console.log(`Auth: using ${ANTHROPIC_AUTH.source}`);
 
 const GITHUB_TOKEN      = must('GITHUB_TOKEN');
 const [OWNER, REPO]     = must('GITHUB_REPOSITORY').split('/');
@@ -175,12 +185,10 @@ Output a single raw JSON object — no markdown wrapper:
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
   // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
-  const authHeader = { 'Authorization': `Bearer ${CLAUDE_CODE_OAUTH_TOKEN}` };
-
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      ...authHeader,
+      ...ANTHROPIC_AUTH.headers,
       'anthropic-version':  '2023-06-01',
       'content-type':       'application/json',
     },
