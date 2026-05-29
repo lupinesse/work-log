@@ -40,6 +40,7 @@ import {
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
+import { normaliseReplyAction } from './lib/parse-reply-action.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -372,27 +373,15 @@ function parseResponse(rawText, threadCount) {
     if (!body) { invalidActions.push(a); continue; }
 
     if (type === 'reply') {
-      const idx = Number.isInteger(a.thread_index) ? a.thread_index : Number(a.thread_index);
-      if (!Number.isInteger(idx) || idx < 0 || idx >= threadCount) {
-        console.warn(`  invalid reply action (thread_index=${JSON.stringify(a.thread_index)}, valid 0..${threadCount - 1}) — moved to fallback`);
+      let normalised;
+      try {
+        normalised = normaliseReplyAction(a, threadCount);
+      } catch (err) {
+        console.warn(`  invalid reply action — ${err.message} — moved to fallback`);
         invalidActions.push(a);
         continue;
       }
-      // resolve and unresolve are mutually exclusive — if a buggy model sets
-      // both, drop the action rather than picking one arbitrarily, so the
-      // mistake surfaces in the fallback block.
-      if (a.resolve === true && a.unresolve === true) {
-        console.warn(`  invalid reply action (thread_index=${idx}, both resolve and unresolve set) — moved to fallback`);
-        invalidActions.push(a);
-        continue;
-      }
-      actions.push({
-        type:        'reply',
-        threadIndex: idx,
-        body,
-        resolve:     a.resolve === true,
-        unresolve:   a.unresolve === true,
-      });
+      actions.push({ type: 'reply', ...normalised });
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
