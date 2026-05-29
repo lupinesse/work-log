@@ -24,7 +24,7 @@ import { postInlineComment, resolveThread, fetchAllIssueComments } from '../lib/
 function makeResponse(body, status = 200) {
   const bodyText = typeof body === 'string' ? body : JSON.stringify(body);
   return {
-    ok:   status >= 200 && status < 300,
+    ok: status >= 200 && status < 300,
     status,
     text: async () => bodyText,
     json: async () => body,
@@ -55,23 +55,17 @@ describe('resolveThread', () => {
   test('throws when the HTTP response is not ok', async (t) => {
     t.mock.method(globalThis, 'fetch', async () => makeResponse('Internal Server Error', 500));
 
-    await assert.rejects(
-      resolveThread({ token: 'tok', threadId: 'T_ERR' }),
-      (err) => {
-        assert.ok(err.message.includes('500'), `expected 500 in: ${err.message}`);
-        return true;
-      }
-    );
+    await assert.rejects(resolveThread({ token: 'tok', threadId: 'T_ERR' }), (err) => {
+      assert.ok(err.message.includes('500'), `expected 500 in: ${err.message}`);
+      return true;
+    });
   });
 
   test('throws when the GraphQL response body contains an errors array', async (t) => {
     const payload = { errors: [{ message: 'Thread not found' }] };
     t.mock.method(globalThis, 'fetch', async () => makeResponse(payload));
 
-    await assert.rejects(
-      resolveThread({ token: 'tok', threadId: 'T_404' }),
-      /GraphQL/
-    );
+    await assert.rejects(resolveThread({ token: 'tok', threadId: 'T_404' }), /GraphQL/);
   });
 });
 
@@ -120,14 +114,11 @@ describe('fetchAllIssueComments', () => {
     const fullPage = Array.from({ length: 100 }, (_, i) => ({ id: i }));
     const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(fullPage));
 
-    await assert.rejects(
-      fetchAllIssueComments(ctx),
-      (err) => {
-        assert.ok(err.message.includes('page limit'), `expected "page limit" in: ${err.message}`);
-        assert.ok(err.message.includes('200'),        `expected page count in: ${err.message}`);
-        return true;
-      }
-    );
+    await assert.rejects(fetchAllIssueComments(ctx), (err) => {
+      assert.ok(err.message.includes('page limit'), `expected "page limit" in: ${err.message}`);
+      assert.ok(err.message.includes('200'), `expected page count in: ${err.message}`);
+      return true;
+    });
 
     assert.strictEqual(fetchMock.mock.calls.length, 200, 'should stop exactly at the page limit');
   });
@@ -135,13 +126,10 @@ describe('fetchAllIssueComments', () => {
   test('throws when the API returns a non-ok status', async (t) => {
     t.mock.method(globalThis, 'fetch', async () => makeResponse('Unauthorized', 401));
 
-    await assert.rejects(
-      fetchAllIssueComments(ctx),
-      (err) => {
-        assert.ok(err.message.includes('401'), `expected 401 in: ${err.message}`);
-        return true;
-      }
-    );
+    await assert.rejects(fetchAllIssueComments(ctx), (err) => {
+      assert.ok(err.message.includes('401'), `expected 401 in: ${err.message}`);
+      return true;
+    });
   });
 });
 
@@ -149,14 +137,14 @@ describe('fetchAllIssueComments', () => {
 
 describe('postInlineComment', () => {
   const params = {
-    token:    'tok-123',
-    owner:    'acme',
-    repo:     'app',
+    token: 'tok-123',
+    owner: 'acme',
+    repo: 'app',
     prNumber: 42,
-    headSha:  'abc1234',
-    path:     'src/index.js',
-    line:     10,
-    body:     'A test comment.',
+    headSha: 'abc1234',
+    path: 'src/index.js',
+    line: 10,
+    body: 'A test comment.',
   };
 
   test('sends the correct URL, method, and body', async (t) => {
@@ -197,12 +185,9 @@ describe('postInlineComment', () => {
   test('throws when the API returns a non-ok status', async (t) => {
     t.mock.method(globalThis, 'fetch', async () => makeResponse('Unprocessable Entity', 422));
 
-    await assert.rejects(
-      postInlineComment(params),
-      (err) => {
-        assert.ok(err.message.includes('422'), `expected 422 in: ${err.message}`);
-        return true;
-      }
-    );
+    await assert.rejects(postInlineComment(params), (err) => {
+      assert.ok(err.message.includes('422'), `expected 422 in: ${err.message}`);
+      return true;
+    });
   });
 });

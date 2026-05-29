@@ -22,8 +22,7 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL                default 'gpt-5.5'
- *   REASONING_EFFORT     default 'medium'
+ *   MODEL                default 'gpt-4.1'
  *   MAX_DIFF_CHARS       default 40000
  *   MAX_TOKENS           default 16384
  *   DIFF_PATH            default 'pr.diff'
@@ -41,12 +40,16 @@ import {
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { normaliseReplyAction } from './lib/parse-reply-action.mjs';
+import { normaliseReplyAction, coerceThreadIndex } from './lib/parse-reply-action.mjs';
+import { normaliseGithubVerdict, normaliseGithubSummary } from './lib/parse-verdict.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
 /** @param {string} msg */
-const die = (msg) => { console.error(msg); process.exit(1); };
+const die = (msg) => {
+  console.error(msg);
+  process.exit(1);
+};
 
 /**
  * @param {string} key
@@ -61,16 +64,15 @@ const must = (key) => {
 // ─────────────────────────── config ───────────────────────────
 
 const OPENAI_API_KEY = must('OPENAI_API_KEY');
-const GITHUB_TOKEN   = must('GITHUB_TOKEN');
-const [OWNER, REPO]  = must('GITHUB_REPOSITORY').split('/');
-const PR_NUMBER      = must('PR_NUMBER');
-const HEAD_SHA       = must('HEAD_SHA');
+const GITHUB_TOKEN = must('GITHUB_TOKEN');
+const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
+const PR_NUMBER = must('PR_NUMBER');
+const HEAD_SHA = must('HEAD_SHA');
 
-const MODEL            = process.env.MODEL            || 'gpt-5.5';
-const REASONING_EFFORT = process.env.REASONING_EFFORT || 'medium';
-const MAX_DIFF_CHARS   = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
-const MAX_TOKENS       = parseInt(process.env.MAX_TOKENS     || '16384', 10);
-const DIFF_PATH        = process.env.DIFF_PATH        || 'pr.diff';
+const MODEL = process.env.MODEL || 'gpt-4.1';
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '16384', 10);
+const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const ATTRIBUTION = `*ChatGPT \`${MODEL}\` responding to Claude's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
@@ -86,7 +88,11 @@ const REPLY_ATTRIBUTION = `\n\n<sub>_— ChatGPT \`${MODEL}\` · \`${HEAD_SHA.sl
  */
 function loadDiff() {
   let raw;
-  try { raw = readFileSync(DIFF_PATH, 'utf8'); } catch (e) { die(`Cannot read diff: ${e.message}`); }
+  try {
+    raw = readFileSync(DIFF_PATH, 'utf8');
+  } catch (e) {
+    die(`Cannot read diff: ${e.message}`);
+  }
   if (!raw.trim()) return null;
   return raw.length > MAX_DIFF_CHARS ? raw.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]' : raw;
 }
@@ -96,7 +102,7 @@ function loadDiff() {
 // Markers that identify this phase's persistent comments across runs.
 // upsertReview / upsertIssueComment locate the previous match and update it
 // in place rather than stacking a new comment per push.
-const REVIEW_MARKER   = "responding to Claude's review";
+const REVIEW_MARKER = "responding to Claude's review";
 const FALLBACK_MARKER = '<!-- chatgpt-phase4-fallback -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
@@ -163,7 +169,7 @@ const SYNTHESIS_MARKER_PHRASE = "Claude's synthesis";
 async function fetchClaudeIssueComments() {
   const comments = await fetchAllIssueComments(GH_CTX);
 
-  let synthesis   = null;
+  let synthesis = null;
   let finalReview = null;
   // Walk newest-first so we pick up the latest version of each.
   for (const c of [...comments].reverse()) {
@@ -175,7 +181,11 @@ async function fetchClaudeIssueComments() {
     // but attribution wording can drift) is never mis-classified as the final
     // /pr-review verdict. The HTML marker stays a primary signal regardless
     // because it's only injected by the pr-review-comment workflow step.
-    if (!finalReview && !isSynthesis && (body.includes(FINAL_REVIEW_MARKER) || body.includes('claude.ai/claude-code'))) {
+    if (
+      !finalReview &&
+      !isSynthesis &&
+      (body.includes(FINAL_REVIEW_MARKER) || body.includes('claude.ai/claude-code'))
+    ) {
       finalReview = body;
     }
     if (synthesis && finalReview) break;
@@ -215,12 +225,18 @@ async function callOpenAI(diff, claudeContext) {
   // The threads block is the dedup signal (each thread is indexed so the model
   // can reply to it instead of opening a new one).
   const contextBlocks = [];
-  contextBlocks.push(`**All existing review threads on this PR (each shows path:line, author, resolution state, the original finding, and any replies including Claude's verdict emoji):**\n\n${formatThreadsForPrompt(threads)}`);
+  contextBlocks.push(
+    `**All existing review threads on this PR (each shows path:line, author, resolution state, the original finding, and any replies including Claude's verdict emoji):**\n\n${formatThreadsForPrompt(threads)}`
+  );
   if (synthesis) {
-    contextBlocks.push(`**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${synthesis}`);
+    contextBlocks.push(
+      `**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${synthesis}`
+    );
   }
   if (finalReview) {
-    contextBlocks.push(`**Claude's final /pr-review verdict (Phase 3 — posted after resolving your threads):**\n\n${finalReview}`);
+    contextBlocks.push(
+      `**Claude's final /pr-review verdict (Phase 3 — posted after resolving your threads):**\n\n${finalReview}`
+    );
   }
   const claudeContext_ = contextBlocks.join('\n\n---\n\n');
 
@@ -277,16 +293,16 @@ Output a single raw JSON object — no markdown wrapper:
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      Authorization:  `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model:                 MODEL,
-      reasoning_effort:      REASONING_EFFORT,
+      model: MODEL,
+      temperature: 0.2,
       max_completion_tokens: MAX_TOKENS,
       messages: [
         { role: 'system', content: system },
-        { role: 'user',   content: user },
+        { role: 'user', content: user },
       ],
     }),
   });
@@ -317,31 +333,44 @@ Output a single raw JSON object — no markdown wrapper:
  * @throws {Error}
  */
 function parseResponse(rawText, threadCount) {
-  const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const cleaned = rawText
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '')
+    .trim();
   const parsed = JSON.parse(cleaned);
 
-  if (!parsed.verdict || !parsed.summary) {
-    throw new Error('Missing required fields: verdict, summary');
-  }
-  const validVerdicts = ['APPROVE', 'REQUEST_CHANGES', 'COMMENT'];
-  if (!validVerdicts.includes(parsed.verdict)) {
-    throw new Error(`Unexpected verdict value: ${JSON.stringify(parsed.verdict)}`);
-  }
+  const verdict = normaliseGithubVerdict(parsed.verdict);
+  const summary = normaliseGithubSummary(parsed.summary);
 
   const rawActions = Array.isArray(parsed.thread_actions)
     ? parsed.thread_actions
     : Array.isArray(parsed.new_findings)
-      ? parsed.new_findings.map(f => ({ type: 'new', ...f }))
+      ? parsed.new_findings.map((f) => ({ type: 'new', ...f }))
       : [];
 
   const actions = [];
   const invalidActions = [];
 
   for (const a of rawActions) {
-    if (!a || typeof a !== 'object') { invalidActions.push(a); continue; }
-    const type = a.type || 'new';
-    const body = typeof a.body === 'string' ? a.body : null;
-    if (!body) { invalidActions.push(a); continue; }
+    if (!a || typeof a !== 'object') {
+      invalidActions.push(a);
+      continue;
+    }
+    // Absent type (undefined/null) defaults to 'new' for legacy-schema compat.
+    // Non-string non-null values (e.g. true, 123) are model errors and go to
+    // fallback. Unknown strings ("NEW", "new ") also go to fallback.
+    const rawType = a.type;
+    const type = rawType == null ? 'new' : typeof rawType === 'string' ? rawType.trim() : null;
+    if (type === null || (type !== 'new' && type !== 'reply')) {
+      console.warn(`  unknown action type ${JSON.stringify(rawType)} — moved to fallback`);
+      invalidActions.push(a);
+      continue;
+    }
+    const body = typeof a.body === 'string' ? a.body.trim() : null;
+    if (!body) {
+      invalidActions.push(a);
+      continue;
+    }
 
     if (type === 'reply') {
       let normalised;
@@ -356,9 +385,11 @@ function parseResponse(rawText, threadCount) {
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
-      const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
+      const line = coerceThreadIndex(rawLine);
       if (!path || line === null || line <= 0) {
-        console.warn(`  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
+        console.warn(
+          `  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`
+        );
         invalidActions.push(a);
         continue;
       }
@@ -367,8 +398,8 @@ function parseResponse(rawText, threadCount) {
   }
 
   return {
-    verdict: parsed.verdict,
-    summary: String(parsed.summary),
+    verdict,
+    summary,
     actions,
     invalidActions,
   };
@@ -380,21 +411,29 @@ async function main() {
   console.log(`ChatGPT→Claude dialogue for ${OWNER}/${REPO} PR #${PR_NUMBER}`);
 
   const diff = loadDiff();
-  if (!diff) { console.log('Empty diff — skipping.'); return; }
+  if (!diff) {
+    console.log('Empty diff — skipping.');
+    return;
+  }
 
   const claudeContext = await fetchClaudeContext();
   if (!claudeContext.synthesis && !claudeContext.finalReview) {
-    console.log("  No Claude comments found (synthesis or /pr-review) — skipping.");
+    console.log('  No Claude comments found (synthesis or /pr-review) — skipping.');
     return;
   }
-  const rejected = claudeContext.threads.filter(t => claudeVerdictForThread(t) === 'disagree').length;
+  const rejected = claudeContext.threads.filter(
+    (t) => claudeVerdictForThread(t) === 'disagree'
+  ).length;
   console.log(
     `  Claude context: synthesis=${!!claudeContext.synthesis}, finalReview=${!!claudeContext.finalReview}, ` +
-    `threads=${claudeContext.threads.length} (claude_disagreed=${rejected})`
+      `threads=${claudeContext.threads.length} (claude_disagreed=${rejected})`
   );
 
   const rawText = await callOpenAI(diff, claudeContext);
-  if (!rawText) { console.warn('OpenAI returned an empty response — skipping.'); return; }
+  if (!rawText) {
+    console.warn('OpenAI returned an empty response — skipping.');
+    return;
+  }
 
   let parsed;
   try {
@@ -410,8 +449,8 @@ async function main() {
     return;
   }
 
-  const newCount = parsed.actions.filter(a => a.type === 'new').length;
-  const replyCount = parsed.actions.filter(a => a.type === 'reply').length;
+  const newCount = parsed.actions.filter((a) => a.type === 'new').length;
+  const replyCount = parsed.actions.filter((a) => a.type === 'reply').length;
   console.log(`  verdict: ${parsed.verdict}, new: ${newCount}, replies: ${replyCount}`);
 
   // Upsert the top-level response review (replaces any previous Phase 4 review
@@ -423,7 +462,9 @@ async function main() {
     marker: REVIEW_MARKER,
     body: reviewBody,
   });
-  console.log(`${replaced ? 'Replaced' : 'Posted'} review (${parsed.verdict}): ${reviewResult.html_url}`);
+  console.log(
+    `${replaced ? 'Replaced' : 'Posted'} review (${parsed.verdict}): ${reviewResult.html_url}`
+  );
 
   // Dispatch actions: replies go to existing threads, news create them.
   // Re-raises on resolved threads unresolve them first so Phase 2 picks them
@@ -449,7 +490,9 @@ async function main() {
           commentId: target.firstCommentId,
           body: bodyWithAttribution,
         });
-        console.log(`  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`);
+        console.log(
+          `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
+        );
         // Resolve AFTER posting so the "✅ Verified as fixed" confirmation is
         // visible on the thread before it closes — clears the merge-gate.
         if (a.resolve && !target.isResolved) {
@@ -461,7 +504,13 @@ async function main() {
           }
         }
       } else {
-        const comment = await postInlineComment({ ...GH_CTX, headSha: HEAD_SHA, path: a.path, line: a.line, body: bodyWithAttribution });
+        const comment = await postInlineComment({
+          ...GH_CTX,
+          headSha: HEAD_SHA,
+          path: a.path,
+          line: a.line,
+          body: bodyWithAttribution,
+        });
         console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
     } catch (err) {
@@ -472,25 +521,27 @@ async function main() {
   }
 
   const fallbackEntries = [
-    ...unpostable.map(a => ({
+    ...unpostable.map((a) => ({
       label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
-      body:  a.body,
+      body: a.body,
     })),
-    ...parsed.invalidActions.map(a => ({
+    ...parsed.invalidActions.map((a) => ({
       label: '(malformed action)',
-      body:  typeof a?.body === 'string' ? a.body : JSON.stringify(a),
+      body: typeof a?.body === 'string' ? a.body : JSON.stringify(a),
     })),
   ];
   if (fallbackEntries.length > 0) {
     const sections = fallbackEntries
-      .map(f => `**\`${f.label}\`**\n\n${f.body}`)
+      .map((f) => `**\`${f.label}\`**\n\n${f.body}`)
       .join('\n\n---\n\n');
     const { comment, updated } = await upsertIssueComment({
       ...GH_CTX,
       marker: FALLBACK_MARKER,
       body: `${FALLBACK_MARKER}\nThe following actions could not be posted as inline comments or replies:\n\n${sections}\n\n---\n${ATTRIBUTION}`,
     });
-    console.log(`${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`);
+    console.log(
+      `${updated ? 'Updated' : 'Posted'} fallback comment for ${fallbackEntries.length} action(s): ${comment.html_url}`
+    );
   }
 }
 

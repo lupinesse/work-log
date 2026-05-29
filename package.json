@@ -35,6 +35,10 @@
     "src/css/*.scss": [
       "stylelint --fix",
       "prettier --write"
+    ],
+    ".github/scripts/**/*.mjs": [
+      "eslint",
+      "prettier --write"
     ]
   },
   "devDependencies": {

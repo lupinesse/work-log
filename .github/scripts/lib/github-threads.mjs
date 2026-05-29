@@ -30,10 +30,10 @@
  */
 export function ghHeaders(token) {
   return {
-    Authorization:          `token ${token}`,
-    Accept:                 'application/vnd.github+json',
+    Authorization: `token ${token}`,
+    Accept: 'application/vnd.github+json',
     'X-GitHub-Api-Version': '2022-11-28',
-    'Content-Type':         'application/json',
+    'Content-Type': 'application/json',
   };
 }
 
@@ -91,16 +91,16 @@ export async function fetchAllThreads({ token, owner, repo, prNumber }) {
     if (!comments.length) continue;
     const first = comments[0];
     threads.push({
-      id:             t.id,
-      isResolved:     t.isResolved,
+      id: t.id,
+      isResolved: t.isResolved,
       firstCommentId: first.databaseId,
-      author:         (first.author?.login || '').toLowerCase(),
-      path:           first.path,
-      line:           first.originalLine,
-      body:           first.body || '',
-      replies: comments.slice(1).map(c => ({
+      author: (first.author?.login || '').toLowerCase(),
+      path: first.path,
+      line: first.originalLine,
+      body: first.body || '',
+      replies: comments.slice(1).map((c) => ({
         author: (c.author?.login || '').toLowerCase(),
-        body:   c.body || '',
+        body: c.body || '',
       })),
     });
   }
@@ -191,14 +191,15 @@ export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
       `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=100&page=${page}`,
       { headers: ghHeaders(token) }
     );
-    if (!response.ok) throw new Error(`List comments API ${response.status}: ${await response.text()}`);
+    if (!response.ok)
+      throw new Error(`List comments API ${response.status}: ${await response.text()}`);
     const batch = await response.json();
     all.push(...batch);
     if (batch.length < 100) break;
     if (page >= MAX_PAGES) {
       throw new Error(
         `fetchAllIssueComments: reached page limit (${MAX_PAGES}) for PR #${prNumber} — ` +
-        'possible API response loop; halting to avoid runaway pagination',
+          'possible API response loop; halting to avoid runaway pagination'
       );
     }
     page++;
@@ -227,7 +228,10 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
   // Walk newest-first so we update the latest matching comment.
   let previous = null;
   for (const c of [...comments].reverse()) {
-    if (c.body && c.body.includes(marker)) { previous = c; break; }
+    if (c.body && c.body.includes(marker)) {
+      previous = c;
+      break;
+    }
   }
 
   if (previous) {
@@ -235,7 +239,8 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
       `https://api.github.com/repos/${owner}/${repo}/issues/comments/${previous.id}`,
       { method: 'PATCH', headers: ghHeaders(token), body: JSON.stringify({ body }) }
     );
-    if (!patchResp.ok) throw new Error(`PATCH comment API ${patchResp.status}: ${await patchResp.text()}`);
+    if (!patchResp.ok)
+      throw new Error(`PATCH comment API ${patchResp.status}: ${await patchResp.text()}`);
     return { comment: await patchResp.json(), updated: true };
   }
 
@@ -243,7 +248,8 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
     `https://api.github.com/repos/${owner}/${repo}/issues/${prNumber}/comments`,
     { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ body }) }
   );
-  if (!postResp.ok) throw new Error(`POST comment API ${postResp.status}: ${await postResp.text()}`);
+  if (!postResp.ok)
+    throw new Error(`POST comment API ${postResp.status}: ${await postResp.text()}`);
   return { comment: await postResp.json(), updated: false };
 }
 
@@ -273,13 +279,14 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
       `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100&page=${reviewPage}`,
       { headers: ghHeaders(token) }
     );
-    if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
+    if (!listResp.ok)
+      throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
     const batch = await listResp.json();
     reviews.push(...batch);
     if (batch.length < 100) break;
     if (reviewPage >= MAX_PAGES) {
       throw new Error(
-        `upsertReview: reached page limit (${MAX_PAGES}) for PR #${prNumber} — halting to avoid runaway pagination`,
+        `upsertReview: reached page limit (${MAX_PAGES}) for PR #${prNumber} — halting to avoid runaway pagination`
       );
     }
     reviewPage++;
@@ -288,7 +295,10 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
   // Pick the most recent matching, non-dismissed review.
   let previous = null;
   for (const r of [...reviews].reverse()) {
-    if (r.state !== 'DISMISSED' && r.body && r.body.includes(marker)) { previous = r; break; }
+    if (r.state !== 'DISMISSED' && r.body && r.body.includes(marker)) {
+      previous = r;
+      break;
+    }
   }
 
   let replaced = false;
@@ -307,7 +317,9 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
     } else {
       // Non-fatal — fall through and post a new review anyway so we never
       // lose the verdict. The stale review just stays visible.
-      console.warn(`  could not dismiss previous review #${previous.id}: ${dismissResp.status} ${await dismissResp.text()}`);
+      console.warn(
+        `  could not dismiss previous review #${previous.id}: ${dismissResp.status} ${await dismissResp.text()}`
+      );
     }
   }
 
@@ -340,7 +352,16 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
  * @returns {Promise<object>} GitHub API response object.
  * @throws {Error} if the API rejects the comment (e.g. line not in the diff).
  */
-export async function postInlineComment({ token, owner, repo, prNumber, headSha, path, line, body }) {
+export async function postInlineComment({
+  token,
+  owner,
+  repo,
+  prNumber,
+  headSha,
+  path,
+  line,
+  body,
+}) {
   const response = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments`,
     {
@@ -349,7 +370,8 @@ export async function postInlineComment({ token, owner, repo, prNumber, headSha,
       body: JSON.stringify({ body, commit_id: headSha, path, line, side: 'RIGHT' }),
     }
   );
-  if (!response.ok) throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
@@ -364,11 +386,16 @@ export async function postInlineComment({ token, owner, repo, prNumber, headSha,
  */
 export function formatThreadsForPrompt(threads) {
   if (!threads.length) return '(no existing review threads on this PR)';
-  return threads.map((t, i) => {
-    const replyLines = t.replies.length
-      ? '\n' + t.replies.map(r => `  ↳ ${r.author}: ${r.body.slice(0, 200).replace(/\n/g, ' ')}`).join('\n')
-      : '';
-    const state = t.isResolved ? 'resolved' : 'open';
-    return `[Thread ${i}] ${t.path}:${t.line} (by ${t.author}, ${state})\n${t.body.slice(0, 400)}${replyLines}`;
-  }).join('\n\n---\n\n');
+  return threads
+    .map((t, i) => {
+      const replyLines = t.replies.length
+        ? '\n' +
+          t.replies
+            .map((r) => `  ↳ ${r.author}: ${r.body.slice(0, 200).replace(/\n/g, ' ')}`)
+            .join('\n')
+        : '';
+      const state = t.isResolved ? 'resolved' : 'open';
+      return `[Thread ${i}] ${t.path}:${t.line} (by ${t.author}, ${state})\n${t.body.slice(0, 400)}${replyLines}`;
+    })
+    .join('\n\n---\n\n');
 }
