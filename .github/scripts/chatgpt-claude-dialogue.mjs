@@ -2,17 +2,13 @@
 /**
  * Phase 4 of the review dialogue — ChatGPT responds to Claude's full response.
  *
- * 1. Fetch Claude's synthesis comment + final /pr-review verdict from issue
- *    comments.
- * 2. Fetch the full Phase 1 thread history: each of ChatGPT's original
- *    findings plus Claude's verdict reply (`agree_fix` / `disagree` / etc).
- * 3. Call OpenAI with diff + Claude's synthesis + final verdict + per-thread
- *    history as context. Critically, ChatGPT is told NOT to re-raise findings
- *    Claude rejected (`disagree`) — Claude is the author and that call is
- *    final.
- * 4. ChatGPT raises only NEW issues Claude missed, or confirms resolution.
- * 5. Post the overall response as a top-level review; post any new findings
- *    as inline threads. Fall back to issue comment for unpostable findings.
+ * 1. Fetch Claude's /pr-review verdict from issue comments.
+ * 2. Fetch all PR threads (Claude's verdict replies give context).
+ * 3. Call OpenAI with diff + Claude's verdict + per-thread history. ChatGPT
+ *    is told NOT to re-raise findings Claude rejected (`disagree`).
+ * 4. Replies go to existing threads; new findings are batched into one
+ *    review submission (one "reviewed" banner). No top-level review body.
+ * 5. Falls back to issue comment for unpostable findings.
  *
  * Required env vars:
  *   OPENAI_API_KEY     OpenAI bearer token

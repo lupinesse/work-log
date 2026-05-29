@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
- * ChatGPT-driven PR code review — posts inline comment threads.
+ * ChatGPT-driven PR code review — Phase 1 of the AI dialogue.
  *
  * Sends the PR diff to OpenAI, expects a structured JSON response with
- * per-line findings, then creates individual inline pull-request review
- * comment threads (one per finding) plus an overall PR review body with
- * the verdict. Each inline thread can be independently resolved by a reviewer.
+ * per-line findings. New findings are batched into a single review
+ * submission (one "reviewed" banner). Replies go to existing threads.
  *
  * Falls back to a single issue comment if the JSON response cannot be parsed,
  * and posts findings that fail the inline API (invalid path/line) as a
