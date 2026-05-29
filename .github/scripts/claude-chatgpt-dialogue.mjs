@@ -37,7 +37,11 @@ import {
   resolveThread,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { resolveAnthropicAuth, selectModel } from './lib/anthropic-auth.mjs';
+import {
+  resolveAnthropicAuthChain,
+  selectModel,
+  shouldFallThrough,
+} from './lib/anthropic-auth.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -56,16 +60,18 @@ const must = (key) => {
 
 // ─────────────────────────── config ───────────────────────────
 
-// Prefer the Claude subscription OAuth token; fall back to a standard API key.
-// Fail fast only when neither credential is configured.
-const ANTHROPIC_AUTH = resolveAnthropicAuth(process.env);
-if (!ANTHROPIC_AUTH) {
+// All usable credentials in preference order: the Claude subscription OAuth
+// token first, then a standard API key. The request tries them in turn so an
+// expired-but-present OAuth token falls through to the key instead of failing
+// the whole job. Fail fast only when neither credential is configured.
+const AUTH_CHAIN = resolveAnthropicAuthChain(process.env);
+if (AUTH_CHAIN.length === 0) {
   die(
     'Missing Anthropic credentials: set CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`) ' +
       'or ANTHROPIC_API_KEY'
   );
 }
-console.log(`Auth: using ${ANTHROPIC_AUTH.source}`);
+console.log(`Auth: ${AUTH_CHAIN.length} candidate(s) → ${AUTH_CHAIN.map((a) => a.source).join(', ')}`);
 
 const GITHUB_TOKEN      = must('GITHUB_TOKEN');
 const [OWNER, REPO]     = must('GITHUB_REPOSITORY').split('/');
@@ -73,18 +79,24 @@ const PR_NUMBER         = must('PR_NUMBER');
 const HEAD_SHA          = must('HEAD_SHA');
 
 // Model defaults to Opus on the (subscription-covered) OAuth path and to a
-// cheaper model on the (per-token-billed) API-key path; MODEL env overrides both.
-const MODEL          = selectModel(ANTHROPIC_AUTH.source, process.env.MODEL);
+// cheaper model on the (per-token-billed) API-key path; MODEL env overrides
+// both. The effective model depends on which credential actually succeeds, so
+// it is resolved per-attempt inside callClaudeApi.
+const MODEL_OVERRIDE = process.env.MODEL || '';
 const MAX_TOKENS     = parseInt(process.env.MAX_TOKENS     || '8192',  10);
 const DIFF_PATH      = process.env.DIFF_PATH      || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
 
-const ATTRIBUTION = `*Claude \`${MODEL}\` responding to ChatGPT's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
+/** @param {string} model */
+const buildAttribution = (model) =>
+  `*Claude \`${model}\` responding to ChatGPT's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
 
 // Per-reply attribution so each verdict reply is clearly authored by Claude
 // regardless of which GitHub account (App token, github-actions[bot], or a
 // manual gh CLI run) actually posts the comment.
-const REPLY_ATTRIBUTION = `\n\n<sub>_— Claude \`${MODEL}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
+/** @param {string} model */
+const buildReplyAttribution = (model) =>
+  `\n\n<sub>_— Claude \`${model}\` · \`${HEAD_SHA.slice(0, 7)}\`_</sub>`;
 
 // ─────────────────────────── diff ───────────────────────────
 
@@ -187,26 +199,50 @@ Output a single raw JSON object — no markdown wrapper:
 
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      ...ANTHROPIC_AUTH.headers,
-      'anthropic-version':  '2023-06-01',
-      'content-type':       'application/json',
-    },
-    body: JSON.stringify({
-      model:      MODEL,
-      max_tokens: MAX_TOKENS,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-  });
+  // Try each credential in turn; on an auth failure (401/403) or rate limit
+  // (429) fall through to the next — an expired OAuth token or an exhausted
+  // rate-limit bucket is recovered by the API key, which uses a separate quota.
+  for (let i = 0; i < AUTH_CHAIN.length; i++) {
+    const auth = AUTH_CHAIN[i];
+    const model = selectModel(auth.source, MODEL_OVERRIDE);
 
-  if (!response.ok) die(`Anthropic API ${response.status}: ${await response.text()}`);
-  const data = await response.json();
-  if (data.error) die(`Anthropic error (${data.error.type}): ${data.error.message}`);
-  return (data.content?.[0]?.text || '').trim();
+    // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        ...auth.headers,
+        'anthropic-version':  '2023-06-01',
+        'content-type':       'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: MAX_TOKENS,
+        system,
+        messages: [{ role: 'user', content: user }],
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.error) die(`Anthropic error (${data.error.type}): ${data.error.message}`);
+      console.log(`Auth: used ${auth.source} (model ${model})`);
+      return { text: (data.content?.[0]?.text || '').trim(), model };
+    }
+
+    const body = await response.text();
+    const nextAuth = AUTH_CHAIN[i + 1];
+    if (shouldFallThrough(response.status) && nextAuth) {
+      console.warn(
+        `Auth: ${auth.source} returned HTTP ${response.status}; falling back to ${nextAuth.source}`
+      );
+      continue;
+    }
+    die(`Anthropic API ${response.status} with ${auth.source}: ${body}`);
+  }
+
+  // Unreachable: the chain is non-empty (validated at startup) and the final
+  // attempt always returns or dies. Kept as a guard against future edits.
+  die('Anthropic API: exhausted all auth candidates without a response');
 }
 
 // ─────────────────────────── output parsing ───────────────────────────
@@ -272,8 +308,13 @@ async function main() {
   console.log(`  Found ${threads.length} unresolved ChatGPT thread(s)`);
   if (!threads.length) { console.log('  Nothing to respond to — skipping.'); return; }
 
-  const rawText = await callClaudeApi(diff, threads);
+  const { text: rawText, model: usedModel } = await callClaudeApi(diff, threads);
   if (!rawText) { console.warn('Empty Claude response — skipping.'); return; }
+
+  // Attributions name the model that actually responded (which depends on the
+  // credential that succeeded), so they are built after the call.
+  const attribution = buildAttribution(usedModel);
+  const replyAttribution = buildReplyAttribution(usedModel);
 
   let parsed;
   try {
@@ -285,7 +326,7 @@ async function main() {
     const { comment, updated } = await upsertIssueComment({
       ...GH_CTX,
       marker: SYNTHESIS_MARKER,
-      body: `${SYNTHESIS_MARKER} (parse failed)\n\n${rawText}\n\n---\n${ATTRIBUTION}`,
+      body: `${SYNTHESIS_MARKER} (parse failed)\n\n${rawText}\n\n---\n${attribution}`,
     });
     console.log(`${updated ? 'Updated' : 'Posted'} fallback comment: ${comment.html_url}`);
     return;
@@ -312,7 +353,7 @@ async function main() {
 
     const commentId = thread.firstCommentId;
     const emoji = verdictEmoji[tr.verdict] || '💬';
-    const replyBody = `${emoji} ${tr.reply}${REPLY_ATTRIBUTION}`;
+    const replyBody = `${emoji} ${tr.reply}${replyAttribution}`;
 
     let posted = false;
     try {
@@ -382,7 +423,7 @@ async function main() {
       .join('\n\n');
     synthesisBody += `\n\n---\n\n**Malformed thread_responses (could not match to a ChatGPT thread):**\n\n${dropped}`;
   }
-  synthesisBody += `\n\n---\n${ATTRIBUTION}`;
+  synthesisBody += `\n\n---\n${attribution}`;
 
   const { comment: synthesis, updated } = await upsertIssueComment({
     ...GH_CTX,
