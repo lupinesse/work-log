@@ -136,6 +136,10 @@ jobs:
           # uninstalled App) so the review comment still gets posted — the
           # red mint-step failure in CI is the signal to fix the secret.
           GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
+          # GH_REPO bypasses gh's git-based repo detection; without it, gh
+          # calls `git rev-parse` and crashes when no checkout has run yet
+          # (e.g. the no-API-key fallback path on a large PR).
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
