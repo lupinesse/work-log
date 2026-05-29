@@ -167,7 +167,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
 });
 initHero();
 initRapid();
-initDailyLog();
+initTodayFlow();
 initMonthlyLog();
 initMigration();
 initSprints();

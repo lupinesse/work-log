@@ -1,51 +1,62 @@
 name: ChatGPT PR Review
 
-# Posts an automated ChatGPT code review as a PR comment.
-# Calls OpenAI's chat-completions API from `.github/scripts/chatgpt-review.mjs`,
-# replacing the unmaintained anc95/ChatGPT-CodeReview action (Node.js 20,
-# silently failed to post reviews). Logic lives in a standalone .mjs file
-# rather than inline YAML so it can be read, tested, and modified with
-# proper tooling.
+# Five-job AI review dialogue:
 #
-# Triggers two ways:
-#   1. 'labeled' event with label == 'chatgpt-review'  — manual labeling
-#   2. 'opened' or 'reopened' — size thresholds evaluated inline so the review
-#      runs even when the label was applied by auto-label-pr.yml (which uses
-#      GITHUB_TOKEN; GitHub suppresses the resulting labeled event for other
-#      workflows, so chatgpt-pr-review would never fire without this path).
+#   Phase 1 — chatgpt-review: ChatGPT posts independent inline threads.
 #
-# Size thresholds (matching auto-label-pr.yml):
-#   ≥ 200 source-line changes  OR  ≥ 4 source files changed
-#   Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
+#   Phase 2 — claude-responds: Claude reads ChatGPT's threads, replies to
+#   each, resolves them, and posts a synthesis. This runs only after Phase 1.
+#
+#   Phase 3 — claude-final-review: Claude runs /pr-review and posts its own
+#   verdict. This runs only after Phase 2, so Claude's verdict always appears
+#   after it has processed ChatGPT's findings — never before.
+#
+#   Phase 4 — chatgpt-responds: ChatGPT reads both Claude's synthesis and
+#   final verdict, and posts any remaining concerns or confirms resolution.
+#
+#   merge-gate: Queries all unresolved ChatGPT threads. Fails if any remain,
+#   blocking merge. Succeeds only when ChatGPT has no outstanding findings.
+#
+# Note: Claude's standalone pr-review.yml is gated to skip PRs that meet the
+# size threshold — this workflow handles Claude's review for those PRs instead.
+#
+# Triggers:
+#   1. 'labeled' event with label == 'chatgpt-review' — manual override
+#   2. 'opened' / 'reopened' / 'synchronize' — size threshold evaluated inline
+#      ≥ 200 source-line changes OR ≥ 4 source files changed
+#      Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
 # Required secrets:
-#   OPENAI_API_KEY               — OpenAI API key for the ChatGPT review call
+#   OPENAI_API_KEY               — OpenAI API key
+#   ANTHROPIC_API_KEY            — Anthropic API key (or CLAUDE_CODE_OAUTH_TOKEN)
 #   CHATGPT_REVIEWER_APP_ID      — Client ID of the "ChatGPT Reviewer" GitHub App
 #   CHATGPT_REVIEWER_PRIVATE_KEY — .pem private key of the same App
-# The GitHub App must be installed on this repo with permissions:
-#   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token@v3
-# so PR comments are attributed to the App (custom name + avatar) instead of
-# github-actions[bot]. Falls back to github.token if the mint step fails.
+#   CLAUDE_REVIEWER_APP_ID       — Client ID of the "Claude Reviewer" GitHub App
+#   CLAUDE_REVIEWER_PRIVATE_KEY  — .pem private key of the same App
 #
 # Required permission:
 #   Settings > Actions > General > Workflow permissions > Read and write
 
 on:
   pull_request:
-    types: [labeled, opened, reopened]
+    types: [labeled, opened, reopened, synchronize]
 
-# One run per PR at a time; do not cancel an in-progress review.
+# One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
   group: chatgpt-review-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
+
+  # ─── Phase 1: ChatGPT independent review ──────────────────────────────────
   chatgpt-review:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
+      issues: write      # postIssueComment fallback when inline posting fails
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
 
     steps:
       - name: Decide whether to run
@@ -69,9 +80,7 @@ jobs:
               return;
             }
 
-            // Path 2 — opened / reopened: inline size check (mirrors auto-label-pr.yml).
-            // The label from auto-label-pr.yml won't propagate here via GITHUB_TOKEN,
-            // so we re-evaluate the thresholds ourselves.
+            // Path 2 — opened / reopened / synchronize: inline size check.
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
@@ -127,10 +136,7 @@ jobs:
           node-version: '24'
 
       - name: Code Review with ChatGPT
-        # `always()` keeps the review running even if the mint step failed —
-        # GITHUB_TOKEN falls back to github.token so the review still posts
-        # (under github-actions[bot]) rather than being silently skipped.
-        # The red mint-step failure in CI is the signal to fix the secret.
+        # always() keeps this running even if mint failed — falls back to github.token.
         if: always() && steps.gate.outputs.should_run == 'true'
         env:
           OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
@@ -138,7 +144,348 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
-          # Optional overrides for MODEL / REASONING_EFFORT / PROMPT /
-          # MAX_DIFF_CHARS / MAX_TOKENS / DIFF_PATH live in
-          # .github/scripts/chatgpt-review.mjs with sensible defaults.
         run: node .github/scripts/chatgpt-review.mjs
+
+  # ─── Phase 2: Claude responds to ChatGPT's findings ───────────────────────
+  claude-responds:
+    needs: chatgpt-review
+    if: needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write      # postIssueComment for synthesis + fallback replies
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write filtered diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!script.js' ':!styles.css' ':!docs/*.html' ':!package-lock.json' \
+            > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Mint Claude Reviewer App token
+        id: claude-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Claude responds to ChatGPT's findings
+        if: always()
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.claude-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/claude-chatgpt-dialogue.mjs
+
+  # ─── Phase 3: Claude posts its own /pr-review verdict ─────────────────────
+  # Runs only after Claude has responded to ChatGPT's threads, so Claude's
+  # verdict always appears after the thread resolution — never before.
+  claude-final-review:
+    needs: [chatgpt-review, claude-responds]
+    if: needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Write diff to pr.diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      # Fetch Phase 1 ChatGPT findings so /pr-review can group duplicates as
+      # "Also raised by ChatGPT" rather than presenting them as novel. The
+      # skill reads chatgpt-findings.md when present.
+      - name: Fetch ChatGPT's Phase 1 findings
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const result = await github.graphql(`
+              query($owner:String!, $name:String!, $number:Int!) {
+                repository(owner:$owner, name:$name) {
+                  pullRequest(number:$number) {
+                    reviewThreads(first:100) {
+                      nodes {
+                        isResolved
+                        comments(first:10) {
+                          nodes {
+                            author { login }
+                            body
+                            path
+                            originalLine
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner:  context.repo.owner,
+              name:   context.repo.repo,
+              number: context.payload.pull_request.number,
+            });
+
+            const threads = result.repository.pullRequest.reviewThreads.nodes
+              .map(t => {
+                const first = t.comments.nodes[0];
+                if (!first) return null;
+                const login = (first.author?.login || '').toLowerCase();
+                const isChatGpt = login.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
+                if (!isChatGpt) return null;
+
+                // Find Claude's reply verdict if present (Phase 2 reply emojis).
+                const claudeReply = t.comments.nodes.slice(1).find(c =>
+                  /^\s*(✅|👍|❌|↔️)/.test(c.body || '')
+                );
+                const verdict = !claudeReply ? 'no reply'
+                  : claudeReply.body.trimStart().startsWith('✅') ? 'agree_fix'
+                  : claudeReply.body.trimStart().startsWith('👍') ? 'agree_noted'
+                  : claudeReply.body.trimStart().startsWith('❌') ? 'disagree'
+                  : 'partial';
+
+                return {
+                  path: first.path,
+                  line: first.originalLine,
+                  resolved: t.isResolved,
+                  verdict,
+                  body: first.body,
+                  claudeReply: claudeReply ? claudeReply.body : null,
+                };
+              })
+              .filter(Boolean);
+
+            if (threads.length === 0) {
+              core.info('No prior ChatGPT findings — /pr-review will run without a duplicate-suppression file.');
+              return;
+            }
+
+            const sections = threads.map(t => {
+              const status = t.resolved ? `resolved · Claude ${t.verdict}` : 'unresolved';
+              const replyBlock = t.claudeReply ? `\n\n**Claude's reply:** ${t.claudeReply.trim()}` : '';
+              return `## \`${t.path}:${t.line}\` (${status})\n\n${t.body.trim()}${replyBlock}`;
+            }).join('\n\n---\n\n');
+
+            const md = `# ChatGPT's Phase 1 findings — already raised\n\nDo NOT present these as new findings in your /pr-review output. If you would have flagged the same line for the same reason, mention it as "Also raised by ChatGPT" (and note Claude's verdict if one is shown). Only present truly NEW findings as your own.\n\n${sections}\n`;
+            fs.writeFileSync('chatgpt-findings.md', md);
+            core.info(`Wrote chatgpt-findings.md (${threads.length} prior finding(s))`);
+
+      - name: Check auth is present
+        id: key-check
+        env:
+          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping Claude review."
+          fi
+
+      - name: Run /pr-review
+        if: steps.key-check.outputs.present == 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "/pr-review" \
+            --model claude-opus-4-8 \
+            --allowedTools "Read" "Grep" "Glob" \
+                           "Bash(git log:*)" "Bash(git diff:*)" \
+                           "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
+            > review-output.txt 2>&1
+          echo "Review complete ($(wc -l < review-output.txt) lines)"
+
+      - name: Mint Claude Reviewer App token
+        id: claude-token
+        if: always() && steps.key-check.result != 'skipped'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
+
+      - name: Post or update review as PR comment
+        # Finds the previous /pr-review comment by marker and PATCHes it in
+        # place, so we keep one persistent review comment per PR rather than
+        # stacking a new one per push.
+        if: always() && steps.key-check.result != 'skipped'
+        env:
+          GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
+          PR_NUMBER:  ${{ github.event.pull_request.number }}
+          HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
+          REPO:       ${{ github.repository }}
+        run: |
+          MARKER='<!-- claude-pr-review-comment -->'
+          if [ -f review-output.txt ]; then
+            {
+              echo "$MARKER"
+              cat review-output.txt
+              echo ""
+              echo "---"
+              echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
+            } > comment-body.txt
+          else
+            {
+              echo "$MARKER"
+              echo "> ⚠️ Automated review skipped — auth not configured."
+            } > comment-body.txt
+          fi
+
+          # Find the most recent issue comment containing our marker.
+          PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+            --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
+
+          if [ -n "$PREV_ID" ]; then
+            echo "Updating existing comment $PREV_ID"
+            gh api "repos/$REPO/issues/comments/$PREV_ID" \
+              --method PATCH \
+              --field body=@comment-body.txt
+          else
+            echo "Posting new comment (no previous found)"
+            gh pr comment "$PR_NUMBER" --body-file comment-body.txt
+          fi
+
+  # ─── Phase 4: ChatGPT responds to Claude's final verdict ──────────────────
+  chatgpt-responds:
+    needs: [chatgpt-review, claude-final-review]
+    if: needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write      # postIssueComment for fallback and unpostable findings
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Write filtered diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!script.js' ':!styles.css' ':!docs/*.html' ':!package-lock.json' \
+            > pr.diff
+          echo "Diff size: $(wc -l < pr.diff) lines"
+
+      - name: Mint ChatGPT Reviewer App token
+        id: chatgpt-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
+          private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: ChatGPT responds to Claude's verdict
+        if: always()
+        env:
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:      ${{ steps.chatgpt-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER:         ${{ github.event.pull_request.number }}
+          HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/chatgpt-claude-dialogue.mjs
+
+  # ─── Merge gate: block merge until ChatGPT has no outstanding findings ─────
+  merge-gate:
+    name: All ChatGPT findings resolved
+    needs: [chatgpt-review, chatgpt-responds]
+    # always() so the gate runs even if an earlier job failed or was skipped,
+    # and can report the actual thread state rather than staying pending forever.
+    if: always() && needs.chatgpt-review.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+
+    steps:
+      - name: Check for unresolved ChatGPT threads
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const result = await github.graphql(`
+              query($owner:String!, $name:String!, $number:Int!) {
+                repository(owner:$owner, name:$name) {
+                  pullRequest(number:$number) {
+                    reviewThreads(first:100) {
+                      nodes {
+                        isResolved
+                        comments(first:1) {
+                          nodes {
+                            author { login }
+                            body
+                            path
+                            originalLine
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `, {
+              owner:  context.repo.owner,
+              name:   context.repo.repo,
+              number: context.payload.pull_request.number,
+            });
+
+            const unresolved = result.repository.pullRequest.reviewThreads.nodes
+              .filter(t => {
+                if (t.isResolved) return false;
+                const login = (t.comments.nodes[0]?.author?.login || '').toLowerCase();
+                return login.includes('chatgpt');
+              });
+
+            if (unresolved.length === 0) {
+              core.info('No unresolved ChatGPT threads — PR is clear to merge.');
+            } else {
+              const list = unresolved.map(t => {
+                const c = t.comments.nodes[0];
+                return `  • ${c.path}:${c.originalLine} — ${c.body.slice(0, 80).replace(/\n/g, ' ')}…`;
+              }).join('\n');
+              core.setFailed(
+                `${unresolved.length} unresolved ChatGPT finding(s):\n${list}\n\nResolve all threads before merging.`
+              );
+            }

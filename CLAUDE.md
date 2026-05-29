@@ -158,40 +158,76 @@ git push -u origin <branch-name>
 gh pr create --title "Short title (≤70 chars)" --body "Closes #N — one sentence why."
 ```
 
-### Step 5b — Fetch the ChatGPT review and triage findings
+### Step 5b — Wait for the automated review dialogue to finish
 
-After the PR is open, the `chatgpt-review` CI check runs and posts its findings
-as a **PR issue comment** (the same timeline as the `/pr-review` comment, not
-inline). Do not skip these — they often catch refactor opportunities and naming
-issues that `/pr-review` overlooks.
+The `chatgpt-pr-review` workflow runs a three-phase AI dialogue automatically
+after the PR is opened. No manual fetching or thread resolution is needed —
+the pipeline handles it. Your job is to wait for all phases to complete, then
+triage any unresolved findings that remain.
 
-Wait for the check to complete (typically 30–90 s), then fetch the latest PR
-comments to read the ChatGPT review:
+**How the dialogue works:**
+1. **Phase 1 (`chatgpt-review` job):** ChatGPT posts independent inline
+   threads, one per finding, plus a top-level review verdict.
+2. **Phase 2 (`claude-responds` job):** Claude reads ChatGPT's threads,
+   replies to each with agree/disagree/partial, resolves them, and posts a
+   synthesis comment. Runs after Phase 1.
+3. **Phase 3 (`claude-final-review` job):** Claude runs `/pr-review` and
+   posts its own verdict. Runs *after* Phase 2 — so Claude's verdict always
+   appears after it has resolved ChatGPT's threads, never before. For small
+   PRs (below the size threshold) `pr-review.yml` handles this independently.
+4. **Phase 4 (`chatgpt-responds` job):** ChatGPT reads both Claude's synthesis
+   and final verdict, and posts any remaining concerns as new inline threads,
+   or confirms resolution if satisfied.
+5. **`merge-gate` job:** Queries all unresolved ChatGPT threads. Fails if any
+   remain, blocking merge. Passes only when ChatGPT has no outstanding
+   findings. Add this as a required status check in branch protection.
 
 > **Placeholder convention:** `<N>` is the PR number. `{owner}` and `{repo}`
-> in curly braces are `gh`-template placeholders expanded automatically from
-> the current git remote — leave them literal.
+> in curly braces are `gh`-template placeholders expanded from the current
+> git remote — leave them literal.
 
 ```bash
-gh pr checks <N> --watch          # blocks until all checks finish
+# Block until all five jobs complete (typically 5-8 minutes total)
+gh pr checks <N> --watch
+
+# Read Claude's synthesis (Phase 2) and final verdict (Phase 3)
 gh api repos/{owner}/{repo}/issues/<N>/comments \
-  --jq '.[-3:] | .[] | {author: .user.login, body: .body}'
+  --jq '[.[] | select(.body | contains("Claude'\''s synthesis"))] | last | .body'
+gh api repos/{owner}/{repo}/issues/<N>/comments \
+  --jq '[.[] | select(.body | contains("/pr-review"))] | last | .body'
+
+# Check for any unresolved threads remaining after Phase 4 (merge-gate does
+# this automatically — use this for manual inspection only)
+gh api graphql \
+  -F owner='{owner}' -F name='{repo}' -F number=<N> \
+  -f query='
+    query($owner:String!,$name:String!,$number:Int!) {
+      repository(owner:$owner, name:$name) {
+        pullRequest(number:$number) {
+          reviewThreads(first:50) {
+            nodes {
+              id isResolved
+              comments(first:1) {
+                nodes { author { login } body path originalLine }
+              }
+            }
+          }
+        }
+      }
+    }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)'
 ```
 
-Summarise the findings as a short follow-up to the `/pr-review` output from
-Step 4:
-- **Blocking** concerns (correctness bugs, security issues, broken tests):
-  fix before continuing, same as Step 4.
-- **Non-blocking** concerns you agree with (including any that overlap with
-  `/pr-review` findings): fix in the same PR, or open a follow-up PR if
-  `/pr-review` has already approved and you don't want to rerun the cycle.
-- **Style/refactor nitpicks** you disagree with: state your reasoning and
-  move on; don't silently ignore them.
+Triage any unresolved threads remaining after Phase 3:
+- **Blocking** concerns: fix before continuing, same as Step 4.
+- **Non-blocking** you agree with: fix in the same PR, or open a follow-up PR
+  if `/pr-review` has already approved and you don't want to rerun the cycle.
+- **Findings you disagree with**: reply with your reasoning, then resolve the
+  thread manually via `gh api graphql` with the `resolveReviewThread` mutation.
 
-ChatGPT posts a single issue comment — there are no inline review threads to
-resolve via `reviewThreads` or `resolveReviewThread`. If the `chatgpt-review`
-check did not run (PR below size threshold) or the comment list shows no
-ChatGPT entry, say so explicitly rather than skipping the step.
+If the `chatgpt-review` check did not run (PR below size threshold), all five
+jobs are skipped and `pr-review.yml` runs a standalone Claude review instead —
+say so explicitly rather than skipping the step silently.
 
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge

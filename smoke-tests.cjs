@@ -64,7 +64,10 @@ function assert(name, condition, detail = '') {
 }
 
 function dk(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 async function freshPage(ctx, extraStorage = {}) {
@@ -1141,7 +1144,8 @@ async function runTests() {
     assert('Badge shows correct fraction (1/3)', planHtml.includes('1/3'));
     assert('+ steps badge on task with no checkpoints', planHtml.includes('+ steps'));
 
-    // Open checkpoints by clicking the badge
+    // Open checkpoints by clicking the badge — fail loudly if the badge is missing
+    await page.waitForSelector('.cp-badge[data-pid="cp1"]');
     await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
     await page.waitForTimeout(50);
     const openHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
@@ -1151,6 +1155,7 @@ async function runTests() {
     assert('Progress bar rendered', openHtml.includes('cp-fill'));
 
     // Tick an unchecked checkpoint — three-state: false → 'partial' → true
+    await page.waitForSelector('.cp-check[data-pid="cp1"][data-cpidx="0"]');
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
@@ -1972,23 +1977,25 @@ async function runTests() {
     await page.close();
   }
 
-  // ── Daily Log ─────────────────────────────────────────────────────────────
+  // ── Daily Log (now the Log view inside Today's Flow) ─────────────────────
   console.log('\nDaily Log');
   {
     const today = dk(new Date());
     const page = await freshPage(ctx, {
       wl_entries_v1: [{ id: 'dl1', text: 'Deep work', tag: 'work', ts: Date.now(), date: today }],
     });
-    await page.click('#tabDailyLog');
-    await page.waitForSelector('#dailyLogSection:visible');
-    const html = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    // Switch to the Log view using the Today's Flow segmented control
+    await page.waitForSelector('.tf-seg-btn[data-view="log"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+    const html = await page.evaluate(() => document.getElementById('tfLogFeed').innerHTML);
     assert('Daily Log renders entry', html.includes('Deep work'), 'entry text not found in feed');
     // Add a note via the programmatic helper
     await page.evaluate(() => {
       document.getElementById('dailyLogNoteInput').value = 'remembered to call back';
       window.__wl.addLogNote();
     });
-    const noteHtml = await page.evaluate(() => document.getElementById('dailyLogFeed').innerHTML);
+    const noteHtml = await page.evaluate(() => document.getElementById('tfLogFeed').innerHTML);
     assert('Daily Log renders note', noteHtml.includes('remembered to call back'));
     const noteCount = await page.evaluate(() => window.__wl.getState().logNotes.length);
     assert('Log note persisted to state', noteCount === 1, `got ${noteCount}`);
@@ -2370,6 +2377,152 @@ async function runTests() {
     assert('setAnthropicKey not on window._wlNotion', exposed.hasSetKey === false);
     assert('wl_anthropic_key cleared from localStorage', exposed.lsKey === null);
     await page.close();
+  }
+
+  // ── Today's Flow ──────────────────────────────────────────────────────────
+  console.log("\nToday's Flow");
+  {
+    const today = dk(new Date());
+    // Pin to 10:00 today so the timestamp always matches `today`'s date key
+    // and sits inside the 07:00–21:00 strip regardless of when the tests run.
+    const todayAt10 = new Date();
+    todayAt10.setHours(10, 0, 0, 0);
+    const base = todayAt10.getTime();
+    const page = await freshPage(ctx, {
+      wl_cats_v1: CATS,
+      wl_entries_v1: [
+        { id: 'tf1', text: 'Deep work', tag: 'work', ts: base, tsEnd: base + 3600000, date: today },
+        {
+          id: 'tf2',
+          text: 'Code review',
+          tag: 'work',
+          ts: base + 5400000,
+          tsEnd: base + 7200000,
+          date: today,
+        },
+      ],
+    });
+
+    assert(
+      "Today's Flow section renders",
+      await page.evaluate(() => !!document.getElementById('todayFlowSection'))
+    );
+
+    assert(
+      'Flow view shown by default',
+      await page.evaluate(() => document.getElementById('tfFlowPane').style.display !== 'none')
+    );
+
+    assert(
+      'Log and Blocks panes hidden by default',
+      await page.evaluate(
+        () =>
+          document.getElementById('tfLogPane').style.display === 'none' &&
+          document.getElementById('tfBlocksPane').style.display === 'none'
+      )
+    );
+
+    assert(
+      'Day-overview strip present',
+      await page.evaluate(() => !!document.getElementById('tfDayStrip'))
+    );
+
+    assert(
+      'Gap reminder shows for ≥15 min gap between entries',
+      await page.evaluate(() => document.getElementById('tfGapReminder').style.display !== 'none')
+    );
+
+    // Switch to Log view
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    assert(
+      'Log view shows after toggle',
+      await page.evaluate(() => document.getElementById('tfLogPane').style.display !== 'none')
+    );
+
+    assert(
+      'Flow pane hides after switching to Log',
+      await page.evaluate(() => document.getElementById('tfFlowPane').style.display === 'none')
+    );
+
+    assert(
+      'View preference persisted to localStorage',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'log')
+    );
+
+    // Switch to Blocks view
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="blocks"]')?.click());
+    assert(
+      'Blocks view shows after toggle',
+      await page.evaluate(() => document.getElementById('tfBlocksPane').style.display !== 'none')
+    );
+
+    assert(
+      'Timeblock grid present inside Blocks view',
+      await page.evaluate(() => !!document.getElementById('tbGrid'))
+    );
+
+    // ── WCAG keyboard navigation on the tablist ──
+    // Reset to flow view, focus its tab, then arrow through the views.
+    await page.evaluate(() => {
+      window.__wl.setFlowView('flow');
+      window.__wl.renderTodayFlow();
+      document.getElementById('tfTab-flow')?.focus();
+    });
+    await page.keyboard.press('ArrowRight');
+    assert(
+      'ArrowRight moves tablist to Log view',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'log')
+    );
+    await page.keyboard.press('ArrowRight');
+    assert(
+      'ArrowRight wraps Log → Blocks',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'blocks')
+    );
+    await page.keyboard.press('Home');
+    assert(
+      'Home jumps to first tab (Flow)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'flow')
+    );
+    await page.keyboard.press('End');
+    assert(
+      'End jumps to last tab (Blocks)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'blocks')
+    );
+
+    await page.close();
+  }
+
+  // Verify that calling setFlowView() + renderTodayFlow() updates pane visibility.
+  // Note: this does NOT simulate a real page reload — Playwright's addInitScript
+  // JSON-encodes storage values, so a raw 'blocks' string written via freshPage
+  // would be stored as '"blocks"' and getFlowView() would fall back to 'flow'.
+  // A true reload-survival test would need a custom init hook that writes raw
+  // strings; see findLargestGap unit tests for the equivalent direct check.
+  {
+    const today = dk(new Date());
+    const base = Date.now() - 3 * 3600000;
+    const page2 = await freshPage(ctx, {
+      wl_cats_v1: CATS,
+      wl_entries_v1: [
+        {
+          id: 'tf3',
+          text: 'Morning work',
+          tag: 'work',
+          ts: base,
+          tsEnd: base + 3600000,
+          date: today,
+        },
+      ],
+    });
+    await page2.evaluate(() => {
+      window.__wl.setFlowView('blocks');
+      window.__wl.renderTodayFlow();
+    });
+    assert(
+      'setFlowView + renderTodayFlow updates pane visibility',
+      await page2.evaluate(() => document.getElementById('tfBlocksPane').style.display !== 'none')
+    );
+    await page2.close();
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

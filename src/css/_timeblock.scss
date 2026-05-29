@@ -1,58 +1,6 @@
-/* ── Timeblock ── */
-.tb-section {
-  margin-top: 14px;
-  margin-bottom: 14px;
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.tb-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bg2);
-  margin-bottom: 10px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.tb-header::before {
-  content: '🗓';
-  font-size: 13px;
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.tb-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  justify-content: space-between;
-}
-
-.tb-title {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.tb-toggle {
-  font-size: 11px;
-  color: var(--text3);
-  transition: transform 0.2s;
-}
-
-.tb-section.collapsed .tb-toggle {
-  transform: rotate(-90deg);
-}
-
-.tb-section.collapsed .tb-body {
-  display: none;
-}
+/* ── Timeblock — grid only; the wrapping section and header were absorbed by
+   #todayFlowSection (see _timeflow.scss). .tb-body / .tb-times / .tb-grid still
+   render inside #tfBlocksPane. ── */
 
 .tb-body {
   display: flex;
