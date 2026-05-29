@@ -23,7 +23,8 @@
  *   HEAD_SHA                 Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL              default 'claude-opus-4-7'
+ *   MODEL              overrides the per-source default (OAuth → 'claude-opus-4-7',
+ *                      API key → 'claude-haiku-4-5' to limit per-token cost)
  *   MAX_TOKENS         default 8192
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 40000
@@ -36,7 +37,7 @@ import {
   resolveThread,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { resolveAnthropicAuth } from './lib/anthropic-auth.mjs';
+import { resolveAnthropicAuth, selectModel } from './lib/anthropic-auth.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -71,7 +72,9 @@ const [OWNER, REPO]     = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER         = must('PR_NUMBER');
 const HEAD_SHA          = must('HEAD_SHA');
 
-const MODEL          = process.env.MODEL          || 'claude-opus-4-7';
+// Model defaults to Opus on the (subscription-covered) OAuth path and to a
+// cheaper model on the (per-token-billed) API-key path; MODEL env overrides both.
+const MODEL          = selectModel(ANTHROPIC_AUTH.source, process.env.MODEL);
 const MAX_TOKENS     = parseInt(process.env.MAX_TOKENS     || '8192',  10);
 const DIFF_PATH      = process.env.DIFF_PATH      || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);

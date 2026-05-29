@@ -55,3 +55,37 @@ export function resolveAnthropicAuth(env) {
 
   return null;
 }
+
+/**
+ * Default model per auth source.
+ *
+ * The OAuth path is covered by the Claude subscription at a flat cost, so it
+ * uses the most capable model. The API-key path is billed per token, so it
+ * defaults to the cheapest current model to avoid surprise costs if the
+ * fallback is ever exercised — the dialogue job is not latency- or
+ * quality-critical enough to justify Opus pricing on metered billing.
+ *
+ * @type {Record<string, string>}
+ */
+export const DEFAULT_MODEL_BY_SOURCE = {
+  CLAUDE_CODE_OAUTH_TOKEN: 'claude-opus-4-7',
+  ANTHROPIC_API_KEY: 'claude-haiku-4-5',
+};
+
+/**
+ * Choose the Anthropic model id for a run. An explicit override (e.g. the
+ * `MODEL` env var) always wins; otherwise the per-source default applies, with
+ * the subscription default as the final fallback for an unrecognised source.
+ *
+ * @param {string} source - Auth source label from {@link resolveAnthropicAuth}.
+ * @param {string} [override] - Explicit model id; takes precedence when truthy.
+ * @returns {string} The model id to use.
+ * @example
+ * selectModel('ANTHROPIC_API_KEY')            // → 'claude-haiku-4-5' (cheap)
+ * selectModel('CLAUDE_CODE_OAUTH_TOKEN')      // → 'claude-opus-4-7'
+ * selectModel('ANTHROPIC_API_KEY', 'x-model') // → 'x-model' (override wins)
+ */
+export function selectModel(source, override) {
+  if (override) return override;
+  return DEFAULT_MODEL_BY_SOURCE[source] || DEFAULT_MODEL_BY_SOURCE.CLAUDE_CODE_OAUTH_TOKEN;
+}
