@@ -170,25 +170,34 @@ triage any unresolved findings that remain.
    threads, one per finding, plus a top-level review verdict.
 2. **Phase 2 (`claude-responds` job):** Claude reads ChatGPT's threads,
    replies to each with agree/disagree/partial, resolves them, and posts a
-   synthesis comment. This runs after Phase 1 completes; Claude's own
-   independent review (`pr-review.yml`) runs in parallel to Phase 1.
-3. **Phase 3 (`chatgpt-responds` job):** ChatGPT reads Claude's synthesis
-   and posts any remaining concerns as new inline threads, or confirms
-   resolution if satisfied.
+   synthesis comment. Runs after Phase 1.
+3. **Phase 3 (`claude-final-review` job):** Claude runs `/pr-review` and
+   posts its own verdict. Runs *after* Phase 2 — so Claude's verdict always
+   appears after it has resolved ChatGPT's threads, never before. For small
+   PRs (below the size threshold) `pr-review.yml` handles this independently.
+4. **Phase 4 (`chatgpt-responds` job):** ChatGPT reads both Claude's synthesis
+   and final verdict, and posts any remaining concerns as new inline threads,
+   or confirms resolution if satisfied.
+5. **`merge-gate` job:** Queries all unresolved ChatGPT threads. Fails if any
+   remain, blocking merge. Passes only when ChatGPT has no outstanding
+   findings. Add this as a required status check in branch protection.
 
 > **Placeholder convention:** `<N>` is the PR number. `{owner}` and `{repo}`
 > in curly braces are `gh`-template placeholders expanded from the current
 > git remote — leave them literal.
 
 ```bash
-# Block until all three phases complete (typically 3-5 minutes total)
+# Block until all five jobs complete (typically 5-8 minutes total)
 gh pr checks <N> --watch
 
-# Read Claude's synthesis (Phase 2 output)
+# Read Claude's synthesis (Phase 2) and final verdict (Phase 3)
 gh api repos/{owner}/{repo}/issues/<N>/comments \
   --jq '[.[] | select(.body | contains("Claude'\''s synthesis"))] | last | .body'
+gh api repos/{owner}/{repo}/issues/<N>/comments \
+  --jq '[.[] | select(.body | contains("/pr-review"))] | last | .body'
 
-# Check for any unresolved threads remaining after Phase 3
+# Check for any unresolved threads remaining after Phase 4 (merge-gate does
+# this automatically — use this for manual inspection only)
 gh api graphql \
   -F owner='{owner}' -F name='{repo}' -F number=<N> \
   -f query='
@@ -216,8 +225,9 @@ Triage any unresolved threads remaining after Phase 3:
 - **Findings you disagree with**: reply with your reasoning, then resolve the
   thread manually via `gh api graphql` with the `resolveReviewThread` mutation.
 
-If the `chatgpt-review` check did not run (PR below size threshold), all three
-jobs are skipped — say so explicitly rather than skipping the step silently.
+If the `chatgpt-review` check did not run (PR below size threshold), all five
+jobs are skipped and `pr-review.yml` runs a standalone Claude review instead —
+say so explicitly rather than skipping the step silently.
 
 ### Step 6 — Tell the user and wait for approval
 Say exactly: "PR #N is open — [link]. The review is above. Tell me to merge

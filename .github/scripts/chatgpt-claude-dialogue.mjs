@@ -81,13 +81,20 @@ function loadDiff() {
 // ─────────────────────────── GitHub ───────────────────────────
 
 /**
- * Fetch Claude's synthesis from PR issue comments.
- * Identifies Claude's comment by login containing 'claude' and body containing
- * "Claude's synthesis" (the heading used in claude-chatgpt-dialogue.mjs).
- * Returns the most recent matching comment body, or null if not found.
- * @returns {Promise<string|null>}
+ * @typedef {{ synthesis: string|null, finalReview: string|null }} ClaudeContext
  */
-async function fetchClaudeSynthesis() {
+
+/**
+ * Fetch Claude's context from PR issue comments:
+ * - synthesis: Phase 2 output — how Claude responded to ChatGPT's threads.
+ * - finalReview: Phase 3 output — Claude's independent /pr-review verdict,
+ *   posted by the claude-final-review job after the thread resolution.
+ *
+ * Both are identified by their attribution footers and the Claude Reviewer
+ * bot login. Returns the most recent match for each.
+ * @returns {Promise<ClaudeContext>}
+ */
+async function fetchClaudeContext() {
   const response = await fetch(
     `https://api.github.com/repos/${OWNER}/${REPO}/issues/${PR_NUMBER}/comments?per_page=100`,
     { headers: GH_HEADERS }
@@ -95,15 +102,24 @@ async function fetchClaudeSynthesis() {
   if (!response.ok) die(`Issue comments API ${response.status}: ${await response.text()}`);
   const comments = await response.json();
 
-  // Walk newest-first for the synthesis comment
-  const reversed = [...comments].reverse();
-  for (const c of reversed) {
+  let synthesis   = null;
+  let finalReview = null;
+
+  // Walk newest-first so we pick up the latest version of each type.
+  for (const c of [...comments].reverse()) {
     const login = (c.user?.login || '').toLowerCase();
-    if (login.includes('claude') && c.body.includes("Claude's synthesis")) {
-      return c.body;
+    if (!login.includes('claude')) continue;
+
+    if (!synthesis && c.body.includes("Claude's synthesis")) {
+      synthesis = c.body;
     }
+    if (!finalReview && c.body.includes('/pr-review')) {
+      finalReview = c.body;
+    }
+    if (synthesis && finalReview) break;
   }
-  return null;
+
+  return { synthesis, finalReview };
 }
 
 /**
@@ -165,26 +181,41 @@ async function postIssueComment(body) {
 // ─────────────────────────── OpenAI ───────────────────────────
 
 /**
- * Ask ChatGPT to respond to Claude's synthesis and post any follow-up findings.
+ * Ask ChatGPT to respond to Claude's full review context and post any
+ * remaining findings.
  *
- * @param {string} diff
- * @param {string} claudeSynthesis  The full body of Claude's synthesis comment.
+ * @param {string}       diff
+ * @param {ClaudeContext} claudeContext  Synthesis (Phase 2) and final verdict
+ *                                      (Phase 3) from Claude.
  * @returns {Promise<string>} Raw text response.
  */
-async function callOpenAI(diff, claudeSynthesis) {
-  const system = `You are ChatGPT, an AI code reviewer. You have already posted your own independent inline review findings on this pull request. Now you are reading the response written by Claude (a peer AI reviewer) to your findings.
+async function callOpenAI(diff, claudeContext) {
+  const { synthesis, finalReview } = claudeContext;
 
-Claude has replied to each of your threads (agreeing, disagreeing, or partially agreeing) and posted an overall synthesis comment.
+  // Build the context block shown to ChatGPT — include whatever is available.
+  const contextBlocks = [];
+  if (synthesis) {
+    contextBlocks.push(`**Claude's synthesis (response to your Phase 1 threads):**\n\n${synthesis}`);
+  }
+  if (finalReview) {
+    contextBlocks.push(`**Claude's final /pr-review verdict (posted after resolving your threads):**\n\n${finalReview}`);
+  }
+  const claudeContext_ = contextBlocks.join('\n\n---\n\n');
+
+  const system = `You are ChatGPT, an AI code reviewer. You have already posted your own independent inline review findings on this pull request. Now you are reading Claude's full response:
+
+1. Claude replied to each of your inline threads (agreeing, disagreeing, or partially agreeing) and posted a synthesis comment.
+2. Claude then ran its own complete /pr-review and posted that verdict.
 
 Your task:
-1. Read Claude's synthesis and assess whether you agree with its overall conclusions.
-2. Identify anything Claude missed entirely or got wrong in its review — raise these as new findings, each anchored to a specific file path and line number from the diff.
-3. If you have no new findings and largely agree, say so clearly.
+1. Assess whether Claude's final verdict and synthesis cover all the important issues in this PR.
+2. Identify anything Claude missed entirely or got wrong — raise these as new findings, each anchored to a specific file path and line number from the diff.
+3. If you have no new findings and largely agree with Claude's overall assessment, say so clearly.
 
 Output a single raw JSON object — no markdown wrapper:
 {
   "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
-  "summary": "<3-5 sentences: your overall response to Claude's synthesis, what still concerns you, what you consider resolved>",
+  "summary": "<3-5 sentences: your overall response to Claude's verdict, what still concerns you, what you consider resolved>",
   "new_findings": [
     {
       "path": "<exact file path from diff header>",
@@ -194,9 +225,9 @@ Output a single raw JSON object — no markdown wrapper:
   ]
 }
 
-Rules for new_findings: only include a finding if Claude's response did not address it and it represents a real problem. If Claude's synthesis correctly resolved all your concerns, return an empty array.`;
+Rules for new_findings: only include a finding if Claude's response did not address it and it represents a real problem. If Claude's review correctly covered all your concerns, return an empty array.`;
 
-  const user = `Claude's synthesis comment:\n\n${claudeSynthesis}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
+  const user = `${claudeContext_}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -269,14 +300,14 @@ async function main() {
   const diff = loadDiff();
   if (!diff) { console.log('Empty diff — skipping.'); return; }
 
-  const claudeSynthesis = await fetchClaudeSynthesis();
-  if (!claudeSynthesis) {
-    console.log("  Claude's synthesis comment not found — skipping.");
+  const claudeContext = await fetchClaudeContext();
+  if (!claudeContext.synthesis && !claudeContext.finalReview) {
+    console.log("  No Claude comments found (synthesis or /pr-review) — skipping.");
     return;
   }
-  console.log("  Found Claude's synthesis comment");
+  console.log(`  Claude context: synthesis=${!!claudeContext.synthesis}, finalReview=${!!claudeContext.finalReview}`);
 
-  const rawText = await callOpenAI(diff, claudeSynthesis);
+  const rawText = await callOpenAI(diff, claudeContext);
   if (!rawText) { console.warn('OpenAI returned an empty response — skipping.'); return; }
 
   let parsed;
