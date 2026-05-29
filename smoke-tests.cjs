@@ -2383,7 +2383,11 @@ async function runTests() {
   console.log("\nToday's Flow");
   {
     const today = dk(new Date());
-    const base = Date.now() - 3 * 3600000; // 3 hours ago
+    // Pin to 10:00 today so the timestamp always matches `today`'s date key
+    // and sits inside the 07:00–21:00 strip regardless of when the tests run.
+    const todayAt10 = new Date();
+    todayAt10.setHours(10, 0, 0, 0);
+    const base = todayAt10.getTime();
     const page = await freshPage(ctx, {
       wl_cats_v1: CATS,
       wl_entries_v1: [

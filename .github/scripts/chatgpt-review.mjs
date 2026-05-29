@@ -144,12 +144,15 @@ async function reviewWithOpenAI(diff) {
 
 /**
  * @typedef {{ path: string, line: number, body: string }} Finding
- * @typedef {{ verdict: string, summary: string, findings: Finding[] }} Review
+ * @typedef {{ verdict: string, summary: string, findings: Finding[], invalidFindings: unknown[] }} Review
  */
 
 /**
  * Parse the raw OpenAI response into a structured review object.
  * Strips any accidental markdown code-fence wrapping before JSON.parse.
+ * Normalises recoverable values (e.g. numeric string → integer line number).
+ * Unrecoverable findings are collected in `invalidFindings` so the caller
+ * can include them in a fallback comment instead of silently dropping them.
  * @param {string} rawText
  * @returns {Review}
  * @throws {Error} if JSON is malformed or required fields are missing.
@@ -171,18 +174,31 @@ function parseReviewOutput(rawText) {
   }
   if (!Array.isArray(parsed.findings)) parsed.findings = [];
 
+  const findings = [];
+  const invalidFindings = [];
+
+  for (const f of parsed.findings) {
+    if (!f) continue;
+
+    const path = typeof f.path === 'string' ? f.path.trim() : null;
+    // Normalise: accept numeric strings (e.g. "42") as integer line numbers
+    const rawLine = f.line;
+    const line = Number.isInteger(rawLine) ? rawLine : Number.isInteger(Number(rawLine)) ? Number(rawLine) : null;
+    const body = typeof f.body === 'string' ? f.body : null;
+
+    if (path && line !== null && line > 0 && body) {
+      findings.push({ path, line, body });
+    } else {
+      console.warn(`  invalid finding (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`);
+      invalidFindings.push(f);
+    }
+  }
+
   return {
     verdict: parsed.verdict,
     summary: String(parsed.summary),
-    findings: parsed.findings
-      .filter(f =>
-        f &&
-        typeof f.path === 'string' &&
-        Number.isInteger(f.line) &&
-        f.line > 0 &&
-        typeof f.body === 'string'
-      )
-      .map(f => ({ path: f.path.trim(), line: f.line, body: f.body })),
+    findings,
+    invalidFindings,
   };
 }
 
@@ -294,7 +310,10 @@ async function main() {
     return;
   }
 
-  console.log(`  verdict: ${review.verdict}, findings: ${review.findings.length}`);
+  console.log(
+    `  verdict: ${review.verdict}, findings: ${review.findings.length}` +
+    (review.invalidFindings.length ? `, invalid (fallback): ${review.invalidFindings.length}` : '')
+  );
 
   // Post the top-level review: verdict label + overall summary.
   const reviewBody = `**${review.verdict}** — ${review.summary}\n\n---\n${ATTRIBUTION}`;
@@ -315,16 +334,25 @@ async function main() {
     }
   }
 
-  // Inline findings that the GitHub API rejected (e.g. hallucinated line numbers)
-  // go into a single follow-up issue comment so they are visible and resolvable.
-  if (unpostable.length > 0) {
-    const sections = unpostable
+  // Findings that failed inline posting (GitHub API rejected) and findings with
+  // unrecoverable parse errors both go into a single follow-up issue comment so
+  // they are visible and resolvable rather than silently lost.
+  const fallbackFindings = [
+    ...unpostable,
+    ...review.invalidFindings.map(f => ({
+      path: String(f?.path ?? '(unknown path)'),
+      line: String(f?.line ?? '(unknown line)'),
+      body: typeof f?.body === 'string' ? f.body : `(malformed finding) ${JSON.stringify(f)}`,
+    })),
+  ];
+  if (fallbackFindings.length > 0) {
+    const sections = fallbackFindings
       .map(f => `**\`${f.path}:${f.line}\`**\n\n${f.body}`)
       .join('\n\n---\n\n');
     const fallback = await postIssueComment(
       `The following findings could not be posted as inline comments:\n\n${sections}`
     );
-    console.log(`  fallback comment for ${unpostable.length} finding(s): ${fallback.html_url}`);
+    console.log(`  fallback comment for ${fallbackFindings.length} finding(s): ${fallback.html_url}`);
   }
 }
 

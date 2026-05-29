@@ -105,13 +105,15 @@ function renderDayStrip(dateKey) {
     )
     .join('');
 
-  // Completed entry footprints
+  // Completed entry footprints — skip entries entirely outside the strip
+  // (right === left after clamping) to avoid phantom slivers at the edges.
   const bars = entries
     .filter((e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled')
     .map((e) => {
       const cat = getCat(e.tag);
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(e.ts)));
       const right = stripPct(Math.min(TF_STRIP_END, tsToMins(e.tsEnd)));
+      if (right <= left) return '';
       return `<div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${cat.color}"></div>`;
     })
     .join('');
