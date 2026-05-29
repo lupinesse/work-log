@@ -199,8 +199,9 @@ Output a single raw JSON object — no markdown wrapper:
 
   const user = `ChatGPT's findings (${threads.length} thread${threads.length === 1 ? '' : 's'}):\n\n${threadList}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-  // Try each credential in turn; on an auth failure (401/403) fall through to
-  // the next so an expired OAuth token is recovered by the API key.
+  // Try each credential in turn; on an auth failure (401/403) or rate limit
+  // (429) fall through to the next — an expired OAuth token or an exhausted
+  // rate-limit bucket is recovered by the API key, which uses a separate quota.
   for (let i = 0; i < AUTH_CHAIN.length; i++) {
     const auth = AUTH_CHAIN[i];
     const model = selectModel(auth.source, MODEL_OVERRIDE);
@@ -230,9 +231,9 @@ Output a single raw JSON object — no markdown wrapper:
 
     const body = await response.text();
     const nextAuth = AUTH_CHAIN[i + 1];
-    if (isAuthFailureStatus(response.status) && nextAuth) {
+    if ((isAuthFailureStatus(response.status) || response.status === 429) && nextAuth) {
       console.warn(
-        `Auth: ${auth.source} rejected (HTTP ${response.status}); falling back to ${nextAuth.source}`
+        `Auth: ${auth.source} returned HTTP ${response.status}; falling back to ${nextAuth.source}`
       );
       continue;
     }
