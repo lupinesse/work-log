@@ -1212,18 +1212,32 @@ async function runTests() {
         ],
       },
       { id: 'cp2', text: 'Task no steps', tag: 'work', status: 'todo', date: today },
+      {
+        // status: 'todo' so the row appears in #planList (done tasks render in the
+        // completed section and would be missed by planHtml)
+        id: 'cp4',
+        text: 'All done task',
+        tag: 'work',
+        status: 'todo',
+        date: today,
+        checkpoints: [
+          { id: 'c6', text: 'Done A', done: true },
+          { id: 'c7', text: 'Done B', done: true },
+        ],
+      },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
     await page.waitForTimeout(50);
 
     const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
     assert('cp-badge rendered for task with checkpoints', planHtml.includes('cp-badge'));
-    // Phase 3: badge uses ✓ K/N format when progress exists, plain K/N otherwise
+    // Invariant: ✓ K/N when any step ticked, plain K/N when none done, + steps when empty
     assert(
       'Badge shows ✓-prefixed fraction when progress exists (✓ 1/3)',
       planHtml.includes('✓ 1/3')
     );
     assert('Badge shows plain fraction when nothing done (0/2)', planHtml.includes('0/2'));
+    assert('Badge shows ✓ N/N when all steps complete (✓ 2/2)', planHtml.includes('✓ 2/2'));
     assert('+ steps badge on task with no checkpoints', planHtml.includes('+ steps'));
 
     // Open checkpoints by clicking the badge — fail loudly if the badge is missing
