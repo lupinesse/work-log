@@ -183,6 +183,7 @@ export async function resolveThread({ token, threadId }) {
  * @returns {Promise<object[]>}
  */
 export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
+  const MAX_PAGES = 200;
   const all = [];
   let page = 1;
   while (true) {
@@ -194,6 +195,12 @@ export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
     const batch = await response.json();
     all.push(...batch);
     if (batch.length < 100) break;
+    if (page >= MAX_PAGES) {
+      throw new Error(
+        `fetchAllIssueComments: reached page limit (${MAX_PAGES}) for PR #${prNumber} — ` +
+        'possible API response loop; halting to avoid runaway pagination',
+      );
+    }
     page++;
   }
   return all;
@@ -257,12 +264,26 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
  * @returns {Promise<{ review: object, replaced: boolean }>}
  */
 export async function upsertReview({ token, owner, repo, prNumber, headSha, marker, body }) {
-  const listResp = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100`,
-    { headers: ghHeaders(token) }
-  );
-  if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
-  const reviews = await listResp.json();
+  // Paginate to handle PRs that accumulate more than 100 reviews across re-runs.
+  const MAX_PAGES = 50; // 5 000 reviews is an unreachable ceiling in practice
+  const reviews = [];
+  let reviewPage = 1;
+  while (true) {
+    const listResp = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/reviews?per_page=100&page=${reviewPage}`,
+      { headers: ghHeaders(token) }
+    );
+    if (!listResp.ok) throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
+    const batch = await listResp.json();
+    reviews.push(...batch);
+    if (batch.length < 100) break;
+    if (reviewPage >= MAX_PAGES) {
+      throw new Error(
+        `upsertReview: reached page limit (${MAX_PAGES}) for PR #${prNumber} — halting to avoid runaway pagination`,
+      );
+    }
+    reviewPage++;
+  }
 
   // Pick the most recent matching, non-dismissed review.
   let previous = null;
