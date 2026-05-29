@@ -1,13 +1,13 @@
 // ── 10b-signifiers.js — Entry signifiers ──
 
-// null/undefined = no signifier (neutral). Cycle: none → event → … → overtime → none
+// null/undefined = billable (default, displayed as ●). Cycle: none → event → … → overtime → none
 const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
 const SIG_SYMBOL = {
-  event: '📅',
-  flagged: '🚩',
-  migrated: '📤',
-  cancelled: '❌',
-  overtime: '⏰',
+  event: '○',
+  flagged: '★',
+  migrated: '→',
+  cancelled: '✗',
+  overtime: '!',
 };
 const SIG_TITLE = {
   event: 'Meeting / event',
@@ -18,12 +18,12 @@ const SIG_TITLE = {
 };
 
 /**
- * Returns the display symbol for an entry's signifier (or '·' for none).
+ * Returns the display symbol for an entry's signifier.
  * @param {Object} entry - Log entry object.
- * @returns {string} Emoji or '·'.
+ * @returns {string} Unicode BuJo symbol (○ ★ → ✗ !) or '●' for the billable default.
  */
 function sigSymbol(entry) {
-  return SIG_SYMBOL[entry.signifier] || '·';
+  return SIG_SYMBOL[entry.signifier] || '●';
 }
 
 /**
@@ -32,7 +32,7 @@ function sigSymbol(entry) {
  * @returns {string}
  */
 function sigTitle(entry) {
-  return SIG_TITLE[entry.signifier] || 'No signifier';
+  return SIG_TITLE[entry.signifier] || 'Billable';
 }
 
 /**
