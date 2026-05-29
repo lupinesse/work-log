@@ -492,6 +492,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     mlHoursForDay,
     openMigration,
     getMigrationRecord,
+    setFlowView,
+    getFlowView,
+    renderTodayFlow,
+    findLargestGap,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically

@@ -88,7 +88,7 @@ function timeToSlot(hhmm, m2) {
 function renderTimeblock() {
   const dateKey = dk(viewDate);
   const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
-  document.getElementById('tbSection').classList.toggle('collapsed', tbCollapsed);
+  // Collapse state no longer used — section visibility is handled by the view toggle.
 
   // Time labels
   const timesEl = document.getElementById('tbTimes');
@@ -436,7 +436,7 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
 }
 
 // Meeting form removed — no event listeners needed
-document.getElementById('tbHeader').addEventListener('click', () => {
+document.getElementById('tbHeader')?.addEventListener('click', () => {
   tbCollapsed = !tbCollapsed;
   renderTimeblock();
 });

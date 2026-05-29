@@ -391,11 +391,35 @@
   </div>
 </div>
 
-<section id="dailyLogSection" style="display:none">
-  <div class="daily-log-feed" id="dailyLogFeed"></div>
-  <div class="capture-row" id="dailyLogNoteRow">
-    <input class="capture-input" id="dailyLogNoteInput" placeholder="Add a note to today&#39;s log&hellip;" />
-    <button class="add-btn" id="dailyLogNoteBtn">+ Note</button>
+<!-- TODAY'S FLOW — unified section (Flow / Log / Blocks views) -->
+<section id="todayFlowSection" aria-label="Today's flow">
+  <div class="tf-header" id="tfHeader"></div>
+  <div class="tf-day-strip-wrap">
+    <div id="tfDayStrip"></div>
+  </div>
+  <div class="tf-gap-reminder" id="tfGapReminder" style="display:none"></div>
+
+  <!-- Flow view pane -->
+  <div class="tf-pane" id="tfFlowPane"></div>
+
+  <!-- Log view pane -->
+  <div class="tf-pane" id="tfLogPane" style="display:none">
+    <div class="tf-log-feed" id="tfLogFeed"></div>
+    <div class="capture-row" id="dailyLogNoteRow" style="display:none">
+      <input class="capture-input" id="dailyLogNoteInput"
+             placeholder="Add a note to today&#39;s log&hellip;" />
+      <button class="add-btn" id="dailyLogNoteBtn">+ Note</button>
+    </div>
+  </div>
+
+  <!-- Blocks view pane: existing timeblock grid embedded here -->
+  <div class="tf-pane" id="tfBlocksPane" style="display:none">
+    <div class="tb-body" id="tbBody">
+      <div class="tb-times" id="tbTimes"></div>
+      <div class="tb-grid-wrap">
+        <div class="tb-grid" id="tbGrid"></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -408,21 +432,6 @@
     </div>
   </div>
 </section>
-
-<div class="tb-section" id="tbSection">
-  <div class="tb-header" id="tbHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="tbBody">
-    <div class="tb-header-left">
-      <span class="tb-title">timeblock</span>
-      <span class="tb-toggle" aria-hidden="true">&#9660;</span>
-    </div>
-  </div>
-  <div class="tb-body" id="tbBody">
-    <div class="tb-times" id="tbTimes"></div>
-    <div class="tb-grid-wrap">
-      <div class="tb-grid" id="tbGrid"></div>
-    </div>
-  </div>
-</div>
 
 <!-- Sprint setup panel -->
 <div id="sprintSetup" style="display:none">

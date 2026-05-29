@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Today's Flow unified section** — replaces the separate Timeblock and Daily Log tabs with a single `#todayFlowSection` offering three views: Flow (chronological cards with colour-coded accent strips), Log (timeline rail with circle markers), and Blocks (the existing timeblock grid). The section also renders a day-overview strip (hour ticks + entry footprints + live cursor) and a gap reminder when the largest unlogged gap today is ≥ 15 minutes. Closes #44.
+
 ### Fixed
 - Malformed Outlook calendar meeting objects (e.g. missing `subject`, `start`, or `end`) are now filtered out before rendering rather than appearing as `"undefined"` in the meeting strip
 - Weather API responses with an unexpected shape now fall back to showing the city name (same as a network error) instead of leaving the weather widget empty

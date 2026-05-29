@@ -1454,3 +1454,137 @@ describe('calcMonthTaskCounts', () => {
     assert.equal(counts.migrated, 2, 'both BuJo and programmatic markers count');
   });
 });
+
+// ── Today's Flow — findLargestGap / view preference ───────────────────────────
+
+const timeflowSrc = fs.readFileSync(path.join(__dirname, '../src/js/11-timeflow.js'), 'utf8');
+
+/**
+ * Creates a vm sandbox with the minimal globals that 11-timeflow.js needs
+ * for the pure-logic functions (findLargestGap, getFlowView, setFlowView).
+ * @param {object} overrides
+ */
+function loadTimeflowSandbox(overrides = {}) {
+  const store = {};
+  const sandbox = {
+    entries: [],
+    viewDate: new Date('2026-05-29T12:00:00'),
+    isToday: (d) => d.toDateString() === sandbox.viewDate.toDateString(),
+    activeTimer: null,
+    fmtDur: (ms) => `${Math.round(ms / 60000)}m`,
+    dk: (d) => d.toISOString().slice(0, 10),
+    getCat: (id) => ({ id, label: id, color: '#888' }),
+    isEntryBillable: () => true,
+    renderTodayFlow: () => {},
+    renderTimeblock: () => {},
+    buildDailyLogItems: () => [],
+    addLogNote: () => {},
+    localStorage: {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => {
+        store[k] = v;
+      },
+      removeItem: (k) => {
+        delete store[k];
+      },
+      clear: () => {
+        Object.keys(store).forEach((k) => delete store[k]);
+      },
+    },
+    document: {
+      getElementById: () => null,
+    },
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(timeflowSrc, sandbox);
+  return sandbox;
+}
+
+describe('findLargestGap', () => {
+  const TODAY = '2026-05-29';
+
+  it('returns null for a past day (not today)', () => {
+    const sb = loadTimeflowSandbox();
+    sb.viewDate = new Date('2026-05-20T12:00:00');
+    sb.isToday = () => false;
+    const result = sb.findLargestGap(TODAY);
+    assert.equal(result, null);
+  });
+
+  it('returns null when there are no entries', () => {
+    const sb = loadTimeflowSandbox();
+    sb.entries = [];
+    assert.equal(sb.findLargestGap(TODAY), null);
+  });
+
+  it('returns null when the only gap is < 15 min', () => {
+    const base = new Date('2026-05-29T09:00:00').getTime();
+    const sb = loadTimeflowSandbox();
+    sb.entries = [
+      { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
+      { date: TODAY, ts: base + 40 * 60000, tsEnd: base + 70 * 60000, signifier: null },
+    ];
+    assert.equal(sb.findLargestGap(TODAY), null);
+  });
+
+  it('returns the gap when exactly 15 min', () => {
+    const base = new Date('2026-05-29T09:00:00').getTime();
+    const sb = loadTimeflowSandbox();
+    sb.entries = [
+      { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
+      { date: TODAY, ts: base + 45 * 60000, tsEnd: base + 75 * 60000, signifier: null },
+    ];
+    const gap = sb.findLargestGap(TODAY);
+    assert.ok(gap !== null, 'should find a gap');
+    assert.equal(gap.gapMin, 15);
+  });
+
+  it('returns the largest gap when multiple qualify', () => {
+    const base = new Date('2026-05-29T09:00:00').getTime();
+    const sb = loadTimeflowSandbox();
+    sb.entries = [
+      { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: null },
+      { date: TODAY, ts: base + 50 * 60000, tsEnd: base + 80 * 60000, signifier: null }, // 20 min gap
+      { date: TODAY, ts: base + 120 * 60000, tsEnd: base + 150 * 60000, signifier: null }, // 40 min gap
+    ];
+    const gap = sb.findLargestGap(TODAY);
+    assert.equal(gap.gapMin, 40);
+  });
+
+  it('ignores entries with signifier === "cancelled"', () => {
+    const base = new Date('2026-05-29T09:00:00').getTime();
+    const sb = loadTimeflowSandbox();
+    sb.entries = [
+      { date: TODAY, ts: base, tsEnd: base + 30 * 60000, signifier: 'cancelled' },
+      { date: TODAY, ts: base + 60 * 60000, tsEnd: base + 90 * 60000, signifier: null },
+    ];
+    // Cancelled entry has no tsEnd counted — no consecutive pair → null
+    assert.equal(sb.findLargestGap(TODAY), null);
+  });
+});
+
+describe('getFlowView / setFlowView', () => {
+  it('defaults to "flow" when nothing is stored', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.getFlowView(), 'flow');
+  });
+
+  it('returns "log" after setFlowView("log")', () => {
+    const sb = loadTimeflowSandbox();
+    sb.setFlowView('log');
+    assert.equal(sb.getFlowView(), 'log');
+  });
+
+  it('returns "blocks" after setFlowView("blocks")', () => {
+    const sb = loadTimeflowSandbox();
+    sb.setFlowView('blocks');
+    assert.equal(sb.getFlowView(), 'blocks');
+  });
+
+  it('falls back to "flow" for an unrecognised stored value', () => {
+    const sb = loadTimeflowSandbox();
+    sb.localStorage.setItem('wl_flow_view', 'unknown');
+    assert.equal(sb.getFlowView(), 'flow');
+  });
+});

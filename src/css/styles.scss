@@ -17,7 +17,7 @@
 @use 'features'; // pomodoro, park capture, parked thoughts, IDKW, calendar, jira ticket links, debug info
 @use 'signifiers'; // entry signifier symbols (●○★→✗!)
 @use 'rapid'; // rapid logging overlay (Space key)
-@use 'dailylog'; // daily log feed + tab chrome
+@use 'timeflow'; // today's flow unified section (Flow / Log / Blocks views)
 @use 'reflection'; // end-of-day focus + energy rating
 @use 'sprints'; // sprint mode — intention + pomodoro + review
 @use 'trackers'; // custom time-goal progress grids

@@ -18,6 +18,7 @@ function buildDailyLogItems(dateKey) {
       items.push({
         ts: e.ts,
         type: 'entry',
+        entryId: e.id,
         color: cat.color,
         text: escHtml(e.text),
         sub: `${escHtml(cat.label)} · ${e.tsEnd ? fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
@@ -110,7 +111,7 @@ function addLogNote() {
   saveLogNotes();
   if (inp) inp.value = '';
   wlLog.info('addLogNote: note saved', { length: text.length });
-  renderDailyLog();
+  renderTodayFlow();
 }
 
 /** Registers the tab-click delegation listener. Called once on DOMContentLoaded. */

@@ -137,9 +137,8 @@ function render() {
   const list = viewEntries();
   const tl = document.getElementById('timeline');
 
-  const dlActive = document.getElementById('dailyLogSection')?.style.display !== 'none';
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
-  const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${dlActive ? ' active' : ''}" id="tabDailyLog">Daily Log</button><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+  const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
   // Ad-hoc inline log row — shown only when viewing today
   const adHocRow = isToday(viewDate)
@@ -165,7 +164,7 @@ function render() {
     renderQuickPick();
     renderPlan();
     renderCompleted();
-    renderTimeblock();
+    renderTodayFlow();
     renderTrackers();
     return;
   }
@@ -430,8 +429,7 @@ function render() {
   renderChart(list);
   renderPlan();
   renderCompleted();
-  renderTimeblock();
-  if (document.getElementById('dailyLogSection')?.style.display !== 'none') renderDailyLog();
+  renderTodayFlow();
   if (document.getElementById('monthlyLogSection')?.style.display !== 'none') renderMonthlyLog();
   renderTrackers();
 }

@@ -1,0 +1,356 @@
+// ── _timeflow.scss — Today's Flow unified section (Flow / Log / Blocks views) ──
+
+#todayFlowSection {
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+// ── Section header ──────────────────────────────────────────────────────────
+
+.tf-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg2);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.tf-icon {
+  font-size: 13px;
+}
+
+.tf-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+
+.tf-totals {
+  font-size: 11.5px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+
+.tf-bill {
+  color: var(--info-text);
+}
+
+.tf-seg {
+  display: inline-flex;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 2px;
+  margin-left: auto;
+}
+
+.tf-seg-btn {
+  padding: 3px 10px;
+  font-size: 11.5px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+
+  &.active {
+    background: var(--bg);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+}
+
+// ── Day-overview strip ──────────────────────────────────────────────────────
+
+.tf-day-strip-wrap {
+  padding: 8px 14px 6px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.tf-strip-ticks {
+  position: relative;
+  height: 12px;
+  margin-bottom: 3px;
+}
+
+.tf-tick {
+  position: absolute;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  transform: translateX(-50%);
+  user-select: none;
+}
+
+.tf-strip-bar {
+  position: relative;
+  height: 14px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tf-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  opacity: 0.75;
+  border-radius: 1px;
+}
+
+.tf-bar-live {
+  opacity: 0.9;
+}
+
+.tf-now-cursor {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--info-text, #0284c7);
+  border-radius: 1px;
+  transform: translateX(-50%);
+  box-shadow: 0 0 5px rgba(2, 132, 199, 0.45);
+}
+
+// ── Gap reminder ────────────────────────────────────────────────────────────
+
+.tf-gap-reminder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--bg2);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.tf-gap-text {
+  font-size: 11px;
+  color: var(--text3);
+  flex: 1;
+}
+
+.tf-gap-btn {
+  background: none;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 2px 8px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: var(--font);
+
+  &:hover {
+    background: var(--bg3);
+  }
+}
+
+// ── Shared pane container ───────────────────────────────────────────────────
+
+.tf-pane {
+  min-height: 40px;
+}
+
+.tf-empty {
+  font-size: 13px;
+  color: var(--text3);
+  font-style: italic;
+  padding: 16px 14px;
+}
+
+// ── Flow view ───────────────────────────────────────────────────────────────
+
+.tf-flow-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.live {
+    background: rgba(2, 132, 199, 0.03);
+  }
+}
+
+.tf-flow-time {
+  width: 56px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.tf-flow-hm {
+  display: block;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tf-flow-dur {
+  display: block;
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+
+.tf-flow-strip {
+  width: 4px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  opacity: 0.75;
+  position: relative;
+  min-height: 40px;
+}
+
+// Pulsing dot overlaid on the live accent strip
+.tf-flow-pulse {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  animation: tfPulse 1.6s ease-out infinite;
+}
+
+@keyframes tfPulse {
+  0% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.65;
+  }
+
+  100% {
+    transform: translateX(-50%) scale(2.4);
+    opacity: 0;
+  }
+}
+
+.tf-flow-body {
+  flex: 1;
+  padding-top: 4px;
+  min-width: 0;
+}
+
+.tf-flow-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.tf-flow-sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+// ── Log view ────────────────────────────────────────────────────────────────
+
+.tf-log-feed {
+  position: relative;
+}
+
+.tf-log-row {
+  display: grid;
+  grid-template-columns: 52px 22px 1fr;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-bottom: 0.5px solid var(--border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.tf-log-time {
+  padding-top: 2px;
+}
+
+.tf-log-hm {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tf-log-dot-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.tf-log-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--border2);
+  flex-shrink: 0;
+
+  &.live {
+    background: var(--info-text, #0284c7);
+    border-color: var(--info-text, #0284c7);
+    animation: tfPulse 1.6s ease-out infinite;
+  }
+}
+
+.tf-log-line {
+  width: 1px;
+  flex: 1;
+  min-height: 16px;
+  background: var(--border);
+  margin-top: 4px;
+}
+
+.tf-log-body {
+  padding-left: 10px;
+  min-width: 0;
+}
+
+.tf-log-text {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.tf-log-sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+// ── Blocks view ─────────────────────────────────────────────────────────────
+// The existing timeblock grid renders into #tbBody / #tbGrid inside #tfBlocksPane.
+// No additional overrides required — _timeblock.scss styles remain intact.
+
+// ── Responsive ──────────────────────────────────────────────────────────────
+
+@media (width <= 600px) {
+  .tf-seg-btn {
+    padding: 3px 7px;
+    font-size: 11px;
+  }
+}
