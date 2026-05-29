@@ -42,7 +42,7 @@ import {
   selectModel,
   shouldFallThrough,
 } from './lib/anthropic-auth.mjs';
-import { coerceThreadIndex } from './lib/parse-reply-action.mjs';
+import { parseResponse } from './lib/parse-dialogue-response.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -256,63 +256,6 @@ Output a single raw JSON object — no markdown wrapper:
 
 // ─────────────────────────── output parsing ───────────────────────────
 
-/**
- * @typedef {{ index: number, verdict: string, reply: string }} ThreadResponse
- * @typedef {{ thread_responses: ThreadResponse[], invalidResponses: unknown[], synthesis: string }} DialogueResponse
- */
-
-/**
- * Parse Claude's raw response. Normalises recoverable values (numeric-string
- * indices are coerced; missing verdict defaults to "comment") and collects
- * unrecoverable entries in `invalidResponses` so the caller can surface them
- * in the synthesis comment instead of silently dropping them — keeping the
- * "every finding gets a reply" guarantee even when the model occasionally
- * returns a malformed entry.
- *
- * @param {string} rawText
- * @returns {DialogueResponse}
- * @throws {Error}
- */
-function parseResponse(rawText) {
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim();
-  const parsed = JSON.parse(cleaned);
-
-  if (!Array.isArray(parsed.thread_responses) || !parsed.synthesis) {
-    throw new Error('Missing required fields: thread_responses, synthesis');
-  }
-
-  const thread_responses = [];
-  const invalidResponses = [];
-
-  for (const r of parsed.thread_responses) {
-    if (!r || typeof r !== 'object') {
-      invalidResponses.push(r);
-      continue;
-    }
-    // Reject non-integers and blank/whitespace strings instead of silently
-    // coercing them to thread 0 (see coerceThreadIndex for the rationale).
-    const idx = coerceThreadIndex(r.index);
-    const reply = typeof r.reply === 'string' ? r.reply : null;
-    if (idx === null || !reply) {
-      console.warn(
-        `  invalid thread_response (index=${JSON.stringify(r.index)}, reply=${typeof r.reply}) — moved to fallback`
-      );
-      invalidResponses.push(r);
-      continue;
-    }
-    thread_responses.push({
-      index: idx,
-      verdict: r.verdict || 'comment',
-      reply,
-    });
-  }
-
-  return { thread_responses, invalidResponses, synthesis: String(parsed.synthesis) };
-}
-
 // ─────────────────────────── main ───────────────────────────
 
 async function main() {
@@ -344,7 +287,7 @@ async function main() {
 
   let parsed;
   try {
-    parsed = parseResponse(rawText);
+    parsed = parseResponse(rawText, threads.length);
   } catch (e) {
     console.warn(`JSON parse failed (${e.message}) — posting raw as fallback.`);
     // Use the synthesis marker so a parse-failure run still replaces (rather

@@ -95,9 +95,14 @@ export function normaliseReplyAction(action, threadCount) {
     );
   }
 
+  const body = String(action.body).trim();
+  if (!body) {
+    throw new Error(`thread_index ${idx}: body is empty or whitespace-only`);
+  }
+
   return {
     threadIndex: idx,
-    body: String(action.body).trim(),
+    body,
     resolve: action.resolve === true,
     unresolve: action.unresolve === true,
   };

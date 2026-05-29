@@ -68,6 +68,22 @@ describe('normaliseReplyAction — valid actions', () => {
     );
     assert.strictEqual(result.body, '✅ Verified as fixed — wlLog.warn now at line 42.');
   });
+
+  test('throws when body is a whitespace-only string (regression: must not post empty reply)', () => {
+    // A model occasionally returns {body: "   "} — trimming produces "" which
+    // would post an empty inline comment. Reject it to the fallback bucket.
+    assert.throws(
+      () => normaliseReplyAction({ thread_index: 0, body: '   ' }, 3),
+      /body is empty or whitespace-only/
+    );
+  });
+
+  test('throws when body is an empty string', () => {
+    assert.throws(
+      () => normaliseReplyAction({ thread_index: 0, body: '' }, 3),
+      /body is empty or whitespace-only/
+    );
+  });
 });
 
 // ─────────────────────────── resolve / unresolve guard ───────────────────────────
