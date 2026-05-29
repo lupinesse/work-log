@@ -40,7 +40,7 @@ import {
   upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { normaliseReplyAction } from './lib/parse-reply-action.mjs';
+import { normaliseReplyAction, coerceThreadIndex } from './lib/parse-reply-action.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -411,11 +411,7 @@ function parseResponse(rawText, threadCount) {
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
-      const line = Number.isInteger(rawLine)
-        ? rawLine
-        : Number.isInteger(Number(rawLine))
-          ? Number(rawLine)
-          : null;
+      const line = coerceThreadIndex(rawLine);
       if (!path || line === null || line <= 0) {
         console.warn(
           `  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`

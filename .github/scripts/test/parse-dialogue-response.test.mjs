@@ -93,6 +93,24 @@ describe('parseResponse — invalid top-level structure', () => {
   test('throws when the JSON is malformed', () => {
     assert.throws(() => parseResponse('not json', 1));
   });
+
+  test('throws when synthesis is whitespace-only (regression: must not post blank summary)', () => {
+    // typeof '   ' === 'string' and Boolean('   ') is truthy, so without
+    // the trim() check the whitespace value would be accepted and returned.
+    assert.throws(
+      () => parseResponse(JSON.stringify({ thread_responses: [], synthesis: '   ' }), 1),
+      /Missing required fields/
+    );
+  });
+
+  test('throws when synthesis is a truthy non-string (regression: Number/Object coercion)', () => {
+    // {} is truthy, so without the typeof check it would pass !parsed.synthesis
+    // and be coerced to '[object Object]' via String().
+    assert.throws(
+      () => parseResponse(JSON.stringify({ thread_responses: [], synthesis: {} }), 1),
+      /Missing required fields/
+    );
+  });
 });
 
 // ─────────────────────────── invalid entries → invalidResponses ──────────────

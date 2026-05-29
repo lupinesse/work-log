@@ -34,7 +34,8 @@ import { coerceThreadIndex } from './parse-reply-action.mjs';
  *   `invalidResponses` rather than being accepted and then failing with an
  *   undefined-thread lookup in the dispatch loop.
  * @returns {DialogueResponse}
- * @throws {Error} If the JSON is malformed or missing required top-level fields.
+ * @throws {Error} If the JSON is malformed, if `thread_responses` is absent, or
+ *   if `synthesis` is absent, not a string, or whitespace-only.
  */
 export function parseResponse(rawText, threadCount) {
   const cleaned = rawText
@@ -43,7 +44,8 @@ export function parseResponse(rawText, threadCount) {
     .trim();
   const parsed = JSON.parse(cleaned);
 
-  if (!Array.isArray(parsed.thread_responses) || !parsed.synthesis) {
+  const synthesis = typeof parsed.synthesis === 'string' ? parsed.synthesis.trim() : null;
+  if (!Array.isArray(parsed.thread_responses) || !synthesis) {
     throw new Error('Missing required fields: thread_responses, synthesis');
   }
 
@@ -70,5 +72,5 @@ export function parseResponse(rawText, threadCount) {
     });
   }
 
-  return { thread_responses, invalidResponses, synthesis: String(parsed.synthesis) };
+  return { thread_responses, invalidResponses, synthesis };
 }

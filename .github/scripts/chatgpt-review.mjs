@@ -244,11 +244,7 @@ function parseReviewOutput(rawText, existingThreadCount) {
     } else {
       const path = typeof a.path === 'string' ? a.path.trim() : null;
       const rawLine = a.line;
-      const line = Number.isInteger(rawLine)
-        ? rawLine
-        : Number.isInteger(Number(rawLine))
-          ? Number(rawLine)
-          : null;
+      const line = coerceThreadIndex(rawLine);
       if (!path || line === null || line <= 0) {
         console.warn(
           `  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`
