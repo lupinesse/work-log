@@ -100,35 +100,31 @@ export function shouldFallThrough(status) {
 }
 
 /**
- * Default model per auth source.
+ * Default model for all auth sources.
  *
- * The OAuth path is covered by the Claude subscription at a flat cost, so it
- * uses the most capable model. The API-key path is billed per token, so it
- * defaults to the cheapest current model to avoid surprise costs if the
- * fallback is ever exercised — the dialogue job is not latency- or
- * quality-critical enough to justify Opus pricing on metered billing.
+ * Both the OAuth and API-key paths use `claude-sonnet-4-6` so the dialogue
+ * produces consistent results regardless of which credential is active. An
+ * explicit `MODEL` env override always wins over this default.
  *
  * @type {Record<string, string>}
  */
 export const DEFAULT_MODEL_BY_SOURCE = {
-  CLAUDE_CODE_OAUTH_TOKEN: 'claude-opus-4-7',
-  ANTHROPIC_API_KEY: 'claude-haiku-4-5',
+  CLAUDE_CODE_OAUTH_TOKEN: 'claude-sonnet-4-6',
+  ANTHROPIC_API_KEY: 'claude-sonnet-4-6',
 };
 
 /**
  * Choose the Anthropic model id for a run. An explicit override (e.g. the
- * `MODEL` env var) always wins; otherwise the per-source default applies.
- * An unrecognised source defaults to the cheaper Haiku model — an unknown
- * auth source may be a metered path, so the cost-safe choice wins.
+ * `MODEL` env var) always wins; otherwise `claude-sonnet-4-6` is used for
+ * all sources. The `source` argument is kept for forward compatibility.
  *
  * @param {string} source - Auth source label from {@link resolveAnthropicAuth}.
  * @param {string} [override] - Explicit model id; takes precedence when truthy.
  * @returns {string} The model id to use.
  * @example
- * selectModel('ANTHROPIC_API_KEY')            // → 'claude-haiku-4-5' (cheap)
- * selectModel('CLAUDE_CODE_OAUTH_TOKEN')      // → 'claude-opus-4-7'
- * selectModel('ANTHROPIC_API_KEY', 'x-model') // → 'x-model' (override wins)
- * selectModel('UNKNOWN_SOURCE')               // → 'claude-haiku-4-5' (safe)
+ * selectModel('ANTHROPIC_API_KEY')               // → 'claude-sonnet-4-6'
+ * selectModel('CLAUDE_CODE_OAUTH_TOKEN')         // → 'claude-sonnet-4-6'
+ * selectModel('ANTHROPIC_API_KEY', 'x-model')   // → 'x-model' (override wins)
  */
 export function selectModel(source, override) {
   if (override) return override;

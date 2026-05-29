@@ -9,21 +9,21 @@
 
 import { coerceThreadIndex } from './parse-reply-action.mjs';
 
-/** Verdicts the downstream workflow understands. Any other value is a model error. */
-const VALID_VERDICTS = new Set(['agree', 'disagree', 'comment']);
+/** Verdicts Claude emits in Phase 2 thread responses. */
+const VALID_VERDICTS = new Set(['agree_fix', 'agree_noted', 'disagree', 'partial']);
 
 /**
  * @typedef {{ index: number, verdict: string, reply: string }} ThreadResponse
- * @typedef {{ thread_responses: ThreadResponse[], invalidResponses: unknown[], synthesis: string }} DialogueResponse
+ * @typedef {{ thread_responses: ThreadResponse[], invalidResponses: unknown[] }} DialogueResponse
  */
 
 /**
  * Parse Claude's raw Phase 2 response text into a structured dialogue result.
  *
  * Normalises recoverable values (numeric-string indices are coerced via
- * {@link coerceThreadIndex}; missing verdict defaults to `"comment"`) and
+ * {@link coerceThreadIndex}; missing verdict defaults to `"agree_noted"`) and
  * collects unrecoverable entries in `invalidResponses` so the caller can
- * surface them in the synthesis comment instead of silently dropping them —
+ * surface them in the fallback comment instead of silently dropping them —
  * keeping the "every finding gets a reply" guarantee even when the model
  * occasionally returns a malformed entry.
  *
@@ -37,8 +37,7 @@ const VALID_VERDICTS = new Set(['agree', 'disagree', 'comment']);
  *   `invalidResponses` rather than being accepted and then failing with an
  *   undefined-thread lookup in the dispatch loop.
  * @returns {DialogueResponse}
- * @throws {Error} If the JSON is malformed, if `thread_responses` is absent, or
- *   if `synthesis` is absent, not a string, or whitespace-only.
+ * @throws {Error} If the JSON is malformed or if `thread_responses` is absent.
  */
 export function parseResponse(rawText, threadCount) {
   const cleaned = rawText
@@ -47,9 +46,8 @@ export function parseResponse(rawText, threadCount) {
     .trim();
   const parsed = JSON.parse(cleaned);
 
-  const synthesis = typeof parsed.synthesis === 'string' ? parsed.synthesis.trim() : null;
-  if (!Array.isArray(parsed.thread_responses) || !synthesis) {
-    throw new Error('Missing required fields: thread_responses, synthesis');
+  if (!Array.isArray(parsed.thread_responses)) {
+    throw new Error('Missing required field: thread_responses');
   }
 
   const thread_responses = [];
@@ -68,13 +66,13 @@ export function parseResponse(rawText, threadCount) {
       invalidResponses.push(r);
       continue;
     }
-    // Normalise verdict: absent/null defaults to 'comment'; present values must
-    // be trimmed and validated — unknown strings (e.g. 'agree ', 'resolved',
-    // non-strings like true) are rejected to invalidResponses so the caller
-    // can surface them rather than silently passing them to the workflow.
+    // Normalise verdict: absent/null defaults to 'agree_noted'; present values
+    // must be trimmed and validated — unknown strings are rejected to
+    // invalidResponses so the caller can surface them rather than silently
+    // passing them to the dispatch loop.
     let verdict;
     if (r.verdict == null) {
-      verdict = 'comment';
+      verdict = 'agree_noted';
     } else {
       const trimmed = typeof r.verdict === 'string' ? r.verdict.trim() : '';
       if (!VALID_VERDICTS.has(trimmed)) {
@@ -90,5 +88,5 @@ export function parseResponse(rawText, threadCount) {
     });
   }
 
-  return { thread_responses, invalidResponses, synthesis };
+  return { thread_responses, invalidResponses };
 }

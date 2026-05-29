@@ -14,14 +14,14 @@ import assert from 'node:assert/strict';
 import { parseResponse } from '../lib/parse-dialogue-response.mjs';
 
 /** Build a minimal valid raw JSON string for parseResponse. */
-function makeRaw(thread_responses, synthesis = 'Looks good.') {
-  return JSON.stringify({ thread_responses, synthesis });
+function makeRaw(thread_responses) {
+  return JSON.stringify({ thread_responses });
 }
 
 // ─────────────────────────── happy paths ───────────────────────────
 
 describe('parseResponse — valid input', () => {
-  test('returns thread_responses and synthesis for a well-formed response', () => {
+  test('returns thread_responses for a well-formed response', () => {
     const raw = makeRaw([{ index: 0, verdict: 'disagree', reply: 'No issue here.' }]);
     const result = parseResponse(raw, 2);
     assert.strictEqual(result.thread_responses.length, 1);
@@ -30,21 +30,20 @@ describe('parseResponse — valid input', () => {
       verdict: 'disagree',
       reply: 'No issue here.',
     });
-    assert.strictEqual(result.synthesis, 'Looks good.');
     assert.deepStrictEqual(result.invalidResponses, []);
   });
 
   test('strips a markdown code fence before parsing', () => {
-    const inner = makeRaw([{ index: 0, verdict: 'agree', reply: 'Fixed.' }]);
+    const inner = makeRaw([{ index: 0, verdict: 'agree_fix', reply: 'Fixed.' }]);
     const fenced = `\`\`\`json\n${inner}\n\`\`\``;
     const result = parseResponse(fenced, 1);
     assert.strictEqual(result.thread_responses.length, 1);
   });
 
-  test('defaults missing verdict to "comment"', () => {
+  test('defaults missing verdict to "agree_noted"', () => {
     const raw = makeRaw([{ index: 0, reply: 'No verdict field.' }]);
     const result = parseResponse(raw, 1);
-    assert.strictEqual(result.thread_responses[0].verdict, 'comment');
+    assert.strictEqual(result.thread_responses[0].verdict, 'agree_noted');
   });
 
   test('stores the trimmed reply text (not the raw padded string)', () => {
@@ -71,45 +70,29 @@ describe('parseResponse — valid input', () => {
     const result = parseResponse(raw, 5);
     assert.strictEqual(result.thread_responses[0].index, 4);
   });
+
+  test('accepts all four valid Phase 2 verdicts', () => {
+    for (const verdict of ['agree_fix', 'agree_noted', 'disagree', 'partial']) {
+      const raw = makeRaw([{ index: 0, verdict, reply: 'ok' }]);
+      const result = parseResponse(raw, 1);
+      assert.strictEqual(
+        result.thread_responses[0].verdict,
+        verdict,
+        `verdict "${verdict}" should be accepted`
+      );
+    }
+  });
 });
 
 // ─────────────────────────── invalid top-level ───────────────────────────
 
 describe('parseResponse — invalid top-level structure', () => {
   test('throws when thread_responses is missing', () => {
-    assert.throws(
-      () => parseResponse(JSON.stringify({ synthesis: 'ok' }), 1),
-      /Missing required fields/
-    );
-  });
-
-  test('throws when synthesis is missing', () => {
-    assert.throws(
-      () => parseResponse(JSON.stringify({ thread_responses: [] }), 1),
-      /Missing required fields/
-    );
+    assert.throws(() => parseResponse(JSON.stringify({}), 1), /Missing required field/);
   });
 
   test('throws when the JSON is malformed', () => {
     assert.throws(() => parseResponse('not json', 1));
-  });
-
-  test('throws when synthesis is whitespace-only (regression: must not post blank summary)', () => {
-    // typeof '   ' === 'string' and Boolean('   ') is truthy, so without
-    // the trim() check the whitespace value would be accepted and returned.
-    assert.throws(
-      () => parseResponse(JSON.stringify({ thread_responses: [], synthesis: '   ' }), 1),
-      /Missing required fields/
-    );
-  });
-
-  test('throws when synthesis is a truthy non-string (regression: Number/Object coercion)', () => {
-    // {} is truthy, so without the typeof check it would pass !parsed.synthesis
-    // and be coerced to '[object Object]' via String().
-    assert.throws(
-      () => parseResponse(JSON.stringify({ thread_responses: [], synthesis: {} }), 1),
-      /Missing required fields/
-    );
   });
 });
 
@@ -136,8 +119,6 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
   });
 
   test('moves a whitespace-only reply to invalidResponses (regression: must not post empty comment)', () => {
-    // typeof '   ' === 'string' and Boolean('   ') is truthy, so without
-    // .trim() the empty text would pass validation and post a blank reply.
     const raw = makeRaw([{ index: 0, reply: '   ' }]);
     const result = parseResponse(raw, 1);
     assert.strictEqual(result.thread_responses.length, 0);
@@ -151,8 +132,6 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
   });
 
   test('moves a blank-string index to invalidResponses (regression: must not coerce to thread 0)', () => {
-    // Number('') === 0 — without coerceThreadIndex this would silently post
-    // to thread 0 instead of landing in invalidResponses.
     const raw = makeRaw([{ index: '', reply: 'x' }]);
     const result = parseResponse(raw, 3);
     assert.strictEqual(result.thread_responses.length, 0);
@@ -166,8 +145,6 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
   });
 
   test('moves an out-of-range index to invalidResponses (regression: must not cause undefined-thread lookup)', () => {
-    // Without the bounds check, index 999 would pass validation and the dispatch
-    // loop would attempt threads[999] which is undefined.
     const raw = makeRaw([{ index: 999, reply: 'x' }]);
     const result = parseResponse(raw, 2);
     assert.strictEqual(result.thread_responses.length, 0);
@@ -186,9 +163,7 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
     assert.strictEqual(result.invalidResponses.length, 1);
   });
 
-  test('moves an unknown verdict string to invalidResponses (regression: must not pass through to workflow)', () => {
-    // 'resolved' is not one of agree/disagree/comment — the workflow would
-    // silently ignore or mishandle the resolution step.
+  test('moves an unknown verdict string to invalidResponses', () => {
     const raw = makeRaw([{ index: 0, verdict: 'resolved', reply: 'ok' }]);
     const result = parseResponse(raw, 1);
     assert.strictEqual(result.thread_responses.length, 0);
@@ -209,11 +184,11 @@ describe('parseResponse — invalid entries moved to invalidResponses', () => {
     assert.strictEqual(result.invalidResponses.length, 1);
   });
 
-  test('accepts verdict with surrounding whitespace by trimming it (regression: agree  is agree)', () => {
-    const raw = makeRaw([{ index: 0, verdict: '  agree  ', reply: 'ok' }]);
+  test('accepts a verdict with surrounding whitespace by trimming it', () => {
+    const raw = makeRaw([{ index: 0, verdict: '  agree_fix  ', reply: 'ok' }]);
     const result = parseResponse(raw, 1);
     assert.strictEqual(result.thread_responses.length, 1);
-    assert.strictEqual(result.thread_responses[0].verdict, 'agree');
+    assert.strictEqual(result.thread_responses[0].verdict, 'agree_fix');
   });
 
   test('separates valid and invalid entries in the same response', () => {

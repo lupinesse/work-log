@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 /**
- * ChatGPT-driven PR code review — posts inline comment threads.
+ * ChatGPT-driven PR code review — Phase 1 of the AI dialogue.
  *
  * Sends the PR diff to OpenAI, expects a structured JSON response with
- * per-line findings, then creates individual inline pull-request review
- * comment threads (one per finding) plus an overall PR review body with
- * the verdict. Each inline thread can be independently resolved by a reviewer.
+ * per-line findings. New findings are batched into a single review
+ * submission (one "reviewed" banner). Replies go to existing threads.
  *
  * Falls back to a single issue comment if the JSON response cannot be parsed,
  * and posts findings that fail the inline API (invalid path/line) as a
@@ -32,14 +31,12 @@ import { readFileSync } from 'node:fs';
 import {
   fetchAllThreads,
   formatThreadsForPrompt,
-  postInlineComment,
+  ghHeaders,
   replyToThread,
   unresolveThread,
-  upsertReview,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
 import { coerceThreadIndex, normaliseReplyAction } from './lib/parse-reply-action.mjs';
-import { normaliseGithubVerdict, normaliseGithubSummary } from './lib/parse-verdict.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -92,7 +89,7 @@ Bias toward **reply** when in doubt. Duplicate inline comments on the same line/
 When replying to a **resolved** thread, set "unresolve": true if the reply represents a regression / re-raise / "issue is back" — that re-opens the thread so the other reviewer (Claude) re-evaluates it. Leave "unresolve" off (or false) for replies that just add context to an already-fixed thread.
 
 Output your review as a single raw JSON object — no markdown wrapper, no text outside the JSON. Schema:
-{"verdict":"APPROVE"|"REQUEST_CHANGES"|"COMMENT","summary":"2-4 sentence overall assessment","thread_actions":[{"type":"new","path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"},{"type":"reply","thread_index":<integer matching a thread shown below>,"unresolve":false,"body":"markdown — your follow-up. Reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related issue on this line:')."}]}
+{"thread_actions":[{"type":"new","path":"exact file path from diff header","line":<integer line in new file>,"body":"markdown — prefix with 🔴 Blocking or 🟡 Non-blocking"},{"type":"reply","thread_index":<integer matching a thread shown below>,"unresolve":false,"body":"markdown — your follow-up. Reference what you're adding (e.g. 'Still present after the latest commit:' or 'Related issue on this line:')."}]}
 
 Rules: for "new", path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js) and line must be a real line number in the new (right-side) version of that file. For "reply", thread_index must be one of the integers shown in the existing-threads list below. Only include items you can cite specifically; put general observations in summary instead.
 
@@ -163,7 +160,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
  * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
  * @typedef {{ type: 'reply', threadIndex: number, body: string, unresolve: boolean }} ReplyAction
  * @typedef {NewAction | ReplyAction} ThreadAction
- * @typedef {{ verdict: string, summary: string, actions: ThreadAction[], invalidActions: unknown[] }} Review
+ * @typedef {{ actions: ThreadAction[], invalidActions: unknown[] }} Review
  */
 
 /**
@@ -189,9 +186,6 @@ function parseReviewOutput(rawText, existingThreadCount) {
     .trim();
 
   const parsed = JSON.parse(cleaned);
-
-  const verdict = normaliseGithubVerdict(parsed.verdict);
-  const summary = normaliseGithubSummary(parsed.summary);
 
   // Accept either the new `thread_actions` schema or the legacy `findings`
   // schema (treated as all type="new").
@@ -250,8 +244,6 @@ function parseReviewOutput(rawText, existingThreadCount) {
   }
 
   return {
-    verdict,
-    summary,
     actions,
     invalidActions,
   };
@@ -259,13 +251,41 @@ function parseReviewOutput(rawText, existingThreadCount) {
 
 // ─────────────────────────── GitHub ───────────────────────────
 
-// Identifies this phase's top-level review for upsert across runs. The
-// attribution footer is included in every review body and is stable enough
-// to use as a marker — Phase 4's review uses "responding to Claude" instead.
-const REVIEW_MARKER = 'Automated review by ChatGPT';
 const FALLBACK_MARKER = '<!-- chatgpt-phase1-fallback -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
+
+// ─────────────────────────── GitHub posting ───────────────────────────
+
+/**
+ * Post all new findings as a single batched review so the PR shows one
+ * "reviewed" banner regardless of how many findings there are.
+ *
+ * @param {Array<{path: string, line: number, body: string}>} findings
+ * @returns {Promise<object>} GitHub API review object.
+ */
+async function postBatchedReview(findings) {
+  const response = await fetch(
+    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
+    {
+      method: 'POST',
+      headers: ghHeaders(GITHUB_TOKEN),
+      body: JSON.stringify({
+        commit_id: HEAD_SHA,
+        event: 'COMMENT',
+        comments: findings.map((f) => ({
+          path: f.path,
+          line: f.line,
+          side: 'RIGHT',
+          body: f.body,
+        })),
+      }),
+    }
+  );
+  if (!response.ok)
+    throw new Error(`Batch review API ${response.status}: ${await response.text()}`);
+  return response.json();
+}
 
 // ─────────────────────────── main ───────────────────────────
 
@@ -315,63 +335,81 @@ async function main() {
   const newCount = review.actions.filter((a) => a.type === 'new').length;
   const replyCount = review.actions.filter((a) => a.type === 'reply').length;
   console.log(
-    `  verdict: ${review.verdict}, new: ${newCount}, replies: ${replyCount}` +
+    `  new: ${newCount}, replies: ${replyCount}` +
       (review.invalidActions.length ? `, invalid (fallback): ${review.invalidActions.length}` : '')
   );
 
-  // Upsert the top-level review (replaces any previous Phase 1 review from
-  // this bot rather than stacking one per push).
-  const reviewBody = `**${review.verdict}** — ${review.summary}\n\n---\n${ATTRIBUTION}`;
-  const { review: reviewResult, replaced } = await upsertReview({
-    ...GH_CTX,
-    headSha: HEAD_SHA,
-    marker: REVIEW_MARKER,
-    body: reviewBody,
-  });
-  console.log(
-    `${replaced ? 'Replaced' : 'Posted'} review (${review.verdict}): ${reviewResult.html_url}`
-  );
-
-  // Dispatch each action: replies go to existing threads, news create them.
-  // Re-raises on resolved threads unresolve them first so Phase 2 picks them
-  // up and Claude posts a fresh verdict.
+  // Pass 1 — replies go to existing threads individually (each gets its own
+  // replyToThread call so thread context is preserved).
   const unpostable = [];
-  for (const a of review.actions) {
+  for (const a of review.actions.filter((x) => x.type === 'reply')) {
     const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
     try {
-      if (a.type === 'reply') {
-        const target = existingThreads[a.threadIndex];
-        if (a.unresolve && target.isResolved) {
-          try {
-            await unresolveThread({ ...GH_CTX, threadId: target.id });
-            console.log(`  unresolved thread ${a.threadIndex} (re-raise)`);
-          } catch (err) {
-            // Non-fatal — post the reply anyway so the regression is visible.
-            console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
-          }
+      const target = existingThreads[a.threadIndex];
+      if (a.unresolve && target.isResolved) {
+        try {
+          await unresolveThread({ ...GH_CTX, threadId: target.id });
+          console.log(`  unresolved thread ${a.threadIndex} (re-raise)`);
+        } catch (err) {
+          console.warn(`  could not unresolve thread ${a.threadIndex}: ${err.message}`);
         }
-        const reply = await replyToThread({
-          ...GH_CTX,
-          commentId: target.firstCommentId,
-          body: bodyWithAttribution,
-        });
-        console.log(
-          `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
-        );
-      } else {
-        const comment = await postInlineComment({
-          ...GH_CTX,
-          headSha: HEAD_SHA,
-          path: a.path,
-          line: a.line,
-          body: bodyWithAttribution,
-        });
-        console.log(`  new inline: ${a.path}:${a.line} → ${comment.html_url}`);
       }
+      const reply = await replyToThread({
+        ...GH_CTX,
+        commentId: target.firstCommentId,
+        body: bodyWithAttribution,
+      });
+      console.log(
+        `  reply → ${target.path}:${target.line} (thread ${a.threadIndex}): ${reply.html_url}`
+      );
     } catch (err) {
-      const where = a.type === 'reply' ? `reply thread[${a.threadIndex}]` : `${a.path}:${a.line}`;
-      console.warn(`  could not post ${where} — ${err.message}`);
+      console.warn(`  could not post reply thread[${a.threadIndex}] — ${err.message}`);
       unpostable.push(a);
+    }
+  }
+
+  // Pass 2 — new findings batched into one review so the PR shows one
+  // "reviewed" banner regardless of how many findings there are.
+  const newActions = review.actions.filter((x) => x.type === 'new');
+  if (newActions.length > 0) {
+    const findings = newActions.map((a) => ({
+      path: a.path,
+      line: a.line,
+      body: `${a.body}${REPLY_ATTRIBUTION}`,
+    }));
+    try {
+      const batchResult = await postBatchedReview(findings);
+      console.log(`  batched ${findings.length} new finding(s): ${batchResult.html_url}`);
+    } catch (batchErr) {
+      console.warn(`  batch review failed (${batchErr.message}) — retrying individually`);
+      for (const f of findings) {
+        let retryError = '';
+        try {
+          const resp = await fetch(
+            `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
+            {
+              method: 'POST',
+              headers: ghHeaders(GITHUB_TOKEN),
+              body: JSON.stringify({
+                commit_id: HEAD_SHA,
+                event: 'COMMENT',
+                comments: [{ path: f.path, line: f.line, side: 'RIGHT', body: f.body }],
+              }),
+            }
+          );
+          if (resp.ok) {
+            console.log(`  individual retry: ${f.path}:${f.line}`);
+          } else {
+            retryError = `HTTP ${resp.status}: ${await resp.text()}`;
+          }
+        } catch (retryErr) {
+          retryError = retryErr.message;
+        }
+        if (retryError) {
+          console.warn(`  could not post ${f.path}:${f.line} — ${retryError}`);
+          unpostable.push({ path: f.path, line: f.line, body: f.body });
+        }
+      }
     }
   }
 
@@ -379,7 +417,10 @@ async function main() {
   // (parse rejects). Nothing the model produced is silently dropped.
   const fallbackEntries = [
     ...unpostable.map((a) => ({
-      label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
+      label:
+        a.type === 'reply'
+          ? `(reply to thread ${a.threadIndex})`
+          : `${a.path ?? '?'}:${a.line ?? '?'}`,
       body: a.body,
     })),
     ...review.invalidActions.map((a) => ({
