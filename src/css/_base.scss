@@ -38,10 +38,10 @@
   --stopped: #15803d; /* stopped / logged confirmation */
   --start-btn: #6b8eab; /* dusty blue — start tracking button */
   --start-btn-hover: #5a7a97; /* start button hover */
-  --in-progress: #ffffdf; /* in-progress task row tint (lemon) */
-  --in-progress-accent: #ca8a04; /* mustard border / status pill */
-  --in-progress-highlight: #fef08a; /* status pill background / hover wash */
-  --in-progress-ink: #713f12; /* status pill text */
+  --in-progress: #f0f9ff; /* in-progress task row tint — cool blue (= --live-softer) */
+  --in-progress-accent: #0284c7; /* blue edge bar + pill border (= --live) */
+  --in-progress-highlight: #e0f2fe; /* status pill bg / hover wash (= --live-soft) */
+  --in-progress-ink: #075985; /* status pill text (= --live-deep) */
   --jira: #1d4ed8; /* Jira ticket link colour */
 
   /* ── Pomodoro & epic label colours ── */
@@ -88,10 +88,10 @@
     --stopped: #4ade80;
     --start-btn: #7ca3bf;
     --start-btn-hover: #8db4cf;
-    --in-progress: rgba(202, 138, 4, 0.1);
-    --in-progress-accent: #eab308;
-    --in-progress-highlight: rgba(202, 138, 4, 0.18);
-    --in-progress-ink: #fde68a;
+    --in-progress: #082030; /* blue row tint — dark (= --live-softer dark) */
+    --in-progress-accent: #38bdf8; /* blue edge bar + pill border (= --live dark) */
+    --in-progress-highlight: #0c2d4a; /* pill bg / hover wash (= --live-soft dark) */
+    --in-progress-ink: #7dd3fc; /* pill text (= --live-deep dark) */
     --jira: #60a5fa;
 
     /* ── Pomodoro & epic label colours — dark mode ── */
