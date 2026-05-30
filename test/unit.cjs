@@ -207,6 +207,34 @@ describe('roundToNearest30', () => {
     const ts = localMs(2026, 5, 26, 10, 5, 45);
     assert.equal(new Date(roundToNearest30(ts)).getSeconds(), 0);
   });
+
+  // End-of-day clamping — must not cross into the next day
+  it('23:46 clamps to 23:30, not next-day midnight', () => {
+    const ts = localMs(2026, 5, 26, 23, 46, 0);
+    const r = new Date(roundToNearest30(ts));
+    assert.equal(r.getHours(), 23);
+    assert.equal(r.getMinutes(), 30);
+    assert.equal(r.getDate(), 26, 'must stay on the same day');
+  });
+  it('23:59 clamps to 23:30, not next-day midnight', () => {
+    const ts = localMs(2026, 5, 26, 23, 59, 0);
+    const r = new Date(roundToNearest30(ts));
+    assert.equal(r.getHours(), 23);
+    assert.equal(r.getMinutes(), 30);
+    assert.equal(r.getDate(), 26, 'must stay on the same day');
+  });
+  it('23:30 stays at 23:30', () => {
+    const ts = localMs(2026, 5, 26, 23, 30, 0);
+    const r = new Date(roundToNearest30(ts));
+    assert.equal(r.getHours(), 23);
+    assert.equal(r.getMinutes(), 30);
+  });
+  it('23:16 rounds up to 23:30', () => {
+    const ts = localMs(2026, 5, 26, 23, 16, 0);
+    const r = new Date(roundToNearest30(ts));
+    assert.equal(r.getHours(), 23);
+    assert.equal(r.getMinutes(), 30);
+  });
 });
 
 // ── validEntry ────────────────────────────────────────────────────────────────
