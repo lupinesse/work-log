@@ -187,24 +187,6 @@ function updateTabAndFavicon() {
   }
 }
 
-/**
- * Computes the timer-bar accent colour, interpolating from green to red as
- * elapsed time approaches {@link HYPERFOCUS_MINS}.
- * Returns `null` when the timer is paused so CSS handles the paused state.
- * Colour shift: green (#1D9E75 = hsl 158,69,51) → red (#E74C3C = hsl 5,72,57).
- * @param {number}  elapsedMs - Elapsed time in milliseconds.
- * @param {boolean} paused    - Whether the timer is currently paused.
- * @returns {string|null} An HSL colour string, or null when paused.
- */
-function timerBarColor(elapsedMs, paused) {
-  if (paused) return null; // let CSS paused class handle it
-  const t = Math.min(elapsedMs / (HYPERFOCUS_MINS * 60 * 1000), 1); // 0→1
-  const hue = Math.round(158 - 153 * t); // 158 (green) → 5 (red)
-  const sat = Math.round(69 + 3 * t); // 69% → 72%
-  const lit = Math.round(51 + 6 * t); // 51% → 57%
-  return `hsl(${hue}, ${sat}%, ${lit}%)`;
-}
-
 // Chime system
 let CHIME_INTERVALS_MINS = [30]; // default, overridden by selector
 let _lastChimeMinute = null;
@@ -288,7 +270,7 @@ function updateTimerArc(elapsedMs) {
   const fraction = Math.min(elapsedMs / (HYPERFOCUS_MINS * 60 * 1000), 1);
   const drawn = fraction * circumference;
   arc.setAttribute('stroke-dasharray', `${drawn.toFixed(2)} ${circumference.toFixed(2)}`);
-  // Colour: green → red (mirrors timerBarColor hue)
+  // Colour: green (#1D9E75 ≈ hsl 158,69,51) → red (#E74C3C ≈ hsl 5,72,57)
   const t = fraction;
   const hue = Math.round(158 - 153 * t);
   const sat = Math.round(69 + 3 * t);

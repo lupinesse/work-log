@@ -143,7 +143,7 @@ function fmtDurLong(ms) {
  *
  * Assumption: billing granularity is 30 minutes and the minimum billable unit is
  * 30 minutes. Changing this assumption requires updating both this function and
- * any UI that displays billable totals (04-render.js renderBillableBar).
+ * any UI that displays billable totals (e.g. the billable-time section in exports).
  *
  * @param {number} ms - Duration in milliseconds.
  * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
