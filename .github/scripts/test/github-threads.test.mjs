@@ -57,6 +57,18 @@ describe('addReactionToComment', () => {
     assert.deepStrictEqual(result, payload);
   });
 
+  test('resolves successfully when the API returns 200 (reaction already exists)', async (t) => {
+    // GitHub returns 200 (not 201) when the reaction already exists for this user.
+    // The function must treat it as success — idempotent re-use across workflow re-runs.
+    const payload = { id: 1, content: 'eyes' };
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(payload, 200));
+
+    const result = await addReactionToComment(params);
+
+    assert.strictEqual(fetchMock.mock.calls.length, 1);
+    assert.deepStrictEqual(result, payload);
+  });
+
   test('throws when the API returns a non-ok status', async (t) => {
     t.mock.method(globalThis, 'fetch', async () => makeResponse('Not Found', 404));
 
