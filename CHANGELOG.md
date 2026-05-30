@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Pomodoro favicon now respects the colour theme** — `setPomoFavicon()` now reads `--pomo-spark-empty`, `--pomo-spark-fill`, and `--bg` CSS custom properties instead of hardcoded hex values, so the favicon ring and wedge match the app's light/dark colour scheme.
 - **Pomodoro favicon now resets when the session ends or is tapped out** — `setPomoFavicon()` now creates a dedicated `<link rel="icon" data-pomo>` element rather than overwriting the page's existing favicon; when pomo stops (done, tapped out, or paused) `updatePomoDisplay()` removes that element so the original favicon is restored automatically.
 - **`.hero-park-row` now has the correct flex layout** — the park-a-distraction row in the running hero panel was missing its CSS rule and rendered without alignment. It now shares the same `display:flex / align-items:center` rules as the adjacent `.hero-note-row` via a grouped selector.
 
