@@ -532,7 +532,7 @@ async function runTests() {
     await page.evaluate(() => {
       const d = {
         ts: Date.now(),
-        date: new Date().toISOString().slice(0, 10),
+        date: window.__wl.dk(new Date()),
         task: 'Focus task',
         note: 'Threads',
       };
