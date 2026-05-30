@@ -656,6 +656,8 @@
   const RESOURCES_DS = 'collection://8b52a260-bacd-47ff-9852-0c4ace5d95b6';
 
   // Restore stored collapse state (HTML default is collapsed).
+  // Prefix 'tt-open2-' mirrors COLLAPSE_PREFIX in src/js/07-lifecycle.js —
+  // keep both in sync if the prefix ever changes.
   (function () {
     const stored = localStorage.getItem('tt-open2-notionLinksSection');
     document.getElementById('notionLinksSection').classList.toggle(
@@ -667,6 +669,7 @@
   document.getElementById('notionLinksHeader').addEventListener('click', () => {
     const section = document.getElementById('notionLinksSection');
     section.classList.toggle('collapsed');
+    // 'tt-open2-' prefix — see COLLAPSE_PREFIX in src/js/07-lifecycle.js.
     localStorage.setItem('tt-open2-notionLinksSection', section.classList.contains('collapsed') ? '1' : '0');
   });
 

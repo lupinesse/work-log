@@ -2231,7 +2231,7 @@ const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../src/js/07-lifecycl
  * @returns {{ readCollapseState: Function, writeCollapseState: Function, store: Record<string,string> }}
  */
 function loadCollapseSandbox(preloaded = {}) {
-  const store = Object.assign({}, preloaded);
+  const store = { ...preloaded };
   const sandbox = {
     localStorage: {
       getItem: (key) => (key in store ? store[key] : null),
