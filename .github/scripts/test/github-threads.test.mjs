@@ -11,6 +11,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  addReactionToComment,
   postInlineComment,
   resolveThread,
   fetchAllIssueComments,
@@ -36,6 +37,35 @@ function makeResponse(body, status = 200) {
     json: async () => body,
   };
 }
+
+// ─────────────────────────── addReactionToComment ───────────────────────────
+
+describe('addReactionToComment', () => {
+  const params = { token: 'tok-123', owner: 'acme', repo: 'app', commentId: 77, content: 'eyes' };
+
+  test('POSTs to the correct reactions URL with the given content', async (t) => {
+    const payload = { id: 1, content: 'eyes' };
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(payload, 201));
+
+    const result = await addReactionToComment(params);
+
+    assert.strictEqual(fetchMock.mock.calls.length, 1);
+    const [url, opts] = fetchMock.mock.calls[0].arguments;
+    assert.strictEqual(url, 'https://api.github.com/repos/acme/app/pulls/comments/77/reactions');
+    assert.strictEqual(opts.method, 'POST');
+    assert.deepStrictEqual(JSON.parse(opts.body), { content: 'eyes' });
+    assert.deepStrictEqual(result, payload);
+  });
+
+  test('throws when the API returns a non-ok status', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Not Found', 404));
+
+    await assert.rejects(addReactionToComment(params), (err) => {
+      assert.ok(err.message.includes('404'), `expected 404 in: ${err.message}`);
+      return true;
+    });
+  });
+});
 
 // ─────────────────────────── resolveThread ───────────────────────────
 

@@ -26,6 +26,7 @@
 
 import { readFileSync } from 'node:fs';
 import {
+  addReactionToComment,
   fetchAllIssueComments,
   fetchAllThreads,
   formatThreadsForPrompt,
@@ -509,7 +510,28 @@ async function main() {
   }
 
   // Pass 2 — new findings batched into one review (one "reviewed" banner).
-  const newActions = parsed.actions.filter((x) => x.type === 'new');
+  // Suppress exact-location duplicates: if the model raises a "new" finding at
+  // a path+line already covered by an existing thread, react with 👀 on the
+  // original instead of posting another verbose comment.
+  const newActions = [];
+  for (const a of parsed.actions.filter((x) => x.type === 'new')) {
+    const dup = claudeContext.threads.find((t) => t.path === a.path && t.line === a.line);
+    if (dup) {
+      try {
+        await addReactionToComment({ ...GH_CTX, commentId: dup.firstCommentId, content: 'eyes' });
+        console.log(
+          `  duplicate suppressed — reacted 👀 on existing thread at ${a.path}:${a.line}`
+        );
+      } catch (err) {
+        console.warn(
+          `  could not react to duplicate at ${a.path}:${a.line} — ${err.message} — posting anyway`
+        );
+        newActions.push(a);
+      }
+    } else {
+      newActions.push(a);
+    }
+  }
   if (newActions.length > 0) {
     const findings = newActions.map((a) => ({
       path: a.path,
