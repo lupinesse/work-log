@@ -1,5 +1,11 @@
 // ── 11-timeflow.js — Today's Flow unified section (Flow / Log / Blocks views) ──
 
+/** Activity-line SVG icon for the section header (Lucide-style, 24×24 viewBox, 1.5px stroke). */
+const ICON_ACTIVITY =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"' +
+  ' fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+  '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+
 const STORE_FLOW_VIEW = 'wl_flow_view';
 
 /** 07:00 in minutes from midnight — left edge of the day-overview strip. */
@@ -247,7 +253,7 @@ function renderFlowHeader(dateKey, activeView) {
     return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${view}" id="tfTab-${view}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[view]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[view]}</button>`;
   }).join('');
 
-  el.innerHTML = `<span class="tf-icon" aria-hidden="true">⏱</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
+  el.innerHTML = `<span class="section-icon tf-icon" aria-hidden="true">${ICON_ACTIVITY}</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
 }
 
 // ─────────────────────────── Flow view ───────────────────────────

@@ -120,6 +120,15 @@ body {
   min-height: 100vh;
 }
 
+// Inline SVG icon in a section header strip. flex/inline-flex ensures the SVG
+// sits on the text baseline without the extra line-height of a span/emoji.
+.section-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: inherit;
+}
+
 // Visually hides an element while keeping it announceable to screen readers.
 // Used for labels on inputs that rely on placeholder text for sighted users.
 .sr-only {
