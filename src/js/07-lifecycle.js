@@ -128,21 +128,62 @@ function checkPomoWeeklyClear() {
   localStorage.setItem('wl_pomo_week', currentWeekKey);
 }
 
+/* ── Section collapse state persistence ── */
+
+/** localStorage key prefix for section open/collapsed state. */
+const COLLAPSE_PREFIX = 'tt-open2-';
+
+/**
+ * Reads the stored collapsed state for a section from localStorage.
+ * @param {string} sectionId - The section element's `id`.
+ * @param {boolean} defaultCollapsed - Value to use when nothing is stored.
+ * @returns {boolean} Whether the section should be collapsed.
+ */
+function readCollapseState(sectionId, defaultCollapsed) {
+  const stored = localStorage.getItem(COLLAPSE_PREFIX + sectionId);
+  return stored === null ? defaultCollapsed : stored === '1';
+}
+
+/**
+ * Writes the collapsed state for a section to localStorage.
+ * @param {string} sectionId - The section element's `id`.
+ * @param {boolean} collapsed - Whether the section is now collapsed.
+ * @returns {void}
+ */
+function writeCollapseState(sectionId, collapsed) {
+  localStorage.setItem(COLLAPSE_PREFIX + sectionId, collapsed ? '1' : '0');
+}
+
 /* ── Section collapse handlers ── */
 
-// Analytics section (streak + task count tiles)
+// Analytics — default collapsed; state persisted across reloads.
+document
+  .getElementById('analyticsSection')
+  .classList.toggle('collapsed', readCollapseState('analyticsSection', true));
 document.getElementById('analyticsHeader').addEventListener('click', () => {
-  document.getElementById('analyticsSection').classList.toggle('collapsed');
+  const section = document.getElementById('analyticsSection');
+  section.classList.toggle('collapsed');
+  writeCollapseState('analyticsSection', section.classList.contains('collapsed'));
 });
 
-// Parked thoughts
+// Parked thoughts — default collapsed.
+document
+  .getElementById('parkSection')
+  .classList.toggle('collapsed', readCollapseState('parkSection', true));
 document.getElementById('parkHeader').addEventListener('click', () => {
-  document.getElementById('parkSection').classList.toggle('collapsed');
+  const section = document.getElementById('parkSection');
+  section.classList.toggle('collapsed');
+  writeCollapseState('parkSection', section.classList.contains('collapsed'));
 });
 
-// Pomodoro
+// Pomodoro — default collapsed.
+document
+  .getElementById('pomoSection')
+  .classList.toggle('collapsed', readCollapseState('pomoSection', true));
 document.getElementById('pomoHeader').addEventListener('click', () => {
-  document.getElementById('pomoSection').classList.toggle('collapsed');
+  const section = document.getElementById('pomoSection');
+  section.classList.toggle('collapsed');
+  writeCollapseState('pomoSection', section.classList.contains('collapsed'));
 });
 
 /* ── Event listeners ── */

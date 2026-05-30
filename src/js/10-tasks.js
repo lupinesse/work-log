@@ -7,8 +7,8 @@ const STORE_PLAN = 'wl_plan_v1';
  * @type {Array<Object>}
  */
 let planTasks = [];
-let planCollapsed = false;
-let pendingCollapsed = false;
+let planCollapsed = readCollapseState('planSection', false);
+let pendingCollapsed = readCollapseState('pendingSection', true);
 let editingPlanId = null;
 let _pendingCommentId = null;
 let splitInputId = null;
@@ -126,14 +126,17 @@ document.getElementById('planInput').addEventListener('keydown', (event) => {
 });
 document.getElementById('planHeader').addEventListener('click', () => {
   planCollapsed = !planCollapsed;
+  writeCollapseState('planSection', planCollapsed);
   renderPlan();
 });
-let upcomingCollapsed = false;
+let upcomingCollapsed = readCollapseState('upcomingSection', true);
 document.getElementById('upcomingHeader').addEventListener('click', () => {
   upcomingCollapsed = !upcomingCollapsed;
+  writeCollapseState('upcomingSection', upcomingCollapsed);
   document.getElementById('upcomingSection').classList.toggle('collapsed', upcomingCollapsed);
 });
 document.getElementById('pendingHeader').addEventListener('click', () => {
   pendingCollapsed = !pendingCollapsed;
+  writeCollapseState('pendingSection', pendingCollapsed);
   renderPlan();
 });

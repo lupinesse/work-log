@@ -1029,6 +1029,9 @@ function loadFlatSortSandbox(overrides = {}) {
       }),
     },
     localStorage: { getItem: () => null, setItem: () => {} },
+    // Stubs for collapse-state helpers defined in 07-lifecycle.js (not loaded here).
+    readCollapseState: (_id, defaultCollapsed) => defaultCollapsed,
+    writeCollapseState: () => {},
     console,
     activeTimer: null,
     entries: [],

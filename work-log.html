@@ -655,8 +655,19 @@
 (function () {
   const RESOURCES_DS = 'collection://8b52a260-bacd-47ff-9852-0c4ace5d95b6';
 
+  // Restore stored collapse state (HTML default is collapsed).
+  (function () {
+    const stored = localStorage.getItem('tt-open2-notionLinksSection');
+    document.getElementById('notionLinksSection').classList.toggle(
+      'collapsed',
+      stored === null ? true : stored === '1'
+    );
+  })();
+
   document.getElementById('notionLinksHeader').addEventListener('click', () => {
-    document.getElementById('notionLinksSection').classList.toggle('collapsed');
+    const section = document.getElementById('notionLinksSection');
+    section.classList.toggle('collapsed');
+    localStorage.setItem('tt-open2-notionLinksSection', section.classList.contains('collapsed') ? '1' : '0');
   });
 
   document.getElementById('notionUrl').addEventListener('input', function () {
