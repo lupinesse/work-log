@@ -331,6 +331,7 @@ function renderPlan() {
   const upcomingSectionEl = document.getElementById('upcomingSection');
   if (upcomingTasks.length > 0) {
     upcomingSectionEl.style.display = '';
+    upcomingSectionEl.classList.toggle('collapsed', upcomingCollapsed);
     document.getElementById('upcomingCount').textContent = `${upcomingCount} upcoming`;
   } else {
     upcomingSectionEl.style.display = 'none';

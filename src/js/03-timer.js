@@ -270,7 +270,7 @@ function updateTimerArc(elapsedMs) {
   const fraction = Math.min(elapsedMs / (HYPERFOCUS_MINS * 60 * 1000), 1);
   const drawn = fraction * circumference;
   arc.setAttribute('stroke-dasharray', `${drawn.toFixed(2)} ${circumference.toFixed(2)}`);
-  // Colour: green → red (mirrors timerBarColor hue)
+  // Colour: green (#1D9E75 ≈ hsl 158,69,51) → red (#E74C3C ≈ hsl 5,72,57)
   const t = fraction;
   const hue = Math.round(158 - 153 * t);
   const sat = Math.round(69 + 3 * t);

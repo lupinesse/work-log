@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Section collapse state persisted across page reloads** — all collapsible sections (Analytics, Parked thoughts, Pomodoro, Today's tasks, Upcoming, Pending, Completed, Meetings, Jira, Notion links) save their open/collapsed state to `localStorage` under `tt-open2-{id}` keys and restore it on the next load. Sections default to their design-spec defaults when no stored key exists.
+
 ### Changed
 - **ESLint now covers `.github/scripts/**/*.mjs`** — the CI dialogue scripts (`chatgpt-review.mjs`, `claude-chatgpt-dialogue.mjs`, `chatgpt-claude-dialogue.mjs`, and the shared `lib/` modules) were previously invisible to the `lint` CI job, meaning any lint errors in those files produced a false green. A new flat-config block in `eslint.config.js` applies `globals.node` (giving `process`, `console`, `fetch`, `URL` etc.) and suppresses `security/detect-non-literal-fs-filename` and `security/detect-object-injection` for the same trusted-input reasons documented on the existing Node blocks. The `lint` script glob is updated to match.
 
