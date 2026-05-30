@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- **Section header icons converted from emoji to SVG line icons** (May-2026 refinement #3) — all seven section-header emoji/unicode glyphs (`🏆` analytics, `📅` meetings, `◉` tasks, `🔜` upcoming, `◐` pending, `⊕` jira, `⏱` time log) are replaced with consistent single-weight Lucide inline SVGs rendered via `<span class="section-icon">`. The `::before content:` CSS rules have been removed. Icons are tinted `--live` through a `.plan-header .section-icon` / `.timelog-header .section-icon` colour rule. Task-row emoji markers and SoD/EoD buttons are untouched.
 - **Tracking-first app header** (May-2026 refinement #1) — the header is now a 3-column CSS grid (`220px 1fr 220px`). Left: date + 30px tabular wall-clock + sunrise/sunset. Centre: day-total in monospace + sky-blue pace bar (fills against a configurable `DAILY_GOAL_MS` in `00-config.js`, default 7h 30m) + two demoted ambient lines (weather/rain; week/moon/nameday/flagday). Right: date-nav + start-of-day button. `updateHeaderTracking()` refreshes on each 10-second clock tick and on every timer tick while running.
 - **Active / in-progress task row recoloured to the cool `--live` family** (May-2026 refinement #2) — the row now shows a 3px sky-blue left edge (`--live`) with no background tint on its default state, and a very faint `--live-softer` wash on hover. The "In progress" status pill uses `--live-soft` background, `--live-deep` ink, and `--live` border. The previous amber/lemon palette tokens (`--in-progress*`) are retained so Jira badge styles are unaffected.
 

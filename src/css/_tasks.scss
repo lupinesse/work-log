@@ -1,12 +1,6 @@
 /* ── Today's tasks ── */
 
 /* ── Jira CSV importer ── */
-#jiraSection .plan-header-title::before {
-  content: '⊕';
-  margin-right: 6px;
-  color: #5dcaa5;
-  opacity: 0.9;
-}
 
 .jira-drop {
   border: 1.5px dashed var(--border2);
@@ -214,6 +208,10 @@
   user-select: none;
 }
 
+.plan-header .section-icon {
+  color: var(--live);
+}
+
 .plan-header-title {
   font-size: 11px;
   font-weight: 400;
@@ -221,13 +219,6 @@
   flex: 1;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-}
-
-#planSection .plan-header-title::before {
-  content: '◉';
-  margin-right: 6px;
-  color: #5dcaa5;
-  opacity: 0.85;
 }
 
 .plan-count {
@@ -392,11 +383,6 @@
 
 .upcoming-section .plan-header {
   background: linear-gradient(90deg, rgba(29, 158, 117, 0.08) 0%, transparent 100%);
-}
-
-.upcoming-section .plan-header-title::before {
-  content: '🔜';
-  margin-right: 6px;
 }
 
 .plan-status.pending {
@@ -591,14 +577,6 @@
 
 .pending-section .plan-header {
   background: linear-gradient(90deg, rgba(123, 97, 255, 0.06), rgba(198, 40, 40, 0.06));
-}
-
-/* Pending/blocked section accent */
-.pending-section .plan-header-title::before {
-  content: '◐';
-  margin-right: 6px;
-  color: #c9a05f;
-  opacity: 0.85;
 }
 
 .plan-left {
