@@ -12,7 +12,7 @@
 /**
  * Returns `c` if it is a safe CSS colour (hex or hsl()), otherwise returns a neutral fallback.
  * Prevents malformed user-supplied colour values from breaking layout or injecting CSS.
- * @param {string} c
+ * @param {string} c - CSS colour string to validate.
  * @returns {string} A safe CSS colour string.
  * @example
  * safeCssColor('#7B61FF')      // → '#7B61FF'
@@ -29,8 +29,8 @@ function safeCssColor(c) {
 
 /**
  * Escapes a string for safe insertion as HTML text content.
- * @param {string} s
- * @returns {string}
+ * @param {string} s - Raw string to escape.
+ * @returns {string} HTML-escaped string safe for insertion into the DOM.
  * @example
  * escHtml('<b>bold</b>')   // → '&lt;b&gt;bold&lt;/b&gt;'
  * escHtml('a & b')         // → 'a &amp; b'
@@ -51,7 +51,7 @@ function escHtml(s) {
  * Formats a Date as YYYY-MM-DD using local calendar date.
  * Uses local date components (getFullYear / getMonth / getDate) so the returned
  * string always matches the date the user sees on their clock, regardless of timezone.
- * @param {Date} d
+ * @param {Date} d - Date to format.
  * @returns {string} e.g. '2026-05-26'
  * @example
  * dk(new Date(2026, 4, 26, 12, 0, 0))  // → '2026-05-26'  (noon local)
@@ -194,7 +194,7 @@ function roundToNearest30(ts) {
 /**
  * Returns true if `e` is a well-formed work-log entry safe to load from localStorage.
  * @param {*} e - Candidate value parsed from JSON.
- * @returns {boolean}
+ * @returns {boolean} True if the entry is well-formed.
  * @example
  * validEntry({ id: '1', text: 'Write report', ts: 1234567890, date: '2026-05-25' }) // → true
  * validEntry(null)                           // → false
@@ -215,7 +215,7 @@ function validEntry(e) {
 /**
  * Returns true if `c` is a well-formed category object.
  * @param {*} c - Candidate value parsed from JSON.
- * @returns {boolean}
+ * @returns {boolean} True if the category is well-formed.
  */
 function validCategory(c) {
   return !!(
@@ -229,7 +229,7 @@ function validCategory(c) {
 /**
  * Returns true if `t` is a well-formed plan task with a recognised status value.
  * @param {*} t - Candidate value parsed from JSON.
- * @returns {boolean}
+ * @returns {boolean} True if the plan task is well-formed.
  * @example
  * validPlanTask({ id: 'pk1', text: 'Build form', date: '2026-05-25', status: 'todo' }) // → true
  * validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
@@ -249,7 +249,7 @@ function validPlanTask(t) {
 /**
  * Returns true if `b` is a well-formed timeblock record.
  * @param {*} b - Candidate value parsed from JSON.
- * @returns {boolean}
+ * @returns {boolean} True if the timeblock is well-formed.
  */
 function validBlock(b) {
   return !!(
@@ -266,7 +266,7 @@ function validBlock(b) {
  * Returns true if `t` is a resumable timer state.
  * Handles both running (startTs is set) and paused (paused=true, accumulatedMs is set) forms.
  * @param {*} t - Candidate value parsed from JSON.
- * @returns {boolean}
+ * @returns {boolean} True if the timer state is well-formed.
  * @example
  * validTimer({ entryId: 'e1', startTs: 1234567890 })              // → true  (running)
  * validTimer({ entryId: 'e1', paused: true, accumulatedMs: 900000 }) // → true  (paused)
@@ -284,7 +284,7 @@ function validTimer(t) {
 /**
  * Returns true if `e` is a valid Pomodoro session log entry.
  * @param {*} e - Candidate value.
- * @returns {boolean}
+ * @returns {boolean} True if the Pomodoro entry is well-formed.
  */
 function validPomoEntry(e) {
   return !!(e && typeof e.ts === 'number' && typeof e.mins === 'number');
@@ -349,7 +349,7 @@ function validateBackupFile(backup) {
  * The `daily` block is optional (used only when present).
  *
  * @param {*} data - Value parsed from the Open-Meteo JSON response.
- * @returns {boolean}
+ * @returns {boolean} True if the response is a usable forecast object.
  * @example
  * validWeatherResponse({
  *   current: { temperature_2m: 15, weather_code: 3 },
@@ -382,7 +382,7 @@ function validWeatherResponse(data) {
  * absence is handled gracefully by `renderCalStrip`.
  *
  * @param {*} meeting - Candidate meeting object from the calendar API response.
- * @returns {boolean}
+ * @returns {boolean} True if the meeting object is well-formed.
  * @example
  * validCalendarMeeting({ subject: 'Standup', start: '2026-05-28T09:00', end: '2026-05-28T09:30' })
  *   // → true
@@ -414,7 +414,7 @@ function validCalendarMeeting(meeting) {
  * parsed as single-column rows) fails validation and triggers a warning.
  *
  * @param {*} row - Single row object from `parseCSV()`.
- * @returns {boolean}
+ * @returns {boolean} True if the row has the key and summary fields Jira import needs.
  * @example
  * validJiraCsvRow({ 'Issue key': 'AITO-1', Summary: 'Fix login bug', Status: 'Open' })
  *   // → true
