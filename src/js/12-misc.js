@@ -181,6 +181,31 @@ function renderParked() {
   });
 })();
 
+// Hero running panel — park-a-distraction inline input
+(() => {
+  const inp = document.getElementById('heroParkInput');
+  if (!inp) return;
+  inp.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const text = inp.value.trim();
+      if (!text) return;
+      const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
+      parkedThoughts.push({
+        id: Date.now() + '',
+        text,
+        ts: Date.now(),
+        fromTask: liveEntry ? liveEntry.text : null,
+        done: false,
+      });
+      saveParked();
+      renderParked();
+      inp.value = '';
+    } else if (e.key === 'Escape') {
+      inp.value = '';
+    }
+  });
+})();
+
 /* ── IDKW (I don't know what to do) ── */
 (() => {
   const btn = document.getElementById('idkwBtn');

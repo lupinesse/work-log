@@ -277,7 +277,57 @@ function updatePomoDisplay() {
   const affEl = document.getElementById('pomoAffirmation');
   if (affEl) affEl.textContent = pomoRunning ? pomoAffirmation() : '';
 
+  if (pomoRunning) setPomoFavicon();
+
   if (typeof updatePomoTaskLabel === 'function') updatePomoTaskLabel();
+}
+
+/**
+ * Redraws the browser favicon as a depleting wedge mirroring the remaining
+ * pomodoro time. Silently skips when the canvas API is unavailable.
+ */
+function setPomoFavicon() {
+  let link = document.querySelector("link[rel~='icon']");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    document.head.appendChild(link);
+  }
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const cx = 16,
+      cy = 16,
+      r = 14;
+
+    // Gray background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e8edf4';
+    ctx.fill();
+
+    // Red wedge — remaining fraction, clockwise from 12 o'clock
+    const pct = pomoTotal > 0 ? pomoLeft / pomoTotal : 0;
+    if (pct > 0) {
+      const start = -Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, start + pct * 2 * Math.PI);
+      ctx.closePath();
+      ctx.fillStyle = '#c62828';
+      ctx.fill();
+    }
+
+    // White centre hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.52, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    link.href = c.toDataURL('image/png');
+  } catch (e) {} // silently skip if canvas blocked by browser policy
 }
 
 /**

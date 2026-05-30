@@ -84,3 +84,16 @@ const CAL_ACCOUNT_LABELS = {
  * @type {number}
  */
 const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
+
+// ---------------------------------------------------------------------------
+// Auto-pause on tab switch
+// ---------------------------------------------------------------------------
+
+/**
+ * When true, pauses a running timer automatically when the browser tab becomes
+ * hidden (visibilitychange → document.hidden). The user receives a "paused
+ * while away" note on return.
+ * Set to false to disable. Override in 00-config.local.js.
+ * @type {boolean}
+ */
+const AUTO_PAUSE_ON_TAB_SWITCH = true;

@@ -285,6 +285,15 @@ function saveSnapshot() {
 saveSnapshot();
 setInterval(saveSnapshot, 30 * 60 * 1000);
 
+// Auto-pause when the user switches away (controlled by AUTO_PAUSE_ON_TAB_SWITCH in 00-config.js)
+document.addEventListener('visibilitychange', () => {
+  if (!AUTO_PAUSE_ON_TAB_SWITCH) return;
+  if (document.hidden && activeTimer && !activeTimer.paused) {
+    pauseTimer();
+    wlLog.info('auto-pause: tab hidden while timer running');
+  }
+});
+
 // Defer config log one tick so `planTasks` (declared in 10-tasks.js, which is
 // concatenated after this file) has been initialised before we read its length.
 // The IIFE runs all files synchronously; setTimeout(fn, 0) fires after that
