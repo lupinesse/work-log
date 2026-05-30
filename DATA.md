@@ -365,6 +365,27 @@ No longer required for task-to-Notion imports (handled server-side).
 
 ---
 
+## Section collapse state
+
+Keys with the prefix `tt-open2-` record whether each collapsible UI section is
+open (`'0'`) or collapsed (`'1'`). Written on every toggle; read on page load.
+Missing key means "use the section's default state".
+
+| Key | Default | Section |
+|-----|---------|---------|
+| `tt-open2-analyticsSection`    | collapsed | Analytics tiles |
+| `tt-open2-parkSection`         | collapsed | Parked thoughts |
+| `tt-open2-pomoSection`         | collapsed | Pomodoro timer |
+| `tt-open2-planSection`         | open      | Today's tasks |
+| `tt-open2-upcomingSection`     | collapsed | Upcoming tasks |
+| `tt-open2-pendingSection`      | collapsed | Pending / Blocked |
+| `tt-open2-completedSection`    | collapsed | Completed (past 14 days) |
+| `tt-open2-calSection`          | open      | Today's meetings |
+| `tt-open2-jiraSection`         | collapsed | Jira CSV importer |
+| `tt-open2-notionLinksSection`  | collapsed | Notion link manager |
+
+---
+
 ## Data recovery
 
 If `wl_entries` is accidentally cleared, restore from `wl_snapshot`:

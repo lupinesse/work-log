@@ -807,7 +807,7 @@ function autoCarryTasks() {
   return carried;
 }
 
-let completedCollapsed = false;
+let completedCollapsed = readCollapseState('completedSection', true);
 
 // ── Iteration expiry dates (stored in localStorage, seeded on first load) ──
 const STORE_EXPIRY = 'wl_expiry_dates';
@@ -997,6 +997,7 @@ function renderCompleted() {
 
 document.getElementById('completedHeader').addEventListener('click', () => {
   completedCollapsed = !completedCollapsed;
+  writeCollapseState('completedSection', completedCollapsed);
   renderCompleted();
 });
 // Delegated bill-btn handler — covers plan, pending, completed sections

@@ -2016,6 +2016,9 @@ async function runTests() {
   console.log('\nSprints');
   {
     const page = await freshPage(ctx);
+    // pomoSection defaults to collapsed (no stored state on a fresh page).
+    // Expand it so #sprintModeBtn is visible before interacting with it.
+    await page.click('#pomoHeader');
     // Sprint setup opens on Sprint button click
     await page.click('#sprintModeBtn');
     assert(
@@ -2806,6 +2809,65 @@ async function runTests() {
       () => !!document.querySelector('#statStreakSub .stat-sub-value')
     );
     assert('stat-sub streak: .stat-sub-value div present', streakSubHasValue);
+
+    await page.close();
+  }
+
+  // ── Section 41 — Collapse state persists across page reloads (tt-open2-*) ──
+  // Uses a plain ctx.newPage() (no addInitScript) so localStorage survives goto().
+  {
+    const page = await ctx.newPage();
+    // Load with a clean slate so prior test state doesn't interfere.
+    await page.goto(FILE);
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto(FILE);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(
+      () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+      { timeout: 8000 }
+    );
+
+    // Analytics starts collapsed by default (no stored key).
+    const defaultCollapsed = await page.evaluate(() =>
+      document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('collapse: analyticsSection collapsed by default', defaultCollapsed);
+
+    // Open it — handler writes tt-open2-analyticsSection = '0'.
+    await page.click('#analyticsHeader');
+    const openAfterClick = await page.evaluate(
+      () => !document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('collapse: analyticsSection open after header click', openAfterClick);
+
+    // Reload without clearing localStorage — open state must survive.
+    await page.goto(FILE);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(
+      () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+      { timeout: 8000 }
+    );
+    const openAfterReload = await page.evaluate(
+      () => !document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert(
+      'collapse: analyticsSection stays open after reload (tt-open2- persisted)',
+      openAfterReload
+    );
+
+    // Close it — collapsed state must also survive.
+    await page.click('#analyticsHeader');
+    await page.goto(FILE);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(
+      () => typeof window.__wl === 'object' && typeof window.__wl.getState === 'function',
+      { timeout: 8000 }
+    );
+    const collapsedAfterReload = await page.evaluate(() =>
+      document.getElementById('analyticsSection').classList.contains('collapsed')
+    );
+    assert('collapse: analyticsSection stays collapsed after reload', collapsedAfterReload);
 
     await page.close();
   }

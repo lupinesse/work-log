@@ -175,12 +175,21 @@ function renderCalStrip(meetings) {
   });
 
   section.style.display = '';
+  // Restore stored collapse state the first time the section is shown.
+  // The flag prevents re-applying on subsequent re-renders.
+  if (!section._collapseRestored) {
+    section._collapseRestored = true;
+    section.classList.toggle('collapsed', readCollapseState('calSection', false));
+  }
 
   // Collapsible header
   const hdr = document.getElementById('calHeader');
   if (hdr && !hdr._calBound) {
     hdr._calBound = true;
-    hdr.addEventListener('click', () => section.classList.toggle('collapsed'));
+    hdr.addEventListener('click', () => {
+      section.classList.toggle('collapsed');
+      writeCollapseState('calSection', section.classList.contains('collapsed'));
+    });
   }
 }
 

@@ -390,9 +390,16 @@
     .getElementById('jiraFileIn')
     .addEventListener('change', (e) => jiraHandleFile(e.target.files[0]));
 
+  // Restore stored collapse state (HTML default is collapsed).
+  document
+    .getElementById('jiraSection')
+    .classList.toggle('collapsed', readCollapseState('jiraSection', true));
+
   // Toggle collapse
   document.getElementById('jiraHeader').addEventListener('click', () => {
-    document.getElementById('jiraSection').classList.toggle('collapsed');
+    const section = document.getElementById('jiraSection');
+    section.classList.toggle('collapsed');
+    writeCollapseState('jiraSection', section.classList.contains('collapsed'));
   });
 
   // Select all / none
