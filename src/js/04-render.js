@@ -617,7 +617,7 @@ function renderChart(list) {
         : '';
       return `<div class="chart-row${live}">
         <span class="chart-label" title="${escHtml(label)}">${liveDot}${escHtml(label)}</span>
-        <div class="chart-track"><div class="chart-bar" style="width:${pct}%;background:${color}"></div></div>
+        <div class="chart-track"><div class="chart-bar" style="width:${pct}%;background:${safeCssColor(color)}"></div></div>
         ${billIcon(key)}
         <span class="chart-dur">${dur}</span>
       </div>`;

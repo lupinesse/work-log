@@ -120,7 +120,7 @@ function renderDayStrip(dateKey) {
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(e.ts)));
       const right = stripPct(Math.min(TF_STRIP_END, tsToMins(e.tsEnd)));
       if (right <= left) return '';
-      return `<div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${cat.color}"></div>`;
+      return `<div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${safeCssColor(cat.color)}"></div>`;
     })
     .join('');
 
@@ -135,7 +135,7 @@ function renderDayStrip(dateKey) {
       const right = stripPct(Math.min(TF_STRIP_END, liveEndMins));
       if (right > left) {
         const cat = getCat(liveEntry.tag);
-        liveBar = `<div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${cat.color}"></div>`;
+        liveBar = `<div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${safeCssColor(cat.color)}"></div>`;
       }
     }
   }
@@ -303,7 +303,7 @@ function renderFlowView(dateKey) {
             <span class="tf-flow-hm">${startLabel}</span>
             ${durMs > 0 ? `<span class="tf-flow-dur">${fmtDur(durMs)}</span>` : ''}
           </div>
-          <div class="tf-flow-strip" style="height:${stripH}px;background:${item.color}">
+          <div class="tf-flow-strip" style="height:${stripH}px;background:${safeCssColor(item.color)}">
             ${isLive ? '<span class="tf-flow-pulse" aria-hidden="true"></span>' : ''}
           </div>
           <div class="tf-flow-body" style="min-height:${stripH}px">
