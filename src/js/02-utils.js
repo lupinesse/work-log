@@ -19,22 +19,6 @@ function getCatLabel(id) {
   return getCat(id).label;
 }
 
-function addCategory() {
-  const name = prompt('New epic name:');
-  if (!name || !name.trim()) return;
-  const label = name.trim();
-  if (categories.find((c) => c.label.toLowerCase() === label.toLowerCase())) {
-    alert('An epic with that name already exists.');
-    return;
-  }
-  const color = nextDistinctColor();
-  const id = 'cat_' + Date.now();
-  categories.push({ id, label, color });
-  selectedTag = id;
-  save();
-  renderTagRow();
-}
-
 let editingCatId = null;
 let addingNewCat = false;
 /** Controls whether the epic manage row (rename/delete/add) is expanded. */
@@ -336,17 +320,6 @@ function viewEntries() {
     .filter((e) => e.date === dk(viewDate))
     .slice()
     .reverse();
-}
-/**
- * Counts entries logged since the start of the current ISO week (Monday 00:00 local).
- * @returns {number}
- */
-function weekCount() {
-  const now = new Date(),
-    mon = new Date(now);
-  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  mon.setHours(0, 0, 0, 0);
-  return entries.filter((e) => new Date(e.ts) >= mon).length;
 }
 /**
  * Counts consecutive days with at least one logged entry, looking backwards from yesterday.
