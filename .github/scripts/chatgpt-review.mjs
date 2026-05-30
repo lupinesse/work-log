@@ -23,7 +23,7 @@
  *   MODEL              default 'gpt-4o-2024-08-06'
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 30000 — truncate larger diffs
- *   MAX_TOKENS         default '4096'
+ *   MAX_TOKENS         default '6144'
  *   DIFF_PATH          default 'pr.diff'
  */
 
@@ -68,7 +68,7 @@ const HEAD_SHA = must('HEAD_SHA');
 
 const MODEL = process.env.MODEL || 'gpt-4o-2024-08-06';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '30000', 10);
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '4096', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '6144', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
