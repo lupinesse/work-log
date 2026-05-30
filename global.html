@@ -174,6 +174,68 @@ are shown without a label badge.</p>
 
         
             
+<h4 class="name" id="ICON_ACTIVITY"><span class="type-signature">(constant) </span>ICON_ACTIVITY<span class="type-signature"></span></h4>
+
+
+
+
+<div class="description">
+    <p>Activity-line SVG icon for the section header (Lucide-style, 24×24 viewBox, 1.5px stroke).</p>
+</div>
+
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line4">line 4</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+        
+            
 <h4 class="name" id="JIRA_BASE"><span class="type-signature"></span>JIRA_BASE<span class="type-signature"> :string</span></h4>
 
 
@@ -508,7 +570,7 @@ Unmapped tokens are left in the text unchanged.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line17">line 17</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line23">line 23</a>
     </li></ul></dd>
     
 
@@ -570,7 +632,7 @@ Unmapped tokens are left in the text unchanged.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line8">line 8</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line14">line 14</a>
     </li></ul></dd>
     
 
@@ -632,7 +694,7 @@ Unmapped tokens are left in the text unchanged.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line6">line 6</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line12">line 12</a>
     </li></ul></dd>
     
 
@@ -694,7 +756,7 @@ Unmapped tokens are left in the text unchanged.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line11">line 11</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line17">line 17</a>
     </li></ul></dd>
     
 
@@ -756,7 +818,7 @@ Unmapped tokens are left in the text unchanged.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line14">line 14</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line20">line 20</a>
     </li></ul></dd>
     
 
@@ -5054,7 +5116,7 @@ the strip bar and Flow-view duration freeze while paused.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line82">line 82</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -5394,7 +5456,7 @@ No-ops if the input is empty.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line102">line 102</a>
+        <a href="10-tasks.js.html">10-tasks.js</a>, <a href="10-tasks.js.html#line104">line 104</a>
     </li></ul></dd>
     
 
@@ -6335,6 +6397,192 @@ Returns empty string for pending/blocked/upcoming tasks where billing is irrelev
 
 
 
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="buildBillableSummaryParts"><span class="type-signature"></span>buildBillableSummaryParts<span class="signature">(mergedEntries, getCatLabel)</span><span class="type-signature"> &rarr; {Array.&lt;string>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Builds the parts of the pasteable billable summary from merged billable
+entries. Categorised tasks are grouped as <code>Category (task1, task2)</code>;
+uncategorised tasks (no tag or <code>other</code>) are listed bare. Order of first
+appearance is preserved and duplicate task names are de-duplicated.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>mergedEntries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Output of <a href="global.html#mergeAdjacentEntries">mergeAdjacentEntries</a>.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>getCatLabel</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Resolves a category key to its
+display label. Injected so this function stays free of global state.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line671">line 671</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>Summary parts, ready to be joined with <code>, </code>.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;string></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -8224,7 +8472,7 @@ in-memory cache so future exports fall back to browser downloads.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line426">line 426</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line77">line 77</a>
     </li></ul></dd>
     
 
@@ -8728,6 +8976,340 @@ No-ops when there is no active timer or the note is empty.</p>
 
 
 
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="computeDayBounds"><span class="type-signature"></span>computeDayBounds<span class="signature">(dayEntries, timedEntries, opts)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Computes the day's start and end timestamps for the plaintext export header.</p>
+<p>Start: the supplied day start (today only) or, failing that, the earliest
+entry start. End: the latest tracked end among timed entries, extended by the
+active timer's effective end so &quot;Ended:&quot; reflects work still in progress.</p>
+<p>Pure: all environmental inputs (day start, the active timer, the current time)
+are injected via <code>opts</code> so the function can be unit-tested without globals.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>dayEntries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>All entries for the viewed day.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>timedEntries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Entries with a real tracked duration (<code>tsEnd</code>).</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>opts</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Injected environment.</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>isViewingToday</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Whether the viewed day is today.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>dayStart</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+|
+
+<span class="param-type">null</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Configured day-start ts, or null if not today.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>activeTimer</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+|
+
+<span class="param-type">null</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The running/paused timer, or null.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>now</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Current time in ms (<code>Date.now()</code>).</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line716">line 716</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>Day bounds in ms.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -9257,7 +9839,7 @@ string always matches the date the user sees on their clock, regardless of timez
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Date to format.</p></td>
         </tr>
 
     
@@ -10213,7 +10795,7 @@ The previously saved next-action note is restored if one exists for the active e
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Raw string to escape.</p></td>
         </tr>
 
     
@@ -10282,6 +10864,10 @@ The previously saved next-action note is restored if one exists for the active e
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>HTML-escaped string safe for insertion into the DOM.</p>
+</div>
+
 
 
 <dl>
@@ -10460,7 +11046,7 @@ quick-pick items. Triggers a file download or writes to the save folder.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line224">line 224</a>
+        <a href="05a-export.js.html">05a-export.js</a>, <a href="05a-export.js.html#line99">line 99</a>
     </li></ul></dd>
     
 
@@ -10692,7 +11278,7 @@ or falls back to a browser download.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line80">line 80</a>
+        <a href="05a-export.js.html">05a-export.js</a>, <a href="05a-export.js.html#line10">line 10</a>
     </li></ul></dd>
     
 
@@ -11461,7 +12047,7 @@ past days — only actionable today.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line156">line 156</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line162">line 162</a>
     </li></ul></dd>
     
 
@@ -12285,7 +12871,7 @@ fmtElapsed(5461 * 1000)    // → '01:31:01'</code></pre>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line68">line 68</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line74">line 74</a>
     </li></ul></dd>
     
 
@@ -12920,7 +13506,7 @@ and re-renders. Shared by the keyboard handler in initTodayFlow().</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line386">line 386</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line392">line 392</a>
     </li></ul></dd>
     
 
@@ -12945,6 +13531,237 @@ and re-renders. Shared by the keyboard handler in initTodayFlow().</p>
 
 
 
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="formatGroupedLines"><span class="type-signature"></span>formatGroupedLines<span class="signature">(catOrder, catGrouped, fmtDuration, getCatLabel)</span><span class="type-signature"> &rarr; {Array.&lt;string>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Renders the grouped-by-category structure into indented text lines: one line
+per category (with its total), each followed by its indented task lines.</p>
+<p>Pure: the duration formatter and category-label resolver are injected so this
+function has no dependency on global state and can be unit-tested directly.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>catOrder</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;string></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Category keys in display order.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>catGrouped</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Grouping produced by <a href="global.html#groupEntriesByCategory">groupEntriesByCategory</a>.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>fmtDuration</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Formats a duration in ms (e.g. <code>fmtDurLong</code>).</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>getCatLabel</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Resolves a category key to its label.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line749">line 749</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>The body lines for the export file.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;string></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -13662,7 +14479,7 @@ the given year. Combines fixed dates with computed moveable feasts.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line25">line 25</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line31">line 31</a>
     </li></ul></dd>
     
 
@@ -14840,7 +15657,7 @@ IndexedDB (with an in-memory cache).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line381">line 381</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line22">line 22</a>
     </li></ul></dd>
     
 
@@ -14988,6 +15805,171 @@ a bridge banner in this session, loaded from localStorage.</p>
     <dd>
         
 <span class="param-type">Set.&lt;string></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="groupEntriesByCategory"><span class="type-signature"></span>groupEntriesByCategory<span class="signature">(dayEntries)</span><span class="type-signature"> &rarr; {Object}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Groups a day's log entries by category and, within each category, by task
+(case-insensitively), preserving first-seen order. Accumulates tracked time
+(where <code>tsEnd &gt; ts</code>) per task and per category.</p>
+<p>Pure data transform — reads only entry fields and performs no formatting, so
+the caller decides how to render the durations and labels.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>dayEntries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Entries for the viewed day.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line598">line 598</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p><code>catOrder</code> is the list of
+category keys in first-seen order; <code>catGrouped[catKey]</code> is
+<code>{ totalMs, tasks: { [taskKey]: { label, totalMs, hasTime } }, taskOrder }</code>.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Object</span>
 
 
     </dd>
@@ -15707,7 +16689,7 @@ the confirmation dialog accordingly.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line275">line 275</a>
+        <a href="05a-export.js.html">05a-export.js</a>, <a href="05a-export.js.html#line132">line 132</a>
     </li></ul></dd>
     
 
@@ -16714,7 +17696,7 @@ inside render functions.</li>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line402">line 402</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line408">line 408</a>
     </li></ul></dd>
     
 
@@ -16858,7 +17840,7 @@ Called once on DOMContentLoaded.</p>
     
 
     
-    <h4 class="name" id="isEntryBillable"><span class="type-signature"></span>isEntryBillable<span class="signature">(e)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
+    <h4 class="name" id="isEntryBillable"><span class="type-signature"></span>isEntryBillable<span class="signature">(entry)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
     
 
     
@@ -16913,7 +17895,7 @@ localStorage data is required (see DATA.md § wl_entries).</p>
 
         <tr>
             
-                <td class="name"><code>e</code></td>
+                <td class="name"><code>entry</code></td>
             
 
             <td class="type">
@@ -18361,6 +19343,230 @@ the user can resume without friction.</p>
 
 
 
+
+
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="mergeAdjacentEntries"><span class="type-signature"></span>mergeAdjacentEntries<span class="signature">(entries, gapMs<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Array.&lt;Object>}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Merges same-task entries that are separated by no more than <code>gapMs</code> into a
+single block, carrying the merged end time on a <code>_end</code> property.</p>
+<p>Two entries merge only when they share the same task text <em>and</em> the same
+category (<code>tag</code>, with a missing tag normalised to <code>other</code>). Category is part
+of the key so that two adjacent entries with the same label but different
+categories are not collapsed — otherwise the later category would be lost from
+the exported billable summary, which reads <code>tag</code> from the merged block.</p>
+<p>Rationale for the gap: the default 30-minute window matches the billing
+rounding unit — splitting a task at a gap shorter than one slot would produce
+two entries that each round to the same half-hour anyway, while making the
+summary harder to read. Input is not mutated; entries are sorted by start time first.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>entries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>Entries to merge (each with <code>ts</code>, optional <code>tsEnd</code>, <code>text</code>, <code>tag</code>).</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>gapMs</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    1800000
+                
+                </td>
+            
+
+            <td class="description last"><p>Maximum gap, in ms, to bridge (default 30 min).</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line641">line 641</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>New entry objects, each with a <code>_end</code> timestamp.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;Object></span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -20484,7 +21690,7 @@ current expiry dates (one per line).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line367">line 367</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line8">line 8</a>
     </li></ul></dd>
     
 
@@ -21651,7 +22857,7 @@ browsers that do not support the API.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line486">line 486</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line137">line 137</a>
     </li></ul></dd>
     
 
@@ -22892,6 +24098,192 @@ Click cycles: normal (0) → high (1) → low (-1) → normal.</p>
     
 
     
+    <h4 class="name" id="readOptionalLogForBackup"><span class="type-signature"></span>readOptionalLogForBackup<span class="signature">(storeKey, label)</span><span class="type-signature"> &rarr; {Array}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Reads and parses an optional JSON-array log from localStorage for inclusion
+in a backup. If the stored value is present but not valid JSON, the failure
+is logged via <a href="wlLog.html">wlLog</a> (so the data loss is diagnosable rather than
+silent) and an empty array is returned so the rest of the backup still
+succeeds. Absent keys legitimately yield an empty array.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>storeKey</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The localStorage key to read.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>label</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Human-readable log name for the warning message.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="05a-export.js.html">05a-export.js</a>, <a href="05a-export.js.html#line82">line 82</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>The parsed array, or <code>[]</code> if absent or unparseable.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+
+        
+            
+
+    
+
+    
     <h4 class="name" id="refreshPomoDashboard"><span class="type-signature"></span>refreshPomoDashboard<span class="signature">()</span><span class="type-signature"></span></h4>
     
 
@@ -23549,7 +24941,7 @@ and (today only) a live &quot;now&quot; cursor.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line93">line 93</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line99">line 99</a>
     </li></ul></dd>
     
 
@@ -23984,7 +25376,7 @@ the Flow / Log / Blocks segmented control.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line215">line 215</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line221">line 221</a>
     </li></ul></dd>
     
 
@@ -24123,7 +25515,7 @@ longer tasks more visual weight.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line261">line 261</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line267">line 267</a>
     </li></ul></dd>
     
 
@@ -24212,7 +25604,7 @@ folder name (green) or a &quot;pick save folder&quot; prompt (default colour).</
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line506">line 506</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line158">line 158</a>
     </li></ul></dd>
     
 
@@ -24349,7 +25741,7 @@ folder name (green) or a &quot;pick save folder&quot; prompt (default colour).</
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line190">line 190</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line196">line 196</a>
     </li></ul></dd>
     
 
@@ -24576,7 +25968,7 @@ Notes input is shown for today only.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line319">line 319</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line325">line 325</a>
     </li></ul></dd>
     
 
@@ -26593,7 +27985,7 @@ Called from render() on every state change and when the view toggle fires.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line363">line 363</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line369">line 369</a>
     </li></ul></dd>
     
 
@@ -27885,7 +29277,7 @@ Prevents malformed user-supplied colour values from breaking layout or injecting
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>CSS colour string to validate.</p></td>
         </tr>
 
     
@@ -30363,7 +31755,7 @@ Skips redundant redraws by tracking the last rendered state.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line34">line 34</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line40">line 40</a>
     </li></ul></dd>
     
 
@@ -32468,7 +33860,7 @@ across sessions, and updates the in-memory cache.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line405">line 405</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line50">line 50</a>
     </li></ul></dd>
     
 
@@ -32513,6 +33905,173 @@ across sessions, and updates the in-memory cache.</p>
     
 
 
+
+
+
+        
+            
+
+    
+
+    
+    <h4 class="name" id="stripJiraPrefix"><span class="type-signature"></span>stripJiraPrefix<span class="signature">(text)</span><span class="type-signature"> &rarr; {string}</span></h4>
+    
+
+    
+
+
+
+<div class="description">
+    <p>Removes a leading Jira issue key (e.g. <code>ABC-123: </code> or <code>ABC-123 </code>) from a task
+label, leaving the human-readable summary. Used when building the pasteable
+billable summary so issue keys do not clutter the client-facing line.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>text</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The raw task label.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="00-pure-fns.js.html">00-pure-fns.js</a>, <a href="00-pure-fns.js.html#line581">line 581</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>The label with any leading Jira key stripped and trimmed.</p>
+</div>
+
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>stripJiraPrefix('PROJ-42: Fix login')  // → 'Fix login'
+stripJiraPrefix('Write tests')         // → 'Write tests'</code></pre>
 
 
 
@@ -32624,7 +34183,7 @@ Clamped to [0, 100].</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line46">line 46</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line52">line 52</a>
     </li></ul></dd>
     
 
@@ -34558,7 +36117,7 @@ result (success, failure, or server unreachable). Never throws.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line58">line 58</a>
+        <a href="11-timeflow.js.html">11-timeflow.js</a>, <a href="11-timeflow.js.html#line64">line 64</a>
     </li></ul></dd>
     
 
@@ -35556,6 +37115,10 @@ Kept so existing call-sites in <code>tickTimer</code> compile without changes.</
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the timeblock is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -35715,6 +37278,10 @@ absence is handled gracefully by <code>renderCalStrip</code>.</p>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the meeting object is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -35880,6 +37447,10 @@ validCalendarMeeting({ subject: 42, start: '2026-05-28T09:00', end: '2026-05-28T
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the category is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -36035,6 +37606,10 @@ validCalendarMeeting({ subject: 42, start: '2026-05-28T09:00', end: '2026-05-28T
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the entry is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -36207,6 +37782,10 @@ parsed as single-column rows) fails validation and triggers a warning.</p>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the row has the key and summary fields Jira import needs.</p>
+</div>
+
 
 
 <dl>
@@ -36373,6 +37952,10 @@ validJiraCsvRow({ Summary: 'Fix login bug' }) // → false  (missing key)</code>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the plan task is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -36535,6 +38118,10 @@ validPlanTask(null) // → false</code></pre>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the Pomodoro entry is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -36691,6 +38278,10 @@ Handles both running (startTs is set) and paused (paused=true, accumulatedMs is 
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the timer state is well-formed.</p>
+</div>
+
 
 
 <dl>
@@ -36863,6 +38454,10 @@ containing the fields that <code>fetchWeather()</code> reads.</p>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>True if the response is a usable forecast object.</p>
+</div>
+
 
 
 <dl>
@@ -37776,7 +39371,7 @@ download if the FSA handle is missing or permission is not granted.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line447">line 447</a>
+        <a href="05b-filesystem.js.html">05b-filesystem.js</a>, <a href="05b-filesystem.js.html#line98">line 98</a>
     </li></ul></dd>
     
 
@@ -38085,7 +39680,7 @@ download if the FSA handle is missing or permission is not granted.</p>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#MIGRATIONS">MIGRATIONS</a></li><li><a href="global.html#RAPID_SIG_SHORTCUTS">RAPID_SIG_SHORTCUTS</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#TF_PANE_IDS">TF_PANE_IDS</a></li><li><a href="global.html#TF_STRIP_END">TF_STRIP_END</a></li><li><a href="global.html#TF_STRIP_START">TF_STRIP_START</a></li><li><a href="global.html#TF_VIEWS">TF_VIEWS</a></li><li><a href="global.html#TF_VIEW_LABELS">TF_VIEW_LABELS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#_heroCancelStoppedTimer">_heroCancelStoppedTimer</a></li><li><a href="global.html#_heroFillIdle">_heroFillIdle</a></li><li><a href="global.html#_heroFillPaused">_heroFillPaused</a></li><li><a href="global.html#_heroFillRunning">_heroFillRunning</a></li><li><a href="global.html#_heroFillStopped">_heroFillStopped</a></li><li><a href="global.html#_heroHandleDone">_heroHandleDone</a></li><li><a href="global.html#_heroHandleStart">_heroHandleStart</a></li><li><a href="global.html#_heroHandleUndo">_heroHandleUndo</a></li><li><a href="global.html#_heroRenderRecentChips">_heroRenderRecentChips</a></li><li><a href="global.html#_heroSessionCount">_heroSessionCount</a></li><li><a href="global.html#_heroSetCategory">_heroSetCategory</a></li><li><a href="global.html#_heroShowPanel">_heroShowPanel</a></li><li><a href="global.html#_heroStartFromChip">_heroStartFromChip</a></li><li><a href="global.html#_heroStopped">_heroStopped</a></li><li><a href="global.html#_heroStoppedEntry">_heroStoppedEntry</a></li><li><a href="global.html#_heroStoppedTimer">_heroStoppedTimer</a></li><li><a href="global.html#_qcActivateRow">_qcActivateRow</a></li><li><a href="global.html#_qcBindTaskListEvents">_qcBindTaskListEvents</a></li><li><a href="global.html#_qcBuildTaskGroups">_qcBuildTaskGroups</a></li><li><a href="global.html#_qcFilterCat">_qcFilterCat</a></li><li><a href="global.html#_qcLogOnly">_qcLogOnly</a></li><li><a href="global.html#_qcRenderAll">_qcRenderAll</a></li><li><a href="global.html#_qcRenderCatChips">_qcRenderCatChips</a></li><li><a href="global.html#_qcRenderRunningStrip">_qcRenderRunningStrip</a></li><li><a href="global.html#_qcRenderTaskList">_qcRenderTaskList</a></li><li><a href="global.html#_qcRenderTokenPreview">_qcRenderTokenPreview</a></li><li><a href="global.html#_qcSearch">_qcSearch</a></li><li><a href="global.html#_qcStartTick">_qcStartTick</a></li><li><a href="global.html#_qcStopTick">_qcStopTick</a></li><li><a href="global.html#_qcTaskListHtml">_qcTaskListHtml</a></li><li><a href="global.html#_qcTaskRowHtml">_qcTaskRowHtml</a></li><li><a href="global.html#_qcTickInterval">_qcTickInterval</a></li><li><a href="global.html#_qcUpdateElapsed">_qcUpdateElapsed</a></li><li><a href="global.html#_rapidOpen">_rapidOpen</a></li><li><a href="global.html#activeTimerDurationMs">activeTimerDurationMs</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addLogNote">addLogNote</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#billBtnHtml">billBtnHtml</a></li><li><a href="global.html#bindPlanEvents">bindPlanEvents</a></li><li><a href="global.html#bindSignifierClicks">bindSignifierClicks</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#buildDailyLogItems">buildDailyLogItems</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcMonthSummaryStats">calcMonthSummaryStats</a></li><li><a href="global.html#calcMonthTaskCounts">calcMonthTaskCounts</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#carryMigTask">carryMigTask</a></li><li><a href="global.html#catManageOpen">catManageOpen</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#closeMigration">closeMigration</a></li><li><a href="global.html#closeRapid">closeRapid</a></li><li><a href="global.html#closeTrackerForm">closeTrackerForm</a></li><li><a href="global.html#commitBannerNote">commitBannerNote</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#cycleSignifier">cycleSignifier</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#dropMigTask">dropMigTask</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#findLargestGap">findLargestGap</a></li><li><a href="global.html#flatSort">flatSort</a></li><li><a href="global.html#fmtDur">fmtDur</a></li><li><a href="global.html#fmtDurLong">fmtDurLong</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtHm">fmtHm</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#focusTabAt">focusTabAt</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getFlowView">getFlowView</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMigrationRecord">getMigrationRecord</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getReflectionForDate">getReflectionForDate</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#handleMoodSelect">handleMoodSelect</a></li><li><a href="global.html#heroEnterStopped">heroEnterStopped</a></li><li><a href="global.html#heroGetState">heroGetState</a></li><li><a href="global.html#heroUpdateClock">heroUpdateClock</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#importBackup">importBackup</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initBannerControls">initBannerControls</a></li><li><a href="global.html#initHero">initHero</a></li><li><a href="global.html#initMigration">initMigration</a></li><li><a href="global.html#initMonthlyLog">initMonthlyLog</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#initRapid">initRapid</a></li><li><a href="global.html#initSprints">initSprints</a></li><li><a href="global.html#initTodayFlow">initTodayFlow</a></li><li><a href="global.html#initTrackers">initTrackers</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#loadReflection">loadReflection</a></li><li><a href="global.html#loadSprintLog">loadSprintLog</a></li><li><a href="global.html#loadTrackers">loadTrackers</a></li><li><a href="global.html#logUtilEntry">logUtilEntry</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#migrateEntryDatesToLocal">migrateEntryDatesToLocal</a></li><li><a href="global.html#migrateStorage">migrateStorage</a></li><li><a href="global.html#mlDaysInMonth">mlDaysInMonth</a></li><li><a href="global.html#mlHeatColor">mlHeatColor</a></li><li><a href="global.html#mlHoursForDay">mlHoursForDay</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#notifyPomodoroEnd">notifyPomodoroEnd</a></li><li><a href="global.html#notionBtnHtml">notionBtnHtml</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#openMigration">openMigration</a></li><li><a href="global.html#openRapid">openRapid</a></li><li><a href="global.html#openReflection">openReflection</a></li><li><a href="global.html#openSprintSetup">openSprintSetup</a></li><li><a href="global.html#openTrackerForm">openTrackerForm</a></li><li><a href="global.html#parseRapidTokens">parseRapidTokens</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#pomoBuildDateRange">pomoBuildDateRange</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#pomoSessionsOnDate">pomoSessionsOnDate</a></li><li><a href="global.html#pomoSparkColours">pomoSparkColours</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#prioBtnHtml">prioBtnHtml</a></li><li><a href="global.html#refreshPomoDashboard">refreshPomoDashboard</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderDayStrip">renderDayStrip</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFlowHeader">renderFlowHeader</a></li><li><a href="global.html#renderFlowView">renderFlowView</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderGapReminder">renderGapReminder</a></li><li><a href="global.html#renderHeroCard">renderHeroCard</a></li><li><a href="global.html#renderLogView">renderLogView</a></li><li><a href="global.html#renderMigrationStep">renderMigrationStep</a></li><li><a href="global.html#renderMonthlyCalendar">renderMonthlyCalendar</a></li><li><a href="global.html#renderMonthlyLog">renderMonthlyLog</a></li><li><a href="global.html#renderMonthlySummary">renderMonthlySummary</a></li><li><a href="global.html#renderMonthlyTasks">renderMonthlyTasks</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderPomoRibbon">renderPomoRibbon</a></li><li><a href="global.html#renderPomoSparkline">renderPomoSparkline</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderReflStars">renderReflStars</a></li><li><a href="global.html#renderRow">renderRow</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderSprintDurations">renderSprintDurations</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#renderTodayFlow">renderTodayFlow</a></li><li><a href="global.html#renderTrackRecent">renderTrackRecent</a></li><li><a href="global.html#renderTrackers">renderTrackers</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resolveRapidDate">resolveRapidDate</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#saveMigrationRecord">saveMigrationRecord</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveReflection">saveReflection</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveSprintLog">saveSprintLog</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#saveTrackerForm">saveTrackerForm</a></li><li><a href="global.html#saveTrackers">saveTrackers</a></li><li><a href="global.html#scheduleMigTask">scheduleMigTask</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setFlowView">setFlowView</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#showSprintReview">showSprintReview</a></li><li><a href="global.html#sigHtml">sigHtml</a></li><li><a href="global.html#sigSymbol">sigSymbol</a></li><li><a href="global.html#sigTitle">sigTitle</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startSprint">startSprint</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#statusOpts">statusOpts</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#stripPct">stripPct</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#trackerDayStatus">trackerDayStatus</a></li><li><a href="global.html#trackerStreak">trackerStreak</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#tsToMins">tsToMins</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updatePomoTaskLabel">updatePomoTaskLabel</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerArc">updateTimerArc</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCalendarMeeting">validCalendarMeeting</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validJiraCsvRow">validJiraCsvRow</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#validWeatherResponse">validWeatherResponse</a></li><li><a href="global.html#validateBackupFile">validateBackupFile</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="wlLog.html">wlLog</a></li></ul><h3>Global</h3><ul><li><a href="global.html#CAL_ACCOUNT_LABELS">CAL_ACCOUNT_LABELS</a></li><li><a href="global.html#ICON_ACTIVITY">ICON_ACTIVITY</a></li><li><a href="global.html#JIRA_BASE">JIRA_BASE</a></li><li><a href="global.html#MIGRATIONS">MIGRATIONS</a></li><li><a href="global.html#RAPID_SIG_SHORTCUTS">RAPID_SIG_SHORTCUTS</a></li><li><a href="global.html#STORE_BLOCKS">STORE_BLOCKS</a></li><li><a href="global.html#TF_PANE_IDS">TF_PANE_IDS</a></li><li><a href="global.html#TF_STRIP_END">TF_STRIP_END</a></li><li><a href="global.html#TF_STRIP_START">TF_STRIP_START</a></li><li><a href="global.html#TF_VIEWS">TF_VIEWS</a></li><li><a href="global.html#TF_VIEW_LABELS">TF_VIEW_LABELS</a></li><li><a href="global.html#WEATHER_LAT">WEATHER_LAT</a></li><li><a href="global.html#WEATHER_LON">WEATHER_LON</a></li><li><a href="global.html#WEATHER_NAME">WEATHER_NAME</a></li><li><a href="global.html#_heroCancelStoppedTimer">_heroCancelStoppedTimer</a></li><li><a href="global.html#_heroFillIdle">_heroFillIdle</a></li><li><a href="global.html#_heroFillPaused">_heroFillPaused</a></li><li><a href="global.html#_heroFillRunning">_heroFillRunning</a></li><li><a href="global.html#_heroFillStopped">_heroFillStopped</a></li><li><a href="global.html#_heroHandleDone">_heroHandleDone</a></li><li><a href="global.html#_heroHandleStart">_heroHandleStart</a></li><li><a href="global.html#_heroHandleUndo">_heroHandleUndo</a></li><li><a href="global.html#_heroRenderRecentChips">_heroRenderRecentChips</a></li><li><a href="global.html#_heroSessionCount">_heroSessionCount</a></li><li><a href="global.html#_heroSetCategory">_heroSetCategory</a></li><li><a href="global.html#_heroShowPanel">_heroShowPanel</a></li><li><a href="global.html#_heroStartFromChip">_heroStartFromChip</a></li><li><a href="global.html#_heroStopped">_heroStopped</a></li><li><a href="global.html#_heroStoppedEntry">_heroStoppedEntry</a></li><li><a href="global.html#_heroStoppedTimer">_heroStoppedTimer</a></li><li><a href="global.html#_qcActivateRow">_qcActivateRow</a></li><li><a href="global.html#_qcBindTaskListEvents">_qcBindTaskListEvents</a></li><li><a href="global.html#_qcBuildTaskGroups">_qcBuildTaskGroups</a></li><li><a href="global.html#_qcFilterCat">_qcFilterCat</a></li><li><a href="global.html#_qcLogOnly">_qcLogOnly</a></li><li><a href="global.html#_qcRenderAll">_qcRenderAll</a></li><li><a href="global.html#_qcRenderCatChips">_qcRenderCatChips</a></li><li><a href="global.html#_qcRenderRunningStrip">_qcRenderRunningStrip</a></li><li><a href="global.html#_qcRenderTaskList">_qcRenderTaskList</a></li><li><a href="global.html#_qcRenderTokenPreview">_qcRenderTokenPreview</a></li><li><a href="global.html#_qcSearch">_qcSearch</a></li><li><a href="global.html#_qcStartTick">_qcStartTick</a></li><li><a href="global.html#_qcStopTick">_qcStopTick</a></li><li><a href="global.html#_qcTaskListHtml">_qcTaskListHtml</a></li><li><a href="global.html#_qcTaskRowHtml">_qcTaskRowHtml</a></li><li><a href="global.html#_qcTickInterval">_qcTickInterval</a></li><li><a href="global.html#_qcUpdateElapsed">_qcUpdateElapsed</a></li><li><a href="global.html#_rapidOpen">_rapidOpen</a></li><li><a href="global.html#activeTimerDurationMs">activeTimerDurationMs</a></li><li><a href="global.html#addEntry">addEntry</a></li><li><a href="global.html#addLogNote">addLogNote</a></li><li><a href="global.html#addPlanTask">addPlanTask</a></li><li><a href="global.html#addTaskToNotion">addTaskToNotion</a></li><li><a href="global.html#applyTime">applyTime</a></li><li><a href="global.html#autoCarryTasks">autoCarryTasks</a></li><li><a href="global.html#billBtnHtml">billBtnHtml</a></li><li><a href="global.html#bindPlanEvents">bindPlanEvents</a></li><li><a href="global.html#bindSignifierClicks">bindSignifierClicks</a></li><li><a href="global.html#buildBillableSummaryParts">buildBillableSummaryParts</a></li><li><a href="global.html#buildBridge">buildBridge</a></li><li><a href="global.html#buildDailyLogItems">buildDailyLogItems</a></li><li><a href="global.html#calAccountLabel">calAccountLabel</a></li><li><a href="global.html#calcMonthSummaryStats">calcMonthSummaryStats</a></li><li><a href="global.html#calcMonthTaskCounts">calcMonthTaskCounts</a></li><li><a href="global.html#calcStreak">calcStreak</a></li><li><a href="global.html#callClaudeWithNotion">callClaudeWithNotion</a></li><li><a href="global.html#carryMigTask">carryMigTask</a></li><li><a href="global.html#catManageOpen">catManageOpen</a></li><li><a href="global.html#checkBlockNotifications">checkBlockNotifications</a></li><li><a href="global.html#checkChime">checkChime</a></li><li><a href="global.html#checkNewDay">checkNewDay</a></li><li><a href="global.html#checkPomoWeeklyClear">checkPomoWeeklyClear</a></li><li><a href="global.html#clearDirHandle">clearDirHandle</a></li><li><a href="global.html#closeAllEditors">closeAllEditors</a></li><li><a href="global.html#closeMigration">closeMigration</a></li><li><a href="global.html#closeRapid">closeRapid</a></li><li><a href="global.html#closeTrackerForm">closeTrackerForm</a></li><li><a href="global.html#commitBannerNote">commitBannerNote</a></li><li><a href="global.html#computeDayBounds">computeDayBounds</a></li><li><a href="global.html#config">config</a></li><li><a href="global.html#cycleSignifier">cycleSignifier</a></li><li><a href="global.html#debug">debug</a></li><li><a href="global.html#dk">dk</a></li><li><a href="global.html#drawPomoSegments">drawPomoSegments</a></li><li><a href="global.html#dropMigTask">dropMigTask</a></li><li><a href="global.html#durLabel">durLabel</a></li><li><a href="global.html#emergencyMode">emergencyMode</a></li><li><a href="global.html#enterEmergency">enterEmergency</a></li><li><a href="global.html#eodKey">eodKey</a></li><li><a href="global.html#error">error</a></li><li><a href="global.html#escHtml">escHtml</a></li><li><a href="global.html#exitEmergency">exitEmergency</a></li><li><a href="global.html#exportBackup">exportBackup</a></li><li><a href="global.html#exportForDate">exportForDate</a></li><li><a href="global.html#exportTxt">exportTxt</a></li><li><a href="global.html#fetchAndRenderCalendar">fetchAndRenderCalendar</a></li><li><a href="global.html#fetchBridge">fetchBridge</a></li><li><a href="global.html#fetchCalendarEvents">fetchCalendarEvents</a></li><li><a href="global.html#fetchNameday">fetchNameday</a></li><li><a href="global.html#fetchWeather">fetchWeather</a></li><li><a href="global.html#findLargestGap">findLargestGap</a></li><li><a href="global.html#flatSort">flatSort</a></li><li><a href="global.html#fmtDur">fmtDur</a></li><li><a href="global.html#fmtDurLong">fmtDurLong</a></li><li><a href="global.html#fmtElapsed">fmtElapsed</a></li><li><a href="global.html#fmtHm">fmtHm</a></li><li><a href="global.html#fmtLabel">fmtLabel</a></li><li><a href="global.html#fmtMD">fmtMD</a></li><li><a href="global.html#fmtTime">fmtTime</a></li><li><a href="global.html#focusTabAt">focusTabAt</a></li><li><a href="global.html#formatGroupedLines">formatGroupedLines</a></li><li><a href="global.html#getCat">getCat</a></li><li><a href="global.html#getDayStart">getDayStart</a></li><li><a href="global.html#getElapsedMs">getElapsedMs</a></li><li><a href="global.html#getEodTs">getEodTs</a></li><li><a href="global.html#getFlagDays">getFlagDays</a></li><li><a href="global.html#getFlowView">getFlowView</a></li><li><a href="global.html#getHandoffNote">getHandoffNote</a></li><li><a href="global.html#getISOWeek">getISOWeek</a></li><li><a href="global.html#getIterationExpiry">getIterationExpiry</a></li><li><a href="global.html#getMeetingKey">getMeetingKey</a></li><li><a href="global.html#getMigrationRecord">getMigrationRecord</a></li><li><a href="global.html#getMoonData">getMoonData</a></li><li><a href="global.html#getReflectionForDate">getReflectionForDate</a></li><li><a href="global.html#getSavedDir">getSavedDir</a></li><li><a href="global.html#getSeenEnded">getSeenEnded</a></li><li><a href="global.html#groupEntriesByCategory">groupEntriesByCategory</a></li><li><a href="global.html#handleMoodSelect">handleMoodSelect</a></li><li><a href="global.html#heroEnterStopped">heroEnterStopped</a></li><li><a href="global.html#heroGetState">heroGetState</a></li><li><a href="global.html#heroUpdateClock">heroUpdateClock</a></li><li><a href="global.html#hideHandoffInput">hideHandoffInput</a></li><li><a href="global.html#importBackup">importBackup</a></li><li><a href="global.html#info">info</a></li><li><a href="global.html#initBannerControls">initBannerControls</a></li><li><a href="global.html#initHero">initHero</a></li><li><a href="global.html#initMigration">initMigration</a></li><li><a href="global.html#initMonthlyLog">initMonthlyLog</a></li><li><a href="global.html#initPomo">initPomo</a></li><li><a href="global.html#initRapid">initRapid</a></li><li><a href="global.html#initSprints">initSprints</a></li><li><a href="global.html#initTodayFlow">initTodayFlow</a></li><li><a href="global.html#initTrackers">initTrackers</a></li><li><a href="global.html#isEntryBillable">isEntryBillable</a></li><li><a href="global.html#isToday">isToday</a></li><li><a href="global.html#jiraTicketHtml">jiraTicketHtml</a></li><li><a href="global.html#lastWeekday">lastWeekday</a></li><li><a href="global.html#load">load</a></li><li><a href="global.html#loadBlocks">loadBlocks</a></li><li><a href="global.html#loadExpiryDates">loadExpiryDates</a></li><li><a href="global.html#loadPlan">loadPlan</a></li><li><a href="global.html#loadReflection">loadReflection</a></li><li><a href="global.html#loadSprintLog">loadSprintLog</a></li><li><a href="global.html#loadTrackers">loadTrackers</a></li><li><a href="global.html#logUtilEntry">logUtilEntry</a></li><li><a href="global.html#mergeAdjacentEntries">mergeAdjacentEntries</a></li><li><a href="global.html#mergeDevLog">mergeDevLog</a></li><li><a href="global.html#migrateEntryDatesToLocal">migrateEntryDatesToLocal</a></li><li><a href="global.html#migrateStorage">migrateStorage</a></li><li><a href="global.html#mlDaysInMonth">mlDaysInMonth</a></li><li><a href="global.html#mlHeatColor">mlHeatColor</a></li><li><a href="global.html#mlHoursForDay">mlHoursForDay</a></li><li><a href="global.html#nearestWeekday">nearestWeekday</a></li><li><a href="global.html#nextDistinctColor">nextDistinctColor</a></li><li><a href="global.html#notifyPomodoroEnd">notifyPomodoroEnd</a></li><li><a href="global.html#notionBtnHtml">notionBtnHtml</a></li><li><a href="global.html#nthWeekday">nthWeekday</a></li><li><a href="global.html#openBlockEmojiPicker">openBlockEmojiPicker</a></li><li><a href="global.html#openEmojiPicker">openEmojiPicker</a></li><li><a href="global.html#openEodModal">openEodModal</a></li><li><a href="global.html#openExpiryModal">openExpiryModal</a></li><li><a href="global.html#openIDB">openIDB</a></li><li><a href="global.html#openMigration">openMigration</a></li><li><a href="global.html#openRapid">openRapid</a></li><li><a href="global.html#openReflection">openReflection</a></li><li><a href="global.html#openSprintSetup">openSprintSetup</a></li><li><a href="global.html#openTrackerForm">openTrackerForm</a></li><li><a href="global.html#parseRapidTokens">parseRapidTokens</a></li><li><a href="global.html#patchCarriedTasks">patchCarriedTasks</a></li><li><a href="global.html#pausePomo">pausePomo</a></li><li><a href="global.html#pauseTimer">pauseTimer</a></li><li><a href="global.html#pickSaveFolder">pickSaveFolder</a></li><li><a href="global.html#planTasks">planTasks</a></li><li><a href="global.html#playChime">playChime</a></li><li><a href="global.html#playPomoBeep">playPomoBeep</a></li><li><a href="global.html#pomoBuildDateRange">pomoBuildDateRange</a></li><li><a href="global.html#pomoDone">pomoDone</a></li><li><a href="global.html#pomoGap">pomoGap</a></li><li><a href="global.html#pomoGetLog">pomoGetLog</a></li><li><a href="global.html#pomoSessionsOnDate">pomoSessionsOnDate</a></li><li><a href="global.html#pomoSparkColours">pomoSparkColours</a></li><li><a href="global.html#positionNowLine">positionNowLine</a></li><li><a href="global.html#prioBtnHtml">prioBtnHtml</a></li><li><a href="global.html#readOptionalLogForBackup">readOptionalLogForBackup</a></li><li><a href="global.html#refreshPomoDashboard">refreshPomoDashboard</a></li><li><a href="global.html#render">render</a></li><li><a href="global.html#renderCalStrip">renderCalStrip</a></li><li><a href="global.html#renderChart">renderChart</a></li><li><a href="global.html#renderCompleted">renderCompleted</a></li><li><a href="global.html#renderDayStrip">renderDayStrip</a></li><li><a href="global.html#renderEmergencyCps">renderEmergencyCps</a></li><li><a href="global.html#renderEodBtn">renderEodBtn</a></li><li><a href="global.html#renderFlagDay">renderFlagDay</a></li><li><a href="global.html#renderFlowHeader">renderFlowHeader</a></li><li><a href="global.html#renderFlowView">renderFlowView</a></li><li><a href="global.html#renderFolderStatus">renderFolderStatus</a></li><li><a href="global.html#renderGapReminder">renderGapReminder</a></li><li><a href="global.html#renderHeroCard">renderHeroCard</a></li><li><a href="global.html#renderLogView">renderLogView</a></li><li><a href="global.html#renderMigrationStep">renderMigrationStep</a></li><li><a href="global.html#renderMonthlyCalendar">renderMonthlyCalendar</a></li><li><a href="global.html#renderMonthlyLog">renderMonthlyLog</a></li><li><a href="global.html#renderMonthlySummary">renderMonthlySummary</a></li><li><a href="global.html#renderMonthlyTasks">renderMonthlyTasks</a></li><li><a href="global.html#renderMoon">renderMoon</a></li><li><a href="global.html#renderPlan">renderPlan</a></li><li><a href="global.html#renderPomoLog">renderPomoLog</a></li><li><a href="global.html#renderPomoRibbon">renderPomoRibbon</a></li><li><a href="global.html#renderPomoSparkline">renderPomoSparkline</a></li><li><a href="global.html#renderQuickPick">renderQuickPick</a></li><li><a href="global.html#renderReflStars">renderReflStars</a></li><li><a href="global.html#renderRow">renderRow</a></li><li><a href="global.html#renderSodBtn">renderSodBtn</a></li><li><a href="global.html#renderSprintDurations">renderSprintDurations</a></li><li><a href="global.html#renderTimeblock">renderTimeblock</a></li><li><a href="global.html#renderTodayFlow">renderTodayFlow</a></li><li><a href="global.html#renderTrackRecent">renderTrackRecent</a></li><li><a href="global.html#renderTrackers">renderTrackers</a></li><li><a href="global.html#resetPomo">resetPomo</a></li><li><a href="global.html#resolveRapidDate">resolveRapidDate</a></li><li><a href="global.html#resumeTimer">resumeTimer</a></li><li><a href="global.html#resumeTimerIfActive">resumeTimerIfActive</a></li><li><a href="global.html#roundToNearest30">roundToNearest30</a></li><li><a href="global.html#roundToNearest30IfBillable">roundToNearest30IfBillable</a></li><li><a href="global.html#roundUp30">roundUp30</a></li><li><a href="global.html#safeCssColor">safeCssColor</a></li><li><a href="global.html#safeRoundedStart">safeRoundedStart</a></li><li><a href="global.html#save">save</a></li><li><a href="global.html#saveBlocks">saveBlocks</a></li><li><a href="global.html#saveEodHandoffNotes">saveEodHandoffNotes</a></li><li><a href="global.html#saveExpiryDates">saveExpiryDates</a></li><li><a href="global.html#saveHandoffNote">saveHandoffNote</a></li><li><a href="global.html#saveMigrationRecord">saveMigrationRecord</a></li><li><a href="global.html#savePlan">savePlan</a></li><li><a href="global.html#saveReflection">saveReflection</a></li><li><a href="global.html#saveSnapshot">saveSnapshot</a></li><li><a href="global.html#saveSprintLog">saveSprintLog</a></li><li><a href="global.html#saveTaskNotionUrl">saveTaskNotionUrl</a></li><li><a href="global.html#saveTrackerForm">saveTrackerForm</a></li><li><a href="global.html#saveTrackers">saveTrackers</a></li><li><a href="global.html#scheduleMigTask">scheduleMigTask</a></li><li><a href="global.html#sectorPath">sectorPath</a></li><li><a href="global.html#setBlockEmoji">setBlockEmoji</a></li><li><a href="global.html#setFavicon">setFavicon</a></li><li><a href="global.html#setFlowView">setFlowView</a></li><li><a href="global.html#setSeenEnded">setSeenEnded</a></li><li><a href="global.html#setTaskEmoji">setTaskEmoji</a></li><li><a href="global.html#showBridgeBanner">showBridgeBanner</a></li><li><a href="global.html#showHandoffInput">showHandoffInput</a></li><li><a href="global.html#showSprintReview">showSprintReview</a></li><li><a href="global.html#sigHtml">sigHtml</a></li><li><a href="global.html#sigSymbol">sigSymbol</a></li><li><a href="global.html#sigTitle">sigTitle</a></li><li><a href="global.html#slotToTime">slotToTime</a></li><li><a href="global.html#sodKey">sodKey</a></li><li><a href="global.html#startPomo">startPomo</a></li><li><a href="global.html#startSprint">startSprint</a></li><li><a href="global.html#startTimer">startTimer</a></li><li><a href="global.html#statusOpts">statusOpts</a></li><li><a href="global.html#stopTimer">stopTimer</a></li><li><a href="global.html#storeDirHandle">storeDirHandle</a></li><li><a href="global.html#stripJiraPrefix">stripJiraPrefix</a></li><li><a href="global.html#stripPct">stripPct</a></li><li><a href="global.html#tbOverlaps">tbOverlaps</a></li><li><a href="global.html#tbStartBlock">tbStartBlock</a></li><li><a href="global.html#tickClock">tickClock</a></li><li><a href="global.html#tickTimer">tickTimer</a></li><li><a href="global.html#timeToSlot">timeToSlot</a></li><li><a href="global.html#timerBarColor">timerBarColor</a></li><li><a href="global.html#toTimeInput">toTimeInput</a></li><li><a href="global.html#totalISOWeeks">totalISOWeeks</a></li><li><a href="global.html#trackerDayStatus">trackerDayStatus</a></li><li><a href="global.html#trackerStreak">trackerStreak</a></li><li><a href="global.html#triggerPortableDeploy">triggerPortableDeploy</a></li><li><a href="global.html#tsToMins">tsToMins</a></li><li><a href="global.html#updateLiveBlock">updateLiveBlock</a></li><li><a href="global.html#updatePomoDisplay">updatePomoDisplay</a></li><li><a href="global.html#updatePomoTaskLabel">updatePomoTaskLabel</a></li><li><a href="global.html#updateTabAndFavicon">updateTabAndFavicon</a></li><li><a href="global.html#updateTimerArc">updateTimerArc</a></li><li><a href="global.html#updateTimerBar">updateTimerBar</a></li><li><a href="global.html#updateTimerBarColor">updateTimerBarColor</a></li><li><a href="global.html#updateTimerBtn">updateTimerBtn</a></li><li><a href="global.html#validBlock">validBlock</a></li><li><a href="global.html#validCalendarMeeting">validCalendarMeeting</a></li><li><a href="global.html#validCategory">validCategory</a></li><li><a href="global.html#validEntry">validEntry</a></li><li><a href="global.html#validJiraCsvRow">validJiraCsvRow</a></li><li><a href="global.html#validPlanTask">validPlanTask</a></li><li><a href="global.html#validPomoEntry">validPomoEntry</a></li><li><a href="global.html#validTimer">validTimer</a></li><li><a href="global.html#validWeatherResponse">validWeatherResponse</a></li><li><a href="global.html#validateBackupFile">validateBackupFile</a></li><li><a href="global.html#viewEntries">viewEntries</a></li><li><a href="global.html#warn">warn</a></li><li><a href="global.html#weatherEmoji">weatherEmoji</a></li><li><a href="global.html#weekCount">weekCount</a></li><li><a href="global.html#writeExportFile">writeExportFile</a></li></ul>
 </nav>
 
 <br class="clear">
