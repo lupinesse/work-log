@@ -2215,3 +2215,106 @@ describe('formatGroupedLines', () => {
   it('returns no lines for an empty category order', () =>
     assert.equal(formatGroupedLines([], {}, fmt, label).length, 0));
 });
+
+// ── 07-lifecycle.js — readCollapseState / writeCollapseState ─────────────────
+// These helpers live alongside DOM event listeners that fire at load time.
+// We extract only the collapse-state block via regex so we can test the logic
+// without stubbing the full browser environment.
+
+const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
+
+/**
+ * Evaluates the collapse-state helper block from 07-lifecycle.js in a minimal
+ * VM sandbox. The block is extracted by matching between comment headings so
+ * it stays in sync with the source automatically.
+ * @param {Record<string,string>} [preloaded] - Initial localStorage contents.
+ * @returns {{ readCollapseState: Function, writeCollapseState: Function, store: Record<string,string> }}
+ */
+function loadCollapseSandbox(preloaded = {}) {
+  const store = Object.assign({}, preloaded);
+  const sandbox = {
+    localStorage: {
+      getItem: (key) => (key in store ? store[key] : null),
+      setItem: (key, value) => {
+        store[key] = value;
+      },
+    },
+  };
+  const match = lifecycleSrc.match(
+    /\/\*.+Section collapse state persistence.+\*\/([\s\S]*?)(?=\/\*.+Section collapse handlers)/
+  );
+  if (!match) throw new Error('Collapse-state block not found in 07-lifecycle.js');
+  vm.createContext(sandbox);
+  vm.runInContext(match[0], sandbox);
+  return {
+    readCollapseState: sandbox.readCollapseState,
+    writeCollapseState: sandbox.writeCollapseState,
+    store,
+  };
+}
+
+describe('readCollapseState', () => {
+  it('returns defaultCollapsed=true when no value is stored', () => {
+    const { readCollapseState } = loadCollapseSandbox();
+    assert.equal(readCollapseState('mySection', true), true);
+  });
+
+  it('returns defaultCollapsed=false when no value is stored', () => {
+    const { readCollapseState } = loadCollapseSandbox();
+    assert.equal(readCollapseState('mySection', false), false);
+  });
+
+  it('returns true when stored value is "1" regardless of default', () => {
+    const { readCollapseState } = loadCollapseSandbox({ 'tt-open2-mySection': '1' });
+    assert.equal(readCollapseState('mySection', false), true);
+  });
+
+  it('returns false when stored value is "0" regardless of default', () => {
+    const { readCollapseState } = loadCollapseSandbox({ 'tt-open2-mySection': '0' });
+    assert.equal(readCollapseState('mySection', true), false);
+  });
+
+  it('uses the COLLAPSE_PREFIX (tt-open2-) when building the storage key', () => {
+    // A value stored under the bare section id (no prefix) must not match.
+    const { readCollapseState } = loadCollapseSandbox({ mySection: '1' });
+    assert.equal(readCollapseState('mySection', false), false);
+  });
+
+  it('isolates sections: stored state for one id does not affect another', () => {
+    const { readCollapseState } = loadCollapseSandbox({ 'tt-open2-sectionA': '1' });
+    assert.equal(readCollapseState('sectionA', false), true);
+    assert.equal(readCollapseState('sectionB', false), false);
+  });
+});
+
+describe('writeCollapseState', () => {
+  it('writes "1" when collapsed is true', () => {
+    const { writeCollapseState, store } = loadCollapseSandbox();
+    writeCollapseState('mySection', true);
+    assert.equal(store['tt-open2-mySection'], '1');
+  });
+
+  it('writes "0" when collapsed is false', () => {
+    const { writeCollapseState, store } = loadCollapseSandbox();
+    writeCollapseState('mySection', false);
+    assert.equal(store['tt-open2-mySection'], '0');
+  });
+
+  it('overwrites a previous value', () => {
+    const { writeCollapseState, store } = loadCollapseSandbox({ 'tt-open2-s': '1' });
+    writeCollapseState('s', false);
+    assert.equal(store['tt-open2-s'], '0');
+  });
+
+  it('round-trips: write true then read back true', () => {
+    const { readCollapseState, writeCollapseState } = loadCollapseSandbox();
+    writeCollapseState('roundTrip', true);
+    assert.equal(readCollapseState('roundTrip', false), true);
+  });
+
+  it('round-trips: write false then read back false', () => {
+    const { readCollapseState, writeCollapseState } = loadCollapseSandbox();
+    writeCollapseState('roundTrip', false);
+    assert.equal(readCollapseState('roundTrip', true), false);
+  });
+});
