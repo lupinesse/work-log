@@ -336,6 +336,35 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
 }
 
 /**
+ * Add a reaction to a pull-request review comment (inline thread comment).
+ * Idempotent: GitHub returns 200 when the reaction already exists for this
+ * user, 201 when newly created — both are treated as success.
+ *
+ * Used to signal "still seeing this" on a suppressed duplicate finding instead
+ * of posting a verbose identical comment.
+ *
+ * @param {object} params
+ * @param {string} params.token      GitHub auth token.
+ * @param {string} params.owner
+ * @param {string} params.repo
+ * @param {number} params.commentId  REST integer id of the comment to react to.
+ * @param {string} params.content    Reaction name — e.g. 'eyes', '+1', 'hooray'.
+ * @returns {Promise<object>} GitHub API reaction object.
+ */
+export async function addReactionToComment({ token, owner, repo, commentId, content }) {
+  const response = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/pulls/comments/${commentId}/reactions`,
+    {
+      method: 'POST',
+      headers: ghHeaders(token),
+      body: JSON.stringify({ content }),
+    }
+  );
+  if (!response.ok) throw new Error(`Reaction API ${response.status}: ${await response.text()}`);
+  return response.json();
+}
+
+/**
  * Post a single inline pull-request review comment on a specific file line.
  * Each call creates a separate resolvable thread. Used only when no existing
  * thread is appropriate to reply to.

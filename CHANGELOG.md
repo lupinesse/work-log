@@ -3,9 +3,11 @@
 ## Unreleased
 
 ### Added
+- **Duplicate ChatGPT review findings suppressed with 👀 reaction** — when the Phase 1 or Phase 4 ChatGPT bot generates a "new" inline finding at a `path:line` already covered by an existing review thread, the runtime now suppresses the verbose duplicate and adds a `👀` (`eyes`) reaction to the original comment instead. Adds `addReactionToComment()` to `lib/github-threads.mjs` with 2 unit tests.
 - **Section collapse state persisted across page reloads** — all collapsible sections (Analytics, Parked thoughts, Pomodoro, Today's tasks, Upcoming, Pending, Completed, Meetings, Jira, Notion links) save their open/collapsed state to `localStorage` under `tt-open2-{id}` keys and restore it on the next load. Sections default to their design-spec defaults when no stored key exists.
 
 ### Changed
+- **3rd preset epic colour swapped from red (`#E74C3C`) to teal (`#0d9488`)** — the red slot in `CUSTOM_PALETTE` conflicted with error-state and overtime signifier colours; teal matches the existing `--epic-teal` design token and is visually distinct from the surrounding purple and blue slots. Applies only to newly created epics; existing epics are unaffected.
 - **ESLint now covers `.github/scripts/**/*.mjs`** — the CI dialogue scripts (`chatgpt-review.mjs`, `claude-chatgpt-dialogue.mjs`, `chatgpt-claude-dialogue.mjs`, and the shared `lib/` modules) were previously invisible to the `lint` CI job, meaning any lint errors in those files produced a false green. A new flat-config block in `eslint.config.js` applies `globals.node` (giving `process`, `console`, `fetch`, `URL` etc.) and suppresses `security/detect-non-literal-fs-filename` and `security/detect-object-injection` for the same trusted-input reasons documented on the existing Node blocks. The `lint` script glob is updated to match.
 
 ### Fixed

@@ -29,6 +29,7 @@
 
 import { readFileSync } from 'node:fs';
 import {
+  addReactionToComment,
   fetchAllThreads,
   formatThreadsForPrompt,
   ghHeaders,
@@ -93,7 +94,9 @@ Output your review as a single raw JSON object — no markdown wrapper, no text 
 
 Rules: for "new", path must exactly match a file path from a diff header line (e.g. src/js/06-focus.js) and line must be a real line number in the new (right-side) version of that file. For "reply", thread_index must be one of the integers shown in the existing-threads list below. Only include items you can cite specifically; put general observations in summary instead.
 
-Focus on: correctness (logic errors, edge cases, null/undefined), single-purpose functions (flag any doing more than one thing), informative naming (flag single-letter variables outside tight map/filter chains), error handling (use wlLog.warn/error — never silent catch), test coverage (every new exported function in .github/scripts/lib/ needs a unit test — tests live in .github/scripts/test/*.test.mjs, not test/unit.cjs which does not exist). Ignore auto-generated files: script.js, styles.css, docs/*.html. Be direct and specific; cite file and line for every finding.`;
+Focus on: correctness (logic errors, edge cases, null/undefined), single-purpose functions (flag any doing more than one thing), informative naming (flag single-letter variables outside tight map/filter chains), error handling (use wlLog.warn/error — never silent catch), test coverage (every new exported function in .github/scripts/lib/ needs a unit test — tests live in .github/scripts/test/*.test.mjs, not test/unit.cjs which does not exist). Ignore auto-generated files: script.js, styles.css, docs/*.html. Be direct and specific; cite file and line for every finding.
+
+Important: if you would raise a \`new\` finding at a path+line that is already covered by an existing thread (open or resolved), use \`reply\` instead — the runtime suppresses exact-location duplicates with a 👀 reaction rather than posting a separate comment.`;
 
 const PROMPT = process.env.PROMPT || DEFAULT_PROMPT;
 
@@ -370,7 +373,30 @@ async function main() {
 
   // Pass 2 — new findings batched into one review so the PR shows one
   // "reviewed" banner regardless of how many findings there are.
-  const newActions = review.actions.filter((x) => x.type === 'new');
+  //
+  // Before batching, check each finding against existing threads: if the model
+  // produced a "new" action at a path+line already covered by an existing
+  // thread it should have replied to instead, suppress the duplicate and react
+  // with 👀 on the original so the reviewer knows the issue was re-noticed.
+  const newActions = [];
+  for (const a of review.actions.filter((x) => x.type === 'new')) {
+    const dup = existingThreads.find((t) => t.path === a.path && t.line === a.line);
+    if (dup) {
+      try {
+        await addReactionToComment({ ...GH_CTX, commentId: dup.firstCommentId, content: 'eyes' });
+        console.log(
+          `  duplicate suppressed — reacted 👀 on existing thread at ${a.path}:${a.line}`
+        );
+      } catch (err) {
+        console.warn(
+          `  could not react to duplicate at ${a.path}:${a.line} — ${err.message} — posting anyway`
+        );
+        newActions.push(a);
+      }
+    } else {
+      newActions.push(a);
+    }
+  }
   if (newActions.length > 0) {
     const findings = newActions.map((a) => ({
       path: a.path,
