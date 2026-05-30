@@ -253,7 +253,7 @@ function renderFlowHeader(dateKey, activeView) {
     return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${view}" id="tfTab-${view}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[view]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[view]}</button>`;
   }).join('');
 
-  el.innerHTML = `<span class="tf-icon" aria-hidden="true">${ICON_ACTIVITY}</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
+  el.innerHTML = `<span class="section-icon tf-icon" aria-hidden="true">${ICON_ACTIVITY}</span><span class="tf-title">TODAY'S FLOW</span>${totalsHtml}<div class="tf-seg" id="tfSeg" role="tablist" aria-label="Select view">${segHtml}</div>`;
 }
 
 // ─────────────────────────── Flow view ───────────────────────────
