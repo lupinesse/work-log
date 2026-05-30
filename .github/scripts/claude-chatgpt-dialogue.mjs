@@ -21,7 +21,7 @@
  *   MODEL              Override model (default 'claude-sonnet-4-6')
  *   MAX_TOKENS         default 1500
  *   DIFF_PATH          default 'pr.diff'
- *   MAX_DIFF_CHARS     default 40000
+ *   MAX_DIFF_CHARS     default 30000
  */
 
 import { readFileSync } from 'node:fs';
@@ -82,7 +82,7 @@ const HEAD_SHA = must('HEAD_SHA');
 const MODEL_OVERRIDE = process.env.MODEL || '';
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '1500', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
-const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '30000', 10);
 
 /** @param {string} model */
 const buildAttribution = (model) =>
@@ -166,7 +166,8 @@ async function callClaudeApi(diff, threads) {
         .map((r) => `  ↳ ${r.author || 'unknown'}: ${r.body.slice(0, 400).replace(/\n/g, ' ')}`)
         .join('\n');
       const header = `Thread ${i} | ${t.path}:${t.line}`;
-      return replyLines ? `${header}\n${t.body}\n${replyLines}` : `${header}\n${t.body}`;
+      const bodyPreview = t.body.slice(0, 400);
+      return replyLines ? `${header}\n${bodyPreview}\n${replyLines}` : `${header}\n${bodyPreview}`;
     })
     .join('\n\n---\n\n');
 

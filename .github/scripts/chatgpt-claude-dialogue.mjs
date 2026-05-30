@@ -18,9 +18,10 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL                default 'gpt-4.1'
- *   MAX_DIFF_CHARS       default 40000
- *   MAX_TOKENS           default 16384
+ *   MODEL                default 'gpt-4o-2024-08-06'
+ *   MAX_DIFF_CHARS       default 25000
+ *   MAX_TOKENS           default 4096
+ *   MAX_CONTEXT_CHARS    default 3000 — cap on synthesis + final-review context
  *   DIFF_PATH            default 'pr.diff'
  */
 
@@ -64,9 +65,10 @@ const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
-const MODEL = process.env.MODEL || 'gpt-4.1';
-const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '16384', 10);
+const MODEL = process.env.MODEL || 'gpt-4o-2024-08-06';
+const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '25000', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '4096', 10);
+const MAX_CONTEXT_CHARS = parseInt(process.env.MAX_CONTEXT_CHARS || '3000', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const ATTRIBUTION = `*ChatGPT \`${MODEL}\` responding to Claude's review · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
@@ -220,13 +222,21 @@ async function callOpenAI(diff, claudeContext) {
     `**All existing review threads on this PR (each shows path:line, author, resolution state, the original finding, and any replies including Claude's verdict emoji):**\n\n${formatThreadsForPrompt(threads)}`
   );
   if (synthesis) {
+    const body =
+      synthesis.length > MAX_CONTEXT_CHARS
+        ? synthesis.slice(0, MAX_CONTEXT_CHARS) + '\n\n[truncated]'
+        : synthesis;
     contextBlocks.push(
-      `**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${synthesis}`
+      `**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${body}`
     );
   }
   if (finalReview) {
+    const body =
+      finalReview.length > MAX_CONTEXT_CHARS
+        ? finalReview.slice(0, MAX_CONTEXT_CHARS) + '\n\n[truncated]'
+        : finalReview;
     contextBlocks.push(
-      `**Claude's final /pr-review verdict (Phase 3 — posted after resolving your threads):**\n\n${finalReview}`
+      `**Claude's final /pr-review verdict (Phase 3 — posted after resolving your threads):**\n\n${body}`
     );
   }
   const claudeContext_ = contextBlocks.join('\n\n---\n\n');
@@ -299,6 +309,11 @@ Output a single raw JSON object — no markdown wrapper:
   if (!response.ok) die(`OpenAI API ${response.status}: ${await response.text()}`);
   const data = await response.json();
   if (data.error) die(`OpenAI error (${data.error.code}): ${data.error.message}`);
+  const usage = data.usage ?? {};
+  console.log(
+    `  tokens: ${usage.prompt_tokens ?? '?'} in / ${usage.completion_tokens ?? '?'} out` +
+      (usage.total_tokens != null ? ` / ${usage.total_tokens} total` : '')
+  );
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 

@@ -147,6 +147,8 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+          MODEL:             gpt-4o-2024-08-06
+          MAX_DIFF_CHARS:    '30000'
         run: node .github/scripts/chatgpt-review.mjs
 
   # ─── Phase 2: Claude responds to ChatGPT's findings ───────────────────────
@@ -445,6 +447,9 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+          MODEL:             gpt-4o-2024-08-06
+          MAX_DIFF_CHARS:    '25000'
+          MAX_CONTEXT_CHARS: '3000'
         run: node .github/scripts/chatgpt-claude-dialogue.mjs
 
   # ─── Merge gate: block merge until ChatGPT has no outstanding findings ─────
