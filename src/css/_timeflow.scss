@@ -20,7 +20,10 @@
 }
 
 .tf-icon {
-  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text3);
 }
 
 .tf-title {
