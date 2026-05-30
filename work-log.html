@@ -520,15 +520,24 @@
             <div class="pomo-time" id="pomoTime">05:00</div>
             <div class="pomo-status" id="pomoStatus">ready</div>
           </div>
+          <div class="pomo-checkmark" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
         </div>
       </div>
       <!-- Col 2: Composer -->
       <div class="pomo-col-composer">
         <div class="pomo-task-label" id="pomoTaskLabel"></div>
+        <div class="pomo-affirmation" id="pomoAffirmation"></div>
         <div class="pomo-controls">
           <button class="pomo-btn pomo-start" id="pomoStart">start</button>
           <button class="pomo-btn" id="pomoReset">reset</button>
           <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
+          <button class="pomo-btn pomo-plus2-btn" id="pomoPlus2">+2 min</button>
+          <button class="pomo-btn pomo-tapout-btn" id="pomoTapOut">tap out</button>
+        </div>
+        <div class="pomo-done-controls" id="pomoDoneControls">
+          <button class="pomo-btn" id="pomoAnother5">&#8635; Another 5</button>
+          <button class="pomo-btn" id="pomoBreather">&#128167; 1-min breather</button>
+          <button class="pomo-btn" id="pomoDismiss">Done</button>
         </div>
         <div class="pomo-chime">
           🔔 time chime every

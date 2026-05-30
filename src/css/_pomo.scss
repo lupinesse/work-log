@@ -224,6 +224,100 @@
   color: var(--text2);
 }
 
+/* ── Running / done / idle state modifiers ── */
+
+.pomo-affirmation {
+  display: none;
+  font-size: 12px;
+  color: var(--live);
+  font-style: italic;
+  min-height: 1.4em;
+  line-height: 1.4;
+}
+
+.pomo-plus2-btn,
+.pomo-tapout-btn {
+  display: none;
+}
+
+.pomo-done-controls {
+  display: none;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pomo-checkmark {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #16a34a;
+
+  svg {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+.pomo-body.pomo--running {
+  .pomo-grid {
+    grid-template-columns: 200px 1fr;
+  }
+
+  .pomo-col-sparkline,
+  .pomo-col-ledger {
+    display: none;
+  }
+
+  .pomo-col-clock .pomo-ring-wrap {
+    width: 190px;
+    height: 190px;
+  }
+
+  .pomo-col-clock .pomo-svg {
+    width: 190px;
+    height: 190px;
+  }
+
+  .pomo-col-clock .pomo-time {
+    font-size: 32px;
+  }
+
+  .pomo-affirmation {
+    display: block;
+  }
+
+  .pomo-plus2-btn,
+  .pomo-tapout-btn {
+    display: inline-flex;
+  }
+
+  #pomoReset,
+  .sprint-mode {
+    display: none;
+  }
+}
+
+.pomo-body.pomo--done {
+  .pomo-controls {
+    display: none;
+  }
+
+  .pomo-done-controls {
+    display: flex;
+  }
+
+  .pomo-center {
+    display: none;
+  }
+
+  .pomo-checkmark {
+    display: flex;
+  }
+}
+
 /* ── Responsive breakpoints ── */
 
 /* Narrow (tablet): collapse sparkline + ledger to full-width second row */
