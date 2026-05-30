@@ -20,7 +20,7 @@ body.emergency #tagRow,
 body.emergency #timeline,
 body.emergency #jiraSection,
 body.emergency #parkSection {
-  display: none !important;
+  display: none;
 }
 
 body.emergency {
@@ -39,7 +39,7 @@ body.emergency .pomo-section {
 
 body.emergency .pomo-log,
 body.emergency .pomo-chime {
-  display: none !important;
+  display: none;
 }
 
 /* Checkpoints inside focus mode */

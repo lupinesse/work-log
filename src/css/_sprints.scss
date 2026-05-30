@@ -26,10 +26,10 @@
   font-size: 12px;
 }
 
-.sprint-dur-active {
-  background: var(--info-bg) !important;
-  color: var(--info-text) !important;
-  border-color: var(--info-text) !important;
+.add-btn.sprint-dur-active {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-color: var(--info-text);
 }
 
 .sprint-setup-actions {
