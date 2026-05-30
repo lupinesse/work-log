@@ -327,15 +327,15 @@
 
 .plan-item.active-timer,
 .plan-item.inprogress {
-  background: var(--in-progress);
-  border-left: 3px solid var(--in-progress-accent);
+  background: transparent;
+  border-left: 3px solid var(--live);
   padding-left: 6px;
   border-radius: var(--radius);
 }
 
 .plan-item.active-timer:hover,
 .plan-item.inprogress:hover {
-  background: var(--in-progress-highlight);
+  background: var(--live-softer);
 }
 
 /* stylelint-disable-next-line block-no-empty -- intentionally empty; kept for specificity anchor */
@@ -368,9 +368,9 @@
 }
 
 .plan-status.inprogress {
-  background-color: var(--in-progress-highlight);
-  color: var(--in-progress-ink);
-  border-color: var(--in-progress-accent);
+  background-color: var(--live-soft);
+  color: var(--live-deep);
+  border-color: var(--live);
   font-weight: 600;
 }
 

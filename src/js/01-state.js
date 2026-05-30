@@ -31,9 +31,9 @@ const DEFAULT_IDS = new Set(DEFAULT_CATS.map((c) => c.id));
 const CUSTOM_PALETTE = [
   '#7B61FF',
   '#E67E22',
-  '#E74C3C',
-  '#16A085',
+  '#0d9488',
   '#3F51B5',
+  '#16A085',
   '#9B59B6',
   '#F39C12',
   '#00BCD4',
