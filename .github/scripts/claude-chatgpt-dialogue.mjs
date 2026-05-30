@@ -224,7 +224,7 @@ Output a single raw JSON object — no markdown wrapper:
     if (response.ok) {
       const data = await response.json();
       if (data.error) die(`Anthropic error (${data.error.type}): ${data.error.message}`);
-      const usage = data.usage || {};
+      const usage = data.usage ?? {};
       console.log(
         `Auth: used ${auth.source} (model ${model}) | ` +
           `tokens: ${usage.input_tokens ?? '?'} in / ${usage.output_tokens ?? '?'} out` +
