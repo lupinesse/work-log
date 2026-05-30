@@ -7,7 +7,7 @@ description: >-
   (reads pr.diff written by the workflow). Use when asked to review a PR,
   review this change, or check a diff.
 allowed-tools: >-
-  Read, Grep, Glob,
+  Grep,
   Bash(git log:*), Bash(git diff:*), Bash(git show:*),
   Bash(cat:*), Bash(wc:*)
 ---
@@ -28,7 +28,7 @@ First check whether `pr.diff` exists (written by the CI workflow):
 wc -l pr.diff 2>/dev/null || echo "missing"
 ```
 
-- **If `pr.diff` exists**: read it with the Read tool.
+- **If `pr.diff` exists**: `cat pr.diff`
 - **If `pr.diff` is missing** (local run): generate it yourself:
   ```bash
   git diff main...HEAD
@@ -44,8 +44,8 @@ Skip auto-generated files: `script.js`, `styles.css`, `docs/**/*.html`,
 ### Step 1b — Check for prior ChatGPT findings (CI only)
 
 If `chatgpt-findings.md` exists, ChatGPT already posted independent findings
-on this PR before you ran. Read it and keep a list of `(path, line, gist)`
-for each prior finding.
+on this PR before you ran. `cat chatgpt-findings.md` and keep a list of
+`(path, line, gist)` for each prior finding.
 
 When writing your review:
 - If a finding you would have raised matches a prior ChatGPT finding (same
@@ -60,11 +60,11 @@ When writing your review:
 
 This file is absent for local runs — ignore the step if it's not there.
 
-### Step 2 — Read the quality standard
+### Step 2 — Apply the quality standard
 
-- Read `CLAUDE.md` (repo root) for the operative quality rules.
-- These are the criteria you will audit against. Every finding must cite a
-  specific rule from one of these files.
+The contents of `CLAUDE.md` are already loaded in your context (the harness
+injects them automatically). Use them as your audit criteria. Every finding
+must cite a specific rule from that file — no need to re-read it.
 
 ### Step 3 — Audit the changed code
 

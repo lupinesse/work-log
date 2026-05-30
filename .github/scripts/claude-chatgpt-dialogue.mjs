@@ -19,7 +19,7 @@
  *
  * Optional env vars:
  *   MODEL              Override model (default 'claude-sonnet-4-6')
- *   MAX_TOKENS         default 8192
+ *   MAX_TOKENS         default 1500
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 40000
  */
@@ -224,7 +224,15 @@ Output a single raw JSON object — no markdown wrapper:
     if (response.ok) {
       const data = await response.json();
       if (data.error) die(`Anthropic error (${data.error.type}): ${data.error.message}`);
-      console.log(`Auth: used ${auth.source} (model ${model})`);
+      const usage = data.usage ?? {};
+      console.log(
+        `Auth: used ${auth.source} (model ${model}) | ` +
+          `tokens: ${usage.input_tokens ?? '?'} in / ${usage.output_tokens ?? '?'} out` +
+          (usage.cache_creation_input_tokens
+            ? ` / ${usage.cache_creation_input_tokens} cache_write`
+            : '') +
+          (usage.cache_read_input_tokens ? ` / ${usage.cache_read_input_tokens} cache_read` : '')
+      );
       return { text: (data.content?.[0]?.text || '').trim(), model };
     }
 
