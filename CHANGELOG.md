@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Active / in-progress task row recoloured to the cool `--live` family** (May-2026 refinement #2) — the row now shows a 3px sky-blue left edge (`--live`) with no background tint on its default state, and a very faint `--live-softer` wash on hover. The "In progress" status pill uses `--live-soft` background, `--live-deep` ink, and `--live` border. The previous amber/lemon palette tokens (`--in-progress*`) are retained so Jira badge styles are unaffected.
+
 ### Added
 - **Duplicate ChatGPT review findings suppressed with 👀 reaction** — when the Phase 1 or Phase 4 ChatGPT bot generates a "new" inline finding at a `path:line` already covered by an existing review thread, the runtime now suppresses the verbose duplicate and adds a `👀` (`eyes`) reaction to the original comment instead. Adds `addReactionToComment()` to `lib/github-threads.mjs` with 2 unit tests.
 - **Section collapse state persisted across page reloads** — all collapsible sections (Analytics, Parked thoughts, Pomodoro, Today's tasks, Upcoming, Pending, Completed, Meetings, Jira, Notion links) save their open/collapsed state to `localStorage` under `tt-open2-{id}` keys and restore it on the next load. Sections default to their design-spec defaults when no stored key exists.
