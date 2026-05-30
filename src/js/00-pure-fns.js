@@ -664,7 +664,7 @@ function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
  * appearance is preserved and duplicate task names are de-duplicated.
  *
  * @param {Array<Object>} mergedEntries - Output of {@link mergeAdjacentEntries}.
- * @param {(tag: string) => string} getCatLabel - Resolves a category key to its
+ * @param {function(string): string} getCatLabel - Resolves a category key to its
  *   display label. Injected so this function stays free of global state.
  * @returns {string[]} Summary parts, ready to be joined with `, `.
  */
@@ -742,8 +742,8 @@ function computeDayBounds(dayEntries, timedEntries, opts) {
  *
  * @param {string[]} catOrder   - Category keys in display order.
  * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
- * @param {(ms: number) => string} fmtDuration  - Formats a duration in ms (e.g. `fmtDurLong`).
- * @param {(tag: string) => string} getCatLabel - Resolves a category key to its label.
+ * @param {function(number): string} fmtDuration  - Formats a duration in ms (e.g. `fmtDurLong`).
+ * @param {function(string): string} getCatLabel - Resolves a category key to its label.
  * @returns {string[]} The body lines for the export file.
  */
 function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
