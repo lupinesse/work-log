@@ -19,7 +19,7 @@
  *
  * Optional env vars:
  *   MODEL              Override model (default 'claude-sonnet-4-6')
- *   MAX_TOKENS         default 8192
+ *   MAX_TOKENS         default 1500
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 40000
  */
@@ -80,7 +80,7 @@ const HEAD_SHA = must('HEAD_SHA');
 
 // Both credential paths default to claude-sonnet-4-6; MODEL env overrides.
 const MODEL_OVERRIDE = process.env.MODEL || '';
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '1500', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '40000', 10);
 
@@ -209,12 +209,14 @@ Output a single raw JSON object — no markdown wrapper:
       headers: {
         ...auth.headers,
         'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
         'content-type': 'application/json',
       },
       body: JSON.stringify({
         model,
         max_tokens: MAX_TOKENS,
-        system,
+        // Cache the stable system rubric; the diff and thread list are not cached.
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: user }],
       }),
     });
@@ -222,7 +224,15 @@ Output a single raw JSON object — no markdown wrapper:
     if (response.ok) {
       const data = await response.json();
       if (data.error) die(`Anthropic error (${data.error.type}): ${data.error.message}`);
-      console.log(`Auth: used ${auth.source} (model ${model})`);
+      const usage = data.usage ?? {};
+      console.log(
+        `Auth: used ${auth.source} (model ${model}) | ` +
+          `tokens: ${usage.input_tokens ?? '?'} in / ${usage.output_tokens ?? '?'} out` +
+          (usage.cache_creation_input_tokens
+            ? ` / ${usage.cache_creation_input_tokens} cache_write`
+            : '') +
+          (usage.cache_read_input_tokens ? ` / ${usage.cache_read_input_tokens} cache_read` : '')
+      );
       return { text: (data.content?.[0]?.text || '').trim(), model };
     }
 

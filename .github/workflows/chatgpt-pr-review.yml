@@ -334,10 +334,20 @@ jobs:
           fi
           claude -p "/pr-review" \
             --model claude-sonnet-4-6 \
-            --allowedTools "Read" "Grep" "Glob" \
+            --max-turns 15 \
+            --output-format json \
+            --allowedTools "Grep" \
                            "Bash(git log:*)" "Bash(git diff:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
-            > review-output.txt 2>&1
+            > review-raw.json 2>review-stderr.txt || true
+          [ -s review-stderr.txt ] && echo "--- claude stderr ---" && cat review-stderr.txt
+          if jq -e '.result' review-raw.json > /dev/null 2>&1; then
+            jq -r '.result' review-raw.json > review-output.txt
+            jq -r '"Phase 3 stats: turns=\(.num_turns // "?") cost=$\(.total_cost_usd // "?") duration=\(.duration_ms // "?")ms"' \
+              review-raw.json
+          else
+            cat review-raw.json review-stderr.txt > review-output.txt 2>/dev/null || true
+          fi
           echo "Review complete ($(wc -l < review-output.txt) lines)"
 
       - name: Mint Claude Reviewer App token
