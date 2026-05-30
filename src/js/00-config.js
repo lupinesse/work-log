@@ -91,8 +91,8 @@ const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
 
 /**
  * When true, pauses a running timer automatically when the browser tab becomes
- * hidden (visibilitychange → document.hidden). The user receives a "paused
- * while away" note on return.
+ * hidden (visibilitychange → document.hidden). The pause is silent; the event
+ * is recorded in the console log via wlLog.info but no UI notification appears.
  * Set to false to disable. Override in 00-config.local.js.
  * @type {boolean}
  */

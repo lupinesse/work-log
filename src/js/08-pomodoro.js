@@ -229,11 +229,14 @@ function playPomoBeep() {
 
 /**
  * Returns a progress-aware affirmation string based on elapsed time.
+ * Default parameters let callers pass explicit values (useful for testing).
+ * @param {number} [total] - Total session seconds; defaults to pomoTotal.
+ * @param {number} [left] - Remaining seconds; defaults to pomoLeft.
  * @returns {string} Short motivational phrase.
  */
-function pomoAffirmation() {
-  if (pomoTotal === 0) return '';
-  const pct = Math.round(((pomoTotal - pomoLeft) / pomoTotal) * 100);
+function pomoAffirmation(total = pomoTotal, left = pomoLeft) {
+  if (total === 0) return '';
+  const pct = Math.round(((total - left) / total) * 100);
   if (pct < 25) return `${pct}% in · stay with it`;
   if (pct < 50) return `${pct}% in · you're in the zone`;
   if (pct < 75) return `${pct}% in · keep going`;
@@ -277,7 +280,12 @@ function updatePomoDisplay() {
   const affEl = document.getElementById('pomoAffirmation');
   if (affEl) affEl.textContent = pomoRunning ? pomoAffirmation() : '';
 
-  if (pomoRunning) setPomoFavicon();
+  if (pomoRunning) {
+    setPomoFavicon();
+  } else {
+    const _pomoFaviconEl = document.querySelector("link[rel~='icon'][data-pomo]");
+    if (_pomoFaviconEl) _pomoFaviconEl.remove();
+  }
 
   if (typeof updatePomoTaskLabel === 'function') updatePomoTaskLabel();
 }
@@ -287,10 +295,11 @@ function updatePomoDisplay() {
  * pomodoro time. Silently skips when the canvas API is unavailable.
  */
 function setPomoFavicon() {
-  let link = document.querySelector("link[rel~='icon']");
+  let link = document.querySelector("link[rel~='icon'][data-pomo]");
   if (!link) {
     link = document.createElement('link');
     link.rel = 'icon';
+    link.setAttribute('data-pomo', '1');
     document.head.appendChild(link);
   }
   try {
