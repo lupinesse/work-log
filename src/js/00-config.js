@@ -72,3 +72,15 @@ const CAL_ACCOUNT_LABELS = {
   // acme: 'Acme Corp',
   // contractor: 'My Contractor',
 };
+
+// ---------------------------------------------------------------------------
+// Daily tracking goal — used for the header pace bar
+// ---------------------------------------------------------------------------
+
+/**
+ * Daily tracking goal in milliseconds. The header pace bar fills proportionally
+ * as today's logged time approaches this value.
+ * Default: 7 hours 30 minutes. Override in 00-config.local.js.
+ * @type {number}
+ */
+const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m

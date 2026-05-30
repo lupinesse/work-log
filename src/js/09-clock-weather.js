@@ -45,6 +45,7 @@ function tickClock() {
   document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
   positionNowLine();
   checkBlockNotifications();
+  updateHeaderTracking();
   // Detect midnight rollover — carry tasks and re-render
   const todayKey = dk(now);
   if (todayKey !== _lastTickDate) {
@@ -56,6 +57,34 @@ function tickClock() {
     renderEodBtn();
     checkPomoWeeklyClear();
     render();
+  }
+}
+
+/**
+ * Refreshes the header's tracked-total display and pace bar.
+ * Sums completed entries for today plus any currently running elapsed time.
+ * Called from tickClock() (every 10 s) and tickTimer() (every 1 s).
+ */
+function updateHeaderTracking() {
+  const todayKey = dk(new Date());
+  const completedMs = entries
+    .filter((e) => e.date === todayKey && e.tsEnd && e.tsEnd > e.ts)
+    .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+  const totalMs = completedMs + getElapsedMs();
+
+  const totalEl = document.getElementById('headerTrackedTotal');
+  if (totalEl) totalEl.textContent = totalMs > 0 ? fmtDur(totalMs) : '0m';
+
+  const paceWrap = document.getElementById('headerPaceWrap');
+  const fillEl = document.getElementById('headerPaceFill');
+  const pct = DAILY_GOAL_MS > 0 ? Math.min(100, (totalMs / DAILY_GOAL_MS) * 100) : 0;
+  if (fillEl) fillEl.style.width = pct.toFixed(1) + '%';
+  if (paceWrap) paceWrap.setAttribute('aria-valuenow', Math.round(pct).toString());
+
+  const goalEl = document.getElementById('headerPaceGoal');
+  if (goalEl) {
+    goalEl.textContent =
+      totalMs >= DAILY_GOAL_MS ? 'goal reached!' : `on pace for ${fmtDur(DAILY_GOAL_MS)}`;
   }
 }
 

@@ -10,22 +10,41 @@
 </head>
 <body>
 
-<div class="header">
-  <div class="header-boxes">
-    <div class="live-info">
-      <div class="live-date" id="liveDate"></div>
-      <div class="live-time" id="liveTime"></div>
-      <div class="live-weather" id="liveWeather">locating…</div>
-      <div class="live-weather" id="liveRain"></div>
+<div class="header" role="banner">
+  <!-- Col 1: date + wall-clock + sunrise/sunset -->
+  <div class="header-left">
+    <div class="live-date" id="liveDate"></div>
+    <div class="live-time" id="liveTime" aria-label="Current time"></div>
+    <div class="header-sunrise" id="liveSunrise"></div>
+  </div>
+
+  <!-- Col 2: tracked total + pace bar + demoted almanac -->
+  <div class="header-center" aria-label="Today's tracking summary">
+    <div class="header-tracked-row">
+      <span class="header-tracked-total" id="headerTrackedTotal" aria-live="polite">0m</span>
+      <span class="header-tracked-label"> tracked today</span>
     </div>
-    <div class="live-info">
-      <div class="live-week" id="liveWeek"></div>
-      <div class="live-weather" id="liveSunrise"></div>
-      <div class="live-weather" id="liveMoon"></div>
-      <div class="live-weather" id="liveFlagDay"></div>
-      <div class="live-weather" id="liveNameday"></div>
+    <div class="header-pace-wrap" role="progressbar" aria-label="Daily goal progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="headerPaceWrap">
+      <div class="header-pace-fill" id="headerPaceFill" style="width:0%"></div>
+    </div>
+    <div class="header-pace-goal" id="headerPaceGoal"></div>
+    <div class="header-ambient">
+      <span class="header-ambient-line" id="liveWeather">locating…</span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveRain"></span>
+    </div>
+    <div class="header-ambient">
+      <span class="header-ambient-line" id="liveWeek"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveMoon"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveFlagDay"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveNameday"></span>
     </div>
   </div>
+
+  <!-- Col 3: date nav + start-of-day button -->
   <div class="date-nav-wrap">
     <div class="date-nav">
       <button class="nav-btn" id="prevDay" aria-label="Previous day">&#8592;</button>

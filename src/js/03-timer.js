@@ -290,8 +290,9 @@ function tickTimer() {
     if (!activeTimer) return;
     const entry = entries.find((e) => e.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
-    // Update hero card clock (running state) — lightweight, no full render
+    // Update hero card clock and header tracking total every tick
     heroUpdateClock();
+    updateHeaderTracking();
     // Keep the task title element current for accessibility aria-live region
     const taskEl = document.getElementById('timerTask');
     if (taskEl) taskEl.innerHTML = entry ? jiraTicketHtml(entry.text) : '…';

@@ -508,11 +508,11 @@ async function runTests() {
     assert('Week number shown', /Week \d+\/\d+/.test(weekText));
     assert('Week format valid', /Week ([1-9]|[1-4]\d|5[0-3])\/5[23]/.test(weekText));
     assert(
-      'Week number in second box',
+      'Week number in header-center',
       await page.evaluate(() => {
         const el = document.getElementById('liveWeek');
-        const boxes = document.querySelectorAll('.live-info');
-        return boxes.length >= 2 && boxes[1].contains(el);
+        const center = document.querySelector('.header-center');
+        return center ? center.contains(el) : false;
       })
     );
     await page.close();
