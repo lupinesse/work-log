@@ -68,8 +68,12 @@ This file is absent for local runs — ignore the step if it's not there.
 
 ### Step 3 — Audit the changed code
 
-For each modified source file, read its full current content (not just the
-diff lines) so you have context. Then check:
+Work from the diff context only — do **not** read entire source files.
+The `+` / `-` lines in `pr.diff` give you everything that changed.
+If you need narrow context for a specific hunk (e.g. a function signature a
+few lines above the change), use `git show HEAD:path/to/file` with a line
+range passed to `sed` or `head`/`tail` — never `cat` the whole file.
+Then check:
 
 **Correctness**
 - Are there logic errors, off-by-one mistakes, or incorrect conditions?
