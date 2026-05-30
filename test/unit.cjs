@@ -2361,11 +2361,6 @@ function makePomoSandboxBase(extra = {}) {
     querySelectorAll: () => ({ forEach: () => {} }),
     insertBefore: () => {},
   });
-  const svgEl = () => ({
-    setAttribute: () => {},
-    querySelectorAll: () => ({ forEach: () => {} }),
-    insertBefore: () => {},
-  });
   const sb = {
     STORE_POMO_LOG: 'wl_pomoLog_v1',
     activeTimer: null,
@@ -2390,7 +2385,11 @@ function makePomoSandboxBase(extra = {}) {
       getElementById: () => makeEl(),
       querySelector: () => null,
       querySelectorAll: () => ({ forEach: () => {} }),
-      createElementNS: () => svgEl(),
+      createElementNS: () => ({
+        setAttribute: () => {},
+        querySelectorAll: () => ({ forEach: () => {} }),
+        insertBefore: () => {},
+      }),
       createElement: () => ({ ...makeEl(), getContext: () => null }),
       head: { appendChild: () => {} },
     },
@@ -2586,8 +2585,6 @@ function loadHeaderTrackingSandbox(overrides = {}) {
   const elements = {};
   const makeTrackedEl = () => ({ textContent: '', style: {}, setAttribute: () => {} });
 
-  const todayKey = dk(new Date()); // dk is available from the pure-fns sandbox above
-
   const sb = {
     // Pure helpers the function calls
     dk: (...a) => dk(...a),
@@ -2608,7 +2605,6 @@ function loadHeaderTrackingSandbox(overrides = {}) {
   vm.createContext(sb);
   vm.runInContext(trackingFuncSrc, sb);
   sb._elements = elements;
-  sb._todayKey = todayKey;
   return sb;
 }
 
