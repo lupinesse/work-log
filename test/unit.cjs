@@ -8,7 +8,7 @@
 
 'use strict';
 
-const { describe, it } = require('node:test');
+const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 
 // Load the pure functions from source by evaluating the file in a vm sandbox.
@@ -2316,5 +2316,430 @@ describe('writeCollapseState', () => {
     const { readCollapseState, writeCollapseState } = loadCollapseSandbox();
     writeCollapseState('roundTrip', false);
     assert.equal(readCollapseState('roundTrip', true), false);
+  });
+});
+
+// ── 08-pomodoro.js — pomoAffirmation / pomoAddTime / pomoTapOut ───────────────
+// Functions under test close over `let` state variables (pomoTotal, pomoLeft,
+// pomoRunning) that are declared in the pomodoro source.  We work around this
+// in two ways:
+//   • pomoAffirmation now accepts explicit (total, left) params with defaults,
+//     so it can be called as a pure function from outside the script scope.
+//   • pomoAddTime and pomoTapOut are tested by concatenating the source with a
+//     small test-harness snippet into one vm.runInContext call, so the harness
+//     shares the same lexical scope as the source and can read/write the state
+//     variables directly.
+
+const pomoSrc = fs.readFileSync(path.join(__dirname, '../src/js/08-pomodoro.js'), 'utf8');
+
+// Extract everything before the event-listener / init block so no listeners
+// fire at load time and updatePomoDisplay() is not called automatically.
+const _pomoEndMarker = "\ndocument.getElementById('pomoStart').addEventListener";
+const pomoCoreSrc = (() => {
+  const idx = pomoSrc.indexOf(_pomoEndMarker);
+  if (idx === -1)
+    throw new Error('loadPomoSandbox: event-listener marker not found in 08-pomodoro.js');
+  return pomoSrc.slice(0, idx);
+})();
+
+/**
+ * Returns a fresh object containing the browser-globals stubs that
+ * 08-pomodoro.js needs at load time.  Pass it as the vm sandbox.
+ * @param {Object} [extra] - Additional properties merged onto the sandbox.
+ * @returns {Object}
+ */
+function makePomoSandboxBase(extra = {}) {
+  const store = {};
+  const makeEl = () => ({
+    textContent: '',
+    style: {},
+    href: '',
+    classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+    setAttribute: () => {},
+    getAttribute: () => null,
+    remove: () => {},
+    querySelectorAll: () => ({ forEach: () => {} }),
+    insertBefore: () => {},
+  });
+  const sb = {
+    STORE_POMO_LOG: 'wl_pomoLog_v1',
+    activeTimer: null,
+    entries: [],
+    validPomoEntry: (e) => e != null && typeof e.ts === 'number' && typeof e.mins === 'number',
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    renderPomoLog: () => {},
+    refreshPomoDashboard: undefined,
+    updatePomoTaskLabel: undefined,
+    isToday: () => true,
+    escHtml: (s) => String(s),
+    localStorage: {
+      getItem: (key) => store[key] ?? null,
+      setItem: (key, val) => {
+        store[key] = String(val);
+      },
+    },
+    clearInterval: () => {},
+    setInterval: () => null,
+    setTimeout: () => null,
+    document: {
+      getElementById: () => makeEl(),
+      querySelector: () => null,
+      querySelectorAll: () => ({ forEach: () => {} }),
+      createElementNS: () => ({
+        setAttribute: () => {},
+        querySelectorAll: () => ({ forEach: () => {} }),
+        insertBefore: () => {},
+      }),
+      createElement: () => ({ ...makeEl(), getContext: () => null }),
+      head: { appendChild: () => {} },
+    },
+    _store: store,
+    ...extra,
+  };
+  return sb;
+}
+
+// ── pomoAffirmation ───────────────────────────────────────────────────────────
+// pomoAffirmation(total, left) is a function declaration, so it is hoisted onto
+// the sandbox object after vm.runInContext.  We load the pomo source once and
+// call the function directly with explicit (total, left) arguments to keep the
+// tests pure and fast.
+describe('pomoAffirmation', () => {
+  let pomoFnSb;
+  before(() => {
+    pomoFnSb = makePomoSandboxBase();
+    vm.createContext(pomoFnSb);
+    vm.runInContext(pomoCoreSrc, pomoFnSb);
+  });
+
+  it('returns empty string when total is 0', () => {
+    assert.equal(pomoFnSb.pomoAffirmation(0, 0), '');
+  });
+
+  it('0 % elapsed → stay with it', () => {
+    assert.equal(pomoFnSb.pomoAffirmation(300, 300), '0% in · stay with it');
+  });
+
+  it('24 % elapsed → stay with it', () => {
+    // 24 % of 300 = 72 elapsed → left = 228
+    assert.equal(pomoFnSb.pomoAffirmation(300, 228), '24% in · stay with it');
+  });
+
+  it("25 % elapsed → you're in the zone", () => {
+    // 25 % of 300 = 75 elapsed → left = 225
+    assert.equal(pomoFnSb.pomoAffirmation(300, 225), "25% in · you're in the zone");
+  });
+
+  it("49 % elapsed → you're in the zone", () => {
+    const left = Math.round(300 * (1 - 0.49));
+    assert.equal(pomoFnSb.pomoAffirmation(300, left), "49% in · you're in the zone");
+  });
+
+  it('50 % elapsed → keep going', () => {
+    assert.equal(pomoFnSb.pomoAffirmation(300, 150), '50% in · keep going');
+  });
+
+  it('74 % elapsed → keep going', () => {
+    const left = Math.round(300 * (1 - 0.74));
+    assert.equal(pomoFnSb.pomoAffirmation(300, left), '74% in · keep going');
+  });
+
+  it('75 % elapsed → almost there', () => {
+    // 75 % of 300 = 225 elapsed → left = 75
+    assert.equal(pomoFnSb.pomoAffirmation(300, 75), '75% in · almost there!');
+  });
+
+  it('100 % elapsed → almost there', () => {
+    assert.equal(pomoFnSb.pomoAffirmation(300, 0), '100% in · almost there!');
+  });
+});
+
+// ── pomoAddTime ───────────────────────────────────────────────────────────────
+// Each test concatenates pomoCoreSrc + a harness snippet into one runInContext
+// call so the harness can read and write the `let` state variables.
+describe('pomoAddTime', () => {
+  it('adds 120 to pomoLeft and pomoTotal when the timer is running', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoRunning = true;
+const _prevLeft = pomoLeft;
+const _prevTotal = pomoTotal;
+pomoAddTime();
+results.leftDiff = pomoLeft - _prevLeft;
+results.totalDiff = pomoTotal - _prevTotal;`,
+      sb
+    );
+    assert.equal(sb.results.leftDiff, 120);
+    assert.equal(sb.results.totalDiff, 120);
+  });
+
+  it('is a no-op when the timer is not running', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoRunning = false;
+const _prevLeft = pomoLeft;
+const _prevTotal = pomoTotal;
+pomoAddTime();
+results.leftUnchanged = pomoLeft === _prevLeft;
+results.totalUnchanged = pomoTotal === _prevTotal;`,
+      sb
+    );
+    assert.equal(sb.results.leftUnchanged, true);
+    assert.equal(sb.results.totalUnchanged, true);
+  });
+});
+
+// ── pomoTapOut ────────────────────────────────────────────────────────────────
+describe('pomoTapOut', () => {
+  it('sets pomoLeft to 0 and pomoRunning to false', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoTotal = 300;
+pomoLeft = 120;
+pomoRunning = true;
+pomoTapOut();
+results.left = pomoLeft;
+results.running = pomoRunning;`,
+      sb
+    );
+    assert.equal(sb.results.left, 0);
+    assert.equal(sb.results.running, false);
+  });
+
+  it('logs partial minutes equal to elapsed time (180 s → 3 min)', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoTotal = 300;
+pomoLeft = 120;  // 180 s elapsed → ceil(180/60) = 3 min
+pomoRunning = true;
+pomoTapOut();
+const log = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
+results.mins = log[0].mins;`,
+      sb
+    );
+    assert.equal(sb.results.mins, 3);
+  });
+
+  it('records at least 1 minute even when elapsed time is 0', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoTotal = 300;
+pomoLeft = 300;  // 0 s elapsed → partialMins = Math.max(1, 0) = 1
+pomoRunning = true;
+pomoTapOut();
+const log = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
+results.mins = log[0].mins;`,
+      sb
+    );
+    assert.equal(sb.results.mins, 1);
+  });
+
+  it('persists the tap-out entry to STORE_POMO_LOG in localStorage', () => {
+    const sb = makePomoSandboxBase({ results: {} });
+    vm.createContext(sb);
+    vm.runInContext(
+      `${pomoCoreSrc}
+pomoTotal = 600;
+pomoLeft = 0;
+pomoRunning = true;
+pomoTapOut();
+results.stored = localStorage.getItem(STORE_POMO_LOG) !== null;`,
+      sb
+    );
+    assert.equal(sb.results.stored, true);
+  });
+});
+
+// ── 09-clock-weather.js — updateHeaderTracking ───────────────────────────────
+// Extract just the updateHeaderTracking function (JSDoc + body) to avoid
+// running tickClock() and setInterval() that fire at the top of the file.
+
+const clockSrc = fs.readFileSync(path.join(__dirname, '../src/js/09-clock-weather.js'), 'utf8');
+
+const trackingFuncSrc = (() => {
+  // Grab from the JSDoc comment before updateHeaderTracking through the next
+  // top-level comment (// WEATHER_LAT …).
+  const fnIdx = clockSrc.indexOf('function updateHeaderTracking()');
+  if (fnIdx === -1) throw new Error('updateHeaderTracking not found in 09-clock-weather.js');
+  const docStart = clockSrc.lastIndexOf('/**', fnIdx);
+  const blockEnd = clockSrc.indexOf('\n// WEATHER_LAT', fnIdx);
+  return clockSrc.slice(docStart, blockEnd > -1 ? blockEnd : undefined);
+})();
+
+/**
+ * Creates a minimal VM sandbox for testing updateHeaderTracking.
+ * @param {{ entries?: Array, getElapsedMs?: Function, DAILY_GOAL_MS?: number }} [overrides]
+ * @returns {{ sb: Object, elements: Record<string, {textContent:string, style:Object}> }}
+ */
+function loadHeaderTrackingSandbox(overrides = {}) {
+  const elements = {};
+  const makeTrackedEl = () => ({ textContent: '', style: {}, setAttribute: () => {} });
+
+  const sb = {
+    // Pure helpers the function calls
+    dk: (...a) => dk(...a),
+    fmtDur: (...a) => fmtDur(...a),
+    // State
+    entries: [],
+    getElapsedMs: () => 0,
+    DAILY_GOAL_MS: 7.5 * 60 * 60 * 1000,
+    // DOM stub — returns the same element object per id so tests can inspect it
+    document: {
+      getElementById: (id) => {
+        if (!elements[id]) elements[id] = makeTrackedEl();
+        return elements[id];
+      },
+    },
+    ...overrides,
+  };
+  vm.createContext(sb);
+  vm.runInContext(trackingFuncSrc, sb);
+  sb._elements = elements;
+  return sb;
+}
+
+describe('updateHeaderTracking', () => {
+  it('shows "0m" when there are no entries and no elapsed time', () => {
+    const sb = loadHeaderTrackingSandbox();
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerTrackedTotal?.textContent, '0m');
+  });
+
+  it('sums completed entries for today and formats the total', () => {
+    const todayKey = dk(new Date());
+    const entries = [
+      { date: todayKey, ts: 0, tsEnd: 30 * 60 * 1000 }, // 30 min
+      { date: todayKey, ts: 0, tsEnd: 15 * 60 * 1000 }, // 15 min
+    ];
+    const sb = loadHeaderTrackingSandbox({ entries });
+    sb.updateHeaderTracking();
+    // 45 min total
+    assert.equal(sb._elements.headerTrackedTotal?.textContent, '45m');
+  });
+
+  it('excludes entries from other dates', () => {
+    const entries = [
+      { date: '2020-01-01', ts: 0, tsEnd: 60 * 60 * 1000 }, // yesterday
+    ];
+    const sb = loadHeaderTrackingSandbox({ entries });
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerTrackedTotal?.textContent, '0m');
+  });
+
+  it('adds running-timer elapsed time from getElapsedMs()', () => {
+    const sb = loadHeaderTrackingSandbox({ getElapsedMs: () => 30 * 60 * 1000 }); // 30 min
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerTrackedTotal?.textContent, '30m');
+  });
+
+  it('sets pace bar width proportional to DAILY_GOAL_MS', () => {
+    const goal = 60 * 60 * 1000; // 1 h goal for easy maths
+    const todayKey = dk(new Date());
+    const entries = [{ date: todayKey, ts: 0, tsEnd: 30 * 60 * 1000 }]; // 30 min = 50 %
+    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerPaceFill?.style.width, '50.0%');
+  });
+
+  it('caps pace bar at 100% when goal is exceeded', () => {
+    const goal = 60 * 60 * 1000;
+    const todayKey = dk(new Date());
+    const entries = [{ date: todayKey, ts: 0, tsEnd: 2 * 60 * 60 * 1000 }]; // 2 h
+    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerPaceFill?.style.width, '100.0%');
+  });
+
+  it('shows "goal reached!" when total meets or exceeds DAILY_GOAL_MS', () => {
+    const goal = 60 * 60 * 1000;
+    const todayKey = dk(new Date());
+    const entries = [{ date: todayKey, ts: 0, tsEnd: goal }];
+    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
+    sb.updateHeaderTracking();
+    assert.equal(sb._elements.headerPaceGoal?.textContent, 'goal reached!');
+  });
+});
+
+// ── auto-pause visibilitychange ──────────────────────────────────────────────
+// Extracts the handler body from 07-lifecycle.js and runs it in isolation with
+// mock globals so we can verify the guard conditions without a browser.
+
+function runAutoPauseHandler({ autoPauseEnabled, hidden, timerRunning, timerPaused = false }) {
+  const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
+  const handlerMatch = lifecycleSrc.match(
+    /document\.addEventListener\('visibilitychange',\s*\(\)\s*=>\s*\{([\s\S]*?)\}\s*\);/
+  );
+  if (!handlerMatch) throw new Error('visibilitychange listener not found in 07-lifecycle.js');
+  const pausedCalls = [];
+  const box = {
+    AUTO_PAUSE_ON_TAB_SWITCH: autoPauseEnabled,
+    document: { hidden },
+    activeTimer: timerRunning ? { paused: timerPaused } : null,
+    pauseTimer: () => pausedCalls.push(true),
+    wlLog: { info: () => {} },
+  };
+  vm.createContext(box);
+  vm.runInContext(`(function(){${handlerMatch[1]}})()`, box);
+  return pausedCalls;
+}
+
+describe('auto-pause on visibilitychange', () => {
+  it('calls pauseTimer when tab hides with a running timer and feature enabled', () => {
+    const calls = runAutoPauseHandler({
+      autoPauseEnabled: true,
+      hidden: true,
+      timerRunning: true,
+      timerPaused: false,
+    });
+    assert.equal(calls.length, 1);
+  });
+
+  it('does not pause when AUTO_PAUSE_ON_TAB_SWITCH is false', () => {
+    const calls = runAutoPauseHandler({
+      autoPauseEnabled: false,
+      hidden: true,
+      timerRunning: true,
+      timerPaused: false,
+    });
+    assert.equal(calls.length, 0);
+  });
+
+  it('does not pause when the tab becomes visible (hidden=false)', () => {
+    const calls = runAutoPauseHandler({
+      autoPauseEnabled: true,
+      hidden: false,
+      timerRunning: true,
+      timerPaused: false,
+    });
+    assert.equal(calls.length, 0);
+  });
+
+  it('does not pause when no active timer', () => {
+    const calls = runAutoPauseHandler({
+      autoPauseEnabled: true,
+      hidden: true,
+      timerRunning: false,
+    });
+    assert.equal(calls.length, 0);
+  });
+
+  it('does not pause when timer is already paused', () => {
+    const calls = runAutoPauseHandler({
+      autoPauseEnabled: true,
+      hidden: true,
+      timerRunning: true,
+      timerPaused: true,
+    });
+    assert.equal(calls.length, 0);
   });
 });

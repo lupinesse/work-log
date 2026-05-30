@@ -147,7 +147,8 @@ function render() {
   const tl = document.getElementById('timeline');
 
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
-  const logHeader = `<div class="timelog-header"><span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
+  const timelogIcon = `<span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.88"/></svg></span>`;
+  const logHeader = `<div class="timelog-header">${timelogIcon}<span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
 
   // Ad-hoc inline log row — shown only when viewing today
   const adHocRow = isToday(viewDate)

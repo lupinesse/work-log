@@ -228,9 +228,25 @@ function playPomoBeep() {
 }
 
 /**
+ * Returns a progress-aware affirmation string based on elapsed time.
+ * Default parameters let callers pass explicit values (useful for testing).
+ * @param {number} [total] - Total session seconds; defaults to pomoTotal.
+ * @param {number} [left] - Remaining seconds; defaults to pomoLeft.
+ * @returns {string} Short motivational phrase.
+ */
+function pomoAffirmation(total = pomoTotal, left = pomoLeft) {
+  if (total === 0) return '';
+  const pct = Math.round(((total - left) / total) * 100);
+  if (pct < 25) return `${pct}% in · stay with it`;
+  if (pct < 50) return `${pct}% in · you're in the zone`;
+  if (pct < 75) return `${pct}% in · keep going`;
+  return `${pct}% in · almost there!`;
+}
+
+/**
  * Refreshes the pomodoro timer display: updates the countdown text, redraws
- * segments, and sets the start/pause button label and status text to reflect
- * the current state (running / paused / done / ready).
+ * segments, sets the state-modifier class on the pomo-body, and updates
+ * button labels and status text to reflect the current state.
  */
 function updatePomoDisplay() {
   const mins = Math.floor(pomoLeft / 60),
@@ -243,17 +259,114 @@ function updatePomoDisplay() {
   if (pomoLeft === 0) {
     startBtn.textContent = 'start';
     startBtn.classList.remove('running');
-    statusEl.textContent = 'done!';
+    if (statusEl) statusEl.textContent = 'done!';
   } else if (pomoRunning) {
     startBtn.textContent = 'pause';
     startBtn.classList.add('running');
-    statusEl.textContent = 'focus';
+    if (statusEl) statusEl.textContent = 'focus';
   } else {
     startBtn.textContent = 'start';
     startBtn.classList.remove('running');
-    statusEl.textContent = pomoLeft === pomoTotal ? 'ready' : 'paused';
+    if (statusEl) statusEl.textContent = pomoLeft === pomoTotal ? 'ready' : 'paused';
   }
+
+  const bodyEl = document.getElementById('pomoBody');
+  if (bodyEl) {
+    const state = pomoRunning ? 'running' : pomoLeft === 0 ? 'done' : 'idle';
+    bodyEl.classList.remove('pomo--running', 'pomo--done', 'pomo--idle');
+    bodyEl.classList.add(`pomo--${state}`);
+  }
+
+  const affEl = document.getElementById('pomoAffirmation');
+  if (affEl) affEl.textContent = pomoRunning ? pomoAffirmation() : '';
+
+  if (pomoRunning) {
+    setPomoFavicon();
+  } else {
+    const _pomoFaviconEl = document.querySelector("link[rel~='icon'][data-pomo]");
+    if (_pomoFaviconEl) _pomoFaviconEl.remove();
+  }
+
   if (typeof updatePomoTaskLabel === 'function') updatePomoTaskLabel();
+}
+
+/**
+ * Redraws the browser favicon as a depleting wedge mirroring the remaining
+ * pomodoro time. Silently skips when the canvas API is unavailable.
+ */
+function setPomoFavicon() {
+  let link = document.querySelector("link[rel~='icon'][data-pomo]");
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    link.setAttribute('data-pomo', '1');
+    document.head.appendChild(link);
+  }
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+    const cx = 16,
+      cy = 16,
+      r = 14;
+
+    // Gray background ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.fillStyle = '#e8edf4';
+    ctx.fill();
+
+    // Red wedge — remaining fraction, clockwise from 12 o'clock
+    const pct = pomoTotal > 0 ? pomoLeft / pomoTotal : 0;
+    if (pct > 0) {
+      const start = -Math.PI / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, start, start + pct * 2 * Math.PI);
+      ctx.closePath();
+      ctx.fillStyle = '#c62828';
+      ctx.fill();
+    }
+
+    // White centre hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.52, 0, 2 * Math.PI);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    link.href = c.toDataURL('image/png');
+  } catch (e) {} // silently skip if canvas blocked by browser policy
+}
+
+/**
+ * Adds 120 seconds to the current running session without resetting segments.
+ * No-op if the timer is not running.
+ */
+function pomoAddTime() {
+  if (!pomoRunning) return;
+  pomoLeft += 120;
+  pomoTotal += 120;
+  updatePomoDisplay();
+}
+
+/**
+ * Ends the session early, logs a partial session, and transitions to done state.
+ * Records the elapsed minutes (minimum 1) so the session appears in the log.
+ */
+function pomoTapOut() {
+  clearInterval(pomoInterval);
+  pomoInterval = null;
+  pomoRunning = false;
+  const partialMins = Math.max(1, Math.ceil((pomoTotal - pomoLeft) / 60));
+  pomoLeft = 0;
+  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const log = pomoGetLog();
+  log.unshift({ ts: Date.now(), mins: partialMins, task: liveEntry ? liveEntry.text : null });
+  localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
+  renderPomoLog();
+  if (typeof refreshPomoDashboard === 'function') refreshPomoDashboard();
+  updatePomoDisplay();
 }
 
 document.getElementById('pomoStart').addEventListener('click', () => {
@@ -264,6 +377,30 @@ document.getElementById('pomoReset').addEventListener('click', resetPomo);
 document.querySelectorAll('.pomo-dur').forEach((btn) => {
   btn.addEventListener('click', () => initPomo(+btn.dataset.min));
 });
+
+const _pomoPlus2 = document.getElementById('pomoPlus2');
+if (_pomoPlus2) _pomoPlus2.addEventListener('click', pomoAddTime);
+
+const _pomoTapOut = document.getElementById('pomoTapOut');
+if (_pomoTapOut) _pomoTapOut.addEventListener('click', pomoTapOut);
+
+const _pomoAnother5 = document.getElementById('pomoAnother5');
+if (_pomoAnother5)
+  _pomoAnother5.addEventListener('click', () => {
+    initPomo(5);
+    startPomo();
+  });
+
+const _pomoBreather = document.getElementById('pomoBreather');
+if (_pomoBreather)
+  _pomoBreather.addEventListener('click', () => {
+    initPomo(1);
+    startPomo();
+  });
+
+const _pomoDismiss = document.getElementById('pomoDismiss');
+if (_pomoDismiss) _pomoDismiss.addEventListener('click', () => initPomo(pomoDurMins));
+
 updatePomoDisplay();
 
 /* ── New day detection ── */

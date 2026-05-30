@@ -508,11 +508,11 @@ async function runTests() {
     assert('Week number shown', /Week \d+\/\d+/.test(weekText));
     assert('Week format valid', /Week ([1-9]|[1-4]\d|5[0-3])\/5[23]/.test(weekText));
     assert(
-      'Week number in second box',
+      'Week number in header-center',
       await page.evaluate(() => {
         const el = document.getElementById('liveWeek');
-        const boxes = document.querySelectorAll('.live-info');
-        return boxes.length >= 2 && boxes[1].contains(el);
+        const center = document.querySelector('.header-center');
+        return center ? center.contains(el) : false;
       })
     );
     await page.close();
@@ -532,7 +532,7 @@ async function runTests() {
     await page.evaluate(() => {
       const d = {
         ts: Date.now(),
-        date: new Date().toISOString().slice(0, 10),
+        date: window.__wl.dk(new Date()),
         task: 'Focus task',
         note: 'Threads',
       };
@@ -2869,6 +2869,101 @@ async function runTests() {
     );
     assert('collapse: analyticsSection stays collapsed after reload', collapsedAfterReload);
 
+    await page.close();
+  }
+
+  // ── Pomodoro running/done states (pomoAddTime + pomoTapOut) ──────────────
+  console.log('\nPomodoro running/done states');
+  {
+    // --- pomoAddTime adds 2 minutes to a live session ---
+    const page = await freshPage(ctx);
+    // Expand pomodoro section if collapsed
+    await page.evaluate(() => {
+      const s = document.getElementById('pomoSection');
+      if (s && s.classList.contains('collapsed')) document.getElementById('pomoHeader')?.click();
+    });
+    await page.waitForTimeout(100);
+    // Start a 1-minute session and read the initial time
+    await page.evaluate(() => {
+      window.__wl.initPomo(1);
+      window.__wl.startPomo();
+    });
+    await page.waitForTimeout(200);
+    const timeBefore = await page.evaluate(() => document.getElementById('pomoTime').textContent);
+    await page.evaluate(() => window.__wl.pomoAddTime());
+    const timeAfter = await page.evaluate(() => document.getElementById('pomoTime').textContent);
+    const parsePomoSecs = (s) => {
+      const [m, sec] = s.split(':').map(Number);
+      return m * 60 + sec;
+    };
+    const diff = parsePomoSecs(timeAfter) - parsePomoSecs(timeBefore);
+    assert('pomoAddTime increases remaining time by ~120 s', diff === 120, `diff was ${diff}`);
+    await page.evaluate(() => window.__wl.pausePomo());
+    await page.close();
+  }
+
+  {
+    // --- pomoTapOut logs partial session and sets pomo--done state ---
+    const page = await freshPage(ctx);
+    await page.evaluate(() => {
+      window.__wl.initPomo(5);
+      window.__wl.startPomo();
+    });
+    await page.waitForTimeout(200);
+    await page.evaluate(() => window.__wl.pomoTapOut());
+    await page.waitForTimeout(50);
+
+    const isDone = await page.evaluate(() =>
+      document.getElementById('pomoBody')?.classList.contains('pomo--done')
+    );
+    assert('pomoTapOut transitions body to pomo--done', isDone);
+
+    const logEntry = await page.evaluate(() => {
+      const raw = localStorage.getItem('wl_pomoLog_v1');
+      if (!raw) return null;
+      const log = JSON.parse(raw);
+      return log.length > 0 ? log[0] : null;
+    });
+    assert('pomoTapOut writes an entry to wl_pomoLog_v1', logEntry !== null);
+    assert(
+      'pomoTapOut log entry has mins >= 1',
+      typeof logEntry?.mins === 'number' && logEntry.mins >= 1,
+      `got mins=${logEntry?.mins}`
+    );
+    await page.close();
+  }
+
+  // ── updateHeaderTracking reflects completed entries ────────────────────────
+  console.log('\nupdateHeaderTracking');
+  {
+    const today = dk(new Date());
+    const tsStart = Date.now() - 5400000; // 90 min ago
+    const tsEnd = Date.now() - 3600000; // 60 min ago → 30 min logged
+    const entries = [
+      { id: 'ht1', text: 'Header test task', tag: 'work', ts: tsStart, tsEnd, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
+    await page.waitForTimeout(200);
+
+    await page.evaluate(() => window.__wl.updateHeaderTracking());
+
+    const total = await page.evaluate(
+      () => document.getElementById('headerTrackedTotal')?.textContent
+    );
+    assert(
+      'updateHeaderTracking shows 30m for a 30-minute entry',
+      total === '30m',
+      `got "${total}"`
+    );
+
+    const goalText = await page.evaluate(
+      () => document.getElementById('headerPaceGoal')?.textContent
+    );
+    assert(
+      'updateHeaderTracking renders pace goal text',
+      typeof goalText === 'string' && goalText.length > 0,
+      `got "${goalText}"`
+    );
     await page.close();
   }
 

@@ -121,8 +121,6 @@ jobs:
           claude -p "/pr-review" \
             --model claude-sonnet-4-6 \
             --max-turns 15 \
-            --output-format json \
-            --allowedTools "Grep" \
                            "Bash(git log:*)" "Bash(git diff:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
             > review-raw.json 2>review-stderr.txt || true

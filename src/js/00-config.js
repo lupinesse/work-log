@@ -72,3 +72,28 @@ const CAL_ACCOUNT_LABELS = {
   // acme: 'Acme Corp',
   // contractor: 'My Contractor',
 };
+
+// ---------------------------------------------------------------------------
+// Daily tracking goal — used for the header pace bar
+// ---------------------------------------------------------------------------
+
+/**
+ * Daily tracking goal in milliseconds. The header pace bar fills proportionally
+ * as today's logged time approaches this value.
+ * Default: 7 hours 30 minutes. Override in 00-config.local.js.
+ * @type {number}
+ */
+const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
+
+// ---------------------------------------------------------------------------
+// Auto-pause on tab switch
+// ---------------------------------------------------------------------------
+
+/**
+ * When true, pauses a running timer automatically when the browser tab becomes
+ * hidden (visibilitychange → document.hidden). The pause is silent; the event
+ * is recorded in the console log via wlLog.info but no UI notification appears.
+ * Set to false to disable. Override in 00-config.local.js.
+ * @type {boolean}
+ */
+const AUTO_PAUSE_ON_TAB_SWITCH = true;

@@ -208,9 +208,8 @@
   user-select: none;
 }
 
-.timelog-header .plan-header-title::before {
-  content: '⏱';
-  margin-right: 6px;
+.timelog-header .section-icon {
+  color: var(--live);
 }
 
 .timelog-tabs {

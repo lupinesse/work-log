@@ -10,22 +10,41 @@
 </head>
 <body>
 
-<div class="header">
-  <div class="header-boxes">
-    <div class="live-info">
-      <div class="live-date" id="liveDate"></div>
-      <div class="live-time" id="liveTime"></div>
-      <div class="live-weather" id="liveWeather">locating…</div>
-      <div class="live-weather" id="liveRain"></div>
+<div class="header" role="banner">
+  <!-- Col 1: date + wall-clock + sunrise/sunset -->
+  <div class="header-left">
+    <div class="live-date" id="liveDate"></div>
+    <div class="live-time" id="liveTime" aria-label="Current time"></div>
+    <div class="header-sunrise" id="liveSunrise"></div>
+  </div>
+
+  <!-- Col 2: tracked total + pace bar + demoted almanac -->
+  <div class="header-center" aria-label="Today's tracking summary">
+    <div class="header-tracked-row">
+      <span class="header-tracked-total" id="headerTrackedTotal" aria-live="polite">0m</span>
+      <span class="header-tracked-label"> tracked today</span>
     </div>
-    <div class="live-info">
-      <div class="live-week" id="liveWeek"></div>
-      <div class="live-weather" id="liveSunrise"></div>
-      <div class="live-weather" id="liveMoon"></div>
-      <div class="live-weather" id="liveFlagDay"></div>
-      <div class="live-weather" id="liveNameday"></div>
+    <div class="header-pace-wrap" role="progressbar" aria-label="Daily goal progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="headerPaceWrap">
+      <div class="header-pace-fill" id="headerPaceFill" style="width:0%"></div>
+    </div>
+    <div class="header-pace-goal" id="headerPaceGoal"></div>
+    <div class="header-ambient">
+      <span class="header-ambient-line" id="liveWeather">locating…</span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveRain"></span>
+    </div>
+    <div class="header-ambient">
+      <span class="header-ambient-line" id="liveWeek"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveMoon"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveFlagDay"></span>
+      <span class="header-ambient-sep" aria-hidden="true">·</span>
+      <span class="header-ambient-line" id="liveNameday"></span>
     </div>
   </div>
+
+  <!-- Col 3: date nav + start-of-day button -->
   <div class="date-nav-wrap">
     <div class="date-nav">
       <button class="nav-btn" id="prevDay" aria-label="Previous day">&#8592;</button>
@@ -120,6 +139,14 @@
       <button class="hero-util-pill" id="tbLunchBtn"   aria-label="Log lunch">🥪 Lunch</button>
       <button class="hero-util-pill" id="tbMeetingBtn" aria-label="Log a meeting">👥 Meeting</button>
     </div>
+    <!-- Park-a-distraction row — captures a thought without stopping the timer -->
+    <div class="hero-park-row" id="heroParkRow">
+      <label class="hero-note-label" for="heroParkInput">&#128161;</label>
+      <input class="hero-note-input" id="heroParkInput"
+             aria-label="Park a distracting thought without stopping the timer"
+             placeholder="park a distraction… (↵ saves to Parked Thoughts)" autocomplete="off"/>
+      <span class="hero-note-hint" aria-hidden="true">↵</span>
+    </div>
   </div>
 
   <!-- ③ PAUSED — timer on hold -->
@@ -210,6 +237,7 @@
 <!-- Analytics section (streak, task count, epic count) — default collapsed -->
 <div class="analytics-section plan-section collapsed" id="analyticsSection">
   <div class="plan-header analytics-header" id="analyticsHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="analyticsBody">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>
     <span class="plan-header-title">analytics</span>
     <!-- Inline summary visible when the section is collapsed.
          No aria-hidden: screen-reader users deserve the same at-a-glance
@@ -229,6 +257,7 @@
 <!-- Calendar meeting strip -->
 <div class="plan-section" id="calSection" style="display:none">
   <div class="plan-header" id="calHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="calMeetings">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
     <span class="plan-header-title">today's meetings</span>
     <span class="plan-count" id="calCount"></span>
     <span class="cal-next-info" id="calNextInfo"></span>
@@ -239,6 +268,7 @@
 
 <div class="plan-section" id="planSection">
   <div class="plan-header" id="planHeader" aria-controls="planList">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg></span>
     <span class="plan-header-title">today's tasks</span>
     <span class="plan-count" id="planCount"></span>
     <button class="idkw-btn" id="idkwBtn" aria-label="Pick a random task" title="I don't know what to do — pick one for me">🎲</button>
@@ -291,6 +321,7 @@
 
 <div class="plan-section upcoming-section" id="upcomingSection" style="display:none">
   <div class="plan-header" id="upcomingHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="upcomingList">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></span>
     <span class="plan-header-title">upcoming tasks</span>
     <span class="plan-count" id="upcomingCount"></span>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
@@ -302,6 +333,7 @@
 
 <div class="plan-section pending-section" id="pendingSection" style="display:none">
   <div class="plan-header" id="pendingHeader" role="button" tabindex="0" aria-expanded="true" aria-controls="pendingList">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>
     <span class="plan-header-title">pending / blocked tasks</span>
     <span class="plan-count" id="pendingCount"></span>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
@@ -496,15 +528,24 @@
             <div class="pomo-time" id="pomoTime">05:00</div>
             <div class="pomo-status" id="pomoStatus">ready</div>
           </div>
+          <div class="pomo-checkmark" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
         </div>
       </div>
       <!-- Col 2: Composer -->
       <div class="pomo-col-composer">
         <div class="pomo-task-label" id="pomoTaskLabel"></div>
+        <div class="pomo-affirmation" id="pomoAffirmation"></div>
         <div class="pomo-controls">
           <button class="pomo-btn pomo-start" id="pomoStart">start</button>
-          <button class="pomo-btn" id="pomoReset">reset</button>
+          <button class="pomo-btn pomo-reset" id="pomoReset">reset</button>
           <button class="pomo-btn sprint-mode" id="sprintModeBtn">&#9655; Sprint</button>
+          <button class="pomo-btn pomo-plus2-btn" id="pomoPlus2">+2 min</button>
+          <button class="pomo-btn pomo-tapout-btn" id="pomoTapOut">tap out</button>
+        </div>
+        <div class="pomo-done-controls" id="pomoDoneControls">
+          <button class="pomo-btn" id="pomoAnother5">&#8635; Another 5</button>
+          <button class="pomo-btn" id="pomoBreather">&#128167; 1-min breather</button>
+          <button class="pomo-btn" id="pomoDismiss">Done</button>
         </div>
         <div class="pomo-chime">
           🔔 time chime every
@@ -554,6 +595,7 @@
 <!-- Import from Jira (moved to bottom) -->
 <div class="plan-section collapsed" id="jiraSection">
   <div class="plan-header" id="jiraHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="jiraBody">
+    <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
     <span class="plan-header-title">import from jira</span>
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>

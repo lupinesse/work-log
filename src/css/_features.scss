@@ -430,11 +430,6 @@
   display: inline;
 }
 
-#calSection .plan-header-title::before {
-  content: '📅';
-  margin-right: 6px;
-}
-
 #calSection .plan-header {
   cursor: pointer;
 }
