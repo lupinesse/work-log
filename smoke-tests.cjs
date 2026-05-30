@@ -2016,6 +2016,9 @@ async function runTests() {
   console.log('\nSprints');
   {
     const page = await freshPage(ctx);
+    // pomoSection defaults to collapsed (no stored state on a fresh page).
+    // Expand it so #sprintModeBtn is visible before interacting with it.
+    await page.click('#pomoHeader');
     // Sprint setup opens on Sprint button click
     await page.click('#sprintModeBtn');
     assert(
