@@ -189,7 +189,7 @@
     container.innerHTML = groups
       .map(({ cat, tasks }) => {
         const catDot = cat
-          ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${escHtml(cat.color)};flex-shrink:0;margin-right:6px;vertical-align:-1px"></span>`
+          ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${safeCssColor(cat.color)};flex-shrink:0;margin-right:6px;vertical-align:-1px"></span>`
           : '';
         const catName = cat ? escHtml(cat.label) : 'no category';
         const allDup = tasks.every(({ t }) => jiraIsDup(t));
