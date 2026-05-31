@@ -57,7 +57,7 @@ function renderSodBtn() {
     const mm = String(d.getMinutes()).padStart(2, '0');
     btn.textContent = '';
     const dot = document.createElement('span');
-    dot.className = 'session-chip-dot';
+    dot.className = 'session-chip__dot';
     dot.setAttribute('aria-hidden', 'true');
     btn.appendChild(dot);
     btn.appendChild(document.createTextNode(`started ${hh}:${mm}`));
