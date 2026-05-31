@@ -15,47 +15,6 @@ import {
   readPureFnsExports,
 } from './build-config.js';
 
-/**
- * Leaf modules: proper ES modules that export named functions.
- * They are imported at the top of script.js instead of being concatenated.
- */
-const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
-
-/**
- * Named exports from pure-fns.js that the concatenated source files reference
- * as bare names (no module prefix). Listed here so the import statement at the
- * top of script.js brings them all into scope.
- */
-const PURE_FNS_EXPORTS = [
-  'safeCssColor',
-  'escHtml',
-  'dk',
-  'fmtTime',
-  'fmtElapsed',
-  'fmtDur',
-  'fmtDurLong',
-  'roundUp30',
-  'roundToNearest30',
-  'validEntry',
-  'validCategory',
-  'validPlanTask',
-  'validBlock',
-  'validTimer',
-  'validPomoEntry',
-  'validateBackupFile',
-  'validWeatherResponse',
-  'validCalendarMeeting',
-  'validJiraCsvRow',
-  'resolveRapidDate',
-  'parseRapidTokens',
-  'stripJiraPrefix',
-  'groupEntriesByCategory',
-  'mergeAdjacentEntries',
-  'buildBillableSummaryParts',
-  'computeDayBounds',
-  'formatGroupedLines',
-];
-
 function buildJS() {
   // Guard: every leaf module must exist before we reference it in import statements.
   for (const leaf of LEAF_MODULES) {
