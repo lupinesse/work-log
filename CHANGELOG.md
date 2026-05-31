@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **`chatgpt-pr-review.yml` now handles force-pushed PRs** — added `synchronize` as a trigger type with an idempotency guard: on each push the workflow checks whether ChatGPT has already posted a review; if yes it skips cleanly, if no it runs the full dialogue. This closes the race where a rapid force push cancelled the `opened` event run before Phase 1 could start, leaving the PR without any AI review despite the `chatgpt-review` label being present.
+
 ### Changed
 - **CI review Phases 2 & 3 upgraded to `claude-sonnet-4-6`** — previously used `claude-haiku-4-5-20251001`; Sonnet produces substantively better replies when engaging with ChatGPT's findings.
 - **CLAUDE.md injected as cached system prefix in Phases 2 & 3** — `claude-chatgpt-dialogue.mjs` and `claude-convergence-summary.mjs` now load the project quality standard and pass it as the first (cached) system block, so Claude applies project-specific rules when reviewing threads and writing summaries. Also pushes the combined system prompt above the 2 048-token prompt-caching minimum.

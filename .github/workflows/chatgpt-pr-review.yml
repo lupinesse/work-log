@@ -22,7 +22,10 @@ name: ChatGPT PR Review
 #
 # Triggers:
 #   1. 'labeled' event with label == 'chatgpt-review' — manual override
-#   2. 'opened' / 'reopened' — size threshold evaluated inline on first open
+#   2. 'synchronize' (force push / new commit) — only fires if ChatGPT has not
+#      already reviewed this PR, closing the race where the 'opened' event run
+#      is cancelled by a rapid force push before Phase 1 can start.
+#   3. 'opened' / 'reopened' — size threshold evaluated inline on first open
 #      ≥ 200 source-line changes OR ≥ 4 source files changed
 #      Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
@@ -42,7 +45,7 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [labeled, opened, reopened]
+    types: [labeled, opened, reopened, synchronize]
 
 # One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
@@ -83,7 +86,40 @@ jobs:
               return;
             }
 
-            // Path 2 — opened / reopened: inline size check.
+            // Path 2 — synchronize (force push / new commit): only run if ChatGPT has
+            // not already reviewed this PR. Closes the race where the 'opened' event run
+            // is cancelled by a rapid force push before Phase 1 can start.
+            if (action === 'synchronize') {
+              const [comments, reviews] = await Promise.all([
+                github.paginate(github.rest.issues.listComments, {
+                  owner:        context.repo.owner,
+                  repo:         context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  per_page:     100,
+                }),
+                github.paginate(github.rest.pulls.listReviews, {
+                  owner:        context.repo.owner,
+                  repo:         context.repo.repo,
+                  pull_number:  context.payload.pull_request.number,
+                  per_page:     100,
+                }),
+              ]);
+
+              const isChatGPT = login => (login ?? '').toLowerCase().includes('chatgpt');
+              const alreadyReviewed =
+                comments.some(c => isChatGPT(c.user?.login)) ||
+                reviews.some(r =>  isChatGPT(r.user?.login));
+
+              if (alreadyReviewed) {
+                core.info('ChatGPT has already reviewed this PR — skipping re-run on synchronize.');
+                core.setOutput('should_run', 'false');
+                return;
+              }
+              core.info('No prior ChatGPT review found — treating synchronize as a fresh open.');
+              // fall through to size check
+            }
+
+            // Path 3 — opened / reopened (or unreviewed synchronize): inline size check.
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
