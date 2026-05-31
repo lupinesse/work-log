@@ -2593,29 +2593,19 @@ const trackingFuncSrc = (() => {
 
 /**
  * Creates a minimal VM sandbox for testing updateHeaderTracking.
- * @param {{ entries?: Array, getElapsedMs?: Function, DAILY_GOAL_MS?: number }} [overrides]
- * @returns {{ sb: Object, elements: Record<string, {textContent:string, style:Object}> }}
+ * The function is now a no-op; the sandbox only needs to execute the source.
+ * @returns {{ updateHeaderTracking: Function, _elements: Record<string, object> }}
  */
-function loadHeaderTrackingSandbox(overrides = {}) {
+function loadHeaderTrackingSandbox() {
   const elements = {};
-  const makeTrackedEl = () => ({ textContent: '', style: {}, setAttribute: () => {} });
-
   const sb = {
-    // Pure helpers the function calls
-    dk: (...a) => dk(...a),
-    fmtDur: (...a) => fmtDur(...a),
-    // State
-    entries: [],
-    getElapsedMs: () => 0,
-    DAILY_GOAL_MS: 7.5 * 60 * 60 * 1000,
-    // DOM stub — returns the same element object per id so tests can inspect it
+    // DOM stub — records any getElementById calls so tests can assert none are made
     document: {
       getElementById: (id) => {
-        if (!elements[id]) elements[id] = makeTrackedEl();
+        if (!elements[id]) elements[id] = { textContent: '', style: {} };
         return elements[id];
       },
     },
-    ...overrides,
   };
   vm.createContext(sb);
   vm.runInContext(trackingFuncSrc, sb);
