@@ -26,7 +26,7 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>// ── 22-trackers.js — Custom time-goal progress trackers ──
+            <pre class="prettyprint source linenums"><code>﻿// â”€â”€ 22-trackers.js â€” Custom time-goal progress trackers â”€â”€
 
 /**
  * Loads the trackers array from localStorage into the module-level `trackers` variable.
@@ -103,12 +103,12 @@ function renderTrackers() {
 
   if (!trackers.length) {
     wlLog.info('renderTrackers: empty state');
-    el.innerHTML = '&lt;div class="plan-empty">No trackers yet — click + New above.&lt;/div>';
+    el.innerHTML = '&lt;div class="plan-empty">No trackers yet â€” click + New above.&lt;/div>';
     return;
   }
   wlLog.info('renderTrackers: rendering trackers', { count: trackers.length });
 
-  // Last 28 days (oldest → newest)
+  // Last 28 days (oldest â†’ newest)
   const days = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
@@ -133,11 +133,11 @@ function renderTrackers() {
       return `
       &lt;div class="tracker-card">
         &lt;div class="tracker-card-head">
-          &lt;span class="edot" style="background:${t.color}">&lt;/span>
+          &lt;span class="edot" style="background:${safeCssColor(t.color)}">&lt;/span>
           &lt;span class="tracker-name">${escHtml(t.name)}&lt;/span>
           &lt;span class="tracker-target">${targetLabel}&lt;/span>
-          ${streak ? `&lt;span class="tracker-streak">🔥 ${streak} day streak&lt;/span>` : '&lt;span class="tracker-streak">&lt;/span>'}
-          &lt;button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">✕&lt;/button>
+          ${streak ? `&lt;span class="tracker-streak">ðŸ”¥ ${streak} day streak&lt;/span>` : '&lt;span class="tracker-streak">&lt;/span>'}
+          &lt;button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">âœ•&lt;/button>
         &lt;/div>
         &lt;div class="tr-grid">${cells}&lt;/div>
         &lt;div class="tracker-footer">&lt;span>${hitCount}/28 days hit&lt;/span>&lt;/div>
@@ -188,7 +188,7 @@ function openTrackerForm() {
               (c) =>
                 `&lt;label class="tr-tag-check">
               &lt;input type="checkbox" value="${escHtml(c.id)}" />
-              &lt;span class="qp-chip" style="border-color:${c.color}44;color:${c.color};background:${c.color}11">${escHtml(c.label)}&lt;/span>
+              &lt;span class="qp-chip" style="border-color:${safeCssColor(c.color)}44;color:${safeCssColor(c.color)};background:${safeCssColor(c.color)}11">${escHtml(c.label)}&lt;/span>
             &lt;/label>`
             )
             .join('')}
@@ -233,7 +233,7 @@ function closeTrackerForm() {
 function saveTrackerForm() {
   const name = (document.getElementById('trFormName')?.value || '').trim();
   if (!name) {
-    wlLog.info('saveTrackerForm: rejected — empty name');
+    wlLog.info('saveTrackerForm: rejected â€” empty name');
     document.getElementById('trFormName')?.focus();
     return;
   }
@@ -244,7 +244,7 @@ function saveTrackerForm() {
     (cb) => cb.value
   );
   if (!tags.length) {
-    wlLog.info('saveTrackerForm: rejected — no categories selected', { name });
+    wlLog.info('saveTrackerForm: rejected â€” no categories selected', { name });
     alert('Please select at least one category.');
     return;
   }
