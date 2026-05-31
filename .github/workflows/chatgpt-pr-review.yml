@@ -22,7 +22,7 @@ name: ChatGPT PR Review
 #
 # Triggers:
 #   1. 'labeled' event with label == 'chatgpt-review' — manual override
-#   2. 'opened' / 'reopened' / 'synchronize' — size threshold evaluated inline
+#   2. 'opened' / 'reopened' — size threshold evaluated inline on first open
 #      ≥ 200 source-line changes OR ≥ 4 source files changed
 #      Generated files excluded: script.js, styles.css, docs/*.html, package-lock.json
 #
@@ -42,7 +42,7 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [labeled, opened, reopened, synchronize]
+    types: [labeled, opened, reopened]
 
 # One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
@@ -83,7 +83,7 @@ jobs:
               return;
             }
 
-            // Path 2 — opened / reopened / synchronize: inline size check.
+            // Path 2 — opened / reopened: inline size check.
             const files = await github.paginate(
               github.rest.pulls.listFiles,
               {
@@ -199,6 +199,8 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
+          MODEL:             claude-haiku-4-5-20251001
+          MAX_DIFF_CHARS:    "15000"
         run: node .github/scripts/claude-chatgpt-dialogue.mjs
 
   # ─── Phase 3: Claude posts convergence summary of Phase 1–2 dialogue ────────
@@ -264,6 +266,8 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
+          MODEL:      claude-haiku-4-5-20251001
+          MAX_DIFF_CHARS: "15000"
         run: node .github/scripts/claude-convergence-summary.mjs
 
   # ─── Phase 4: ChatGPT verifies fixes and challenges counter-positions ────────
