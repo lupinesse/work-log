@@ -42,6 +42,7 @@ import {
   selectModel,
   shouldFallThrough,
 } from './lib/anthropic-auth.mjs';
+import { loadClaudeMd } from './lib/load-claude-md.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -88,30 +89,6 @@ const CLAUDE_MD_PATH = process.env.CLAUDE_MD_PATH || 'CLAUDE.md';
 const COMMENT_MARKER = '<!-- claude-pr-review-comment -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
-
-// ─────────────────────────── CLAUDE.md ───────────────────────────
-
-/**
- * Load the project quality standard so Claude applies it when synthesising the
- * Phase 1–2 dialogue. Also pushes the combined system prompt above the 2,048-
- * token prompt-caching minimum for claude-sonnet-4-6, making the cache markers
- * actually effective. Returns null if the file is absent — caching degrades
- * silently in that case, which is safe.
- *
- * @returns {string|null}
- */
-function loadClaudeMd() {
-  try {
-    const content = readFileSync(CLAUDE_MD_PATH, 'utf8').trim();
-    console.log(`Loaded CLAUDE.md (${content.length} chars) from ${CLAUDE_MD_PATH}`);
-    return content;
-  } catch {
-    console.warn(
-      `CLAUDE.md not found at ${CLAUDE_MD_PATH} — cache prefix degraded, quality-standard block skipped`
-    );
-    return null;
-  }
-}
 
 // ─────────────────────────── diff ───────────────────────────
 
@@ -253,7 +230,7 @@ async function main() {
     return;
   }
 
-  const claudeMd = loadClaudeMd();
+  const claudeMd = loadClaudeMd(CLAUDE_MD_PATH);
   const threads = await fetchAllThreads(GH_CTX);
   console.log(`  Fetched ${threads.length} total thread(s) (resolved + open)`);
 

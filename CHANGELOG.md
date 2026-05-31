@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- **`loadClaudeMd` extracted to shared lib** — the helper that reads the project quality standard for CI review prompts now lives in `lib/load-claude-md.mjs` and is imported by both `claude-chatgpt-dialogue.mjs` and `claude-convergence-summary.mjs`, eliminating the duplicated local functions. Unit tests added in `.github/scripts/test/load-claude-md.test.mjs`.
 - **CI review Phases 2 & 3 upgraded to `claude-sonnet-4-6`** — previously used `claude-haiku-4-5-20251001`; Sonnet produces substantively better replies when engaging with ChatGPT's findings.
 - **CLAUDE.md injected as cached system prefix in Phases 2 & 3** — `claude-chatgpt-dialogue.mjs` and `claude-convergence-summary.mjs` now load the project quality standard and pass it as the first (cached) system block, so Claude applies project-specific rules when reviewing threads and writing summaries. Also pushes the combined system prompt above the 2 048-token prompt-caching minimum.
 - **Docs-only PRs skip the AI review dialogue** — `chatgpt-pr-review.yml` and `pr-review.yml` now detect PRs that only change documentation files (`.md`, `.txt`, `.rst`, `LICENSE`, `CODEOWNERS`) and exit early without calling any AI, saving API credits.
