@@ -1,30 +1,12 @@
-// Work Log — Unit Tests
-// Run with: node test/unit.cjs
-// Covers pure functions from src/js/00-pure-fns.js and the Notion integration
-// in src/js/15-notion.js using Node's built-in test runner. No browser,
-// no Playwright, no build step required.
-//
-// Node >=20 required (matches `engines` in package.json).
+import { describe, it, before } from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import * as pureFns from '../src/js/pure-fns.js';
 
-'use strict';
-
-const { describe, it, before } = require('node:test');
-const assert = require('node:assert/strict');
-
-// Load the pure functions from source by evaluating the file in a vm sandbox.
-// This bypasses the ESM/CJS module boundary (package.json has "type": "module"
-// so .js files are ESM and can't be require()'d directly).  The vm approach
-// reads the file as plain text and executes it — function declarations become
-// properties on the sandbox object, giving us the exact compiled-for-browser
-// source under test rather than a duplicate copy.
-const vm = require('node:vm');
-const fs = require('node:fs');
-const path = require('node:path');
-
-const src = fs.readFileSync(path.join(__dirname, '../src/js/00-pure-fns.js'), 'utf8');
-const sandbox = {};
-vm.createContext(sandbox);
-vm.runInContext(src, sandbox);
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const {
   safeCssColor,
@@ -54,7 +36,8 @@ const {
   buildBillableSummaryParts,
   computeDayBounds,
   formatGroupedLines,
-} = sandbox;
+} = pureFns;
+
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 /** Build a Date with specific local-time components. */
@@ -559,7 +542,7 @@ describe('validJiraCsvRow', () => {
 // These functions depend on browser globals (fetch, getCat, planTasks, etc.)
 // so each test builds a fresh VM sandbox with stubs for those globals.
 
-const notionSrc = fs.readFileSync(path.join(__dirname, '../src/js/15-notion.js'), 'utf8');
+const notionSrc = readFileSync(join(__dirname, '../src/js/15-notion.js'), 'utf8');
 
 /**
  * Minimal Fetch Response shim — enough for 15-notion.js to read `ok`, `status`,
@@ -1039,15 +1022,15 @@ describe('Notion button click handler', () => {
 // test the sort algorithm without a browser or build step.
 
 /**
- * Creates a VM sandbox with 00-pure-fns.js and 10-tasks.js loaded.
+ * Creates a VM sandbox with pure-fns.js and 10-tasks.js loaded.
  * The sandbox exposes `flatSort` as a property (function declaration = global).
  *
  * @param {Object} [overrides] - Properties to merge into the sandbox before evaluation.
  * @returns {Object} The populated VM sandbox.
  */
 function loadFlatSortSandbox(overrides = {}) {
-  const pureSrc = fs.readFileSync(path.join(__dirname, '../src/js/00-pure-fns.js'), 'utf8');
-  const tasksSrc = fs.readFileSync(path.join(__dirname, '../src/js/10-tasks.js'), 'utf8');
+  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(/^export (const|function|let|class)\b/gm, '$1');
+  const tasksSrc = readFileSync(join(__dirname, '../src/js/10-tasks.js'), 'utf8');
   const sandbox = {
     document: {
       getElementById: () => ({
@@ -1177,16 +1160,15 @@ describe('flatSort', () => {
 // as a sandbox property without reloading the file each time.
 
 /**
- * Creates a VM sandbox with 00-pure-fns.js and 16-rapid.js loaded.
+ * Creates a VM sandbox with pure-fns.js and 16-rapid.js loaded.
  * Injects getCat using the sandbox's `categories` array.
  *
  * @param {Object} [overrides] - Properties to merge into the sandbox before evaluation.
  * @returns {Object} The populated VM sandbox.
  */
 function loadRapidSandbox(overrides = {}) {
-  const pureSrc = fs.readFileSync(path.join(__dirname, '../src/js/00-pure-fns.js'), 'utf8');
-  const rapidSrc = fs
-    .readFileSync(path.join(__dirname, '../src/js/16-rapid.js'), 'utf8')
+  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(/^export (const|function|let|class)\b/gm, '$1');
+  const rapidSrc = readFileSync(join(__dirname, '../src/js/16-rapid.js'), 'utf8')
     .replace(/\blet (_qcFilterCat)\b/, 'var $1')
     .replace(/\blet (_qcSearch)\b/, 'var $1');
 
@@ -1362,7 +1344,7 @@ describe('_qcTaskListHtml', () => {
  * @returns {Object} Populated VM sandbox.
  */
 function loadMonthlyLogSandbox() {
-  const monthlySrc = fs.readFileSync(path.join(__dirname, '../src/js/19-monthlylog.js'), 'utf8');
+  const monthlySrc = readFileSync(join(__dirname, '../src/js/19-monthlylog.js'), 'utf8');
   const sandbox = {
     document: { getElementById: () => null, addEventListener: () => {} },
     entries: [],
@@ -1496,7 +1478,7 @@ describe('calcMonthTaskCounts', () => {
 
 // ── Today's Flow — findLargestGap / view preference ───────────────────────────
 
-const timeflowSrc = fs.readFileSync(path.join(__dirname, '../src/js/11-timeflow.js'), 'utf8');
+const timeflowSrc = readFileSync(join(__dirname, '../src/js/11-timeflow.js'), 'utf8');
 
 /**
  * Creates a vm sandbox with the minimal globals that 11-timeflow.js needs
@@ -1511,7 +1493,7 @@ function loadTimeflowSandbox(overrides = {}) {
     isToday: (d) => d.toDateString() === sandbox.viewDate.toDateString(),
     activeTimer: null,
     fmtDur: (ms) => `${Math.round(ms / 60000)}m`,
-    // Use local-time formatting to match the app's `dk` (src/js/00-pure-fns.js)
+    // Use local-time formatting to match the app's `dk` (src/js/pure-fns.js)
     dk: (d) => {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -2249,7 +2231,7 @@ describe('formatGroupedLines', () => {
 // We extract only the collapse-state block via regex so we can test the logic
 // without stubbing the full browser environment.
 
-const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
+const lifecycleSrc = readFileSync(join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
 
 /**
  * Evaluates the collapse-state helper block from 07-lifecycle.js in a minimal
@@ -2358,7 +2340,7 @@ describe('writeCollapseState', () => {
 //     shares the same lexical scope as the source and can read/write the state
 //     variables directly.
 
-const pomoSrc = fs.readFileSync(path.join(__dirname, '../src/js/08-pomodoro.js'), 'utf8');
+const pomoSrc = readFileSync(join(__dirname, '../src/js/08-pomodoro.js'), 'utf8');
 
 // Extract everything before the event-listener / init block so no listeners
 // fire at load time and updatePomoDisplay() is not called automatically.
@@ -2592,7 +2574,7 @@ results.stored = localStorage.getItem(STORE_POMO_LOG) !== null;`,
 // Extract just the updateHeaderTracking function (JSDoc + body) to avoid
 // running tickClock() and setInterval() that fire at the top of the file.
 
-const clockSrc = fs.readFileSync(path.join(__dirname, '../src/js/09-clock-weather.js'), 'utf8');
+const clockSrc = readFileSync(join(__dirname, '../src/js/09-clock-weather.js'), 'utf8');
 
 const trackingFuncSrc = (() => {
   // Grab from the JSDoc comment before updateHeaderTracking through the next
@@ -2703,7 +2685,7 @@ describe('updateHeaderTracking', () => {
 // mock globals so we can verify the guard conditions without a browser.
 
 function runAutoPauseHandler({ autoPauseEnabled, hidden, timerRunning, timerPaused = false }) {
-  const lifecycleSrc = fs.readFileSync(path.join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
+  const lifecycleSrc = readFileSync(join(__dirname, '../src/js/07-lifecycle.js'), 'utf8');
   const handlerMatch = lifecycleSrc.match(
     /document\.addEventListener\('visibilitychange',\s*\(\)\s*=>\s*\{([\s\S]*?)\}\s*\);/
   );

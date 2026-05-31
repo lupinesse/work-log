@@ -1,5 +1,4 @@
 // Structured logger — prefix [WL:LEVEL] makes log lines easy to filter in DevTools.
-// Loaded first (00-) so all other modules can call wlLog.* without guards.
 
 /**
  * Namespace for all application logging.
@@ -7,7 +6,7 @@
  * the browser DevTools console with the text filter `[WL:`.
  * @namespace wlLog
  */
-const wlLog = (() => {
+export const wlLog = (() => {
   const fmt = (level, msg, data) =>
     data !== undefined ? [`[WL:${level}]`, msg, data] : [`[WL:${level}]`, msg];
 

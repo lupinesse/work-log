@@ -67,12 +67,15 @@ jobs:
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             unset CLAUDE_CODE_OAUTH_TOKEN
           fi
-          claude -p "/impact-check" \
+          if ! claude -p "/impact-check" \
             --model claude-sonnet-4-6 \
             --allowedTools "Read" "Grep" "Glob" \
                            "Bash(git diff:*)" "Bash(git log:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
-            > impact-output.txt 2>&1
+            > impact-output.txt 2>&1; then
+            rm -f impact-output.txt
+            exit 0
+          fi
           echo "Impact check complete ($(wc -l < impact-output.txt) lines)"
 
       - name: Mint Claude Reviewer App token
@@ -104,7 +107,7 @@ jobs:
           else
             {
               echo "$MARKER"
-              echo "> ⚠️ Impact check skipped — no API credentials configured."
+              echo "> ⚠️ Impact check skipped — API unavailable (credentials may be expired or credits exhausted)."
             } > comment-body.txt
           fi
 

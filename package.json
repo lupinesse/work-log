@@ -12,13 +12,13 @@
     "portable": "node build.js && node build-portable.js",
     "portable:deploy": "node build.js && node build-portable.js && node deploy-portable.js",
     "preview": "vite preview --port 8080",
-    "test:unit": "node test/unit.cjs",
+    "test:unit": "node test/unit.mjs",
     "test:scripts": "node --test \".github/scripts/test/*.test.mjs\"",
-    "test": "node test/unit.cjs && node smoke-tests.cjs",
-    "lint": "eslint src/js/ *.js *.cjs \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
+    "test": "node test/unit.mjs && node smoke-tests.cjs",
+    "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
     "lint:css": "stylelint \"src/css/**/*.scss\"",
-    "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\" \".github/scripts/**/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.cjs\" \".github/scripts/**/*.mjs\"",
+    "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \".github/scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \".github/scripts/**/*.mjs\"",
     "prepare": "husky",
     "docs": "jsdoc -c jsdoc.config.json",
     "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1"
@@ -34,6 +34,10 @@
     ],
     "src/css/*.scss": [
       "stylelint --fix",
+      "prettier --write"
+    ],
+    "test/**/*.mjs": [
+      "eslint",
       "prettier --write"
     ],
     ".github/scripts/**/*.mjs": [

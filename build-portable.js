@@ -24,7 +24,7 @@ import {
   BACKUPS_DIR as BACKUPS,
   HTML_IN,
   CSS_OUT as CSS_IN,
-  JS_OUT as JS_IN,
+  JS_SRC,
   PS_SERVER,
   PS_CONFIG,
 } from './build-config.js';
@@ -37,7 +37,23 @@ mkdirSync(OUT_DIR, { recursive: true });
 //    The bootstrap shows a restore prompt when localStorage is empty.
 const html = readFileSync(HTML_IN, 'utf8');
 const css = readFileSync(CSS_IN, 'utf8');
-const js = readFileSync(JS_IN, 'utf8');
+
+// script.js is now an ES module (import statements) and cannot be inlined
+// directly. Instead, read all source files, strip 'export' from leaf modules,
+// and wrap everything in an IIFE — the same flat-global technique as before ESM.
+const LEAF_MODULES_INLINE = ['logger.js', 'pure-fns.js'];
+const otherFiles = readdirSync(JS_SRC)
+  .filter(
+    (f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES_INLINE.includes(f)
+  )
+  .sort();
+const jsParts = [...LEAF_MODULES_INLINE, ...otherFiles].map((f) => {
+  let src = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');
+  if (LEAF_MODULES_INLINE.includes(f))
+    src = src.replace(/^export (const|function|let|class)\b/gm, '$1');
+  return `// ── ${f} ──\n${src}`;
+});
+const js = '(function() {\n' + jsParts.join('\n\n') + '\n})();\n';
 
 const bootstrap = `<script>
 (function() {
@@ -123,7 +139,7 @@ const bootstrap = `<script>
 
 const inlined = html
   .replace(/<link\s+rel="stylesheet"\s+href="styles\.css"\s*\/?>/, `<style>\n${css}\n</style>`)
-  .replace(/<script\s+src="script\.js"><\/script>/, `<script>\n${js}\n</script>`)
+  .replace(/<script\s+type="module"\s+src="script\.js"><\/script>/, `<script>\n${js}\n</script>`)
   .replace('</head>', bootstrap + '\n</head>');
 
 writeFileSync(join(OUT_DIR, HTML_IN), inlined);
