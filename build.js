@@ -6,23 +6,14 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { compile } from 'sass';
-import { JS_SRC, JS_OUT, CSS_SRC, CSS_OUT } from './build-config.js';
-
-/**
- * Leaf modules: proper ES modules that export named functions.
- * They are imported at the top of script.js instead of being concatenated.
- */
-const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
-
-/**
- * Parse named exports from pure-fns.js at build time so the import statement
- * in script.js stays in sync without a hand-maintained list.
- * @returns {string[]} Exported names.
- */
-function readPureFnsExports() {
-  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
-  return [...src.matchAll(/^export (?:function|const|class) (\w+)/gm)].map((m) => m[1]);
-}
+import {
+  JS_SRC,
+  JS_OUT,
+  CSS_SRC,
+  CSS_OUT,
+  LEAF_MODULES,
+  readPureFnsExports,
+} from './build-config.js';
 
 function buildJS() {
   // Guard: every leaf module must exist before we reference it in import statements.
@@ -35,7 +26,7 @@ function buildJS() {
   if (!pureFnsExports.length) throw new Error('build.js: no exports found in pure-fns.js');
 
   const files = readdirSync(JS_SRC)
-    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.has(f))
+    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
     .sort();
   const parts = files.map((f) => {
     const content = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');

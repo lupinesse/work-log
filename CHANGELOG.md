@@ -16,6 +16,12 @@
 ### Added
 - **`lib/parse-phase4-response.mjs`** — pure parser for Phase 4 JSON, extracted for testability. Rejects `type: "new"` actions. 19 unit tests in `test/parse-phase4-response.test.mjs`.
 
+### Changed
+- **`chatgpt-pr-review` no longer re-runs on `synchronize`** — the workflow trigger list is now `[labeled, opened, reopened]`. ChatGPT's review runs once on first open; pushing additional commits does not restart the dialogue. This avoids redundant API usage and duplicate review threads for follow-up commits.
+- **Weekly QA cron removed** — `weekly-qa-review.yml` no longer fires on a Monday schedule. The job is still available via `workflow_dispatch` for manual on-demand runs. This prevents wasted CI minutes when the API is unavailable or credits are exhausted.
+- **`LEAF_MODULES` and `readPureFnsExports` centralised in `build-config.js`** — previously duplicated across `build.js`, `vite.config.js`, and `build-portable.js`; now a single source of truth. All build scripts import from `build-config.js`.
+- **Export-stripping regex extended to cover `async function`** — `build-portable.js` and the VM sandbox helpers in `test/unit.mjs` now use `/^export ((?:async\s+)?(?:const|function|let|class))\b/gm` instead of the original pattern that silently broke on async exports.
+
 ### Fixed
 - **CI skill workflows soft-fail when the API is unavailable** — `jsdoc-check`, `impact-check`, and `a11y-audit` now wrap the `claude -p` invocation in an `if !` guard: on non-zero exit the output file is removed and the step exits 0 so the PR is not blocked. The PR-comment skip message now reads "API unavailable (credentials may be expired or credits exhausted)".
 - **`completedAt` now records the exact completion timestamp** — tasks marked done store `Date.now()` directly rather than rounding to the nearest 30 minutes; `roundToNearest30` is for display/timeblock positioning only.

@@ -4,6 +4,9 @@
  * deploy-portable.js.  Change a path here and all three scripts stay in sync.
  */
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
 /** Source directory for JS modules. */
 export const JS_SRC = 'src/js';
 
@@ -33,3 +36,25 @@ export const BACKUPS_DIR = 'JSON backups';
 
 /** File that remembers the last deploy-portable destination (gitignored). */
 export const DEST_FILE = '.portable-dest';
+
+/**
+ * Leaf ES modules imported at the top of script.js and inlined first in the
+ * portable build (leaf modules first, then others). Excluded from the main
+ * concatenation step in all build scripts.
+ * Change the list here — build.js, vite.config.js, and build-portable.js all
+ * import from this single source of truth.
+ */
+export const LEAF_MODULES = ['logger.js', 'pure-fns.js'];
+
+/**
+ * Reads named exports from pure-fns.js so the import statement in script.js
+ * stays in sync without a hand-maintained list. Handles regular and async
+ * function exports.
+ * @returns {string[]} Exported symbol names.
+ */
+export function readPureFnsExports() {
+  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
+  return [...src.matchAll(/^export (?:async\s+)?(?:function|const|let|class) (\w+)/gm)].map(
+    (m) => m[1]
+  );
+}

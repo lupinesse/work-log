@@ -38,7 +38,6 @@ const {
   formatGroupedLines,
 } = pureFns;
 
-
 // ── Helper ────────────────────────────────────────────────────────────────────
 /** Build a Date with specific local-time components. */
 function localDate(y, m, d, hh = 0, mm = 0, ss = 0) {
@@ -1029,7 +1028,10 @@ describe('Notion button click handler', () => {
  * @returns {Object} The populated VM sandbox.
  */
 function loadFlatSortSandbox(overrides = {}) {
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(/^export (const|function|let|class)\b/gm, '$1');
+  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
+    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
+    '$1'
+  );
   const tasksSrc = readFileSync(join(__dirname, '../src/js/10-tasks.js'), 'utf8');
   const sandbox = {
     document: {
@@ -1167,7 +1169,10 @@ describe('flatSort', () => {
  * @returns {Object} The populated VM sandbox.
  */
 function loadRapidSandbox(overrides = {}) {
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(/^export (const|function|let|class)\b/gm, '$1');
+  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
+    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
+    '$1'
+  );
   const rapidSrc = readFileSync(join(__dirname, '../src/js/16-rapid.js'), 'utf8')
     .replace(/\blet (_qcFilterCat)\b/, 'var $1')
     .replace(/\blet (_qcSearch)\b/, 'var $1');
