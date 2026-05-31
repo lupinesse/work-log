@@ -11,47 +11,32 @@
 <body>
 
 <div class="header" role="banner">
-  <!-- Col 1: date + wall-clock + sunrise/sunset -->
+  <!-- Col 1: date + wall-clock + weather + rain -->
   <div class="header-left">
     <div class="live-date" id="liveDate"></div>
     <div class="live-time" id="liveTime" aria-label="Current time"></div>
-    <div class="header-sunrise" id="liveSunrise"></div>
+    <div class="header-weather" id="liveWeather"></div>
+    <div class="header-rain" id="liveRain"></div>
   </div>
 
-  <!-- Col 2: tracked total + pace bar + demoted almanac -->
-  <div class="header-center" aria-label="Today's tracking summary">
-    <div class="header-tracked-row">
-      <span class="header-tracked-total" id="headerTrackedTotal" aria-live="polite">0m</span>
-      <span class="header-tracked-label"> tracked today</span>
+  <!-- Col 2: almanac — sunrise/sunset, week/moon, flag day, name day -->
+  <div class="header-center" aria-label="Almanac">
+    <div class="header-almanac-line" id="liveSunrise"></div>
+    <div class="header-almanac-line">
+      <span id="liveWeek"></span><span class="header-almanac-sep" aria-hidden="true">&nbsp;&middot;&nbsp;</span><span id="liveMoon"></span>
     </div>
-    <div class="header-pace-wrap" role="progressbar" aria-label="Daily goal progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="headerPaceWrap">
-      <div class="header-pace-fill" id="headerPaceFill" style="width:0%"></div>
-    </div>
-    <div class="header-pace-goal" id="headerPaceGoal"></div>
-    <div class="header-ambient">
-      <span class="header-ambient-line" id="liveWeather">locating…</span>
-      <span class="header-ambient-sep" aria-hidden="true">·</span>
-      <span class="header-ambient-line" id="liveRain"></span>
-    </div>
-    <div class="header-ambient">
-      <span class="header-ambient-line" id="liveWeek"></span>
-      <span class="header-ambient-sep" aria-hidden="true">·</span>
-      <span class="header-ambient-line" id="liveMoon"></span>
-      <span class="header-ambient-sep" aria-hidden="true">·</span>
-      <span class="header-ambient-line" id="liveFlagDay"></span>
-      <span class="header-ambient-sep" aria-hidden="true">·</span>
-      <span class="header-ambient-line" id="liveNameday"></span>
-    </div>
+    <div class="header-almanac-line" id="liveFlagDay"></div>
+    <div class="header-almanac-line" id="liveNameday"></div>
   </div>
 
-  <!-- Col 3: date nav + start-of-day button -->
+  <!-- Col 3: date nav + session chip -->
   <div class="date-nav-wrap">
     <div class="date-nav">
       <button class="nav-btn" id="prevDay" aria-label="Previous day">&#8592;</button>
       <div class="date-label" id="dateLabel" aria-live="polite" aria-atomic="true"></div>
       <button class="nav-btn" id="nextDay" aria-label="Next day">&#8594;</button>
     </div>
-    <button class="export-btn" id="sodBtn" style="font-size:11px">🌅 start the day</button>
+    <button class="session-chip" id="sodBtn" aria-label="Start or view today's session">start the day</button>
   </div>
 </div>
 

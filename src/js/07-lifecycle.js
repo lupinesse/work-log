@@ -16,8 +16,8 @@ function getDayStart() {
 }
 
 /**
- * Updates the "start the day" button to show the recorded start time (if any)
- * or its default label. Colours the button green once a time is set.
+ * Updates the session chip to show the recorded start time (with a green dot)
+ * when a session is live, or the default "start the day" label otherwise.
  */
 function renderSodBtn() {
   const btn = document.getElementById('sodBtn');
@@ -27,13 +27,10 @@ function renderSodBtn() {
     const d = new Date(sod);
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.textContent = `🌅 started ${hh}:${mm}`;
-    btn.style.color = '#1D9E75';
-    btn.style.borderColor = '#1D9E75';
+    btn.innerHTML =
+      '<span class="session-chip-dot" aria-hidden="true"></span>' + `started ${hh}:${mm}`;
   } else {
-    btn.textContent = '🌅 start the day';
-    btn.style.color = '';
-    btn.style.borderColor = '';
+    btn.textContent = 'start the day';
   }
 }
 

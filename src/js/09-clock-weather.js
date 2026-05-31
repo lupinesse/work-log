@@ -61,31 +61,12 @@ function tickClock() {
 }
 
 /**
- * Refreshes the header's tracked-total display and pace bar.
- * Sums completed entries for today plus any currently running elapsed time.
- * Called from tickClock() (every 10 s) and tickTimer() (every 1 s).
+ * No-op: the header tracked-total and pace bar were removed in the top-zone
+ * redesign (ITEM 1). Kept so tickClock() and tickTimer() call sites remain
+ * unchanged.
  */
 function updateHeaderTracking() {
-  const todayKey = dk(new Date());
-  const completedMs = entries
-    .filter((e) => e.date === todayKey && e.tsEnd && e.tsEnd > e.ts)
-    .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
-  const totalMs = completedMs + getElapsedMs();
-
-  const totalEl = document.getElementById('headerTrackedTotal');
-  if (totalEl) totalEl.textContent = totalMs > 0 ? fmtDur(totalMs) : '0m';
-
-  const paceWrap = document.getElementById('headerPaceWrap');
-  const fillEl = document.getElementById('headerPaceFill');
-  const pct = DAILY_GOAL_MS > 0 ? Math.min(100, (totalMs / DAILY_GOAL_MS) * 100) : 0;
-  if (fillEl) fillEl.style.width = pct.toFixed(1) + '%';
-  if (paceWrap) paceWrap.setAttribute('aria-valuenow', Math.round(pct).toString());
-
-  const goalEl = document.getElementById('headerPaceGoal');
-  if (goalEl) {
-    goalEl.textContent =
-      totalMs >= DAILY_GOAL_MS ? 'goal reached!' : `on pace for ${fmtDur(DAILY_GOAL_MS)}`;
-  }
+  // Tracking display now lives in the Hero Card — no header elements to update.
 }
 
 // WEATHER_LAT, WEATHER_LON, WEATHER_NAME, JIRA_BASE are defined in 00-config.js
@@ -583,9 +564,10 @@ function fetchWeather() {
           let diffHtml = '';
           if (yesterdayIdx !== -1) {
             const diffMin = Math.round((durSec - d.daily.daylight_duration[yesterdayIdx]) / 60);
-            if (diffMin > 0) diffHtml = ` <strong style="color:#1D9E75">+${diffMin} min</strong>`;
+            if (diffMin > 0)
+              diffHtml = ` <strong style="color:var(--sig-event)">+${diffMin} min</strong>`;
             else if (diffMin < 0)
-              diffHtml = ` <strong style="color:#E74C3C">${diffMin} min</strong>`;
+              diffHtml = ` <strong style="color:var(--sig-overtime)">${diffMin} min</strong>`;
           }
           document.getElementById('liveSunrise').innerHTML =
             `🌅 ${rise} | 🌇 ${set_} | ☀️ ${h}h ${m}min${diffHtml}`;

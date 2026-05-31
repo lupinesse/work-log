@@ -1,126 +1,81 @@
-/* ── App header — 3-column tracking-first layout ── */
+/* ── App header — almanac-led, 3-column flex layout ── */
 .header {
-  display: grid;
-  grid-template-columns: 220px 1fr 220px;
-  gap: 24px;
-  align-items: start;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 30px;
   margin-bottom: 16px;
 }
 
-/* Col 1 — date + clock + sunrise */
+/* Col 1 — date + clock + weather + rain */
 .header-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 158px;
 }
 
 .live-date {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   line-height: 1.3;
 }
 
 .live-time {
-  font-size: 30px;
+  font-size: 34px;
   font-weight: 600;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   color: var(--text);
-  line-height: 1.1;
-  letter-spacing: -0.5px;
+  line-height: 1.05;
+  letter-spacing: -1px;
 }
 
-.header-sunrise {
-  font-size: 12px;
+.header-weather {
+  font-size: 12.5px;
   color: var(--ink-muted);
+  margin-top: 5px;
   line-height: 1.4;
-  margin-top: 2px;
 }
 
-/* Col 2 — tracked total + pace bar + ambient almanac */
+.header-rain {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+  line-height: 1.4;
+}
+
+/* Col 2 — almanac: 4 faint lines */
 .header-center {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding-top: 2px;
+  gap: 6px;
+  padding-top: 4px;
 }
 
-.header-tracked-row {
-  display: flex;
-  align-items: baseline;
-  gap: 0;
-  line-height: 1.2;
-}
-
-.header-tracked-total {
-  font-size: 22px;
-  font-weight: 600;
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  letter-spacing: -0.5px;
-}
-
-.header-tracked-label {
-  font-size: 13px;
-  font-weight: 400;
+.header-almanac-line {
+  font-size: 12.5px;
   color: var(--ink-muted);
+  line-height: 1.55;
+
+  strong {
+    font-weight: 600;
+    color: var(--text2);
+  }
 }
 
-.header-pace-wrap {
-  height: 5px;
-  background: var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 2px;
-}
-
-.header-pace-fill {
-  height: 100%;
-  background: var(--live);
-  border-radius: 3px;
-  transition: width 0.6s ease;
-  min-width: 0;
-}
-
-.header-pace-goal {
-  font-size: 11.5px;
-  color: var(--ink-muted);
-  line-height: 1.3;
-}
-
-.header-ambient {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 2px;
-}
-
-.header-ambient-line {
-  font-size: 12px;
-  color: var(--ink-muted);
-  opacity: 0.72;
-  line-height: 1.35;
-}
-
-.header-ambient-sep {
-  font-size: 10px;
+.header-almanac-sep {
   color: var(--ink-faint);
-  flex-shrink: 0;
 }
 
-/* Hide separators that follow an empty sibling */
-.header-ambient-line:empty + .header-ambient-sep {
-  display: none;
-}
-
-/* Legacy classes — kept so any JS that reads .live-weather / .live-week
-   class names continues to work without changes.                           */
-.live-week,
-.live-weather {
-  /* intentionally empty — content is styled via .header-ambient-line */
+/* Col 3 — date nav + session chip */
+.date-nav-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 178px;
+  align-items: stretch;
 }
 
 .date-nav {
@@ -131,27 +86,13 @@
   justify-content: space-between;
 }
 
-.date-nav-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  align-self: stretch;
-}
-
-.date-nav-wrap .export-btn {
-  width: 100%;
-  text-align: center;
-  box-sizing: border-box;
-}
-
 .nav-btn {
   background: var(--bg);
   border: 0.5px solid var(--border2);
   border-radius: var(--radius);
-  padding: 4px 10px;
+  padding: 5px 13px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text2);
   line-height: 1.4;
 }
@@ -172,7 +113,39 @@
   text-align: center;
 }
 
-/* Analytics section */
+/* Session chip — full-width button below date-nav */
+.session-chip {
+  width: 100%;
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-family: var(--font);
+  color: var(--text2);
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+.session-chip:hover {
+  background: var(--bg2);
+}
+
+.session-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sig-event);
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Analytics section ── */
 #analyticsSection .analytics-body {
   padding-top: 4px;
 }
