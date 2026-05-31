@@ -244,7 +244,7 @@ function playChime() {
       oscillator.stop(toneStart + 0.5);
     });
   } catch (e) {
-    // Silently skip — Web Audio API may be unavailable (e.g. browser policy, no audio hardware)
+    wlLog.warn('playChime: Web Audio API unavailable', e.message);
   }
 }
 
