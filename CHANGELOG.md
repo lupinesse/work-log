@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **`completedAt` now records the exact completion timestamp** — tasks marked done store `Date.now()` directly rather than rounding to the nearest 30 minutes; `roundToNearest30` is for display/timeblock positioning only.
 - **`roundToNearest30` no longer crosses day boundaries** — times between 23:46 and 23:59 now clamp to 23:30 instead of rolling over to 00:00 of the next day. This prevented completed tasks from appearing in the current day's completed section when marked done in the last 14 minutes of the day.
 - **Pomodoro favicon now respects the colour theme** — `setPomoFavicon()` now reads `--pomo-spark-empty`, `--pomo-spark-fill`, and `--bg` CSS custom properties instead of hardcoded hex values, so the favicon ring and wedge match the app's light/dark colour scheme.
 - **Pomodoro favicon now resets when the session ends or is tapped out** — `setPomoFavicon()` now creates a dedicated `<link rel="icon" data-pomo>` element rather than overwriting the page's existing favicon; when pomo stops (done, tapped out, or paused) `updatePomoDisplay()` removes that element so the original favicon is restored automatically.
