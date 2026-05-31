@@ -337,7 +337,7 @@ function renderLogView(dateKey) {
 
         const dot = isLive
           ? `<span class="tf-log-dot live" aria-hidden="true"></span>`
-          : `<span class="tf-log-dot" style="border-color:${item.color}" aria-hidden="true"></span>`;
+          : `<span class="tf-log-dot" style="border-color:${safeCssColor(item.color)}" aria-hidden="true"></span>`;
 
         return `
           <div class="tf-log-row">
