@@ -45,7 +45,7 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [labeled, opened, reopened, synchronize]
+    types: [labeled, opened, reopened]
 
 # One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
@@ -243,7 +243,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
-          MODEL:             claude-sonnet-4-6
+          MODEL:             claude-haiku-4-5-20251001
           MAX_DIFF_CHARS:    '15000'
         run: node .github/scripts/claude-chatgpt-dialogue.mjs
 
@@ -310,7 +310,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
-          MODEL:      claude-sonnet-4-6
+          MODEL:      claude-haiku-4-5-20251001
           MAX_DIFF_CHARS: '15000'
         run: node .github/scripts/claude-convergence-summary.mjs
 
