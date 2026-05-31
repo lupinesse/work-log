@@ -4,10 +4,7 @@ name: Weekly QA Review
 # to docs/qa-reports/ so quality is tracked over time.
 
 on:
-  schedule:
-    # 09:00 UTC every Monday. GitHub runners use UTC — adjust for your timezone.
-    - cron: "0 9 * * 1"
-  workflow_dispatch: {} # also allow manual runs from the Actions tab
+  workflow_dispatch: {} # allow manual runs from the Actions tab
 
 jobs:
   qa-review:
