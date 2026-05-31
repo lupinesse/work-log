@@ -189,7 +189,7 @@ function _heroFillRunning() {
   }
 
   const noteRefEl = document.getElementById('heroTaskNoteRef');
-  if (noteRefEl) noteRefEl.textContent = '';
+  if (noteRefEl) noteRefEl.textContent = _heroLastNoteText(entry.id);
 }
 
 // ── Paused fill ───────────────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ function _heroFillPaused() {
   if (metaEl) metaEl.textContent = `paused · since ${fmtTime(entry.ts)}`;
 
   const noteRefEl = document.getElementById('heroPausedNoteRef');
-  if (noteRefEl) noteRefEl.textContent = '';
+  if (noteRefEl) noteRefEl.textContent = _heroLastNoteText(entry.id);
 }
 
 // ── Stopped fill ──────────────────────────────────────────────────────────────
@@ -399,6 +399,20 @@ function _heroSetCategory(elId, tag) {
   el.innerHTML =
     `<span class="hero-task-cat-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
     escHtml(cat.label);
+}
+
+/**
+ * Returns "↳ last note X ago" text for the most recent session-note on an entry,
+ * or an empty string when no session notes have been added yet.
+ * @param {string} entryId - ID of the active log entry.
+ * @returns {string}
+ */
+function _heroLastNoteText(entryId) {
+  const latest = logNotes
+    .filter((n) => n.type === 'session-note' && n.entryId === entryId)
+    .sort((a, b) => b.ts - a.ts)[0];
+  if (!latest) return '';
+  return `↳ last note ${fmtAgo(latest.ts)}`;
 }
 
 /**
