@@ -2960,7 +2960,7 @@ async function runTests() {
       () => document.getElementById('heroLoggedToday')?.textContent
     );
     assert(
-      'updateHeaderTracking shows 30m for a 30-minute entry',
+      'Hero Card heroLoggedToday shows 30m for a 30-minute entry',
       total === '30m',
       `got "${total}"`
     );
@@ -2969,7 +2969,7 @@ async function runTests() {
       () => document.getElementById('heroIdleLastSession')?.textContent
     );
     assert(
-      'updateHeaderTracking renders pace goal text',
+      'Hero Card heroIdleLastSession renders non-empty last-session text',
       typeof lastSession === 'string' && lastSession.length > 0,
       `got "${lastSession}"`
     );
