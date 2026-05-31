@@ -6,6 +6,11 @@
 - **Tracker card colour dot now sanitised** — `renderTrackers` wraps `t.color` with `safeCssColor()` so a stored colour value cannot inject arbitrary CSS into the `style` attribute (closes the last remaining unsanitised inline colour in `22-trackers.js`).
 
 ### Changed
+- `chatgpt-pr-review.yml` no longer re-runs on every push — dialogue fires on open/reopen; re-trigger with the `chatgpt-review` label.
+- Phases 2+3: switched to `claude-haiku-4-5-20251001` (~20x cheaper than Sonnet 4.6).
+- Phases 2+3: `MAX_DIFF_CHARS` reduced 30 000 to 15 000 (~50% fewer input tokens).
+- `pr-review.yml`: `--max-turns` reduced from 15 to 8.
+- `weekly-qa-review.yml`: cron schedule removed; manual-only via workflow_dispatch.
 - **`pure-fns.js` and `logger.js` extracted as leaf ES modules** — the 27 pure utility functions and the `wlLog` structured logger now live in their own files under `src/js/` and are imported at the top of `script.js`. `script.js` is now a proper ES module (`<script type="module">`), not a concatenated IIFE. The build step (`build.js`) auto-discovers exports from `pure-fns.js` so the import list stays in sync without manual maintenance.
 - **`build-portable.js` updated for ESM source layout** — the portable build no longer reads the generated `script.js`. It reads source files from `src/js/` directly, strips `export` keywords from leaf modules, and wraps the result in an IIFE — preserving the single-file offline format.
 - **`test/unit.cjs` replaced by `test/unit.mjs`** — unit tests now import `pure-fns.js` directly as an ES module and run with Node's built-in test runner (`node --test`). The old CommonJS test shim is removed.
