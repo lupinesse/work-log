@@ -27,8 +27,12 @@ function renderSodBtn() {
     const d = new Date(sod);
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
-    btn.innerHTML =
-      '<span class="session-chip-dot" aria-hidden="true"></span>' + `started ${hh}:${mm}`;
+    btn.textContent = '';
+    const dot = document.createElement('span');
+    dot.className = 'session-chip-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(`started ${hh}:${mm}`));
   } else {
     btn.textContent = 'start the day';
   }
