@@ -27,17 +27,15 @@
 
 import { readFileSync } from 'node:fs';
 import {
-  addReactionToComment,
   fetchAllIssueComments,
   fetchAllThreads,
   formatThreadsForPrompt,
-  ghHeaders,
   replyToThread,
   resolveThread,
   unresolveThread,
   upsertIssueComment,
 } from './lib/github-threads.mjs';
-import { normaliseReplyAction, coerceThreadIndex } from './lib/parse-reply-action.mjs';
+import { parsePhase4Response } from './lib/parse-phase4-response.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -244,10 +242,15 @@ async function callOpenAI(diff, claudeContext) {
   const system = `You are ChatGPT, an AI code reviewer. You have already posted your own independent inline review findings on this pull request. Now you are reading Claude's full response:
 
 1. Claude replied to each of your inline threads with a verdict (agree_fix / agree_noted / disagree / partial) — visible as emoji prefixes (✅ 👍 ❌ ↔️) in the thread replies shown to you.
-2. Claude posted a synthesis comment.
-3. Claude then ran its own complete /pr-review and posted that verdict.
+2. Claude posted a convergence summary (Phase 3) that organises every thread by outcome and notes any independent gaps Claude found.
 
-**CRITICAL — Claude is the implementing author. Claude's verdict on a finding is FINAL:**
+Your job in Phase 4 is to close the dialogue loop:
+- **Verify agreed fixes** — confirm Claude's \`agree_fix\` changes are actually in the diff.
+- **Accept or challenge counter-positions** — if Claude's \`disagree\` reasoning is convincing, accept it; if you have new evidence it's wrong, say so.
+- **Flag regressions** — if a previously verified fix has disappeared from the diff.
+- **Do NOT raise new findings.** Phase 4 is strictly a reply-only phase; \`type: "new"\` actions are rejected. Any genuinely novel blocking issue you notice belongs in a separate PR comment outside this dialogue.
+
+**CRITICAL — Claude's verdict on each finding is FINAL (absent new evidence):**
 
 - If Claude rejected a finding with ❌ \`disagree\`: do NOT re-raise it. Move on.
 - If Claude accepted with ✅ \`agree_fix\`: do NOT trust the claim blind. Claude's reply describes WHAT was changed (e.g., "Will replace the silent catch with wlLog.warn") — locate that exact change in the current diff at the relevant file/line. Then:
@@ -266,10 +269,9 @@ For each concern you have, choose one action:
 - **reply with \`resolve: true\`** — when you've verified Claude's \`agree_fix\` change is present in the current diff and the thread does NOT already show your "✅ Verified as fixed" confirmation. Body must start with "✅ Verified as fixed" and briefly state what you checked. This both audits the verification and closes the thread for the merge-gate.
 - **reply with \`unresolve: true\`** — when the issue regressed: the thread was resolved (or already showed your "Verified as fixed" from a prior run) but Claude's promised change is no longer in the diff. Body must start with "🔁 Reopened —" and quote the missing change. Reserved for genuine regressions; do not use it to re-litigate a finding Claude rejected with ❌ \`disagree\`.
 - **omit entirely** (do not add to thread_actions) when the thread is already in a stable state — you previously posted "✅ Verified as fixed" and nothing has changed, OR Claude resolved it with \`disagree\` / \`agree_noted\` and you accept that. Silence is the correct signal once verification is on record; re-posting the same confirmation every run is noise.
-- **reply** (no flag) when the concern overlaps with an existing thread (same file/line, same root cause, related issue on a nearby line, follow-up to your own earlier finding) but is NOT fully addressed. Bias toward replying — this is the main way to keep the comment count under control.
-- **new** only when the concern is genuinely novel — no existing thread (resolved or open) touches the same code or root cause. If you have to argue with yourself that "this is technically different from thread N", choose reply instead.
+- **reply** (no flag) when the concern overlaps with an existing thread (same file/line, same root cause, related issue on a nearby line, follow-up to your own earlier finding) but is NOT fully addressed. Bias toward replying.
 
-**Verdict:** pick **APPROVE** when every concern you'd otherwise raise is already covered (resolved with a visible fix, freshly verified with "✅ Verified as fixed", or open with Claude's ✅ \`agree_fix\` verdict — those open threads are tracked by the merge-gate and don't justify a REQUEST_CHANGES from you). Pick **REQUEST_CHANGES** only when at least one \`new\` action is a genuinely novel, blocking concern, or you posted a "🔁 Reopened" on a regression of a blocking finding. Pick **COMMENT** for non-blocking observations or when you're only posting verification confirmations and replies.
+**Verdict:** pick **APPROVE** when every concern you'd raise is already covered (resolved, freshly verified with "✅ Verified as fixed", or open with Claude's ✅ \`agree_fix\` — those open threads are tracked by the merge-gate). Pick **REQUEST_CHANGES** only when you posted a "🔁 Reopened" on a genuine regression of a blocking finding. Pick **COMMENT** for non-blocking follow-ups or when you're only posting verification confirmations.
 
 **Reply flags (\`resolve\` / \`unresolve\`):** mutually exclusive — never set both on the same reply.
 - \`resolve: true\` — close the thread after posting. Use only with a "✅ Verified as fixed" reply. No-op if the thread is already resolved.
@@ -281,7 +283,6 @@ If everything you'd want to say belongs in existing threads (or has already been
 Output a single raw JSON object — no markdown wrapper:
 {
   "thread_actions": [
-    { "type": "new",   "path": "<file path from diff>", "line": <integer>, "body": "<markdown — prefix with 🔴 Blocking or 🟡 Non-blocking>" },
     { "type": "reply", "thread_index": <integer matching a thread above>, "resolve": false, "unresolve": false, "body": "<for verifications: '✅ Verified as fixed — <what you checked>'. For regressions: '🔁 Reopened — <quote missing change>'. For other follow-ups: plain markdown.>" }
   ]
 }`;
@@ -317,125 +318,6 @@ Output a single raw JSON object — no markdown wrapper:
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 
-// ─────────────────────────── output parsing ───────────────────────────
-
-/**
- * @typedef {{ type: 'new', path: string, line: number, body: string }} NewAction
- * @typedef {{ type: 'reply', threadIndex: number, body: string, resolve: boolean, unresolve: boolean }} ReplyAction
- * @typedef {NewAction | ReplyAction} ThreadAction
- * @typedef {{ actions: ThreadAction[], invalidActions: unknown[] }} DialogueResponse
- */
-
-/**
- * Parse OpenAI's response. Accepts both the new `thread_actions` schema and
- * the legacy `new_findings` schema (treated as all type="new") for
- * backwards compatibility.
- *
- * @param {string} rawText
- * @param {number} threadCount  Used to validate reply thread_index range.
- * @returns {DialogueResponse}
- * @throws {Error}
- */
-function parseResponse(rawText, threadCount) {
-  const cleaned = rawText
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/, '')
-    .trim();
-  const parsed = JSON.parse(cleaned);
-
-  const rawActions = Array.isArray(parsed.thread_actions)
-    ? parsed.thread_actions
-    : Array.isArray(parsed.new_findings)
-      ? parsed.new_findings.map((f) => ({ type: 'new', ...f }))
-      : [];
-
-  const actions = [];
-  const invalidActions = [];
-
-  for (const a of rawActions) {
-    if (!a || typeof a !== 'object') {
-      invalidActions.push(a);
-      continue;
-    }
-    // Absent type (undefined/null) defaults to 'new' for legacy-schema compat.
-    // Non-string non-null values (e.g. true, 123) are model errors and go to
-    // fallback. Unknown strings ("NEW", "new ") also go to fallback.
-    const rawType = a.type;
-    const type = rawType == null ? 'new' : typeof rawType === 'string' ? rawType.trim() : null;
-    if (type === null || (type !== 'new' && type !== 'reply')) {
-      console.warn(`  unknown action type ${JSON.stringify(rawType)} — moved to fallback`);
-      invalidActions.push(a);
-      continue;
-    }
-    const body = typeof a.body === 'string' ? a.body.trim() : null;
-    if (!body) {
-      invalidActions.push(a);
-      continue;
-    }
-
-    if (type === 'reply') {
-      let normalised;
-      try {
-        normalised = normaliseReplyAction(a, threadCount);
-      } catch (err) {
-        console.warn(`  invalid reply action — ${err.message} — moved to fallback`);
-        invalidActions.push(a);
-        continue;
-      }
-      actions.push({ type: 'reply', ...normalised });
-    } else {
-      const path = typeof a.path === 'string' ? a.path.trim() : null;
-      const rawLine = a.line;
-      const line = coerceThreadIndex(rawLine);
-      if (!path || line === null || line <= 0) {
-        console.warn(
-          `  invalid new action (path=${JSON.stringify(path)}, line=${JSON.stringify(rawLine)}) — moved to fallback`
-        );
-        invalidActions.push(a);
-        continue;
-      }
-      actions.push({ type: 'new', path, line, body });
-    }
-  }
-
-  return {
-    actions,
-    invalidActions,
-  };
-}
-
-// ─────────────────────────── GitHub posting ───────────────────────────
-
-/**
- * Post all new findings as a single batched review so the PR shows one
- * "reviewed" banner regardless of how many findings there are.
- *
- * @param {Array<{path: string, line: number, body: string}>} findings
- * @returns {Promise<object>} GitHub API review object.
- */
-async function postBatchedReview(findings) {
-  const response = await fetch(
-    `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
-    {
-      method: 'POST',
-      headers: ghHeaders(GITHUB_TOKEN),
-      body: JSON.stringify({
-        commit_id: HEAD_SHA,
-        event: 'COMMENT',
-        comments: findings.map((f) => ({
-          path: f.path,
-          line: f.line,
-          side: 'RIGHT',
-          body: f.body,
-        })),
-      }),
-    }
-  );
-  if (!response.ok)
-    throw new Error(`Batch review API ${response.status}: ${await response.text()}`);
-  return response.json();
-}
-
 // ─────────────────────────── main ───────────────────────────
 
 async function main() {
@@ -468,7 +350,7 @@ async function main() {
 
   let parsed;
   try {
-    parsed = parseResponse(rawText, claudeContext.threads.length);
+    parsed = parsePhase4Response(rawText, claudeContext.threads.length);
   } catch (e) {
     console.warn(`JSON parse failed (${e.message}) — posting raw as fallback.`);
     const { comment, updated } = await upsertIssueComment({
@@ -480,13 +362,11 @@ async function main() {
     return;
   }
 
-  const newCount = parsed.actions.filter((a) => a.type === 'new').length;
-  const replyCount = parsed.actions.filter((a) => a.type === 'reply').length;
-  console.log(`  new: ${newCount}, replies: ${replyCount}`);
+  console.log(`  replies: ${parsed.actions.length}, invalid: ${parsed.invalidActions.length}`);
 
-  // Pass 1 — replies go to existing threads individually.
+  // Replies go to existing threads individually.
   const unpostable = [];
-  for (const a of parsed.actions.filter((x) => x.type === 'reply')) {
+  for (const a of parsed.actions) {
     const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
     try {
       const target = claudeContext.threads[a.threadIndex];
@@ -524,74 +404,9 @@ async function main() {
     }
   }
 
-  // Pass 2 — new findings batched into one review (one "reviewed" banner).
-  // Suppress exact-location duplicates: if the model raises a "new" finding at
-  // a path+line already covered by an existing thread, react with 👀 on the
-  // original instead of posting another verbose comment.
-  const newActions = [];
-  for (const a of parsed.actions.filter((x) => x.type === 'new')) {
-    const dup = claudeContext.threads.find((t) => t.path === a.path && t.line === a.line);
-    if (dup) {
-      try {
-        await addReactionToComment({ ...GH_CTX, commentId: dup.firstCommentId, content: 'eyes' });
-        console.log(
-          `  duplicate suppressed — reacted 👀 on existing thread at ${a.path}:${a.line}`
-        );
-      } catch (err) {
-        console.warn(
-          `  could not react to duplicate at ${a.path}:${a.line} — ${err.message} — posting anyway`
-        );
-        newActions.push(a);
-      }
-    } else {
-      newActions.push(a);
-    }
-  }
-  if (newActions.length > 0) {
-    const findings = newActions.map((a) => ({
-      path: a.path,
-      line: a.line,
-      body: `${a.body}${REPLY_ATTRIBUTION}`,
-    }));
-    try {
-      const batchResult = await postBatchedReview(findings);
-      console.log(`  batched ${findings.length} new finding(s): ${batchResult.html_url}`);
-    } catch (batchErr) {
-      console.warn(`  batch review failed (${batchErr.message}) — retrying individually`);
-      for (const f of findings) {
-        let retryError = '';
-        try {
-          const resp = await fetch(
-            `https://api.github.com/repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/reviews`,
-            {
-              method: 'POST',
-              headers: ghHeaders(GITHUB_TOKEN),
-              body: JSON.stringify({
-                commit_id: HEAD_SHA,
-                event: 'COMMENT',
-                comments: [{ path: f.path, line: f.line, side: 'RIGHT', body: f.body }],
-              }),
-            }
-          );
-          if (resp.ok) {
-            console.log(`  individual retry: ${f.path}:${f.line}`);
-          } else {
-            retryError = `HTTP ${resp.status}: ${await resp.text()}`;
-          }
-        } catch (retryErr) {
-          retryError = retryErr.message;
-        }
-        if (retryError) {
-          console.warn(`  could not post ${f.path}:${f.line} — ${retryError}`);
-          unpostable.push({ path: f.path, line: f.line, body: f.body });
-        }
-      }
-    }
-  }
-
   const fallbackEntries = [
     ...unpostable.map((a) => ({
-      label: a.type === 'reply' ? `(reply to thread ${a.threadIndex})` : `${a.path}:${a.line}`,
+      label: `(reply to thread ${a.threadIndex})`,
       body: a.body,
     })),
     ...parsed.invalidActions.map((a) => ({

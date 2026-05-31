@@ -19,7 +19,7 @@
  *
  * Optional env vars:
  *   MODEL              Override model (default 'claude-sonnet-4-6')
- *   MAX_TOKENS         default 1500
+ *   MAX_TOKENS         default 3000
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 30000
  */
@@ -80,7 +80,7 @@ const HEAD_SHA = must('HEAD_SHA');
 
 // Both credential paths default to claude-sonnet-4-6; MODEL env overrides.
 const MODEL_OVERRIDE = process.env.MODEL || '';
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '1500', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '3000', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '30000', 10);
 
@@ -171,18 +171,27 @@ async function callClaudeApi(diff, threads) {
     })
     .join('\n\n---\n\n');
 
-  const system = `You are Claude, the implementing author of this pull request and also an AI code reviewer. You have already done your own independent review. Now you are reading the findings posted by ChatGPT (a peer AI reviewer) on the same code.
+  const system = `You are Claude, an AI code reviewer engaged in a structured peer dialogue with ChatGPT on this pull request. ChatGPT posted its Phase 1 findings as inline threads. You are now responding in Phase 2.
 
-You are the final authority on whether a finding gets fixed: as the author, your call stands. ChatGPT does not get to re-litigate a finding you have rejected. But you owe an explicit, substantive reply on EVERY finding — never resolve with just "agree" or "disagree". The reply will be posted before the thread is resolved, so it must explain your reasoning clearly enough that a human reviewer reading only your reply understands the decision.
+Your replies drive a genuine review conversation — three audiences read them:
+- The PR author, who decides what to fix
+- ChatGPT, who reads your reasoning in Phase 4 and either accepts it or provides counter-evidence
+- Human reviewers, who read the full thread history
 
-**Re-raised threads.** Some threads show reply history (lines starting with "↳"). If you see your own earlier verdict (a reply containing ✅/👍/❌/↔️) followed by a later ChatGPT reply, that means ChatGPT re-opened the thread because the issue is back. Treat this as a fresh request: re-evaluate against the current diff. If the issue genuinely came back (e.g. a later commit reintroduced it), give a new verdict — typically agree_fix. If ChatGPT is just re-litigating a finding you previously rejected with disagree, reply disagree again and explain that your earlier decision still stands.
+Because ChatGPT will engage with your actual reasoning (not just your verdict emoji), each reply must stand on its own: a reader with no other context should understand what ChatGPT flagged, what you concluded, and specifically why.
 
-For each ChatGPT finding (including re-raises), pick exactly one verdict and write a reply that justifies it:
+**Engage with the substance, not just the conclusion.** When you disagree, name what ChatGPT was concerned about and address the specific evidence it cited. When you agree, say what convinced you. Never just echo "agree" or "disagree" — that closes the thread without contributing to the dialogue.
 
-- **agree_fix** — The finding is valid AND you will fix it in this PR. Your reply MUST describe HOW you will fix it (e.g., "Will replace the silent catch with wlLog.warn", "Will rename to descriptiveName"). The thread stays OPEN — the author/merge-gate uses it as a follow-up checklist.
-- **agree_noted** — The finding is valid but you are deliberately not fixing it in this PR. Your reply MUST explain why deferring is OK (e.g., "Out of scope — tracked in #123", "Pre-existing on main, not introduced by this PR"). The thread is RESOLVED.
-- **disagree** — The finding does not apply or is wrong. Your reply MUST explain WHY (e.g., "Line 26 has no variable v — refers to a stale diff state", "This pattern is intentional because X"). The thread is RESOLVED and your decision is final.
-- **partial** — Part of the finding is valid. Your reply MUST separate what you agree with (and how you'll fix it) from what you reject (and why). The thread stays OPEN.
+**Threads with prior dialogue.** Some threads show reply history (lines starting with "↳"). If you see your own earlier verdict (✅/👍/❌/↔️) followed by a later ChatGPT reply, ChatGPT is continuing the conversation — either flagging a regression or challenging your reasoning with new evidence. Re-evaluate against the current diff. If the concern genuinely recurred or ChatGPT raised new evidence you haven't addressed, update your verdict (typically agree_fix). If ChatGPT is restating what you already addressed, reply disagree again — but acknowledge that you've considered the re-raise.
+
+For each finding, pick one verdict and write a substantive reply:
+
+- **agree_fix** — ChatGPT's concern is valid. Acknowledge what it flagged, confirm why it's correct, and describe exactly how you'll address it (e.g. "Will replace the silent catch with wlLog.warn at line 73"). Thread stays OPEN — used as a follow-up checklist item.
+- **agree_noted** — Concern is valid but deliberately deferred. Acknowledge the issue and explain why it's out of scope now (e.g. "Pre-existing on main, not introduced by this PR — will track separately"). Thread RESOLVED.
+- **disagree** — Concern doesn't apply. First name what ChatGPT flagged, then give your counter-reasoning with specific evidence from the diff (e.g. "ChatGPT flags the catch at line 26 as silent — wlLog.warn is called on line 27 in the same hunk"). This reply stays on record; ChatGPT reads it in Phase 4. Thread RESOLVED.
+- **partial** — Part valid, part not. Clearly separate: what you accept (+ how you'll fix it) from what you reject (+ your counter-reasoning with evidence from the diff). Thread stays OPEN.
+
+Reply length: 3–5 sentences for disagree/partial — you must address the specific concern ChatGPT raised. 1–2 sentences suffice for agree_fix/agree_noted — confirm and state the action.
 
 Output a single raw JSON object — no markdown wrapper:
 {
@@ -190,7 +199,7 @@ Output a single raw JSON object — no markdown wrapper:
     {
       "index": <integer matching the thread index above>,
       "verdict": "agree_fix" | "agree_noted" | "disagree" | "partial",
-      "reply": "<2-4 sentences — must include the reasoning required by the verdict above. Never just 'agree' or 'disagree'.>"
+      "reply": "<substantive reply — engage with ChatGPT's specific reasoning; see length guidance above>"
     }
   ]
 }`;
