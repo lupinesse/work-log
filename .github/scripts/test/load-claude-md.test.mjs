@@ -6,19 +6,21 @@
 
 import { describe, test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { loadClaudeMd } from '../lib/load-claude-md.mjs';
 
-const TMP = join(tmpdir(), `load-claude-md-test-${process.pid}`);
+let TMP;
 
-beforeEach(() => mkdirSync(TMP, { recursive: true }));
+beforeEach(() => {
+  TMP = mkdtempSync(join(tmpdir(), 'load-claude-md-test-'));
+});
 afterEach(() => {
   try {
-    unlinkSync(join(TMP, 'CLAUDE.md'));
+    rmSync(TMP, { recursive: true, force: true });
   } catch {
-    // file may not exist
+    // nothing to clean up
   }
 });
 
