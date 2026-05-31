@@ -8,7 +8,7 @@
  * Design trade-off: full DOM re-render on every change rather than targeted
  * updates. Keeps state reasoning simple for a single-user personal tool where
  * the entry list is small (typically < 50 items per day). If performance becomes
- * a concern, the innermost `tl.querySelectorAll` event-binding loop is the first
+ * a concern, the innermost `timelineEl.querySelectorAll` event-binding loop is the first
  * candidate for optimisation (see phase 6 below).
  */
 function render() {
