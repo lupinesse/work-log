@@ -70,8 +70,8 @@
   opacity: 0.55;
 }
 
-.qp-remove:hover {
-  opacity: 1 !important;
+.qp-item:hover .qp-remove:hover {
+  opacity: 1;
   color: #f17070;
 }
 

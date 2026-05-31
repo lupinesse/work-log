@@ -125,20 +125,20 @@
   color: var(--text);
 }
 
-.ml-sum-blue {
-  color: var(--info-text) !important;
+.ml-sum-row .ml-sum-blue {
+  color: var(--info-text);
 }
 
-.ml-sum-green {
-  color: #1d9e75 !important;
+.ml-sum-row .ml-sum-green {
+  color: #1d9e75;
 }
 
-.ml-sum-amber {
-  color: #ef9f27 !important;
+.ml-sum-row .ml-sum-amber {
+  color: #ef9f27;
 }
 
-.ml-sum-muted {
-  color: var(--text3) !important;
+.ml-sum-row .ml-sum-muted {
+  color: var(--text3);
 }
 
 .ml-migrate-btn {
