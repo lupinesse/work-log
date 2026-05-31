@@ -172,15 +172,15 @@ function setFavicon(state) {
     return;
   }
   try {
-    const c = document.createElement('canvas');
-    c.width = c.height = 32;
-    const ctx = c.getContext('2d');
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 32;
+    const ctx = canvas.getContext('2d');
     if (!ctx) return; // canvas blocked (e.g. privacy settings)
     ctx.beginPath();
     ctx.arc(16, 16, 13, 0, Math.PI * 2);
     ctx.fillStyle = color;
     ctx.fill();
-    link.href = c.toDataURL();
+    link.href = canvas.toDataURL();
   } catch (e) {} // silently skip favicon if canvas unavailable
 }
 
@@ -255,24 +255,24 @@ function checkChime(elapsedMs) {
  */
 function playChime() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const freq = [528, 660]; // two soft tones
-    freq.forEach((f, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = f;
-      const start = ctx.currentTime + i * 0.18;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.18, start + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
-      osc.start(start);
-      osc.stop(start + 0.5);
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const chimeFrequencies = [528, 660]; // two soft tones — a gentle rising pair
+    chimeFrequencies.forEach((frequency, toneIndex) => {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.value = frequency;
+      const toneStart = audioCtx.currentTime + toneIndex * 0.18;
+      gainNode.gain.setValueAtTime(0, toneStart);
+      gainNode.gain.linearRampToValueAtTime(0.18, toneStart + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, toneStart + 0.5);
+      oscillator.start(toneStart);
+      oscillator.stop(toneStart + 0.5);
     });
   } catch (e) {
-    // Silently skip — Web Audio API may be unavailable (e.g. browser policy, no audio hardware)
+    wlLog.warn('playChime: Web Audio API unavailable', e.message);
   }
 }
 

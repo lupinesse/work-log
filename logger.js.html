@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 00-logger.js</title>
+    <title>JSDoc: Source: logger.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 00-logger.js</h1>
+    <h1 class="page-title">Source: logger.js</h1>
 
     
 
@@ -27,7 +27,6 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>// Structured logger — prefix [WL:LEVEL] makes log lines easy to filter in DevTools.
-// Loaded first (00-) so all other modules can call wlLog.* without guards.
 
 /**
  * Namespace for all application logging.
@@ -35,7 +34,7 @@
  * the browser DevTools console with the text filter `[WL:`.
  * @namespace wlLog
  */
-const wlLog = (() => {
+export const wlLog = (() => {
   const fmt = (level, msg, data) =>
     data !== undefined ? [`[WL:${level}]`, msg, data] : [`[WL:${level}]`, msg];
 
