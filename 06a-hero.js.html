@@ -179,7 +179,7 @@ function _heroRenderRecentChips() {
         `&lt;button class="hero-chip"` +
         ` data-text="${escHtml(e.text)}" data-tag="${escHtml(e.tag)}"` +
         ` aria-label="Start tracking: ${escHtml(e.text)}">` +
-        `&lt;span class="hero-chip-dot" style="background:${cat.color}" aria-hidden="true">&lt;/span>` +
+        `&lt;span class="hero-chip-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true">&lt;/span>` +
         escHtml(e.text) +
         (isLast
           ? `&lt;span style="font-size:10px;color:var(--ink-faint);margin-left:2px">← last&lt;/span>`
@@ -425,7 +425,7 @@ function _heroSetCategory(elId, tag) {
   if (!el) return;
   const cat = getCat(tag);
   el.innerHTML =
-    `&lt;span class="hero-task-cat-dot" style="background:${cat.color}" aria-hidden="true">&lt;/span>` +
+    `&lt;span class="hero-task-cat-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true">&lt;/span>` +
     escHtml(cat.label);
 }
 

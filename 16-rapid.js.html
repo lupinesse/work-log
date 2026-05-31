@@ -222,7 +222,7 @@ function _qcRenderCatChips() {
         `&lt;button class="qc-cat-chip${_qcFilterCat === c.id ? ' active' : ''}"` +
         ` data-cat="${escHtml(c.id)}"` +
         ` aria-pressed="${_qcFilterCat === c.id}">` +
-        `&lt;span class="qc-chip-dot" style="background:${c.color}" aria-hidden="true">&lt;/span>` +
+        `&lt;span class="qc-chip-dot" style="background:${safeCssColor(c.color)}" aria-hidden="true">&lt;/span>` +
         `${escHtml(c.label)}` +
         `&lt;/button>`
     )
@@ -257,7 +257,7 @@ function _qcTaskRowHtml(rowId, text, cat, isActive) {
   return (
     `&lt;div class="qc-task-row${isActive ? ' qc-task-row--active' : ''}"` +
     ` role="option" aria-selected="${isActive}">` +
-    `&lt;span class="qc-task-dot" style="background:${cat.color}" aria-hidden="true">&lt;/span>` +
+    `&lt;span class="qc-task-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true">&lt;/span>` +
     `&lt;span class="qc-task-text" title="${escHtml(text)}">${escHtml(text)}&lt;/span>` +
     `&lt;button class="qc-task-action-btn"` +
     ` data-row-id="${escHtml(rowId)}"` +
@@ -426,8 +426,8 @@ function _qcRenderTokenPreview(parsed) {
   if (parsed.tag) {
     const cat = getCat(parsed.tag);
     chips.push(
-      `&lt;span class="qc-token qc-token--cat" style="border-color:${cat.color}33;color:${cat.color}">` +
-        `&lt;span class="qc-token-dot" style="background:${cat.color}" aria-hidden="true">&lt;/span>` +
+      `&lt;span class="qc-token qc-token--cat" style="border-color:${safeCssColor(cat.color)}33;color:${safeCssColor(cat.color)}">` +
+        `&lt;span class="qc-token-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true">&lt;/span>` +
         `${escHtml(cat.label)}` +
         `&lt;/span>`
     );

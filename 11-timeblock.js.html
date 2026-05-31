@@ -1010,7 +1010,7 @@ function renderCompleted() {
       }
       return `&lt;div class="completed-item">
         &lt;span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done&lt;/span>
-        &lt;span class="completed-dot" style="background:${cat.color}">&lt;/span>
+        &lt;span class="completed-dot" style="background:${safeCssColor(cat.color)}">&lt;/span>
         &lt;span class="completed-text">${t.emoji ? escHtml(t.emoji) + ' ' : ''}${jiraTicketHtml(t.text)}&lt;/span>
         &lt;span class="completed-when">${whenStr}&lt;/span>
       &lt;/div>`;

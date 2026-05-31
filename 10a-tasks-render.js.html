@@ -125,7 +125,7 @@ function renderRow(t) {
       .sort((a, b) => a.label.localeCompare(b.label))
       .map(
         (c) =>
-          `&lt;button class="cat-opt${t.tag === c.id ? ' sel' : ''}" data-pid="${t.id}" data-cat="${c.id}" style="${t.tag === c.id ? `background:${c.color};color:#fff;border-color:transparent` : `color:${c.color}`}">${escHtml(c.label)}&lt;/button>`
+          `&lt;button class="cat-opt${t.tag === c.id ? ' sel' : ''}" data-pid="${t.id}" data-cat="${c.id}" style="${t.tag === c.id ? `background:${safeCssColor(c.color)};color:#fff;border-color:transparent` : `color:${safeCssColor(c.color)}`}">${escHtml(c.label)}&lt;/button>`
       )
       .join('') +
     `&lt;button class="cat-cancel" data-pid="${t.id}">cancel&lt;/button>` +
@@ -188,8 +188,8 @@ function renderRow(t) {
     : `${tag === 'meeting' ? '📅 ' : ''}${t.emoji ? escHtml(t.emoji) + ' ' : ''}${jiraTicketHtml(t.text)}`;
 
   const catLineHtml = `&lt;div class="plan-cat-line" data-pid="${t.id}">
-          &lt;span class="plan-cat-dot" style="background:${cat.color}">&lt;/span>
-          &lt;span class="plan-cat-name" style="color:${cat.color}">${escHtml(cat.label)}&lt;/span>
+          &lt;span class="plan-cat-dot" style="background:${safeCssColor(cat.color)}">&lt;/span>
+          &lt;span class="plan-cat-name" style="color:${safeCssColor(cat.color)}">${escHtml(cat.label)}&lt;/span>
           &lt;span class="plan-cat-chevron">▾&lt;/span>
         &lt;/div>
         &lt;div class="plan-cat-picker" id="pcp-${t.id}">${catOpts}&lt;/div>`;
