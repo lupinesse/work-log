@@ -28,6 +28,7 @@
  *   MAX_TOKENS         default 2000
  *   DIFF_PATH          default 'pr.diff'
  *   MAX_DIFF_CHARS     default 30000
+ *   CLAUDE_MD_PATH     default 'CLAUDE.md' (relative to CWD; included as cached system prefix)
  */
 
 import { readFileSync } from 'node:fs';
@@ -82,10 +83,35 @@ const MODEL_OVERRIDE = process.env.MODEL || '';
 const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '2000', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '30000', 10);
+const CLAUDE_MD_PATH = process.env.CLAUDE_MD_PATH || 'CLAUDE.md';
 
 const COMMENT_MARKER = '<!-- claude-pr-review-comment -->';
 
 const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseInt(PR_NUMBER, 10) };
+
+// ─────────────────────────── CLAUDE.md ───────────────────────────
+
+/**
+ * Load the project quality standard so Claude applies it when synthesising the
+ * Phase 1–2 dialogue. Also pushes the combined system prompt above the 2,048-
+ * token prompt-caching minimum for claude-sonnet-4-6, making the cache markers
+ * actually effective. Returns null if the file is absent — caching degrades
+ * silently in that case, which is safe.
+ *
+ * @returns {string|null}
+ */
+function loadClaudeMd() {
+  try {
+    const content = readFileSync(CLAUDE_MD_PATH, 'utf8').trim();
+    console.log(`Loaded CLAUDE.md (${content.length} chars) from ${CLAUDE_MD_PATH}`);
+    return content;
+  } catch {
+    console.warn(
+      `CLAUDE.md not found at ${CLAUDE_MD_PATH} — cache prefix degraded, quality-standard block skipped`
+    );
+    return null;
+  }
+}
 
 // ─────────────────────────── diff ───────────────────────────
 
@@ -113,11 +139,12 @@ function loadDiff() {
  * outcome (agreed-fix, deferred, disagreed, partial). The diff is included so
  * Claude can identify any novel issues not yet raised by either reviewer.
  *
- * @param {string} diff
+ * @param {string}      diff
  * @param {import('./lib/github-threads.mjs').ThreadSummary[]} threads
+ * @param {string|null} claudeMd  Project quality standard (CLAUDE.md); forms the cached prefix.
  * @returns {Promise<{text: string, model: string}>}
  */
-async function callClaudeApi(diff, threads) {
+async function callClaudeApi(diff, threads, claudeMd) {
   const threadBlock = formatThreadsForPrompt(threads);
 
   const system = `You are Claude, an AI code reviewer. You have just completed Phase 2 of a structured peer review dialogue with ChatGPT on this pull request. All review threads are shown — each includes ChatGPT's original finding and, where present, your Phase 2 verdict reply (✅ agree_fix, 👍 agree_noted, ❌ disagree, ↔️ partial).
@@ -157,13 +184,21 @@ One sentence: overall status. Examples: "Blocked on N agreed fixes." / "Clean �
         headers: {
           ...auth.headers,
           'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'prompt-caching-2024-07-31',
           'content-type': 'application/json',
         },
         body: JSON.stringify({
           model,
           max_tokens: MAX_TOKENS,
-          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          // Two-block system: CLAUDE.md (stable, large) forms the cached prefix; the
+          // convergence rubric follows. Both blocks carry cache_control so the full
+          // prefix is cached in one round-trip. Diff and threads (volatile) are in
+          // the user message and are never cached.
+          system: [
+            ...(claudeMd
+              ? [{ type: 'text', text: claudeMd, cache_control: { type: 'ephemeral' } }]
+              : []),
+            { type: 'text', text: system, cache_control: { type: 'ephemeral' } },
+          ],
           messages: [{ role: 'user', content: user }],
         }),
       });
@@ -218,10 +253,11 @@ async function main() {
     return;
   }
 
+  const claudeMd = loadClaudeMd();
   const threads = await fetchAllThreads(GH_CTX);
   console.log(`  Fetched ${threads.length} total thread(s) (resolved + open)`);
 
-  const { text: summaryText, model: usedModel } = await callClaudeApi(diff, threads);
+  const { text: summaryText, model: usedModel } = await callClaudeApi(diff, threads, claudeMd);
   if (!summaryText) {
     console.warn('Empty Claude response — skipping.');
     return;

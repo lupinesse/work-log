@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Changed
+- **CI review Phases 2 & 3 upgraded to `claude-sonnet-4-6`** — previously used `claude-haiku-4-5-20251001`; Sonnet produces substantively better replies when engaging with ChatGPT's findings.
+- **CLAUDE.md injected as cached system prefix in Phases 2 & 3** — `claude-chatgpt-dialogue.mjs` and `claude-convergence-summary.mjs` now load the project quality standard and pass it as the first (cached) system block, so Claude applies project-specific rules when reviewing threads and writing summaries. Also pushes the combined system prompt above the 2 048-token prompt-caching minimum.
+- **Docs-only PRs skip the AI review dialogue** — `chatgpt-pr-review.yml` and `pr-review.yml` now detect PRs that only change documentation files (`.md`, `.txt`, `.rst`, `LICENSE`, `CODEOWNERS`) and exit early without calling any AI, saving API credits.
+- **`pr-review.yml` max-turns reduced 8 → 4** — the standalone Claude review rarely needs more than 4 turns to read the diff and produce a verdict.
+- **Removed `anthropic-beta: prompt-caching-2024-07-31` header** — prompt caching is now GA; the beta header is no longer required.
+
 ### Fixed
 - **Migration step colour dot sanitised** — `renderMigrationStep` in `20-migration.js` now wraps `cat.color` with `safeCssColor()`, closing the final unsanitised inline style colour interpolation. `safeCssColor` coverage is now complete across all files.
 - **Remaining inline colour interpolations wrapped with `safeCssColor`** — hero chip dots, hero task-category dots, plan task category picker and label, timeblock completed-item dot, and rapid-log category chips and token preview (`06a-hero.js`, `10a-tasks-render.js`, `11-timeblock.js`, `16-rapid.js`).
