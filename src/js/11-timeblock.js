@@ -982,7 +982,7 @@ function renderCompleted() {
       }
       return `<div class="completed-item">
         <span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done</span>
-        <span class="completed-dot" style="background:${cat.color}"></span>
+        <span class="completed-dot" style="background:${safeCssColor(cat.color)}"></span>
         <span class="completed-text">${t.emoji ? escHtml(t.emoji) + ' ' : ''}${jiraTicketHtml(t.text)}</span>
         <span class="completed-when">${whenStr}</span>
       </div>`;
