@@ -200,7 +200,7 @@ jobs:
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
           MODEL:             claude-haiku-4-5-20251001
-          MAX_DIFF_CHARS:    "15000"
+          MAX_DIFF_CHARS:    '15000'
         run: node .github/scripts/claude-chatgpt-dialogue.mjs
 
   # ─── Phase 3: Claude posts convergence summary of Phase 1–2 dialogue ────────
@@ -267,7 +267,7 @@ jobs:
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
           MODEL:      claude-haiku-4-5-20251001
-          MAX_DIFF_CHARS: "15000"
+          MAX_DIFF_CHARS: '15000'
         run: node .github/scripts/claude-convergence-summary.mjs
 
   # ─── Phase 4: ChatGPT verifies fixes and challenges counter-positions ────────

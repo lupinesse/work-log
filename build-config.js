@@ -4,13 +4,13 @@
  * deploy-portable.js.  Change a path here and all three scripts stay in sync.
  */
 
-/** Source directory for JS modules (concatenated alphabetically into one IIFE). */
+/** Source directory for JS modules. */
 export const JS_SRC = 'src/js';
 
 /** Source entry-point for SCSS (imports partials). */
 export const CSS_SRC = 'src/css/styles.scss';
 
-/** Generated JS bundle (IIFE, checked into repo for vite to pick up). */
+/** Generated JS entry module (checked into repo for vite to pick up). */
 export const JS_OUT = 'script.js';
 
 /** Generated CSS (compiled from SCSS). */

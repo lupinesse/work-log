@@ -122,6 +122,24 @@ export default [
     },
   },
 
+  // ESM unit tests — run with Node's built-in test runner.
+  // Includes browser globals because tests use vm.runInContext with browser-side code.
+  // detect-object-injection suppressed for the same reason as the cjs block above.
+  {
+    files: ['test/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node, ...globals.browser },
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   {
     ignores: ['node_modules/', 'dist/', 'portable/', 'script.js'],
   },

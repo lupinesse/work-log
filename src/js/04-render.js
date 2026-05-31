@@ -8,7 +8,7 @@
  * Design trade-off: full DOM re-render on every change rather than targeted
  * updates. Keeps state reasoning simple for a single-user personal tool where
  * the entry list is small (typically < 50 items per day). If performance becomes
- * a concern, the innermost `tl.querySelectorAll` event-binding loop is the first
+ * a concern, the innermost `timelineEl.querySelectorAll` event-binding loop is the first
  * candidate for optimisation (see phase 6 below).
  */
 function render() {
@@ -35,10 +35,11 @@ function render() {
     entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
-    const mon2 = new Date();
-    mon2.setDate(mon2.getDate() - ((mon2.getDay() + 6) % 7));
-    mon2.setHours(0, 0, 0, 0);
-    return new Set(entries.filter((e) => new Date(e.ts) >= mon2).map((e) => e.tag || 'other')).size;
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+    weekStart.setHours(0, 0, 0, 0);
+    return new Set(entries.filter((e) => new Date(e.ts) >= weekStart).map((e) => e.tag || 'other'))
+      .size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
@@ -71,9 +72,9 @@ function render() {
   const todayTimed = entries.filter((e) => e.date === todayKey && e.tsEnd && e.tsEnd > e.ts);
   const todayByTask = {};
   todayTimed.forEach((e) => {
-    const k = e.text.toLowerCase();
-    if (!todayByTask[k]) todayByTask[k] = { label: e.text, ms: 0 };
-    todayByTask[k].ms += e.tsEnd - e.ts;
+    const taskKey = e.text.toLowerCase();
+    if (!todayByTask[taskKey]) todayByTask[taskKey] = { label: e.text, ms: 0 };
+    todayByTask[taskKey].ms += e.tsEnd - e.ts;
   });
   const topTask = Object.values(todayByTask).sort((a, b) => b.ms - a.ms)[0];
   const todaySub = document.getElementById('statTodaySub');
@@ -85,15 +86,17 @@ function render() {
   }
 
   // This week: task with most tracked time
-  const mon = new Date();
-  mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
-  mon.setHours(0, 0, 0, 0);
-  const weekTimed = entries.filter((e) => new Date(e.ts) >= mon && e.tsEnd && e.tsEnd > e.ts);
+  const thisWeekStart = new Date();
+  thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
+  thisWeekStart.setHours(0, 0, 0, 0);
+  const weekTimed = entries.filter(
+    (e) => new Date(e.ts) >= thisWeekStart && e.tsEnd && e.tsEnd > e.ts
+  );
   const weekByTask = {};
   weekTimed.forEach((e) => {
-    const k = e.text.toLowerCase();
-    if (!weekByTask[k]) weekByTask[k] = { label: e.text, ms: 0 };
-    weekByTask[k].ms += e.tsEnd - e.ts;
+    const taskKey = e.text.toLowerCase();
+    if (!weekByTask[taskKey]) weekByTask[taskKey] = { label: e.text, ms: 0 };
+    weekByTask[taskKey].ms += e.tsEnd - e.ts;
   });
   const topWeekTask = Object.values(weekByTask).sort((a, b) => b.ms - a.ms)[0];
   const weekSub = document.getElementById('statWeekSub');
@@ -107,12 +110,12 @@ function render() {
   // Streak: day with longest tracked time
   const streakDays = [];
   {
-    const d2 = new Date();
-    d2.setDate(d2.getDate() - 1);
-    const seen = new Set(entries.map((e) => e.date));
-    while (seen.has(dk(d2))) {
-      streakDays.push(dk(d2));
-      d2.setDate(d2.getDate() - 1);
+    const streakCursor = new Date();
+    streakCursor.setDate(streakCursor.getDate() - 1);
+    const daysWithEntries = new Set(entries.map((e) => e.date));
+    while (daysWithEntries.has(dk(streakCursor))) {
+      streakDays.push(dk(streakCursor));
+      streakCursor.setDate(streakCursor.getDate() - 1);
     }
   }
   const streakSub = document.getElementById('statStreakSub');
@@ -129,10 +132,14 @@ function render() {
       }
     });
     if (bestDay && bestMs > 0) {
-      const d3 = new Date(bestDay + 'T12:00:00');
-      const dayName = isToday(d3)
+      const bestStreakDay = new Date(bestDay + 'T12:00:00');
+      const dayName = isToday(bestStreakDay)
         ? 'today'
-        : d3.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+        : bestStreakDay.toLocaleDateString('en', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          });
       streakSub.innerHTML = `<div class="stat-sub-title">Longest date tracked</div><div class="stat-sub-title">${escHtml(dayName)}</div><div class="stat-sub-value">${fmtDur(bestMs)}</div>`;
       streakSub.style.display = '';
     } else {
@@ -144,7 +151,7 @@ function render() {
 
   /* ── 5. Timeline ── */
   const list = viewEntries();
-  const tl = document.getElementById('timeline');
+  const timelineEl = document.getElementById('timeline');
 
   const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
   const timelogIcon = `<span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.88"/></svg></span>`;
@@ -162,7 +169,7 @@ function render() {
 
   // Empty state: render sub-components (plan, timeblock) and bail out early
   if (!list.length) {
-    tl.innerHTML =
+    timelineEl.innerHTML =
       logHeader +
       adHocRow +
       '<div class="empty-state">' +
@@ -179,7 +186,7 @@ function render() {
     return;
   }
   // Build entry row HTML — one <div class="entry"> per log entry
-  tl.innerHTML =
+  timelineEl.innerHTML =
     logHeader +
     adHocRow +
     list
@@ -277,7 +284,7 @@ function render() {
   bindSignifierClicks();
 
   /* time editor */
-  tl.querySelectorAll('.etime-display').forEach((el) => {
+  timelineEl.querySelectorAll('.etime-display').forEach((el) => {
     el.addEventListener('click', () => {
       const id = el.dataset.id;
       closeAllEditors();
@@ -285,18 +292,18 @@ function render() {
       document.getElementById('ed-' + id).classList.add('open');
     });
   });
-  tl.querySelectorAll('.etime-save').forEach((btn) => {
+  timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id,
         entry = entries.find((e) => e.id === id);
       if (!entry) return;
-      const sv = document.getElementById('ts-' + id).value;
-      const ev = document.getElementById('te-' + id).value;
-      if (sv) entry.ts = roundToNearest30(applyTime(entry.ts, sv));
-      if (ev) entry.tsEnd = roundToNearest30(applyTime(entry.ts, ev));
+      const newStartTime = document.getElementById('ts-' + id).value;
+      const newEndTime = document.getElementById('te-' + id).value;
+      if (newStartTime) entry.ts = roundToNearest30(applyTime(entry.ts, newStartTime));
+      if (newEndTime) entry.tsEnd = roundToNearest30(applyTime(entry.ts, newEndTime));
       else delete entry.tsEnd;
       // If this entry's timer is running, reset startTs to the new entry.ts
-      if (activeTimer && activeTimer.entryId === id && sv) {
+      if (activeTimer && activeTimer.entryId === id && newStartTime) {
         activeTimer.startTs = entry.ts;
         activeTimer.accumulatedMs = 0;
         activeTimer.paused = false;
@@ -305,12 +312,12 @@ function render() {
       render();
     });
   });
-  tl.querySelectorAll('.etime-cancel').forEach((btn) =>
-    btn.addEventListener('click', () => render())
-  );
+  timelineEl
+    .querySelectorAll('.etime-cancel')
+    .forEach((btn) => btn.addEventListener('click', () => render()));
 
   /* category picker */
-  tl.querySelectorAll('.etag-btn').forEach((btn) => {
+  timelineEl.querySelectorAll('.etag-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       const picker = document.getElementById('cp-' + id);
@@ -319,27 +326,27 @@ function render() {
       if (!isOpen) picker.classList.add('open');
     });
   });
-  tl.querySelectorAll('.cat-opt').forEach((btn) => {
+  timelineEl.querySelectorAll('.cat-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
       const entry = entries.find((e) => e.id === btn.dataset.id);
       if (entry) {
-        const key = entry.text.toLowerCase();
+        const taskText = entry.text.toLowerCase();
         entries.forEach((e) => {
-          if (e.text.toLowerCase() === key) e.tag = btn.dataset.cat;
+          if (e.text.toLowerCase() === taskText) e.tag = btn.dataset.cat;
         });
         save();
         render();
       }
     });
   });
-  tl.querySelectorAll('.cat-cancel').forEach((btn) => {
+  timelineEl.querySelectorAll('.cat-cancel').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.getElementById('cp-' + btn.dataset.id).classList.remove('open');
     });
   });
 
   /* billable toggle */
-  tl.querySelectorAll('.ebill-btn').forEach((btn) => {
+  timelineEl.querySelectorAll('.ebill-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const entry = entries.find((e) => e.id === btn.dataset.id);
       if (entry) {
@@ -351,7 +358,7 @@ function render() {
   });
 
   /* delete */
-  tl.querySelectorAll('.edel').forEach((btn) => {
+  timelineEl.querySelectorAll('.edel').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       if (activeTimer && activeTimer.entryId === id) {
@@ -368,15 +375,15 @@ function render() {
   });
 
   /* restart */
-  tl.querySelectorAll('.erestart').forEach((btn) => {
+  timelineEl.querySelectorAll('.erestart').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const src = entries.find((e) => e.id === btn.dataset.id);
-      if (!src) return;
+      const sourceEntry = entries.find((e) => e.id === btn.dataset.id);
+      if (!sourceEntry) return;
       if (activeTimer) stopTimer();
       const newEntry = {
         id: Date.now() + '',
-        text: src.text,
-        tag: src.tag,
+        text: sourceEntry.text,
+        tag: sourceEntry.tag,
         ts: safeRoundedStart(),
         date: dk(new Date()),
       };
@@ -389,7 +396,7 @@ function render() {
   });
 
   /* rename entry text (propagates to all entries + plan tasks with same text) */
-  tl.querySelectorAll('.etext').forEach((el) => {
+  timelineEl.querySelectorAll('.etext').forEach((el) => {
     el.addEventListener('click', () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;

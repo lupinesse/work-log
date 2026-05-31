@@ -8,6 +8,10 @@
 - Phases 2+3: `MAX_DIFF_CHARS` reduced 30 000 to 15 000 (~50% fewer input tokens).
 - `pr-review.yml`: `--max-turns` reduced from 15 to 8.
 - `weekly-qa-review.yml`: cron schedule removed; manual-only via workflow_dispatch.
+- **`pure-fns.js` and `logger.js` extracted as leaf ES modules** — the 27 pure utility functions and the `wlLog` structured logger now live in their own files under `src/js/` and are imported at the top of `script.js`. `script.js` is now a proper ES module (`<script type="module">`), not a concatenated IIFE. The build step (`build.js`) auto-discovers exports from `pure-fns.js` so the import list stays in sync without manual maintenance.
+- **`build-portable.js` updated for ESM source layout** — the portable build no longer reads the generated `script.js`. It reads source files from `src/js/` directly, strips `export` keywords from leaf modules, and wraps the result in an IIFE — preserving the single-file offline format.
+- **`test/unit.cjs` replaced by `test/unit.mjs`** — unit tests now import `pure-fns.js` directly as an ES module and run with Node's built-in test runner (`node --test`). The old CommonJS test shim is removed.
+- **Variable names humanised in `01-state.js`, `02-utils.js`, `03-timer.js`, `04-render.js`** — one-letter and short abbreviations (`raw`, `inp`, `ni`, `c`, `mon2`) replaced with descriptive names (`parsedEntries`, `editInput`, `newCatInput`, `canvas`, `weekStart`).
 
 ### Changed
 - **CI review dialogue Phase 3 now posts a convergence summary** — `claude-final-review` no longer runs `/pr-review` independently. Instead, `claude-convergence-summary.mjs` synthesises the Phase 1–2 threads (agreed-fix, deferred, disagreed, partial) and surfaces any gaps Claude notices. Phase 4 receives a structured summary rather than a second independent verdict.
@@ -18,6 +22,7 @@
 - **`lib/parse-phase4-response.mjs`** — pure parser for Phase 4 JSON, extracted for testability. Rejects `type: "new"` actions. 19 unit tests in `test/parse-phase4-response.test.mjs`.
 
 ### Fixed
+- **CI skill workflows soft-fail when the API is unavailable** — `jsdoc-check`, `impact-check`, and `a11y-audit` now wrap the `claude -p` invocation in an `if !` guard: on non-zero exit the output file is removed and the step exits 0 so the PR is not blocked. The PR-comment skip message now reads "API unavailable (credentials may be expired or credits exhausted)".
 - **`completedAt` now records the exact completion timestamp** — tasks marked done store `Date.now()` directly rather than rounding to the nearest 30 minutes; `roundToNearest30` is for display/timeblock positioning only.
 - **`roundToNearest30` no longer crosses day boundaries** — times between 23:46 and 23:59 now clamp to 23:30 instead of rolling over to 00:00 of the next day. This prevented completed tasks from appearing in the current day's completed section when marked done in the last 14 minutes of the day.
 - **Pomodoro favicon now respects the colour theme** — `setPomoFavicon()` now reads `--pomo-spark-empty`, `--pomo-spark-fill`, and `--bg` CSS custom properties instead of hardcoded hex values, so the favicon ring and wedge match the app's light/dark colour scheme.

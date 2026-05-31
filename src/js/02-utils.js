@@ -148,11 +148,11 @@ function renderTagRow() {
       renderCompleted();
     };
     editOk.addEventListener('click', saveEdit);
-    const inp = document.getElementById('catEditInput');
-    if (inp) {
-      inp.focus();
-      inp.select();
-      inp.addEventListener('keydown', (e) => {
+    const editInput = document.getElementById('catEditInput');
+    if (editInput) {
+      editInput.focus();
+      editInput.select();
+      editInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') saveEdit();
         if (e.key === 'Escape') {
           editingCatId = null;
@@ -234,10 +234,10 @@ function renderTagRow() {
       render();
     };
     newOk.addEventListener('click', saveNew);
-    const ni = document.getElementById('catNewInput');
-    if (ni) {
-      ni.focus();
-      ni.addEventListener('keydown', (e) => {
+    const newCatInput = document.getElementById('catNewInput');
+    if (newCatInput) {
+      newCatInput.focus();
+      newCatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') saveNew();
         if (e.key === 'Escape') {
           addingNewCat = false;
