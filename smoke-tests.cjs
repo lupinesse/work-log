@@ -380,10 +380,7 @@ async function runTests() {
       'completedAt is not 23:59 sentinel',
       !(new Date(completedAt).getHours() === 23 && new Date(completedAt).getMinutes() === 59)
     );
-    assert(
-      'completedAt is not midnight sentinel',
-      !(new Date(completedAt).getHours() === 0 && new Date(completedAt).getMinutes() === 0)
-    );
+    assert('completedAt is on the same day as now', dk(new Date(completedAt)) === dk(new Date()));
     assert(
       'completedAt within 30min of now',
       typeof completedAt === 'number' && Math.abs(completedAt - Date.now()) < 31 * 60 * 1000
