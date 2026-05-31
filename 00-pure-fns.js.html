@@ -210,8 +210,17 @@ function roundToNearest30(ts) {
   const roundedMins = withinBlock &lt;= 15 ? blockStart : blockStart + 30;
   const result = new Date(d);
   result.setSeconds(0, 0);
-  result.setMinutes(roundedMins % 60);
-  if (roundedMins >= 60) result.setHours(d.getHours() + 1);
+  if (roundedMins >= 60) {
+    if (d.getHours() === 23) {
+      // Clamp to 23:30 — don't cross the day boundary
+      result.setMinutes(30);
+    } else {
+      result.setMinutes(0);
+      result.setHours(d.getHours() + 1);
+    }
+  } else {
+    result.setMinutes(roundedMins);
+  }
   return result.getTime();
 }
 

@@ -148,7 +148,7 @@ function renderDayStrip(dateKey) {
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(e.ts)));
       const right = stripPct(Math.min(TF_STRIP_END, tsToMins(e.tsEnd)));
       if (right &lt;= left) return '';
-      return `&lt;div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${cat.color}">&lt;/div>`;
+      return `&lt;div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${safeCssColor(cat.color)}">&lt;/div>`;
     })
     .join('');
 
@@ -163,7 +163,7 @@ function renderDayStrip(dateKey) {
       const right = stripPct(Math.min(TF_STRIP_END, liveEndMins));
       if (right > left) {
         const cat = getCat(liveEntry.tag);
-        liveBar = `&lt;div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${cat.color}">&lt;/div>`;
+        liveBar = `&lt;div class="tf-bar tf-bar-live" style="left:${left}%;width:${right - left}%;background:${safeCssColor(cat.color)}">&lt;/div>`;
       }
     }
   }
@@ -331,7 +331,7 @@ function renderFlowView(dateKey) {
             &lt;span class="tf-flow-hm">${startLabel}&lt;/span>
             ${durMs > 0 ? `&lt;span class="tf-flow-dur">${fmtDur(durMs)}&lt;/span>` : ''}
           &lt;/div>
-          &lt;div class="tf-flow-strip" style="height:${stripH}px;background:${item.color}">
+          &lt;div class="tf-flow-strip" style="height:${stripH}px;background:${safeCssColor(item.color)}">
             ${isLive ? '&lt;span class="tf-flow-pulse" aria-hidden="true">&lt;/span>' : ''}
           &lt;/div>
           &lt;div class="tf-flow-body" style="min-height:${stripH}px">

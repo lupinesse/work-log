@@ -84,7 +84,7 @@ function renderTagRow() {
 
   row.innerHTML = `
       &lt;div class="cat-dropdown-row">
-        &lt;label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${selCat.color}">
+        &lt;label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           &lt;input type="color" id="catQuickColorPick" value="${selCat.color}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         &lt;/label>
         &lt;select class="cat-select" id="catSelect">
