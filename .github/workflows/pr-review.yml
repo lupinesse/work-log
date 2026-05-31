@@ -45,6 +45,7 @@ jobs:
             const LINES_THRESHOLD = 200;
             const FILES_THRESHOLD = 4;
             const GENERATED       = /^(script\.js|styles\.css|docs\/.+\.html|package-lock\.json)$/;
+            const DOCS_ONLY       = /\.(md|txt|rst)$|^(LICENSE|CODEOWNERS)$/i;
 
             const files = await github.paginate(
               github.rest.pulls.listFiles,
@@ -59,6 +60,12 @@ jobs:
             const sourceFiles = files.filter(f => !GENERATED.test(f.filename));
             const totalLines  = sourceFiles.reduce((sum, f) => sum + f.additions + f.deletions, 0);
             const fileCount   = sourceFiles.length;
+
+            if (sourceFiles.length > 0 && sourceFiles.every(f => DOCS_ONLY.test(f.filename))) {
+              core.info(`PR only changes documentation (${fileCount} file(s)) — skipping review.`);
+              core.setOutput('should_run', 'false');
+              return;
+            }
 
             const dialogueWillRun = totalLines >= LINES_THRESHOLD || fileCount >= FILES_THRESHOLD;
             if (dialogueWillRun) {
@@ -120,7 +127,7 @@ jobs:
           fi
           claude -p "/pr-review" \
             --model claude-sonnet-4-6 \
-            --max-turns 8 \
+            --max-turns 4 \
                            "Bash(git log:*)" "Bash(git diff:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
             > review-raw.json 2>review-stderr.txt || true

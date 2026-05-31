@@ -94,9 +94,17 @@ jobs:
               }
             );
 
+            const DOCS_ONLY = /\.(md|txt|rst)$|^(LICENSE|CODEOWNERS)$/i;
+
             const sourceFiles = files.filter(f => !GENERATED.test(f.filename));
             const totalLines  = sourceFiles.reduce((sum, f) => sum + f.additions + f.deletions, 0);
             const fileCount   = sourceFiles.length;
+
+            if (sourceFiles.length > 0 && sourceFiles.every(f => DOCS_ONLY.test(f.filename))) {
+              core.info(`PR only changes documentation (${fileCount} file(s)) — skipping review.`);
+              core.setOutput('should_run', 'false');
+              return;
+            }
 
             core.info(`Source files changed: ${fileCount} (threshold ${FILES_THRESHOLD})`);
             core.info(`Source lines changed: ${totalLines} (threshold ${LINES_THRESHOLD})`);
@@ -199,7 +207,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:         ${{ github.event.pull_request.number }}
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
-          MODEL:             claude-haiku-4-5-20251001
+          MODEL:             claude-sonnet-4-6
           MAX_DIFF_CHARS:    '15000'
         run: node .github/scripts/claude-chatgpt-dialogue.mjs
 
@@ -266,7 +274,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
-          MODEL:      claude-haiku-4-5-20251001
+          MODEL:      claude-sonnet-4-6
           MAX_DIFF_CHARS: '15000'
         run: node .github/scripts/claude-convergence-summary.mjs
 
