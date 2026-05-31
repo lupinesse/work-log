@@ -46,6 +46,9 @@ function getDayStart() {
 /**
  * Updates the session chip to show the recorded start time (with a green dot)
  * when a session is live, or the default "start the day" label otherwise.
+ * The button's text content is its accessible name; no static aria-label is used
+ * so screen readers announce the current state ("started HH:MM" or "start the day").
+ * @returns {void}
  */
 function renderSodBtn() {
   const btn = document.getElementById('sodBtn');

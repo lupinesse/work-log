@@ -293,7 +293,7 @@ are shown without a label badge.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line135">line 135</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line138">line 138</a>
     </li></ul></dd>
     
 
@@ -8594,7 +8594,7 @@ the log is removed and the new week key is saved.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line122">line 122</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line125">line 125</a>
     </li></ul></dd>
     
 
@@ -10708,7 +10708,7 @@ The previously saved next-action note is restored if one exists for the active e
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line83">line 83</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line86">line 86</a>
     </li></ul></dd>
     
 
@@ -14277,7 +14277,7 @@ Returns 0 if no timer is active.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line91">line 91</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line94">line 94</a>
     </li></ul></dd>
     
 
@@ -24676,7 +24676,7 @@ Click cycles: normal (0) → high (1) → low (-1) → normal.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line143">line 143</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line146">line 146</a>
     </li></ul></dd>
     
 
@@ -25756,7 +25756,7 @@ or its default label, and dims the button once a time is set.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line99">line 99</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line102">line 102</a>
     </li></ul></dd>
     
 
@@ -28280,7 +28280,7 @@ and pending comment state so re-renders are always consistent.</p>
     
 
     
-    <h4 class="name" id="renderSodBtn"><span class="type-signature"></span>renderSodBtn<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="renderSodBtn"><span class="type-signature"></span>renderSodBtn<span class="signature">()</span><span class="type-signature"> &rarr; {void}</span></h4>
     
 
     
@@ -28289,7 +28289,9 @@ and pending comment state so re-renders are always consistent.</p>
 
 <div class="description">
     <p>Updates the session chip to show the recorded start time (with a green dot)
-when a session is live, or the default &quot;start the day&quot; label otherwise.</p>
+when a session is live, or the default &quot;start the day&quot; label otherwise.
+The button's text content is its accessible name; no static aria-label is used
+so screen readers announce the current state (&quot;started HH:MM&quot; or &quot;start the day&quot;).</p>
 </div>
 
 
@@ -28333,7 +28335,7 @@ when a session is live, or the default &quot;start the day&quot; label otherwise
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line22">line 22</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line25">line 25</a>
     </li></ul></dd>
     
 
@@ -28358,6 +28360,24 @@ when a session is live, or the default &quot;start the day&quot; label otherwise
 
 
 
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">void</span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -31045,7 +31065,7 @@ interval in the setInterval call in 07-lifecycle.js.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line245">line 245</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line248">line 248</a>
     </li></ul></dd>
     
 
@@ -39867,7 +39887,7 @@ validateBackupFile({ version: '1', entries: [], categories: [] })
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line154">line 154</a>
+        <a href="07-lifecycle.js.html">07-lifecycle.js</a>, <a href="07-lifecycle.js.html#line157">line 157</a>
     </li></ul></dd>
     
 
