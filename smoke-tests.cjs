@@ -1009,7 +1009,8 @@ async function runTests() {
       if (!timerRaw || !timerRaw.paused) return null;
       const liveEntry = entriesRaw.find((e) => e.id === timerRaw.entryId);
       if (!liveEntry) return null;
-      const pauseEnd = new Date(liveEntry.ts + (timerRaw.accumulatedMs || 0));
+      const pauseEndMs = liveEntry.ts + (timerRaw.accumulatedMs || 0);
+      const pauseEnd = new Date(pauseEndMs);
       const startSlot = timeToSlot(
         new Date(liveEntry.ts).getHours(),
         new Date(liveEntry.ts).getMinutes()
@@ -1019,10 +1020,11 @@ async function runTests() {
       const nowSlot = timeToSlot(new Date().getHours(), new Date().getMinutes());
       const covered = new Set();
       for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++) covered.add(s);
-      return { endSlot, nowSlot, nowCovered: covered.has(nowSlot) };
+      return { endSlot, nowSlot, nowCovered: covered.has(nowSlot), pauseEndMs };
     });
     assert('Paused timer has coverage data', !!coverage);
-    assert('Paused timer endSlot < nowSlot', coverage && coverage.endSlot < coverage.nowSlot);
+    // pauseEndMs < Date.now() avoids slot inversion when CI runs before 08:00 UTC
+    assert('Paused timer pause point is in the past', coverage && coverage.pauseEndMs < Date.now());
     assert('Current slot NOT covered when paused', coverage && !coverage.nowCovered);
     await page.close();
   }
@@ -2364,14 +2366,18 @@ async function runTests() {
   console.log('\nMonthly Log');
   {
     const today = dk(new Date());
+    // Anchor to 10:00–11:00 today so migrateEntryDatesToLocal never shifts the date
+    // when tests run in the first 90 minutes of a UTC day.
+    const mlTs = new Date(today + 'T10:00:00').getTime();
+    const mlTsEnd = new Date(today + 'T11:00:00').getTime();
     const page = await freshPage(ctx, {
       wl_entries_v1: [
         {
           id: 'ml1',
           text: 'Monthly task',
           tag: 'work',
-          ts: Date.now() - 3600000,
-          tsEnd: Date.now(),
+          ts: mlTs,
+          tsEnd: mlTsEnd,
           date: today,
         },
       ],
@@ -2683,8 +2689,10 @@ async function runTests() {
   console.log('\n43. Analytics sub-row HTML structure');
   {
     const today = dk(new Date());
-    const tsStart = Date.now() - 5400000; // 90 min ago
-    const tsEnd = Date.now() - 3600000; // 60 min ago → 30 min logged
+    // Anchor to 10:00–10:30 today; avoids migrateEntryDatesToLocal shifting the
+    // date to yesterday when tests run in the first 90 minutes of a UTC day.
+    const tsStart = new Date(today + 'T10:00:00').getTime();
+    const tsEnd = new Date(today + 'T10:30:00').getTime(); // 30 min logged
     const entries = [
       {
         id: 'sr1',
@@ -2741,8 +2749,9 @@ async function runTests() {
   // Non-Jira label path: .stat-sub-title should show the full label as-is
   {
     const today = dk(new Date());
-    const tsStart = Date.now() - 5400000;
-    const tsEnd = Date.now() - 3600000;
+    // Anchor to 10:00–10:30 today (same midnight-robustness reason as the Jira block above)
+    const tsStart = new Date(today + 'T10:00:00').getTime();
+    const tsEnd = new Date(today + 'T10:30:00').getTime();
     const entries = [
       { id: 'sr2', text: 'Review presentation', tag: 'work', ts: tsStart, tsEnd, date: today },
     ];
@@ -2934,8 +2943,10 @@ async function runTests() {
   console.log('\nupdateHeaderTracking');
   {
     const today = dk(new Date());
-    const tsStart = Date.now() - 5400000; // 90 min ago
-    const tsEnd = Date.now() - 3600000; // 60 min ago → 30 min logged
+    // Anchor to 10:00–10:30 today; avoids migrateEntryDatesToLocal shifting the
+    // date to yesterday when tests run in the first 90 minutes of a UTC day.
+    const tsStart = new Date(today + 'T10:00:00').getTime();
+    const tsEnd = new Date(today + 'T10:30:00').getTime(); // 30 min logged
     const entries = [
       { id: 'ht1', text: 'Header test task', tag: 'work', ts: tsStart, tsEnd, date: today },
     ];
