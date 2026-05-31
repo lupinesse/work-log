@@ -10,6 +10,7 @@
 - **Removed `anthropic-beta: prompt-caching-2024-07-31` header** — prompt caching is now GA; the beta header is no longer required.
 
 ### Fixed
+- **Jira category dot colour sanitised** — `jiraRenderTasks` in `14-jira.js` now wraps `cat.color` with `safeCssColor()` instead of `escHtml()`, preventing a stored colour value from injecting arbitrary CSS into the `style` attribute. This was the one instance missed by the earlier `safeCssColor` rollout.
 - **Migration step colour dot sanitised** — `renderMigrationStep` in `20-migration.js` now wraps `cat.color` with `safeCssColor()`, closing the final unsanitised inline style colour interpolation. `safeCssColor` coverage is now complete across all files.
 - **Remaining inline colour interpolations wrapped with `safeCssColor`** — hero chip dots, hero task-category dots, plan task category picker and label, timeblock completed-item dot, and rapid-log category chips and token preview (`06a-hero.js`, `10a-tasks-render.js`, `11-timeblock.js`, `16-rapid.js`).
 - **Tracker card colour dot now sanitised** — `renderTrackers` wraps `t.color` with `safeCssColor()` so a stored colour value cannot inject arbitrary CSS into the `style` attribute (closes the last remaining unsanitised inline colour in `22-trackers.js`).
