@@ -90,7 +90,7 @@ const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseI
 // ─────────────────────────── diff ───────────────────────────
 
 /**
- * @returns {string} Non-empty diff content, possibly truncated.
+ * @returns {string|null} Non-empty diff content (possibly truncated), or null if the file is empty.
  * @throws {never} Exits via `die()` if the diff file is missing or unreadable.
  */
 function loadDiff() {
