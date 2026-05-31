@@ -217,7 +217,6 @@ Output a single raw JSON object — no markdown wrapper:
     const auth = AUTH_CHAIN[i];
     const model = selectModel(auth.source, MODEL_OVERRIDE);
 
-    // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -225,6 +224,7 @@ Output a single raw JSON object — no markdown wrapper:
         'anthropic-version': '2023-06-01',
         'content-type': 'application/json',
       },
+      // codeql[js/file-access-to-http] — diff and claudeMd are trusted CI workspace files, not user input
       body: JSON.stringify({
         model,
         max_tokens: MAX_TOKENS,

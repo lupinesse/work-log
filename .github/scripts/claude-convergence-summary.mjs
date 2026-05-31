@@ -163,6 +163,7 @@ One sentence: overall status. Examples: "Blocked on N agreed fixes." / "Clean â€
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
         },
+        // codeql[js/file-access-to-http] â€” diff and claudeMd are trusted CI workspace files, not user input
         body: JSON.stringify({
           model,
           max_tokens: MAX_TOKENS,
