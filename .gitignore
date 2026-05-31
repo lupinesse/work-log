@@ -32,6 +32,11 @@ src/js/00-config.local.js
 timesheets/
 JSON backups/
 
+# Stale local files — not part of the project
+claude-code-top-zone.md
+assistant/
+*.exe
+
 # Claude Code session data — ignore local state but track shared skills and docs
 .claude/*
 !.claude/skills/
