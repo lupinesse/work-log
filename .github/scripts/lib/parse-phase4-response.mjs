@@ -41,6 +41,12 @@ export function parsePhase4Response(rawText, threadCount) {
 
   const rawActions = Array.isArray(parsed.thread_actions) ? parsed.thread_actions : [];
 
+  // Legacy schema: if OpenAI returns { new_findings: [...] } instead of { thread_actions: [...] },
+  // surface those entries as invalidActions rather than silently discarding them.
+  if (!Array.isArray(parsed.thread_actions) && Array.isArray(parsed.new_findings)) {
+    return { actions: [], invalidActions: parsed.new_findings };
+  }
+
   const actions = [];
   const invalidActions = [];
 
@@ -64,6 +70,9 @@ export function parsePhase4Response(rawText, threadCount) {
     try {
       normalised = normaliseReplyAction(a, threadCount);
     } catch (err) {
+      console.warn(
+        `  invalid reply action (thread_index=${a.thread_index}) — ${err.message} — moved to fallback`
+      );
       invalidActions.push(a);
       continue;
     }

@@ -55,6 +55,18 @@ describe('parsePhase4Response — valid reply actions', () => {
     assert.strictEqual(result.invalidActions.length, 0);
   });
 
+  test('surfaces legacy new_findings as invalidActions instead of silently discarding', () => {
+    const raw = JSON.stringify({
+      new_findings: [
+        { path: 'src/foo.js', line: 10, body: 'Missing null check.' },
+        { path: 'src/bar.js', line: 20, body: 'Race condition.' },
+      ],
+    });
+    const result = parsePhase4Response(raw, 3);
+    assert.strictEqual(result.actions.length, 0);
+    assert.strictEqual(result.invalidActions.length, 2);
+  });
+
   test('returns empty actions for an empty thread_actions array', () => {
     const result = parsePhase4Response(makeRaw([]), 5);
     assert.strictEqual(result.actions.length, 0);
