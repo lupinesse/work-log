@@ -553,6 +553,10 @@
   &:hover,
   &:focus {
     background: var(--bg2);
+  }
+
+  // Keep the keyboard focus ring; suppress only for pointer interactions.
+  &:focus:not(:focus-visible) {
     outline: none;
   }
 }

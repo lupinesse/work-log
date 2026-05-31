@@ -397,10 +397,11 @@ function commitBannerNote() {
   };
   entries.push(entry);
   // Also record the note in logNotes so the hero card can surface "↳ last note X ago".
+  const snTs = Date.now();
   logNotes.push({
-    id: Date.now() + '-sn',
+    id: snTs + '-sn',
     text: note,
-    ts: Date.now(),
+    ts: snTs,
     date: dk(new Date()),
     type: 'session-note',
     entryId: activeTimer.entryId,
