@@ -39,6 +39,26 @@ export default [
     },
   },
 
+  // Extracted ES-module files — logger.js and pure-fns.js use 'export' syntax
+  // and are imported directly by unit tests. They run in the browser context.
+  // detect-object-injection: bracket-notation keys are internal constants,
+  // never from untrusted external input.
+  {
+    files: ['src/js/logger.js', 'src/js/pure-fns.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.browser,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-var': 'error',
+      'prefer-const': 'warn',
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   // Source modules — concatenated into a single browser IIFE at build time.
   // no-undef is disabled: functions defined in one module are legitimately called
   // from another; ESLint cannot see the full shared scope of the concatenated output.
@@ -47,6 +67,7 @@ export default [
   // untrusted external input at that point.
   {
     files: ['src/js/*.js'],
+    ignores: ['src/js/logger.js', 'src/js/pure-fns.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -95,26 +116,6 @@ export default [
       globals: { ...globals.node, ...globals.browser },
     },
     rules: {
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
-    },
-  },
-
-  // CI dialogue scripts — standalone Node ES modules running in GitHub Actions.
-  // detect-non-literal-fs-filename: paths come from internal CI config (env vars
-  //   set in the workflow file), never from untrusted external input.
-  // detect-object-injection: bracket-notation keys (env var names, model-source
-  //   lookups) are internal constants, not user-controlled data.
-  {
-    files: ['.github/scripts/**/*.mjs'],
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: 'module',
-      globals: globals.node,
-    },
-    rules: {
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
       'security/detect-object-injection': 'off',

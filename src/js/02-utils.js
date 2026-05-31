@@ -328,8 +328,8 @@ function viewEntries() {
  */
 function calcStreak() {
   const days = new Set(entries.map((e) => e.date));
-  let streak = 0,
-    d = new Date();
+  let streak = 0;
+  const d = new Date();
   d.setDate(d.getDate() - 1); // Start from yesterday, not today
   while (days.has(dk(d))) {
     streak++;
