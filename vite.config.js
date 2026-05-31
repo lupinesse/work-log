@@ -10,38 +10,6 @@ const CSS_SRC = 'src/css/styles.scss';
 const CSS_OUT = 'styles.css';
 const BACKUPS_DIR = 'JSON backups';
 
-const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
-
-const PURE_FNS_EXPORTS = [
-  'safeCssColor',
-  'escHtml',
-  'dk',
-  'fmtTime',
-  'fmtElapsed',
-  'fmtDur',
-  'fmtDurLong',
-  'roundUp30',
-  'roundToNearest30',
-  'validEntry',
-  'validCategory',
-  'validPlanTask',
-  'validBlock',
-  'validTimer',
-  'validPomoEntry',
-  'validateBackupFile',
-  'validWeatherResponse',
-  'validCalendarMeeting',
-  'validJiraCsvRow',
-  'resolveRapidDate',
-  'parseRapidTokens',
-  'stripJiraPrefix',
-  'groupEntriesByCategory',
-  'mergeAdjacentEntries',
-  'buildBillableSummaryParts',
-  'computeDayBounds',
-  'formatGroupedLines',
-];
-
 function buildJS() {
   for (const leaf of LEAF_MODULES) {
     const p = join(JS_SRC, leaf);
