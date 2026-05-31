@@ -1,4 +1,4 @@
-// ── 22-trackers.js — Custom time-goal progress trackers ──
+﻿// â”€â”€ 22-trackers.js â€” Custom time-goal progress trackers â”€â”€
 
 /**
  * Loads the trackers array from localStorage into the module-level `trackers` variable.
@@ -75,12 +75,12 @@ function renderTrackers() {
 
   if (!trackers.length) {
     wlLog.info('renderTrackers: empty state');
-    el.innerHTML = '<div class="plan-empty">No trackers yet — click + New above.</div>';
+    el.innerHTML = '<div class="plan-empty">No trackers yet â€” click + New above.</div>';
     return;
   }
   wlLog.info('renderTrackers: rendering trackers', { count: trackers.length });
 
-  // Last 28 days (oldest → newest)
+  // Last 28 days (oldest â†’ newest)
   const days = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
@@ -105,11 +105,11 @@ function renderTrackers() {
       return `
       <div class="tracker-card">
         <div class="tracker-card-head">
-          <span class="edot" style="background:${t.color}"></span>
+          <span class="edot" style="background:${safeCssColor(t.color)}"></span>
           <span class="tracker-name">${escHtml(t.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
-          ${streak ? `<span class="tracker-streak">🔥 ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
-          <button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">✕</button>
+          ${streak ? `<span class="tracker-streak">ðŸ”¥ ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
+          <button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">âœ•</button>
         </div>
         <div class="tr-grid">${cells}</div>
         <div class="tracker-footer"><span>${hitCount}/28 days hit</span></div>
@@ -160,7 +160,7 @@ function openTrackerForm() {
               (c) =>
                 `<label class="tr-tag-check">
               <input type="checkbox" value="${escHtml(c.id)}" />
-              <span class="qp-chip" style="border-color:${c.color}44;color:${c.color};background:${c.color}11">${escHtml(c.label)}</span>
+              <span class="qp-chip" style="border-color:${safeCssColor(c.color)}44;color:${safeCssColor(c.color)};background:${safeCssColor(c.color)}11">${escHtml(c.label)}</span>
             </label>`
             )
             .join('')}
@@ -205,7 +205,7 @@ function closeTrackerForm() {
 function saveTrackerForm() {
   const name = (document.getElementById('trFormName')?.value || '').trim();
   if (!name) {
-    wlLog.info('saveTrackerForm: rejected — empty name');
+    wlLog.info('saveTrackerForm: rejected â€” empty name');
     document.getElementById('trFormName')?.focus();
     return;
   }
@@ -216,7 +216,7 @@ function saveTrackerForm() {
     (cb) => cb.value
   );
   if (!tags.length) {
-    wlLog.info('saveTrackerForm: rejected — no categories selected', { name });
+    wlLog.info('saveTrackerForm: rejected â€” no categories selected', { name });
     alert('Please select at least one category.');
     return;
   }
