@@ -90,14 +90,15 @@ const GH_CTX = { token: GITHUB_TOKEN, owner: OWNER, repo: REPO, prNumber: parseI
 // ─────────────────────────── diff ───────────────────────────
 
 /**
- * @returns {string|null}
+ * @returns {string} Non-empty diff content, possibly truncated.
+ * @throws {never} Exits via `die()` if the diff file is missing or unreadable.
  */
 function loadDiff() {
   let raw;
   try {
     raw = readFileSync(DIFF_PATH, 'utf8');
   } catch (e) {
-    die(`Cannot read diff: ${e.message}`);
+    die(`Cannot read diff at ${DIFF_PATH}: ${e.message}`);
   }
   if (!raw.trim()) return null;
   return raw.length > MAX_DIFF_CHARS ? raw.slice(0, MAX_DIFF_CHARS) + '\n\n[diff truncated]' : raw;
@@ -149,21 +150,33 @@ One sentence: overall status. Examples: "Blocked on N agreed fixes." / "Clean �
     const auth = AUTH_CHAIN[i];
     const model = selectModel(auth.source, MODEL_OVERRIDE);
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        ...auth.headers,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'prompt-caching-2024-07-31',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: MAX_TOKENS,
-        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: user }],
-      }),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          ...auth.headers,
+          'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: MAX_TOKENS,
+          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+          messages: [{ role: 'user', content: user }],
+        }),
+      });
+    } catch (err) {
+      const nextAuth = AUTH_CHAIN[i + 1];
+      if (nextAuth) {
+        console.warn(
+          `Auth: ${auth.source} fetch failed (${err.message}); trying ${nextAuth.source}`
+        );
+        continue;
+      }
+      die(`Anthropic API: network error with ${auth.source}: ${err.message}`);
+    }
 
     if (response.ok) {
       const data = await response.json();
