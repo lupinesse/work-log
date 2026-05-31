@@ -478,6 +478,98 @@
   }
 }
 
+// ── Category quick-switch (caret button + picker panel) ──────────────────────
+
+// Wrapper provides the anchor for the absolute-positioned panel.
+// The .hero-task-category cell already has display:flex, so .hero-cat-wrap
+// participates as a flex item and positions the panel relative to itself.
+.hero-cat-wrap {
+  position: relative;
+}
+
+.hero-task-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px; // offset padding so the label stays visually flush
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background 0.12s;
+
+  &:hover {
+    background: var(--bg2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--live);
+    outline-offset: 2px;
+  }
+}
+
+.hero-cat-caret {
+  color: var(--ink-faint);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.hero-cat-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+  min-width: 140px;
+  padding: 4px 0;
+}
+
+.hero-cat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  background: none;
+  border: none;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+
+  &:hover,
+  &:focus {
+    background: var(--bg2);
+    outline: none;
+  }
+}
+
+.hero-cat-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hero-cat-item-check {
+  margin-left: auto;
+  color: var(--live);
+  font-size: 11px;
+}
+
 // ── Mood dropdown (reuse existing .tb-mood-panel from _timer.scss) ────────────
 
 .hero-mood-wrap {
