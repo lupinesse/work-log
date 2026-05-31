@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **`chatgpt-pr-review.yml` now handles force-pushed PRs** — added `synchronize` as a trigger type with an idempotency guard: on each push the workflow checks whether ChatGPT has already posted a review; if yes it skips cleanly, if no it runs the full dialogue. This closes the race where a rapid force push cancelled the `opened` event run before Phase 1 could start, leaving the PR without any AI review despite the `chatgpt-review` label being present.
+
 ### Changed
 - **Header restored to almanac-led 3-column layout** (top-zone ITEM 1) — the tracking-first centre column (tracked-total hero + pace bar) is removed. LEFT shows date/clock/weather/rain; CENTRE shows four calm almanac lines (sunrise-sunset, week/moon, flag day, name day); RIGHT shows date-nav + a session chip. `updateHeaderTracking()` is now a no-op; daylight-delta colours use `--sig-event` / `--sig-overtime` tokens instead of hardcoded hex.
 - **Hero Card task category and title refined** (top-zone ITEM 2) — category label bumped to 12.5 px / `--text2`; category dot to 8 px; task title to 17 px / weight 600 / line-height 1.3.
