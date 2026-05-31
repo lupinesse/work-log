@@ -2939,8 +2939,11 @@ async function runTests() {
     await page.close();
   }
 
-  // ── updateHeaderTracking reflects completed entries ────────────────────────
-  console.log('\nupdateHeaderTracking');
+  // ── Hero Card idle panel reflects completed entries ───────────────────────
+  // The top-zone redesign moved the tracked-total and last-session display
+  // from the header into the Hero Card idle panel (heroLoggedToday /
+  // heroIdleLastSession). The header's updateHeaderTracking() is now a no-op.
+  console.log('\nHero Card logged-today tracking');
   {
     const today = dk(new Date());
     // Anchor to 10:00–10:30 today; avoids migrateEntryDatesToLocal shifting the
@@ -2953,10 +2956,8 @@ async function runTests() {
     const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: CATS });
     await page.waitForTimeout(200);
 
-    await page.evaluate(() => window.__wl.updateHeaderTracking());
-
     const total = await page.evaluate(
-      () => document.getElementById('headerTrackedTotal')?.textContent
+      () => document.getElementById('heroLoggedToday')?.textContent
     );
     assert(
       'updateHeaderTracking shows 30m for a 30-minute entry',
@@ -2964,13 +2965,13 @@ async function runTests() {
       `got "${total}"`
     );
 
-    const goalText = await page.evaluate(
-      () => document.getElementById('headerPaceGoal')?.textContent
+    const lastSession = await page.evaluate(
+      () => document.getElementById('heroIdleLastSession')?.textContent
     );
     assert(
       'updateHeaderTracking renders pace goal text',
-      typeof goalText === 'string' && goalText.length > 0,
-      `got "${goalText}"`
+      typeof lastSession === 'string' && lastSession.length > 0,
+      `got "${lastSession}"`
     );
     await page.close();
   }

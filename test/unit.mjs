@@ -2593,29 +2593,19 @@ const trackingFuncSrc = (() => {
 
 /**
  * Creates a minimal VM sandbox for testing updateHeaderTracking.
- * @param {{ entries?: Array, getElapsedMs?: Function, DAILY_GOAL_MS?: number }} [overrides]
- * @returns {{ sb: Object, elements: Record<string, {textContent:string, style:Object}> }}
+ * The function is now a no-op; the sandbox only needs to execute the source.
+ * @returns {{ updateHeaderTracking: Function, _elements: Record<string, object> }}
  */
-function loadHeaderTrackingSandbox(overrides = {}) {
+function loadHeaderTrackingSandbox() {
   const elements = {};
-  const makeTrackedEl = () => ({ textContent: '', style: {}, setAttribute: () => {} });
-
   const sb = {
-    // Pure helpers the function calls
-    dk: (...a) => dk(...a),
-    fmtDur: (...a) => fmtDur(...a),
-    // State
-    entries: [],
-    getElapsedMs: () => 0,
-    DAILY_GOAL_MS: 7.5 * 60 * 60 * 1000,
-    // DOM stub — returns the same element object per id so tests can inspect it
+    // DOM stub — records any getElementById calls so tests can assert none are made
     document: {
       getElementById: (id) => {
-        if (!elements[id]) elements[id] = makeTrackedEl();
+        if (!elements[id]) elements[id] = { textContent: '', style: {} };
         return elements[id];
       },
     },
-    ...overrides,
   };
   vm.createContext(sb);
   vm.runInContext(trackingFuncSrc, sb);
@@ -2623,65 +2613,20 @@ function loadHeaderTrackingSandbox(overrides = {}) {
   return sb;
 }
 
+// updateHeaderTracking() was converted to a no-op in the top-zone redesign
+// (ITEM 1): the header tracked-total and pace bar were removed.  These tests
+// verify the no-op contract: the function must be callable and must not touch
+// any DOM elements (those elements no longer exist in the page).
 describe('updateHeaderTracking', () => {
-  it('shows "0m" when there are no entries and no elapsed time', () => {
+  it('does not throw when called with an empty DOM', () => {
+    const sb = loadHeaderTrackingSandbox();
+    assert.doesNotThrow(() => sb.updateHeaderTracking());
+  });
+
+  it('does not create or modify any DOM elements', () => {
     const sb = loadHeaderTrackingSandbox();
     sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerTrackedTotal?.textContent, '0m');
-  });
-
-  it('sums completed entries for today and formats the total', () => {
-    const todayKey = dk(new Date());
-    const entries = [
-      { date: todayKey, ts: 0, tsEnd: 30 * 60 * 1000 }, // 30 min
-      { date: todayKey, ts: 0, tsEnd: 15 * 60 * 1000 }, // 15 min
-    ];
-    const sb = loadHeaderTrackingSandbox({ entries });
-    sb.updateHeaderTracking();
-    // 45 min total
-    assert.equal(sb._elements.headerTrackedTotal?.textContent, '45m');
-  });
-
-  it('excludes entries from other dates', () => {
-    const entries = [
-      { date: '2020-01-01', ts: 0, tsEnd: 60 * 60 * 1000 }, // yesterday
-    ];
-    const sb = loadHeaderTrackingSandbox({ entries });
-    sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerTrackedTotal?.textContent, '0m');
-  });
-
-  it('adds running-timer elapsed time from getElapsedMs()', () => {
-    const sb = loadHeaderTrackingSandbox({ getElapsedMs: () => 30 * 60 * 1000 }); // 30 min
-    sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerTrackedTotal?.textContent, '30m');
-  });
-
-  it('sets pace bar width proportional to DAILY_GOAL_MS', () => {
-    const goal = 60 * 60 * 1000; // 1 h goal for easy maths
-    const todayKey = dk(new Date());
-    const entries = [{ date: todayKey, ts: 0, tsEnd: 30 * 60 * 1000 }]; // 30 min = 50 %
-    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
-    sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerPaceFill?.style.width, '50.0%');
-  });
-
-  it('caps pace bar at 100% when goal is exceeded', () => {
-    const goal = 60 * 60 * 1000;
-    const todayKey = dk(new Date());
-    const entries = [{ date: todayKey, ts: 0, tsEnd: 2 * 60 * 60 * 1000 }]; // 2 h
-    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
-    sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerPaceFill?.style.width, '100.0%');
-  });
-
-  it('shows "goal reached!" when total meets or exceeds DAILY_GOAL_MS', () => {
-    const goal = 60 * 60 * 1000;
-    const todayKey = dk(new Date());
-    const entries = [{ date: todayKey, ts: 0, tsEnd: goal }];
-    const sb = loadHeaderTrackingSandbox({ entries, DAILY_GOAL_MS: goal });
-    sb.updateHeaderTracking();
-    assert.equal(sb._elements.headerPaceGoal?.textContent, 'goal reached!');
+    assert.deepEqual(sb._elements, {});
   });
 });
 
