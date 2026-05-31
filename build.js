@@ -3,7 +3,7 @@
 //   src/js/*.js (others)  → concatenated into script.js ESM module, alphabetical order
 //   src/css/*.scss         → styles.css (compiled by Sass)
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { compile } from 'sass';
 import { JS_SRC, JS_OUT, CSS_SRC, CSS_OUT } from './build-config.js';
@@ -15,41 +15,25 @@ import { JS_SRC, JS_OUT, CSS_SRC, CSS_OUT } from './build-config.js';
 const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
 
 /**
- * Named exports from pure-fns.js that the concatenated source files reference
- * as bare names (no module prefix). Listed here so the import statement at the
- * top of script.js brings them all into scope.
+ * Parse named exports from pure-fns.js at build time so the import statement
+ * in script.js stays in sync without a hand-maintained list.
+ * @returns {string[]} Exported names.
  */
-const PURE_FNS_EXPORTS = [
-  'safeCssColor',
-  'escHtml',
-  'dk',
-  'fmtTime',
-  'fmtElapsed',
-  'fmtDur',
-  'fmtDurLong',
-  'roundUp30',
-  'roundToNearest30',
-  'validEntry',
-  'validCategory',
-  'validPlanTask',
-  'validBlock',
-  'validTimer',
-  'validPomoEntry',
-  'validateBackupFile',
-  'validWeatherResponse',
-  'validCalendarMeeting',
-  'validJiraCsvRow',
-  'resolveRapidDate',
-  'parseRapidTokens',
-  'stripJiraPrefix',
-  'groupEntriesByCategory',
-  'mergeAdjacentEntries',
-  'buildBillableSummaryParts',
-  'computeDayBounds',
-  'formatGroupedLines',
-];
+function readPureFnsExports() {
+  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
+  return [...src.matchAll(/^export (?:function|const|class) (\w+)/gm)].map((m) => m[1]);
+}
 
 function buildJS() {
+  // Guard: every leaf module must exist before we reference it in import statements.
+  for (const leaf of LEAF_MODULES) {
+    const p = join(JS_SRC, leaf);
+    if (!existsSync(p)) throw new Error(`build.js: leaf module not found: ${p}`);
+  }
+
+  const pureFnsExports = readPureFnsExports();
+  if (!pureFnsExports.length) throw new Error('build.js: no exports found in pure-fns.js');
+
   const files = readdirSync(JS_SRC)
     .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.has(f))
     .sort();
@@ -58,10 +42,10 @@ function buildJS() {
     return `// ── ${f} ──\n${content}`;
   });
   const imports = [
-    `import { ${PURE_FNS_EXPORTS.join(', ')} } from './src/js/pure-fns.js';`,
+    `import { ${pureFnsExports.join(', ')} } from './src/js/pure-fns.js';`,
     `import { wlLog } from './src/js/logger.js';`,
   ].join('\n');
-  const output = imports + '\n\n' + parts.join('\n\n') + '\n';
+  const output = `${imports}\n\n${parts.join('\n\n')}\n`;
   writeFileSync(JS_OUT, output);
   console.log(`✓ Built ${JS_OUT} (${output.split('\n').length} lines from ${files.length} files)`);
 }
