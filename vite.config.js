@@ -11,37 +11,13 @@ const BACKUPS_DIR = 'JSON backups';
 
 const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
 
-const PURE_FNS_EXPORTS = [
-  'safeCssColor',
-  'escHtml',
-  'dk',
-  'fmtTime',
-  'fmtElapsed',
-  'fmtDur',
-  'fmtDurLong',
-  'roundUp30',
-  'roundToNearest30',
-  'validEntry',
-  'validCategory',
-  'validPlanTask',
-  'validBlock',
-  'validTimer',
-  'validPomoEntry',
-  'validateBackupFile',
-  'validWeatherResponse',
-  'validCalendarMeeting',
-  'validJiraCsvRow',
-  'resolveRapidDate',
-  'parseRapidTokens',
-  'stripJiraPrefix',
-  'groupEntriesByCategory',
-  'mergeAdjacentEntries',
-  'buildBillableSummaryParts',
-  'computeDayBounds',
-  'formatGroupedLines',
-];
+function readPureFnsExports() {
+  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
+  return [...src.matchAll(/^export (?:function|const|class) (\w+)/gm)].map((m) => m[1]);
+}
 
 function buildJS() {
+  const pureFnsExports = readPureFnsExports();
   const files = readdirSync(JS_SRC)
     .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.has(f))
     .sort();
@@ -50,7 +26,7 @@ function buildJS() {
     return `// ── ${f} ──\n${content}`;
   });
   const imports = [
-    `import { ${PURE_FNS_EXPORTS.join(', ')} } from './src/js/pure-fns.js';`,
+    `import { ${pureFnsExports.join(', ')} } from './src/js/pure-fns.js';`,
     `import { wlLog } from './src/js/logger.js';`,
   ].join('\n');
   const output = imports + '\n\n' + parts.join('\n\n') + '\n';

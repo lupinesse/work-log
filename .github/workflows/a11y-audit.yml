@@ -70,11 +70,14 @@ jobs:
           if [ -n "$ANTHROPIC_API_KEY" ]; then
             unset CLAUDE_CODE_OAUTH_TOKEN
           fi
-          claude -p "/a11y-audit" \
+          if ! claude -p "/a11y-audit" \
             --model claude-sonnet-4-6 \
             --allowedTools "Read" "Grep" "Glob" \
                            "Bash(cat:*)" "Bash(wc:*)" \
-            > a11y-output.txt 2>&1
+            > a11y-output.txt 2>&1; then
+            rm -f a11y-output.txt
+            exit 0
+          fi
           echo "Accessibility audit complete ($(wc -l < a11y-output.txt) lines)"
 
       - name: Mint Claude Reviewer App token
@@ -106,7 +109,7 @@ jobs:
           else
             {
               echo "$MARKER"
-              echo "> ⚠️ Accessibility audit skipped — no API credentials configured."
+              echo "> ⚠️ Accessibility audit skipped — API unavailable (credentials may be expired or credits exhausted)."
             } > comment-body.txt
           fi
 

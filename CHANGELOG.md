@@ -3,11 +3,10 @@
 ## Unreleased
 
 ### Changed
-- **`chatgpt-pr-review.yml` no longer re-runs on every push** — the full AI dialogue now fires once on PR open/reopen; add the `chatgpt-review` label to re-trigger manually. This prevents 4-phase API calls for every interim commit.
-- **Phases 2 and 3 now use `claude-haiku-4-5-20251001`** — switched from Sonnet 4.6, cutting per-call token cost roughly 20×. Use the `MODEL` env override to restore Sonnet for individual runs if needed.
-- **`MAX_DIFF_CHARS` for Phases 2 and 3 reduced from 30 000 to 15 000** — halves input tokens for large diffs; diffs longer than 15 000 characters are truncated at that point.
-- **`pr-review.yml` reduced to `--max-turns 8`** — standalone Claude review for small PRs now caps at 8 agentic turns instead of 15.
-- **`weekly-qa-review.yml` schedule removed** — QA review must now be triggered manually via the Actions tab; the weekly cron is gone.
+- **`pure-fns.js` and `logger.js` extracted as leaf ES modules** — the 27 pure utility functions and the `wlLog` structured logger now live in their own files under `src/js/` and are imported at the top of `script.js`. `script.js` is now a proper ES module (`<script type="module">`), not a concatenated IIFE. The build step (`build.js`) auto-discovers exports from `pure-fns.js` so the import list stays in sync without manual maintenance.
+- **`build-portable.js` updated for ESM source layout** — the portable build no longer reads the generated `script.js`. It reads source files from `src/js/` directly, strips `export` keywords from leaf modules, and wraps the result in an IIFE — preserving the single-file offline format.
+- **`test/unit.cjs` replaced by `test/unit.mjs`** — unit tests now import `pure-fns.js` directly as an ES module and run with Node's built-in test runner (`node --test`). The old CommonJS test shim is removed.
+- **Variable names humanised in `01-state.js`, `02-utils.js`, `03-timer.js`, `04-render.js`** — one-letter and short abbreviations (`raw`, `inp`, `ni`, `c`, `mon2`) replaced with descriptive names (`parsedEntries`, `editInput`, `newCatInput`, `canvas`, `weekStart`).
 
 ### Changed
 - **CI review dialogue Phase 3 now posts a convergence summary** — `claude-final-review` no longer runs `/pr-review` independently. Instead, `claude-convergence-summary.mjs` synthesises the Phase 1–2 threads (agreed-fix, deferred, disagreed, partial) and surfaces any gaps Claude notices. Phase 4 receives a structured summary rather than a second independent verdict.
