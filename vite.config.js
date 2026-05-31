@@ -9,19 +9,54 @@ const CSS_SRC = 'src/css/styles.scss';
 const CSS_OUT = 'styles.css';
 const BACKUPS_DIR = 'JSON backups';
 
+const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
+
+const PURE_FNS_EXPORTS = [
+  'safeCssColor',
+  'escHtml',
+  'dk',
+  'fmtTime',
+  'fmtElapsed',
+  'fmtDur',
+  'fmtDurLong',
+  'roundUp30',
+  'roundToNearest30',
+  'validEntry',
+  'validCategory',
+  'validPlanTask',
+  'validBlock',
+  'validTimer',
+  'validPomoEntry',
+  'validateBackupFile',
+  'validWeatherResponse',
+  'validCalendarMeeting',
+  'validJiraCsvRow',
+  'resolveRapidDate',
+  'parseRapidTokens',
+  'stripJiraPrefix',
+  'groupEntriesByCategory',
+  'mergeAdjacentEntries',
+  'buildBillableSummaryParts',
+  'computeDayBounds',
+  'formatGroupedLines',
+];
+
 function buildJS() {
   const files = readdirSync(JS_SRC)
-    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js'))
+    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.has(f))
     .sort();
   const parts = files.map((f) => {
     const content = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');
     return `// ── ${f} ──\n${content}`;
   });
-  const output = '(function() {\n' + parts.join('\n\n') + '\n})();\n';
+  const imports = [
+    `import { ${PURE_FNS_EXPORTS.join(', ')} } from './src/js/pure-fns.js';`,
+    `import { wlLog } from './src/js/logger.js';`,
+  ].join('\n');
+  const output = imports + '\n\n' + parts.join('\n\n') + '\n';
   writeFileSync(JS_OUT, output);
   return files.length;
 }
-
 function buildCSS() {
   const result = compile(CSS_SRC, { style: 'expanded' });
   writeFileSync(CSS_OUT, result.css);

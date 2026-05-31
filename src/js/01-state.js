@@ -95,12 +95,12 @@ let planDragId = null;
  */
 function load() {
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
-    const all = Array.isArray(raw) ? raw : [];
-    entries = all.filter(validEntry);
-    if (entries.length < all.length)
-      wlLog.warn(`load: dropped ${all.length - entries.length} invalid entry record(s)`, {
-        total: all.length,
+    const parsedEntries = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
+    const allEntries = Array.isArray(parsedEntries) ? parsedEntries : [];
+    entries = allEntries.filter(validEntry);
+    if (entries.length < allEntries.length)
+      wlLog.warn(`load: dropped ${allEntries.length - entries.length} invalid entry record(s)`, {
+        total: allEntries.length,
         kept: entries.length,
       });
   } catch (e) {
@@ -108,22 +108,26 @@ function load() {
     wlLog.error('load: failed to parse entries from localStorage', e);
   }
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
-    activeTimer = raw && validTimer(raw) ? raw : null;
-    if (raw && !validTimer(raw)) wlLog.warn('load: discarded invalid timer state', raw);
+    const parsedTimer = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
+    activeTimer = parsedTimer && validTimer(parsedTimer) ? parsedTimer : null;
+    if (parsedTimer && !validTimer(parsedTimer))
+      wlLog.warn('load: discarded invalid timer state', parsedTimer);
   } catch (e) {
     activeTimer = null;
     wlLog.error('load: failed to parse timer state', e);
   }
   try {
-    const raw = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
-    if (Array.isArray(raw) && raw.length) {
-      categories = raw.filter(validCategory);
-      if (categories.length < raw.length)
-        wlLog.warn(`load: dropped ${raw.length - categories.length} invalid category record(s)`, {
-          total: raw.length,
-          kept: categories.length,
-        });
+    const parsedCategories = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
+    if (Array.isArray(parsedCategories) && parsedCategories.length) {
+      categories = parsedCategories.filter(validCategory);
+      if (categories.length < parsedCategories.length)
+        wlLog.warn(
+          `load: dropped ${parsedCategories.length - categories.length} invalid category record(s)`,
+          {
+            total: parsedCategories.length,
+            kept: categories.length,
+          }
+        );
     }
   } catch (e) {
     wlLog.error('load: failed to parse categories', e);

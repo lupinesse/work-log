@@ -122,6 +122,22 @@ export default [
     },
   },
 
+  // ESM unit tests — Node ES modules; detect-object-injection suppressed for the
+  // same reason as the cjs block above (internal lookups, not user-controlled keys).
+  {
+    files: ['test/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node, ...globals.browser },
+    },
+    rules: {
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   {
     ignores: ['node_modules/', 'dist/', 'portable/', 'script.js'],
   },

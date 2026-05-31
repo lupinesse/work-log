@@ -1,10 +1,7 @@
 /**
- * @file 00-pure-fns.js
+ * @file pure-fns.js
  * Pure functions with no side-effects and no dependencies on global state.
- * Extracted here so they can be imported by Node unit tests without a browser.
- *
- * In the browser build these declarations become globals inside the IIFE.
- * In Node (require / test runner) the module.exports block at the bottom exports them.
+ * Extracted here so they can be imported directly by other modules and by tests.
  */
 
 /* ── CSS / HTML safety ── */
@@ -20,7 +17,7 @@
  * safeCssColor('red')          // → '#888780'  (name blocked)
  * safeCssColor('')             // → '#888780'
  */
-function safeCssColor(c) {
+export function safeCssColor(c) {
   // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
   return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
     ? c
@@ -37,7 +34,7 @@ function safeCssColor(c) {
  * escHtml('"quoted"')      // → '&quot;quoted&quot;'
  * escHtml(42)              // → '42'
  */
-function escHtml(s) {
+export function escHtml(s) {
   return String(s)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -58,7 +55,7 @@ function escHtml(s) {
  * dk(new Date(2026, 11, 31, 23, 59, 0)) // → '2026-12-31' (11 PM local)
  * dk(new Date(2026, 0, 1, 0, 0, 0))    // → '2026-01-01'  (midnight local)
  */
-function dk(d) {
+export function dk(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -73,7 +70,7 @@ function dk(d) {
  * fmtTime(new Date('2026-05-25T09:05:00').getTime()) // → '09:05'
  * fmtTime(new Date('2026-05-25T14:30:00').getTime()) // → '14:30'
  */
-function fmtTime(ts) {
+export function fmtTime(ts) {
   const d = new Date(ts);
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
@@ -88,7 +85,7 @@ function fmtTime(ts) {
  * fmtElapsed(3600 * 1000)    // → '01:00:00'
  * fmtElapsed(5461 * 1000)    // → '01:31:01'
  */
-function fmtElapsed(ms) {
+export function fmtElapsed(ms) {
   const s = Math.floor(ms / 1000);
   const hh = Math.floor(s / 3600),
     mm = Math.floor((s % 3600) / 60),
@@ -109,7 +106,7 @@ function fmtElapsed(ms) {
  * fmtDur(90 * 60 * 1000)     // → '1h 30m'
  * fmtDur(120 * 60 * 1000)    // → '2h'
  */
-function fmtDur(ms) {
+export function fmtDur(ms) {
   const mins = Math.round(ms / 60000);
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -128,7 +125,7 @@ function fmtDur(ms) {
  * fmtDurLong(90 * 60 * 1000)    // → '1h 30min'
  * fmtDurLong(120 * 60 * 1000)   // → '2h'
  */
-function fmtDurLong(ms) {
+export function fmtDurLong(ms) {
   const mins = Math.round(ms / 60000);
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -153,7 +150,7 @@ function fmtDurLong(ms) {
  * roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
  * roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)
  */
-function roundUp30(ms) {
+export function roundUp30(ms) {
   const SLOT = 30 * 60 * 1000;
   return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
 }
@@ -172,7 +169,7 @@ function roundUp30(ms) {
  * @param {number} ts - Unix timestamp in milliseconds.
  * @returns {number} Rounded Unix timestamp in milliseconds.
  */
-function roundToNearest30(ts) {
+export function roundToNearest30(ts) {
   const d = new Date(ts);
   const m = d.getMinutes();
   const blockStart = Math.floor(m / 30) * 30; // 0 or 30
@@ -210,7 +207,7 @@ function roundToNearest30(ts) {
  * validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
  * validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)
  */
-function validEntry(e) {
+export function validEntry(e) {
   return !!(
     e &&
     typeof e.id === 'string' &&
@@ -226,7 +223,7 @@ function validEntry(e) {
  * @param {*} c - Candidate value parsed from JSON.
  * @returns {boolean} True if the category is well-formed.
  */
-function validCategory(c) {
+export function validCategory(c) {
   return !!(
     c &&
     typeof c.id === 'string' &&
@@ -244,7 +241,7 @@ function validCategory(c) {
  * validPlanTask({ id: 'pk1', text: 'x', date: '2026-05-25', status: 'finished' }) // → false (unknown status)
  * validPlanTask(null) // → false
  */
-function validPlanTask(t) {
+export function validPlanTask(t) {
   return !!(
     t &&
     typeof t.id === 'string' &&
@@ -260,7 +257,7 @@ function validPlanTask(t) {
  * @param {*} b - Candidate value parsed from JSON.
  * @returns {boolean} True if the timeblock is well-formed.
  */
-function validBlock(b) {
+export function validBlock(b) {
   return !!(
     b &&
     typeof b.id === 'string' &&
@@ -282,7 +279,7 @@ function validBlock(b) {
  * validTimer({ entryId: 'e1' })                                   // → false (neither running nor paused)
  * validTimer(null)                                                 // → false
  */
-function validTimer(t) {
+export function validTimer(t) {
   if (!t || typeof t.entryId !== 'string') return false;
   // Running timer: startTs is a number (when the current run started)
   // Paused timer:  startTs is null, accumulatedMs holds the work time so far
@@ -295,7 +292,7 @@ function validTimer(t) {
  * @param {*} e - Candidate value.
  * @returns {boolean} True if the Pomodoro entry is well-formed.
  */
-function validPomoEntry(e) {
+export function validPomoEntry(e) {
   return !!(e && typeof e.ts === 'number' && typeof e.mins === 'number');
 }
 
@@ -322,7 +319,7 @@ function validPomoEntry(e) {
  * validateBackupFile({ version: '1', entries: [], categories: [] })
  *   // → { valid: false, error: '...missing required field "planTasks".' }
  */
-function validateBackupFile(backup) {
+export function validateBackupFile(backup) {
   if (!backup || typeof backup !== 'object' || Array.isArray(backup)) {
     return { valid: false, error: 'Not a valid backup object.' };
   }
@@ -369,7 +366,7 @@ function validateBackupFile(backup) {
  * validWeatherResponse({ hourly: { time: [], precipitation_probability: [] } })
  *   // → false  (missing current)
  */
-function validWeatherResponse(data) {
+export function validWeatherResponse(data) {
   return !!(
     data &&
     typeof data === 'object' &&
@@ -400,7 +397,7 @@ function validWeatherResponse(data) {
  * validCalendarMeeting({ subject: 42, start: '2026-05-28T09:00', end: '2026-05-28T09:30' })
  *   // → false  (subject not a string)
  */
-function validCalendarMeeting(meeting) {
+export function validCalendarMeeting(meeting) {
   return !!(
     meeting &&
     typeof meeting === 'object' &&
@@ -433,7 +430,7 @@ function validCalendarMeeting(meeting) {
  * validJiraCsvRow({ 'Issue key': 'AITO-1' })    // → false  (missing summary)
  * validJiraCsvRow({ Summary: 'Fix login bug' }) // → false  (missing key)
  */
-function validJiraCsvRow(row) {
+export function validJiraCsvRow(row) {
   if (!row || typeof row !== 'object') return false;
   const hasKey = !!(
     (row['Issue key'] || '').trim() ||
@@ -480,7 +477,7 @@ const RAPID_SIG_SHORTCUTS = {
  * @param {Date} [now] - Reference date for relative resolution; defaults to new Date().
  * @returns {string|null} Resolved date key, or null if the token is unrecognised.
  */
-function resolveRapidDate(token, now) {
+export function resolveRapidDate(token, now) {
   const ref = now || new Date();
   const t = token.toLowerCase();
 
@@ -525,7 +522,7 @@ function resolveRapidDate(token, now) {
  * @param {Date} [now] - Reference date for relative date resolution; defaults to new Date().
  * @returns {{ text: string, tag: string|null, signifier: string|null, date: string|null }}
  */
-function parseRapidTokens(raw, cats, now) {
+export function parseRapidTokens(raw, cats, now) {
   let text = raw;
   let tag = null;
   let signifier = null;
@@ -587,7 +584,7 @@ function parseRapidTokens(raw, cats, now) {
  * stripJiraPrefix('PROJ-42: Fix login')  // → 'Fix login'
  * stripJiraPrefix('Write tests')         // → 'Write tests'
  */
-function stripJiraPrefix(text) {
+export function stripJiraPrefix(text) {
   return text.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
 }
 
@@ -604,7 +601,7 @@ function stripJiraPrefix(text) {
  *   category keys in first-seen order; `catGrouped[catKey]` is
  *   `{ totalMs, tasks: { [taskKey]: { label, totalMs, hasTime } }, taskOrder }`.
  */
-function groupEntriesByCategory(dayEntries) {
+export function groupEntriesByCategory(dayEntries) {
   const catOrder = [];
   const catGrouped = {};
   dayEntries.forEach((entry) => {
@@ -647,7 +644,7 @@ function groupEntriesByCategory(dayEntries) {
  * @param {number} [gapMs=1800000] - Maximum gap, in ms, to bridge (default 30 min).
  * @returns {Array<Object>} New entry objects, each with a `_end` timestamp.
  */
-function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
+export function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
   const sorted = [...entries].sort((a, b) => a.ts - b.ts);
   const out = [];
   for (const entry of sorted) {
@@ -677,7 +674,7 @@ function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
  *   display label. Injected so this function stays free of global state.
  * @returns {string[]} Summary parts, ready to be joined with `, `.
  */
-function buildBillableSummaryParts(mergedEntries, getCatLabel) {
+export function buildBillableSummaryParts(mergedEntries, getCatLabel) {
   const summaryOrder = [];
   const summaryGroups = {};
   const summaryUngrouped = [];
@@ -722,7 +719,7 @@ function buildBillableSummaryParts(mergedEntries, getCatLabel) {
  * @param {number} opts.now             - Current time in ms (`Date.now()`).
  * @returns {{dayStartTs: (number|null), dayEndTs: (number|null)}} Day bounds in ms.
  */
-function computeDayBounds(dayEntries, timedEntries, opts) {
+export function computeDayBounds(dayEntries, timedEntries, opts) {
   const { isViewingToday, dayStart, activeTimer, now } = opts;
   let dayStartTs = isViewingToday ? dayStart : null;
   if (!dayStartTs && dayEntries.length) {
@@ -755,7 +752,7 @@ function computeDayBounds(dayEntries, timedEntries, opts) {
  * @param {function(string): string} getCatLabel - Resolves a category key to its label.
  * @returns {string[]} The body lines for the export file.
  */
-function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
+export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
   const lines = [];
   catOrder.forEach((catKey) => {
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
@@ -768,39 +765,4 @@ function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
     });
   });
   return lines;
-}
-
-// ── CommonJS export (Node / unit tests only) ─────────────────────────────────
-// In the browser IIFE, `module` is not defined so typeof returns 'undefined' and
-// this block is skipped — functions remain as globals in the closure.
-if (typeof module !== 'undefined') {
-  module.exports = {
-    safeCssColor,
-    escHtml,
-    dk,
-    fmtTime,
-    fmtElapsed,
-    fmtDur,
-    fmtDurLong,
-    roundUp30,
-    roundToNearest30,
-    validEntry,
-    validCategory,
-    validPlanTask,
-    validBlock,
-    validTimer,
-    validPomoEntry,
-    validateBackupFile,
-    validWeatherResponse,
-    validCalendarMeeting,
-    validJiraCsvRow,
-    resolveRapidDate,
-    parseRapidTokens,
-    stripJiraPrefix,
-    groupEntriesByCategory,
-    mergeAdjacentEntries,
-    buildBillableSummaryParts,
-    computeDayBounds,
-    formatGroupedLines,
-  };
 }
