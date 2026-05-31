@@ -17,6 +17,7 @@
 - **`lib/parse-phase4-response.mjs`** — pure parser for Phase 4 JSON, extracted for testability. Rejects `type: "new"` actions. 19 unit tests in `test/parse-phase4-response.test.mjs`.
 
 ### Fixed
+- **CI skill workflows soft-fail when the API is unavailable** — `jsdoc-check`, `impact-check`, and `a11y-audit` now wrap the `claude -p` invocation in an `if !` guard: on non-zero exit the output file is removed and the step exits 0 so the PR is not blocked. The PR-comment skip message now reads "API unavailable (credentials may be expired or credits exhausted)".
 - **`completedAt` now records the exact completion timestamp** — tasks marked done store `Date.now()` directly rather than rounding to the nearest 30 minutes; `roundToNearest30` is for display/timeblock positioning only.
 - **`roundToNearest30` no longer crosses day boundaries** — times between 23:46 and 23:59 now clamp to 23:30 instead of rolling over to 00:00 of the next day. This prevented completed tasks from appearing in the current day's completed section when marked done in the last 14 minutes of the day.
 - **Pomodoro favicon now respects the colour theme** — `setPomoFavicon()` now reads `--pomo-spark-empty`, `--pomo-spark-fill`, and `--bg` CSS custom properties instead of hardcoded hex values, so the favicon ring and wedge match the app's light/dark colour scheme.
