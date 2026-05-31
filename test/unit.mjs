@@ -2874,6 +2874,10 @@ function loadJiraSandbox(overrides = {}) {
     /let jiraTasks = \[\],\r?\n\s*jiraSelected = new Set\(\),\r?\n\s*jiraCatMap = \{\};/,
     'var jiraTasks = [];\nvar jiraSelected = new Set();\nvar jiraCatMap = {};'
   );
+  if (!jiraSrc.includes('function jiraRenderTasks'))
+    throw new Error('loadJiraSandbox: IIFE strip or var-promotion failed — check 14-jira.js');
+  if (jiraSrc.includes('(function initJiraImporter'))
+    throw new Error('loadJiraSandbox: IIFE opening was not removed');
   const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
     /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
     '$1'
