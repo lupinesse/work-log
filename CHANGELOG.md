@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+- **CI review dialogue Phase 3 now posts a convergence summary** — `claude-final-review` no longer runs `/pr-review` independently. Instead, `claude-convergence-summary.mjs` synthesises the Phase 1–2 threads (agreed-fix, deferred, disagreed, partial) and surfaces any gaps Claude notices. Phase 4 receives a structured summary rather than a second independent verdict.
+- **Phase 4 is now reply-only** — `chatgpt-claude-dialogue.mjs` no longer accepts `type: "new"` actions from ChatGPT. Phase 4's role is strictly verification, accepting/challenging counter-positions, and flagging regressions. `parsePhase4Response` from the new `lib/parse-phase4-response.mjs` enforces this at parse time.
+- **`claude-chatgpt-dialogue.mjs` token budget raised to 3000** — Phase 2 Claude replies now have 3000 max output tokens (up from 1500) and a rewritten system prompt that emphasises substantive dialogue over mere verdicts.
+
+### Added
+- **`lib/parse-phase4-response.mjs`** — pure parser for Phase 4 JSON, extracted for testability. Rejects `type: "new"` actions. 19 unit tests in `test/parse-phase4-response.test.mjs`.
+
 ### Fixed
 - **`completedAt` now records the exact completion timestamp** — tasks marked done store `Date.now()` directly rather than rounding to the nearest 30 minutes; `roundToNearest30` is for display/timeblock positioning only.
 - **`roundToNearest30` no longer crosses day boundaries** — times between 23:46 and 23:59 now clamp to 23:30 instead of rolling over to 00:00 of the next day. This prevented completed tasks from appearing in the current day's completed section when marked done in the last 14 minutes of the day.

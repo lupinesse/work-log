@@ -7,12 +7,12 @@ name: ChatGPT PR Review
 #   Phase 2 — claude-responds: Claude reads ChatGPT's threads, replies to
 #   each, resolves them, and posts a synthesis. This runs only after Phase 1.
 #
-#   Phase 3 — claude-final-review: Claude runs /pr-review and posts its own
-#   verdict. This runs only after Phase 2, so Claude's verdict always appears
-#   after it has processed ChatGPT's findings — never before.
+#   Phase 3 — claude-final-review: Claude posts a convergence summary of the
+#   Phase 1–2 dialogue (thread outcomes + any independent gaps). Replaces the
+#   standalone /pr-review run.
 #
-#   Phase 4 — chatgpt-responds: ChatGPT reads both Claude's synthesis and
-#   final verdict, and posts any remaining concerns or confirms resolution.
+#   Phase 4 — chatgpt-responds: ChatGPT reads Claude's convergence summary and
+#   verifies agreed fixes, challenges counter-positions, or flags regressions.
 #
 #   merge-gate: Queries all unresolved ChatGPT threads. Fails if any remain,
 #   blocking merge. Succeeds only when ChatGPT has no outstanding findings.
@@ -201,7 +201,7 @@ jobs:
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
         run: node .github/scripts/claude-chatgpt-dialogue.mjs
 
-  # ─── Phase 3: Claude posts its own /pr-review verdict ─────────────────────
+  # ─── Phase 3: Claude posts convergence summary of Phase 1–2 dialogue ────────
   # Runs only after Claude has responded to ChatGPT's threads, so Claude's
   # verdict always appears after the thread resolution — never before.
   claude-final-review:
@@ -211,6 +211,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write      # upsertIssueComment in claude-convergence-summary.mjs
 
     steps:
       - name: Check out repository
@@ -223,94 +224,15 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
-      - name: Write diff to pr.diff
+      - name: Write filtered diff
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
+          git diff "$BASE_SHA"..."$HEAD_SHA" \
+            -- ':!dist/' ':!*.lock' ':!docs/**/*.html' \
+            > pr.diff
           echo "Diff size: $(wc -l < pr.diff) lines"
-
-      # Fetch Phase 1 ChatGPT findings so /pr-review can group duplicates as
-      # "Also raised by ChatGPT" rather than presenting them as novel. The
-      # skill reads chatgpt-findings.md when present.
-      - name: Fetch ChatGPT's Phase 1 findings
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const fs = require('fs');
-            const result = await github.graphql(`
-              query($owner:String!, $name:String!, $number:Int!) {
-                repository(owner:$owner, name:$name) {
-                  pullRequest(number:$number) {
-                    reviewThreads(first:100) {
-                      nodes {
-                        isResolved
-                        comments(first:10) {
-                          nodes {
-                            author { login }
-                            body
-                            path
-                            originalLine
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            `, {
-              owner:  context.repo.owner,
-              name:   context.repo.repo,
-              number: context.payload.pull_request.number,
-            });
-
-            const threads = result.repository.pullRequest.reviewThreads.nodes
-              .map(t => {
-                const first = t.comments.nodes[0];
-                if (!first) return null;
-                const login = (first.author?.login || '').toLowerCase();
-                const isChatGpt = login.includes('chatgpt') || /^🔴|^🟡|^🔵/.test(first.body || '');
-                if (!isChatGpt) return null;
-
-                // Find Claude's reply verdict if present (Phase 2 reply emojis).
-                const claudeReply = t.comments.nodes.slice(1).find(c =>
-                  /^\s*(✅|👍|❌|↔️)/.test(c.body || '')
-                );
-                const verdict = !claudeReply ? 'no reply'
-                  : claudeReply.body.trimStart().startsWith('✅') ? 'agree_fix'
-                  : claudeReply.body.trimStart().startsWith('👍') ? 'agree_noted'
-                  : claudeReply.body.trimStart().startsWith('❌') ? 'disagree'
-                  : 'partial';
-
-                return {
-                  path: first.path,
-                  line: first.originalLine,
-                  resolved: t.isResolved,
-                  verdict,
-                  body: first.body,
-                  claudeReply: claudeReply ? claudeReply.body : null,
-                };
-              })
-              .filter(Boolean);
-
-            if (threads.length === 0) {
-              core.info('No prior ChatGPT findings — /pr-review will run without a duplicate-suppression file.');
-              return;
-            }
-
-            const sections = threads.map(t => {
-              const status = t.resolved ? `resolved · Claude ${t.verdict}` : 'unresolved';
-              const replyBlock = t.claudeReply ? `\n\n**Claude's reply:** ${t.claudeReply.trim()}` : '';
-              return `## \`${t.path}:${t.line}\` (${status})\n\n${t.body.trim()}${replyBlock}`;
-            }).join('\n\n---\n\n');
-
-            const md = `# ChatGPT's Phase 1 findings — already raised\n\nDo NOT present these as new findings in your /pr-review output. If you would have flagged the same line for the same reason, mention it as "Also raised by ChatGPT" (and note Claude's verdict if one is shown). Only present truly NEW findings as your own.\n\n${sections}\n`;
-            fs.writeFileSync('chatgpt-findings.md', md);
-            core.info(`Wrote chatgpt-findings.md (${threads.length} prior finding(s))`);
 
       - name: Check auth is present
         id: key-check
@@ -322,87 +244,29 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping Claude review."
+            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping convergence summary."
           fi
-
-      - name: Run /pr-review
-        if: steps.key-check.outputs.present == 'true'
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          # Prefer ANTHROPIC_API_KEY when available — the OAuth token may be expired.
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            unset CLAUDE_CODE_OAUTH_TOKEN
-          fi
-          claude -p "/pr-review" \
-            --model claude-sonnet-4-6 \
-            --max-turns 15 \
-            --output-format json \
-            --allowedTools "Grep" \
-                           "Bash(git log:*)" "Bash(git diff:*)" \
-                           "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
-            > review-raw.json 2>review-stderr.txt || true
-          [ -s review-stderr.txt ] && echo "--- claude stderr ---" && cat review-stderr.txt
-          if jq -e '.result' review-raw.json > /dev/null 2>&1; then
-            jq -r '.result' review-raw.json > review-output.txt
-            jq -r '"Phase 3 stats: turns=\(.num_turns // "?") cost=$\(.total_cost_usd // "?") duration=\(.duration_ms // "?")ms"' \
-              review-raw.json
-          else
-            cat review-raw.json review-stderr.txt > review-output.txt 2>/dev/null || true
-          fi
-          echo "Review complete ($(wc -l < review-output.txt) lines)"
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: always() && steps.key-check.conclusion != 'skipped'
+        if: steps.key-check.outputs.present == 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
-      - name: Post or update review as PR comment
-        # Finds the previous /pr-review comment by marker and PATCHes it in
-        # place, so we keep one persistent review comment per PR rather than
-        # stacking a new one per push.
-        if: always() && steps.key-check.conclusion != 'skipped'
+      - name: Run convergence summary
+        if: steps.key-check.outputs.present == 'true'
         env:
-          GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
           HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
-          REPO:       ${{ github.repository }}
-        run: |
-          MARKER='<!-- claude-pr-review-comment -->'
-          if [ -f review-output.txt ]; then
-            {
-              echo "$MARKER"
-              cat review-output.txt
-              echo ""
-              echo "---"
-              echo "*Automated review by [Claude Code](https://claude.ai/claude-code) \`/pr-review\` · commit \`${HEAD_SHA::7}\`*"
-            } > comment-body.txt
-          else
-            {
-              echo "$MARKER"
-              echo "> ⚠️ Automated review skipped — auth not configured."
-            } > comment-body.txt
-          fi
+        run: node .github/scripts/claude-convergence-summary.mjs
 
-          # Find the most recent issue comment containing our marker.
-          PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-            --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
-
-          if [ -n "$PREV_ID" ]; then
-            echo "Updating existing comment $PREV_ID"
-            gh api "repos/$REPO/issues/comments/$PREV_ID" \
-              --method PATCH \
-              --field body=@comment-body.txt
-          else
-            echo "Posting new comment (no previous found)"
-            gh pr comment "$PR_NUMBER" --body-file comment-body.txt
-          fi
-
-  # ─── Phase 4: ChatGPT responds to Claude's final verdict ──────────────────
+  # ─── Phase 4: ChatGPT verifies fixes and challenges counter-positions ────────
   chatgpt-responds:
     needs: [chatgpt-review, claude-final-review]
     if: needs.chatgpt-review.outputs.should_run == 'true'
