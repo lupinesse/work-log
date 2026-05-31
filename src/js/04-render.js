@@ -200,7 +200,7 @@ function render() {
           categories
             .map(
               (c) =>
-                `<button class="cat-opt${e.tag === c.id ? ' sel' : ''}" data-id="${e.id}" data-cat="${c.id}" style="${e.tag === c.id ? `background:${c.color};` : ''}color:${e.tag === c.id ? '#fff' : c.color}">${escHtml(c.label)}</button>`
+                `<button class="cat-opt${e.tag === c.id ? ' sel' : ''}" data-id="${e.id}" data-cat="${c.id}" style="${e.tag === c.id ? `background:${safeCssColor(c.color)};` : ''}color:${e.tag === c.id ? '#fff' : safeCssColor(c.color)}">${escHtml(c.label)}</button>`
             )
             .join('') + `<button class="cat-cancel" data-id="${e.id}">cancel</button>`;
 

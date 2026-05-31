@@ -15,9 +15,6 @@ const TB_SLOT_H = 36; // px per slot
 
 let tbDragSource = null; // 'grid' | 'plan'
 let tbDragId = null; // block id when dragging from grid
-let tbDragText = null; // text when dragging from plan
-let tbDragTag = null; // tag when dragging from plan
-let tbDragPid = null; // plan task id when dragging from plan
 const notifiedBlocks = new Set();
 
 /**
@@ -394,8 +391,6 @@ function renderTimeblock() {
     }
     tbDragSource = null;
     tbDragId = null;
-    tbDragText = null;
-    tbDragTag = null;
   });
 }
 
