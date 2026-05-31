@@ -111,7 +111,7 @@ function bindPlanEvents(lists) {
       }
 
       t.status = newStatus;
-      if (newStatus === 'done' && !t.completedAt) t.completedAt = roundToNearest30(Date.now());
+      if (newStatus === 'done' && !t.completedAt) t.completedAt = Date.now();
       if (newStatus !== 'done') delete t.completedAt;
 
       // If child goes inprogress, promote parent too (unless already done)
@@ -140,7 +140,7 @@ function bindPlanEvents(lists) {
           const siblings = planTasks.filter((c) => c.parentId === parent.id && c.date === t.date);
           if (siblings.length > 0 && siblings.every((c) => c.status === 'done' || c.id === t.id)) {
             parent.status = 'done';
-            if (!parent.completedAt) parent.completedAt = roundToNearest30(Date.now());
+            if (!parent.completedAt) parent.completedAt = Date.now();
           }
         }
       }
