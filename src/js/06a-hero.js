@@ -151,7 +151,7 @@ function _heroRenderRecentChips() {
         `<button class="hero-chip"` +
         ` data-text="${escHtml(e.text)}" data-tag="${escHtml(e.tag)}"` +
         ` aria-label="Start tracking: ${escHtml(e.text)}">` +
-        `<span class="hero-chip-dot" style="background:${cat.color}" aria-hidden="true"></span>` +
+        `<span class="hero-chip-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
         escHtml(e.text) +
         (isLast
           ? `<span style="font-size:10px;color:var(--ink-faint);margin-left:2px">← last</span>`
@@ -397,7 +397,7 @@ function _heroSetCategory(elId, tag) {
   if (!el) return;
   const cat = getCat(tag);
   el.innerHTML =
-    `<span class="hero-task-cat-dot" style="background:${cat.color}" aria-hidden="true"></span>` +
+    `<span class="hero-task-cat-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
     escHtml(cat.label);
 }
 

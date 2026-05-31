@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Remaining inline colour interpolations wrapped with `safeCssColor`** — hero chip dots, hero task-category dots, plan task category picker and label, timeblock completed-item dot, and rapid-log category chips and token preview (`06a-hero.js`, `10a-tasks-render.js`, `11-timeblock.js`, `16-rapid.js`). Completes the `safeCssColor` rollout started in #124 and continued in #128.
 - **Tracker card colour dot now sanitised** — `renderTrackers` wraps `t.color` with `safeCssColor()` so a stored colour value cannot inject arbitrary CSS into the `style` attribute (closes the last remaining unsanitised inline colour in `22-trackers.js`).
 
 ### Changed

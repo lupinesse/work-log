@@ -194,7 +194,7 @@ function _qcRenderCatChips() {
         `<button class="qc-cat-chip${_qcFilterCat === c.id ? ' active' : ''}"` +
         ` data-cat="${escHtml(c.id)}"` +
         ` aria-pressed="${_qcFilterCat === c.id}">` +
-        `<span class="qc-chip-dot" style="background:${c.color}" aria-hidden="true"></span>` +
+        `<span class="qc-chip-dot" style="background:${safeCssColor(c.color)}" aria-hidden="true"></span>` +
         `${escHtml(c.label)}` +
         `</button>`
     )
@@ -229,7 +229,7 @@ function _qcTaskRowHtml(rowId, text, cat, isActive) {
   return (
     `<div class="qc-task-row${isActive ? ' qc-task-row--active' : ''}"` +
     ` role="option" aria-selected="${isActive}">` +
-    `<span class="qc-task-dot" style="background:${cat.color}" aria-hidden="true"></span>` +
+    `<span class="qc-task-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
     `<span class="qc-task-text" title="${escHtml(text)}">${escHtml(text)}</span>` +
     `<button class="qc-task-action-btn"` +
     ` data-row-id="${escHtml(rowId)}"` +
@@ -398,8 +398,8 @@ function _qcRenderTokenPreview(parsed) {
   if (parsed.tag) {
     const cat = getCat(parsed.tag);
     chips.push(
-      `<span class="qc-token qc-token--cat" style="border-color:${cat.color}33;color:${cat.color}">` +
-        `<span class="qc-token-dot" style="background:${cat.color}" aria-hidden="true"></span>` +
+      `<span class="qc-token qc-token--cat" style="border-color:${safeCssColor(cat.color)}33;color:${safeCssColor(cat.color)}">` +
+        `<span class="qc-token-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
         `${escHtml(cat.label)}` +
         `</span>`
     );
