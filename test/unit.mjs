@@ -16,6 +16,7 @@ const {
   fmtElapsed,
   fmtDur,
   fmtDurLong,
+  fmtAgo,
   roundUp30,
   roundToNearest30,
   validEntry,
@@ -143,6 +144,30 @@ describe('fmtDurLong', () => {
   it('formats 1h 30m as 1h 30min', () => assert.equal(fmtDurLong(90 * 60_000), '1h 30min'));
   it('formats 2h 0m as 2h (no trailing 0min)', () => assert.equal(fmtDurLong(120 * 60_000), '2h'));
   it('rounds partial minutes', () => assert.equal(fmtDurLong(89 * 60_000 + 30_000), '1h 30min'));
+});
+
+// ── fmtAgo ───────────────────────────────────────────────────────────────────
+describe('fmtAgo', () => {
+  const NOW = 1_000_000_000_000; // fixed reference point for deterministic tests
+
+  it('returns "just now" for 0 ms elapsed', () => assert.equal(fmtAgo(NOW, NOW), 'just now'));
+  it('returns "just now" for 30 s elapsed', () =>
+    assert.equal(fmtAgo(NOW - 30_000, NOW), 'just now'));
+  it('returns "just now" for 59 s elapsed', () =>
+    assert.equal(fmtAgo(NOW - 59_999, NOW), 'just now'));
+  it('returns "1 min ago" for exactly 1 min', () =>
+    assert.equal(fmtAgo(NOW - 60_000, NOW), '1 min ago'));
+  it('returns "2 min ago" for 2 min', () =>
+    assert.equal(fmtAgo(NOW - 2 * 60_000, NOW), '2 min ago'));
+  it('returns "59 min ago" for 59 min', () =>
+    assert.equal(fmtAgo(NOW - 59 * 60_000, NOW), '59 min ago'));
+  it('returns "1h ago" for exactly 1 hour', () =>
+    assert.equal(fmtAgo(NOW - 60 * 60_000, NOW), '1h ago'));
+  it('returns "2h ago" for 2 hours', () => assert.equal(fmtAgo(NOW - 120 * 60_000, NOW), '2h ago'));
+  it('truncates partial hours (89 min → 1h)', () =>
+    assert.equal(fmtAgo(NOW - 89 * 60_000, NOW), '1h ago'));
+  it('defaults now to Date.now() when omitted (smoke test — result is a string)', () =>
+    assert.equal(typeof fmtAgo(Date.now() - 5_000), 'string'));
 });
 
 // ── roundUp30 ─────────────────────────────────────────────────────────────────

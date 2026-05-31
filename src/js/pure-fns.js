@@ -114,6 +114,24 @@ export function fmtDur(ms) {
 }
 
 /**
+ * Formats a past timestamp as a relative "ago" string for the last-note reference line.
+ * Uses an injected `now` parameter so it is fully unit-testable without mocking Date.now.
+ * @param {number} ts  - Unix timestamp in milliseconds of the past event.
+ * @param {number} [now] - Current time in ms; defaults to Date.now().
+ * @returns {string} 'just now' | 'X min ago' | 'Xh ago'
+ * @example
+ * fmtAgo(Date.now() - 30000)          // → 'just now'
+ * fmtAgo(Date.now() - 2 * 60000)      // → '2 min ago'
+ * fmtAgo(Date.now() - 90 * 60000)     // → '1h ago'
+ */
+export function fmtAgo(ts, now = Date.now()) {
+  const mins = Math.floor((now - ts) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
+
+/**
  * Formats a duration in milliseconds as a human-readable string using the
  * long "min" suffix.  Used in plaintext exports where readability matters more
  * than compactness.

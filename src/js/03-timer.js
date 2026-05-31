@@ -396,9 +396,21 @@ function commitBannerNote() {
     date: dk(new Date()),
   };
   entries.push(entry);
+  // Also record the note in logNotes so the hero card can surface "↳ last note X ago".
+  const snTs = Date.now();
+  logNotes.push({
+    id: snTs + '-sn',
+    text: note,
+    ts: snTs,
+    date: dk(new Date()),
+    type: 'session-note',
+    entryId: activeTimer.entryId,
+  });
+  saveLogNotes();
   save();
   inp.value = '';
   render();
+  renderHeroCard();
 }
 
 /**

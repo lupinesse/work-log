@@ -177,7 +177,7 @@ function _heroFillRunning() {
   const entry = entries.find((e) => e.id === activeTimer.entryId);
   if (!entry) return;
 
-  _heroSetCategory('heroTaskCategory', entry.tag);
+  _heroSetCategory('heroTaskCategory', entry.tag, true);
 
   const titleEl = document.getElementById('timerTask');
   if (titleEl) titleEl.innerHTML = jiraTicketHtml(entry.text);
@@ -189,7 +189,7 @@ function _heroFillRunning() {
   }
 
   const noteRefEl = document.getElementById('heroTaskNoteRef');
-  if (noteRefEl) noteRefEl.textContent = '';
+  if (noteRefEl) noteRefEl.textContent = _heroLastNoteText(entry.id);
 }
 
 // ── Paused fill ───────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ function _heroFillPaused() {
   const entry = entries.find((e) => e.id === activeTimer.entryId);
   if (!entry) return;
 
-  _heroSetCategory('heroPausedCategory', entry.tag);
+  _heroSetCategory('heroPausedCategory', entry.tag, true);
 
   const taskEl = document.getElementById('heroPausedTask');
   if (taskEl) taskEl.innerHTML = jiraTicketHtml(entry.text);
@@ -213,7 +213,7 @@ function _heroFillPaused() {
   if (metaEl) metaEl.textContent = `paused · since ${fmtTime(entry.ts)}`;
 
   const noteRefEl = document.getElementById('heroPausedNoteRef');
-  if (noteRefEl) noteRefEl.textContent = '';
+  if (noteRefEl) noteRefEl.textContent = _heroLastNoteText(entry.id);
 }
 
 // ── Stopped fill ──────────────────────────────────────────────────────────────
@@ -388,17 +388,137 @@ function _heroHandleDone() {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 /**
- * Fills a category display cell with the dot + label for the given tag.
- * @param {string} elId - ID of the `.hero-task-category` element.
- * @param {string} tag  - Category ID.
+ * Fills a category display cell with the dot + label (and optional caret/picker).
+ * @param {string}  elId        - ID of the `.hero-task-category` element.
+ * @param {string}  tag         - Category ID.
+ * @param {boolean} [interactive=false] - When true, renders a caret button and picker panel.
  */
-function _heroSetCategory(elId, tag) {
+function _heroSetCategory(elId, tag, interactive = false) {
   const el = document.getElementById(elId);
   if (!el) return;
   const cat = getCat(tag);
+
+  if (!interactive) {
+    el.innerHTML =
+      `<span class="hero-task-cat-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
+      escHtml(cat.label);
+    return;
+  }
+
+  const panelId = `${elId}-panel`;
+  const itemsHtml = categories
+    .map(
+      (c) =>
+        `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(c.id)}"` +
+        ` aria-label="${escHtml(c.label)}">` +
+        `<span class="hero-cat-item-dot" style="background:${safeCssColor(c.color)}" aria-hidden="true"></span>` +
+        escHtml(c.label) +
+        (c.id === tag
+          ? `<span class="hero-cat-item-check" aria-hidden="true">&#10003;</span>`
+          : '') +
+        `</button>`
+    )
+    .join('');
+
   el.innerHTML =
+    `<div class="hero-cat-wrap">` +
+    `<button class="hero-task-cat-btn" aria-label="Change category" aria-haspopup="true" aria-expanded="false">` +
     `<span class="hero-task-cat-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
-    escHtml(cat.label);
+    `<span class="hero-cat-label">${escHtml(cat.label)}</span>` +
+    `<span class="hero-cat-caret" aria-hidden="true">&#9660;</span>` +
+    `</button>` +
+    `<div class="hero-cat-panel" id="${panelId}" role="menu" style="display:none">` +
+    itemsHtml +
+    `</div>` +
+    `</div>`;
+
+  _heroBindCatPicker(el.querySelector('.hero-cat-wrap'));
+}
+
+/**
+ * Binds open/close/select keyboard and pointer events on a `.hero-cat-wrap` element.
+ * @param {HTMLElement} wrap - The `.hero-cat-wrap` container.
+ */
+function _heroBindCatPicker(wrap) {
+  if (!wrap) return;
+  const btn = wrap.querySelector('.hero-task-cat-btn');
+  const panel = wrap.querySelector('.hero-cat-panel');
+  if (!btn || !panel) return;
+
+  function openPanel() {
+    panel.style.display = '';
+    btn.setAttribute('aria-expanded', 'true');
+    const first = panel.querySelector('.hero-cat-item');
+    if (first) first.focus();
+  }
+
+  function closePanel() {
+    panel.style.display = 'none';
+    btn.setAttribute('aria-expanded', 'false');
+  }
+
+  btn.addEventListener('click', () => {
+    panel.style.display !== 'none' ? closePanel() : openPanel();
+  });
+
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPanel();
+    }
+  });
+
+  const items = Array.from(panel.querySelectorAll('.hero-cat-item'));
+  items.forEach((item, idx) => {
+    item.addEventListener('click', () => {
+      _heroCatSelect(item.dataset.tag);
+      closePanel();
+    });
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        _heroCatSelect(item.dataset.tag);
+        closePanel();
+      } else if (e.key === 'Escape') {
+        closePanel();
+        btn.focus();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (items[idx + 1]) items[idx + 1].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (items[idx - 1]) items[idx - 1].focus();
+      }
+    });
+  });
+}
+
+/**
+ * Updates the active entry's category, persists, and re-renders.
+ * @param {string} newTag - Category ID to apply.
+ */
+function _heroCatSelect(newTag) {
+  if (!activeTimer) return;
+  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  if (!entry) return;
+  entry.tag = newTag;
+  save();
+  renderHeroCard();
+  render();
+}
+
+/**
+ * Returns "↳ last note X ago" text for the most recent session-note on an entry,
+ * or an empty string when no session notes have been added yet.
+ * @param {string} entryId - ID of the active log entry.
+ * @returns {string}
+ */
+function _heroLastNoteText(entryId) {
+  const latest = logNotes
+    .filter((n) => n.type === 'session-note' && n.entryId === entryId)
+    .sort((a, b) => b.ts - a.ts)[0];
+  if (!latest) return '';
+  return `↳ last note ${fmtAgo(latest.ts)}`;
 }
 
 /**
@@ -459,6 +579,18 @@ function initHero() {
   document.getElementById('heroPausedFocusBtn')?.addEventListener('click', () => {
     const emergBtn = document.getElementById('emergencyBtn');
     if (emergBtn) emergBtn.click();
+  });
+
+  // Close any open category picker when clicking outside a .hero-cat-wrap
+  document.addEventListener('mousedown', (e) => {
+    if (!e.target.closest('.hero-cat-wrap')) {
+      document.querySelectorAll('.hero-cat-panel').forEach((p) => {
+        p.style.display = 'none';
+      });
+      document.querySelectorAll('.hero-task-cat-btn[aria-expanded="true"]').forEach((b) => {
+        b.setAttribute('aria-expanded', 'false');
+      });
+    }
   });
 
   // Initial render

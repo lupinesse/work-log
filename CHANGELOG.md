@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- **Hero Card: last-note reference line** — after saving a quick note (↵ in the note row), the running and paused panels now show "↳ last note X min ago" below the task title. The line stays blank when no notes have been added. `fmtAgo()` added to `pure-fns.js` with 10 unit tests.
+- **Hero Card: category quick-switch** — the category row on running and paused panels now shows a faint ▾ caret and opens a picker panel on click. Selecting a category re-tags the live session and updates the UI immediately. Keyboard-accessible (Enter/Space opens; arrows navigate; Esc closes; outside-click dismisses).
+
 ### Fixed
 - **`chatgpt-pr-review.yml` now handles force-pushed PRs** — added `synchronize` as a trigger type with an idempotency guard: on each push the workflow checks whether ChatGPT has already posted a review; if yes it skips cleanly, if no it runs the full dialogue. This closes the race where a rapid force push cancelled the `opened` event run before Phase 1 could start, leaving the PR without any AI review despite the `chatgpt-review` label being present.
 
