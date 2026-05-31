@@ -363,6 +363,20 @@ async function main() {
   }
 
   console.log(`  replies: ${parsed.actions.length}, invalid: ${parsed.invalidActions.length}`);
+  if (parsed.invalidActions.length > 0) {
+    const sample = parsed.invalidActions.slice(0, 3);
+    for (const action of sample) {
+      let id;
+      if (action.thread_index != null) {
+        id = `thread=${action.thread_index}`;
+      } else if (action.path) {
+        id = `path=${action.path}`;
+      } else {
+        id = `body="${String(action.body ?? '').slice(0, 40)}"`;
+      }
+      console.log(`    invalid action: type=${action.type ?? '(missing)'} ${id}`);
+    }
+  }
 
   // Replies go to existing threads individually.
   const unpostable = [];
