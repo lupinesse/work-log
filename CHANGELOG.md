@@ -8,8 +8,6 @@
 - Phases 2+3: `MAX_DIFF_CHARS` reduced 30 000 to 15 000 (~50% fewer input tokens).
 - `pr-review.yml`: `--max-turns` reduced from 15 to 8.
 - `weekly-qa-review.yml`: cron schedule removed; manual-only via workflow_dispatch.
-
-### Changed
 - **CI review dialogue Phase 3 now posts a convergence summary** — `claude-final-review` no longer runs `/pr-review` independently. Instead, `claude-convergence-summary.mjs` synthesises the Phase 1–2 threads (agreed-fix, deferred, disagreed, partial) and surfaces any gaps Claude notices. Phase 4 receives a structured summary rather than a second independent verdict.
 - **Phase 4 is now reply-only** — `chatgpt-claude-dialogue.mjs` no longer accepts `type: "new"` actions from ChatGPT. Phase 4's role is strictly verification, accepting/challenging counter-positions, and flagging regressions. `parsePhase4Response` from the new `lib/parse-phase4-response.mjs` enforces this at parse time.
 - **`claude-chatgpt-dialogue.mjs` token budget raised to 3000** — Phase 2 Claude replies now have 3000 max output tokens (up from 1500) and a rewritten system prompt that emphasises substantive dialogue over mere verdicts.
