@@ -17,11 +17,7 @@ beforeEach(() => {
   TMP = mkdtempSync(join(tmpdir(), 'load-claude-md-test-'));
 });
 afterEach(() => {
-  try {
-    rmSync(TMP, { recursive: true, force: true });
-  } catch {
-    // nothing to clean up
-  }
+  rmSync(TMP, { recursive: true, force: true });
 });
 
 describe('loadClaudeMd — file present', () => {
