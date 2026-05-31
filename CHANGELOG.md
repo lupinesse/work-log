@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Tracker card colour dot now sanitised** — `renderTrackers` wraps `t.color` with `safeCssColor()` so a stored colour value cannot inject arbitrary CSS into the `style` attribute (closes the last remaining unsanitised inline colour in `22-trackers.js`).
+
 ### Changed
 - **`pure-fns.js` and `logger.js` extracted as leaf ES modules** — the 27 pure utility functions and the `wlLog` structured logger now live in their own files under `src/js/` and are imported at the top of `script.js`. `script.js` is now a proper ES module (`<script type="module">`), not a concatenated IIFE. The build step (`build.js`) auto-discovers exports from `pure-fns.js` so the import list stays in sync without manual maintenance.
 - **`build-portable.js` updated for ESM source layout** — the portable build no longer reads the generated `script.js`. It reads source files from `src/js/` directly, strips `export` keywords from leaf modules, and wraps the result in an IIFE — preserving the single-file offline format.
