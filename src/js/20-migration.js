@@ -88,7 +88,7 @@ function renderMigrationStep() {
   body.innerHTML = `
     <div class="mig-item">
       <div class="mig-item-header">
-        <span class="mig-dot" style="background:${cat.color}"></span>
+        <span class="mig-dot" style="background:${safeCssColor(cat.color)}"></span>
         <span class="mig-item-text">${escHtml(item.text)}</span>
       </div>
       <div class="mig-item-date">Added ${item.date}</div>
