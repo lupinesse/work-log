@@ -170,6 +170,22 @@ Switching between backend debugging, CSS cleanup, and infrastructure work
 without clearing context creates cross-domain token pollution. Use `/clear`
 between unrelated tasks.
 
+### Start a fresh session after each PR merge
+
+By the time a PR merges, context is typically 80–90% full of resolved findings,
+superseded hypotheses, and CI output that no longer matters. Every turn in the
+next task sends that entire dead history as input. Run `/clear` immediately
+after a PR merges before starting the next task — this is the single highest-
+leverage hygiene habit for multi-PR sessions.
+
+### Monitor CI externally — never inside Claude
+
+Running `gh pr checks <N> --watch` inside a Claude session burns tokens at
+every polling interval with zero reasoning value. A 6-minute check cycle at
+30-second resolution = ~12 turns × ~20k tokens each = ~240k tokens wasted on
+waiting. Run `gh pr checks <N> --watch` directly in your terminal and return
+to Claude only when there is something concrete to act on.
+
 ### Detect poisoned debugging loops early
 
 If 3–4 consecutive fixes fail, the session history is likely contaminated by
