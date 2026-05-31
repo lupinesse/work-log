@@ -2749,8 +2749,9 @@ async function runTests() {
   // Non-Jira label path: .stat-sub-title should show the full label as-is
   {
     const today = dk(new Date());
-    const tsStart = Date.now() - 5400000;
-    const tsEnd = Date.now() - 3600000;
+    // Anchor to 10:00–10:30 today (same midnight-robustness reason as the Jira block above)
+    const tsStart = new Date(today + 'T10:00:00').getTime();
+    const tsEnd = new Date(today + 'T10:30:00').getTime();
     const entries = [
       { id: 'sr2', text: 'Review presentation', tag: 'work', ts: tsStart, tsEnd, date: today },
     ];
