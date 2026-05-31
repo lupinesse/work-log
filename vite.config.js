@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { compile } from 'sass';
+import { LEAF_MODULES, readPureFnsExports } from './build-config.js';
 
 const JS_SRC = 'src/js';
 const JS_OUT = 'script.js';
@@ -9,17 +10,15 @@ const CSS_SRC = 'src/css/styles.scss';
 const CSS_OUT = 'styles.css';
 const BACKUPS_DIR = 'JSON backups';
 
-const LEAF_MODULES = new Set(['pure-fns.js', 'logger.js']);
-
-function readPureFnsExports() {
-  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
-  return [...src.matchAll(/^export (?:function|const|class) (\w+)/gm)].map((m) => m[1]);
-}
-
 function buildJS() {
+  for (const leaf of LEAF_MODULES) {
+    const p = join(JS_SRC, leaf);
+    if (!existsSync(p)) throw new Error(`vite: leaf module not found: ${p}`);
+  }
   const pureFnsExports = readPureFnsExports();
+  if (!pureFnsExports.length) throw new Error('vite: no exports found in pure-fns.js');
   const files = readdirSync(JS_SRC)
-    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.has(f))
+    .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
     .sort();
   const parts = files.map((f) => {
     const content = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');

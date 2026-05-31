@@ -27,6 +27,7 @@ import {
   JS_SRC,
   PS_SERVER,
   PS_CONFIG,
+  LEAF_MODULES,
 } from './build-config.js';
 
 // 1. Clean & recreate output dir
@@ -41,16 +42,13 @@ const css = readFileSync(CSS_IN, 'utf8');
 // script.js is now an ES module (import statements) and cannot be inlined
 // directly. Instead, read all source files, strip 'export' from leaf modules,
 // and wrap everything in an IIFE — the same flat-global technique as before ESM.
-const LEAF_MODULES_INLINE = ['logger.js', 'pure-fns.js'];
 const otherFiles = readdirSync(JS_SRC)
-  .filter(
-    (f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES_INLINE.includes(f)
-  )
+  .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
   .sort();
-const jsParts = [...LEAF_MODULES_INLINE, ...otherFiles].map((f) => {
+const jsParts = [...LEAF_MODULES, ...otherFiles].map((f) => {
   let src = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');
-  if (LEAF_MODULES_INLINE.includes(f))
-    src = src.replace(/^export (const|function|let|class)\b/gm, '$1');
+  if (LEAF_MODULES.includes(f))
+    src = src.replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
   return `// ── ${f} ──\n${src}`;
 });
 const js = '(function() {\n' + jsParts.join('\n\n') + '\n})();\n';
