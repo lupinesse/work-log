@@ -5,13 +5,8 @@
  * unit-tested without importing the dialogue scripts, which have module-level
  * side effects (env-var validation and a top-level main() call).
  *
- * The Anthropic Messages API accepts two mutually exclusive credentials:
- *   - a Claude subscription OAuth token, sent as `Authorization: Bearer …`
- *     (obtained via `claude setup-token`); and
- *   - a standard API key, sent as `x-api-key: …`.
- *
- * CI may have either configured, so this resolver prefers the OAuth token and
- * falls back to the API key, reporting which one it picked for logging.
+ * Authentication uses the Claude subscription OAuth token, sent as
+ * `Authorization: Bearer …` (obtained via `claude setup-token`).
  */
 
 /**
@@ -19,51 +14,33 @@
  */
 
 /**
- * Resolve every usable Anthropic credential, in preference order.
+ * Resolve the Anthropic credential from the environment.
  *
- * Order: `CLAUDE_CODE_OAUTH_TOKEN` (Bearer) first, then `ANTHROPIC_API_KEY`
- * (`x-api-key`). Whitespace-only values are treated as absent. Returns the
- * options as a list so a caller can try them in turn — falling through to the
- * next when one is rejected (e.g. an expired OAuth token returns 401), which a
- * single-credential resolver cannot recover from.
+ * Only `CLAUDE_CODE_OAUTH_TOKEN` is supported. Returns a one-element array
+ * when the token is present, or an empty array when it is absent or
+ * whitespace-only. The array shape is kept for interface compatibility with
+ * callers that iterate the chain.
  *
  * @param {Record<string, string|undefined>} env - Environment bag (e.g. `process.env`).
- * @returns {AnthropicAuth[]} Ordered auth options; empty array if none are set.
+ * @returns {AnthropicAuth[]} Auth options; empty array if the token is not set.
  * @example
- * resolveAnthropicAuthChain({ CLAUDE_CODE_OAUTH_TOKEN: 'abc', ANTHROPIC_API_KEY: 'sk-x' })
- * // → [ { headers: { Authorization: 'Bearer abc' }, source: 'CLAUDE_CODE_OAUTH_TOKEN' },
- * //     { headers: { 'x-api-key': 'sk-x' },         source: 'ANTHROPIC_API_KEY' } ]
+ * resolveAnthropicAuthChain({ CLAUDE_CODE_OAUTH_TOKEN: 'abc' })
+ * // → [ { headers: { Authorization: 'Bearer abc' }, source: 'CLAUDE_CODE_OAUTH_TOKEN' } ]
  * resolveAnthropicAuthChain({}) // → []
  */
 export function resolveAnthropicAuthChain(env) {
-  const chain = [];
-
   const oauthToken = (env.CLAUDE_CODE_OAUTH_TOKEN || '').trim();
-  if (oauthToken) {
-    chain.push({
+  if (!oauthToken) return [];
+  return [
+    {
       headers: { Authorization: `Bearer ${oauthToken}` },
       source: 'CLAUDE_CODE_OAUTH_TOKEN',
-    });
-  }
-
-  const apiKey = (env.ANTHROPIC_API_KEY || '').trim();
-  if (apiKey) {
-    chain.push({
-      headers: { 'x-api-key': apiKey },
-      source: 'ANTHROPIC_API_KEY',
-    });
-  }
-
-  return chain;
+    },
+  ];
 }
 
 /**
- * Resolve the single preferred Anthropic auth — the first entry of
- * {@link resolveAnthropicAuthChain}, or `null` when no credential is set.
- *
- * Note: this picks by *presence*, not validity. An expired-but-present OAuth
- * token still wins here; callers that need to recover from a rejected
- * credential should iterate the full chain instead.
+ * Resolve the single Anthropic auth entry, or `null` when no credential is set.
  *
  * @param {Record<string, string|undefined>} env - Environment bag (e.g. `process.env`).
  * @returns {AnthropicAuth|null}
@@ -99,34 +76,20 @@ export function shouldFallThrough(status) {
   return isAuthFailureStatus(status) || status === 429;
 }
 
-/**
- * Default model for all auth sources.
- *
- * Both the OAuth and API-key paths use `claude-sonnet-4-6` so the dialogue
- * produces consistent results regardless of which credential is active. An
- * explicit `MODEL` env override always wins over this default.
- *
- * @type {Record<string, string>}
- */
-export const DEFAULT_MODEL_BY_SOURCE = {
-  CLAUDE_CODE_OAUTH_TOKEN: 'claude-sonnet-4-6',
-  ANTHROPIC_API_KEY: 'claude-sonnet-4-6',
-};
+/** Default model used when no `MODEL` env override is set. */
+export const DEFAULT_MODEL = 'claude-sonnet-4-6';
 
 /**
  * Choose the Anthropic model id for a run. An explicit override (e.g. the
- * `MODEL` env var) always wins; otherwise `claude-sonnet-4-6` is used for
- * all sources. The `source` argument is kept for forward compatibility.
+ * `MODEL` env var) always wins; otherwise {@link DEFAULT_MODEL} is used.
  *
- * @param {string} source - Auth source label from {@link resolveAnthropicAuth}.
+ * @param {string} _source - Auth source label (unused; kept for call-site compatibility).
  * @param {string} [override] - Explicit model id; takes precedence when truthy.
  * @returns {string} The model id to use.
  * @example
- * selectModel('ANTHROPIC_API_KEY')               // → 'claude-sonnet-4-6'
- * selectModel('CLAUDE_CODE_OAUTH_TOKEN')         // → 'claude-sonnet-4-6'
- * selectModel('ANTHROPIC_API_KEY', 'x-model')   // → 'x-model' (override wins)
+ * selectModel('CLAUDE_CODE_OAUTH_TOKEN')        // → 'claude-sonnet-4-6'
+ * selectModel('CLAUDE_CODE_OAUTH_TOKEN', 'x')  // → 'x' (override wins)
  */
-export function selectModel(source, override) {
-  if (override) return override;
-  return DEFAULT_MODEL_BY_SOURCE[source] ?? DEFAULT_MODEL_BY_SOURCE.ANTHROPIC_API_KEY;
+export function selectModel(_source, override) {
+  return override || DEFAULT_MODEL;
 }

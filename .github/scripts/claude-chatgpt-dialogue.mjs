@@ -9,9 +9,7 @@
  * 4. Posts a fallback issue comment ONLY when replies fail to post inline.
  *
  * Required env vars:
- *   One Anthropic credential (OAuth token preferred, API key as fallback):
- *     CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`)
- *     ANTHROPIC_API_KEY        Standard Anthropic API key (fallback)
+ *   CLAUDE_CODE_OAUTH_TOKEN  Claude Code OAuth token (`claude setup-token`)
  *   GITHUB_TOKEN             GitHub auth (Claude Reviewer App token or fallback)
  *   GITHUB_REPOSITORY        "owner/repo" — auto-set by Actions
  *   PR_NUMBER                Pull-request number
@@ -66,10 +64,7 @@ const must = (key) => {
 // the whole job. Fail fast only when neither credential is configured.
 const AUTH_CHAIN = resolveAnthropicAuthChain(process.env);
 if (AUTH_CHAIN.length === 0) {
-  die(
-    'Missing Anthropic credentials: set CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`) ' +
-      'or ANTHROPIC_API_KEY'
-  );
+  die('Missing Anthropic credentials: set CLAUDE_CODE_OAUTH_TOKEN (run `claude setup-token`)');
 }
 console.log(
   `Auth: ${AUTH_CHAIN.length} candidate(s) → ${AUTH_CHAIN.map((a) => a.source).join(', ')}`
