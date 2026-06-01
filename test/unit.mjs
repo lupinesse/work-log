@@ -3104,6 +3104,13 @@ describe('partitionSessionNotes', () => {
     const { items } = sb.partitionSessionNotes([entry, note]);
     assert.equal(items.length, 2);
   });
+
+  it('returns empty items and empty lookup for an empty input', () => {
+    const sb = loadTimeflowSandbox();
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes([]);
+    assert.equal(items.length, 0);
+    assert.equal(Object.keys(sessionNotesByEntry).length, 0);
+  });
 });
 
 // ── buildSessionNotesHtml ────────────────────────────────────────────────────
