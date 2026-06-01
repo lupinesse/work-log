@@ -259,19 +259,15 @@ function renderFlowHeader(dateKey, activeView) {
 // ─────────────────────────── Flow view ───────────────────────────
 
 /**
- * Renders the Flow view: a vertical list where each entry's accent strip height
- * is proportional to its duration (height = max(64, 0.6 × minutes) px), giving
- * longer tasks more visual weight.
- * @param {string} dateKey
+ * Partitions a flat item list from buildDailyLogItems into two structures:
+ * non-session-note items (the main timeline rows) and a lookup of session-note
+ * items keyed by their `parentEntryId`.  Session-notes render nested inside
+ * their parent entry row rather than as standalone timeline entries.
+ *
+ * @param {Array<object>} allItems - Items returned by buildDailyLogItems.
+ * @returns {{ items: Array<object>, sessionNotesByEntry: Record<string, Array<object>> }}
  */
-function renderFlowView(dateKey) {
-  const el = document.getElementById('tfFlowPane');
-  if (!el) return;
-
-  const allItems = buildDailyLogItems(dateKey);
-
-  // Partition session-notes by parent entry id — they render nested inside
-  // the parent row rather than as standalone timeline entries.
+function partitionSessionNotes(allItems) {
   const sessionNotesByEntry = {};
   const items = allItems.filter((item) => {
     if (item.type !== 'session-note') return true;
@@ -282,6 +278,20 @@ function renderFlowView(dateKey) {
     }
     return false;
   });
+  return { items, sessionNotesByEntry };
+}
+
+/**
+ * Renders the Flow view: a vertical list where each entry's accent strip height
+ * is proportional to its duration (height = max(64, 0.6 × minutes) px), giving
+ * longer tasks more visual weight.
+ * @param {string} dateKey
+ */
+function renderFlowView(dateKey) {
+  const el = document.getElementById('tfFlowPane');
+  if (!el) return;
+
+  const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
 
   if (!items.length) {
     el.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
@@ -354,20 +364,7 @@ function renderLogView(dateKey) {
   const feedEl = document.getElementById('tfLogFeed');
   if (!feedEl) return;
 
-  const allItems = buildDailyLogItems(dateKey);
-
-  // Partition session-notes by parent entry id — they render nested inside
-  // the parent row rather than as standalone timeline entries.
-  const sessionNotesByEntry = {};
-  const items = allItems.filter((item) => {
-    if (item.type !== 'session-note') return true;
-    const pid = item.parentEntryId;
-    if (pid) {
-      if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
-      sessionNotesByEntry[pid].push(item);
-    }
-    return false;
-  });
+  const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
 
   if (!items.length) {
     feedEl.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
