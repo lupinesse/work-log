@@ -1551,6 +1551,9 @@ function loadTimeflowSandbox(overrides = {}) {
     document: {
       getElementById: () => null,
     },
+    wlLog: { info: () => {}, warn: () => {}, error: () => {} },
+    safeCssColor: (c) => c,
+    fmtHm: (ts) => String(ts),
     ...overrides,
   };
   vm.createContext(sandbox);
@@ -3049,5 +3052,90 @@ describe('buildDailyLogItems — session-note partitioning', () => {
     assert.equal(items[0].type, 'entry');
     assert.equal(items[1].type, 'session-note');
     assert.equal(items[1].parentEntryId, 'e1');
+  });
+});
+
+// ── partitionSessionNotes ────────────────────────────────────────────────────
+
+describe('partitionSessionNotes', () => {
+  it('separates session-notes from regular items', () => {
+    const sb = loadTimeflowSandbox();
+    const allItems = [
+      { type: 'entry', entryId: 'e1', ts: 1000 },
+      { type: 'session-note', parentEntryId: 'e1', ts: 2000 },
+    ];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].type, 'entry');
+    assert.ok(sessionNotesByEntry['e1']);
+    assert.equal(sessionNotesByEntry['e1'].length, 1);
+  });
+
+  it('groups multiple session-notes under the same parent', () => {
+    const sb = loadTimeflowSandbox();
+    const allItems = [
+      { type: 'session-note', parentEntryId: 'e1', ts: 1000 },
+      { type: 'session-note', parentEntryId: 'e1', ts: 2000 },
+    ];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 0);
+    assert.equal(sessionNotesByEntry['e1'].length, 2);
+  });
+
+  it('discards orphaned session-notes (no parentEntryId) and warns', () => {
+    const warnings = [];
+    const sb = loadTimeflowSandbox({
+      wlLog: { info: () => {}, warn: (m) => warnings.push(m), error: () => {} },
+    });
+    const allItems = [{ type: 'session-note', parentEntryId: null, id: 'sn-orphan', ts: 1000 }];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 0);
+    assert.deepEqual(Object.keys(sessionNotesByEntry), []);
+    assert.ok(
+      warnings.some((w) => w.includes('sn-orphan')),
+      'warn logged for orphan'
+    );
+  });
+
+  it('passes non-session-note items through unchanged', () => {
+    const sb = loadTimeflowSandbox();
+    const entry = { type: 'entry', entryId: 'e2', ts: 500 };
+    const note = { type: 'note', ts: 600 };
+    const { items } = sb.partitionSessionNotes([entry, note]);
+    assert.equal(items.length, 2);
+  });
+});
+
+// ── buildSessionNotesHtml ────────────────────────────────────────────────────
+
+describe('buildSessionNotesHtml', () => {
+  it('returns empty string for empty array', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.buildSessionNotesHtml([]), '');
+  });
+
+  it('wraps notes in <ul class="tf-session-notes">', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([{ ts: 1000, text: 'hello' }]);
+    assert.ok(html.includes('tf-session-notes'));
+    assert.ok(html.includes('hello'));
+  });
+
+  it('renders one <li> per note', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([
+      { ts: 1000, text: 'first' },
+      { ts: 2000, text: 'second' },
+    ]);
+    const liCount = (html.match(/<li /g) || []).length;
+    assert.equal(liCount, 2);
+  });
+
+  it('includes tf-sn-time and tf-sn-text spans', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([{ ts: 9999, text: 'note body' }]);
+    assert.ok(html.includes('tf-sn-time'));
+    assert.ok(html.includes('tf-sn-text'));
+    assert.ok(html.includes('note body'));
   });
 });

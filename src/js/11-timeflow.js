@@ -259,6 +259,54 @@ function renderFlowHeader(dateKey, activeView) {
 // ─────────────────────────── Flow view ───────────────────────────
 
 /**
+ * Partitions a flat item list from buildDailyLogItems into two structures:
+ * non-session-note items (the main timeline rows) and a lookup of session-note
+ * items keyed by their `parentEntryId`.  Session-notes render nested inside
+ * their parent entry row rather than as standalone timeline entries.
+ *
+ * @param {Array<object>} allItems - Items returned by buildDailyLogItems.
+ * @returns {{ items: Array<object>, sessionNotesByEntry: Record<string, Array<object>> }}
+ */
+function partitionSessionNotes(allItems) {
+  const sessionNotesByEntry = {};
+  const items = allItems.filter((item) => {
+    if (item.type !== 'session-note') return true;
+    const pid = item.parentEntryId;
+    if (!pid) {
+      wlLog.warn('partitionSessionNotes: orphaned session-note discarded, id=' + item.id);
+      return false;
+    }
+    if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
+    sessionNotesByEntry[pid].push(item);
+    return false;
+  });
+  return { items, sessionNotesByEntry };
+}
+
+/**
+ * Builds the HTML fragment for a list of session-notes nested under a parent
+ * entry row. Returns an empty string when there are no notes.
+ * @param {Array<object>} notes - Session-note items for one parent entry.
+ * @returns {string} HTML string, or `''` if notes is empty.
+ */
+function buildSessionNotesHtml(notes) {
+  if (!notes.length) return '';
+  return (
+    `<ul class="tf-session-notes" aria-label="Session notes">` +
+    notes
+      .map(
+        (n) =>
+          `<li class="tf-session-note">` +
+          `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
+          `<span class="tf-sn-text">${n.text}</span>` +
+          `</li>`
+      )
+      .join('') +
+    `</ul>`
+  );
+}
+
+/**
  * Renders the Flow view: a vertical list where each entry's accent strip height
  * is proportional to its duration (height = max(64, 0.6 × minutes) px), giving
  * longer tasks more visual weight.
@@ -268,20 +316,7 @@ function renderFlowView(dateKey) {
   const el = document.getElementById('tfFlowPane');
   if (!el) return;
 
-  const allItems = buildDailyLogItems(dateKey);
-
-  // Partition session-notes by parent entry id — they render nested inside
-  // the parent row rather than as standalone timeline entries.
-  const sessionNotesByEntry = {};
-  const items = allItems.filter((item) => {
-    if (item.type !== 'session-note') return true;
-    const pid = item.parentEntryId;
-    if (pid) {
-      if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
-      sessionNotesByEntry[pid].push(item);
-    }
-    return false;
-  });
+  const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
 
   if (!items.length) {
     el.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
@@ -312,17 +347,6 @@ function renderFlowView(dateKey) {
       const stripH = item.type === 'entry' ? Math.max(64, Math.round(0.6 * durationMin)) : 40;
 
       const notes = entryObj ? sessionNotesByEntry[entryObj.id] || [] : [];
-      const notesHtml = notes.length
-        ? `<ul class="tf-session-notes" aria-label="Session notes">${notes
-            .map(
-              (n) =>
-                `<li class="tf-session-note">` +
-                `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
-                `<span class="tf-sn-text">${n.text}</span>` +
-                `</li>`
-            )
-            .join('')}</ul>`
-        : '';
 
       return `
         <div class="tf-flow-row${isLive ? ' live' : ''}">
@@ -336,7 +360,7 @@ function renderFlowView(dateKey) {
           <div class="tf-flow-body" style="min-height:${stripH}px">
             <div class="tf-flow-text">${item.text}</div>
             <div class="tf-flow-sub">${item.sub}</div>
-            ${notesHtml}
+            ${buildSessionNotesHtml(notes)}
           </div>
         </div>`;
     })
@@ -354,20 +378,7 @@ function renderLogView(dateKey) {
   const feedEl = document.getElementById('tfLogFeed');
   if (!feedEl) return;
 
-  const allItems = buildDailyLogItems(dateKey);
-
-  // Partition session-notes by parent entry id — they render nested inside
-  // the parent row rather than as standalone timeline entries.
-  const sessionNotesByEntry = {};
-  const items = allItems.filter((item) => {
-    if (item.type !== 'session-note') return true;
-    const pid = item.parentEntryId;
-    if (pid) {
-      if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
-      sessionNotesByEntry[pid].push(item);
-    }
-    return false;
-  });
+  const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
 
   if (!items.length) {
     feedEl.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
@@ -383,17 +394,6 @@ function renderLogView(dateKey) {
 
         const notes =
           item.type === 'entry' && item.entryId ? sessionNotesByEntry[item.entryId] || [] : [];
-        const notesHtml = notes.length
-          ? `<ul class="tf-session-notes" aria-label="Session notes">${notes
-              .map(
-                (n) =>
-                  `<li class="tf-session-note">` +
-                  `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
-                  `<span class="tf-sn-text">${n.text}</span>` +
-                  `</li>`
-              )
-              .join('')}</ul>`
-          : '';
 
         return `
           <div class="tf-log-row">
@@ -405,7 +405,7 @@ function renderLogView(dateKey) {
             <div class="tf-log-body">
               <div class="tf-log-text">${item.text}</div>
               <div class="tf-log-sub">${item.sub}</div>
-              ${notesHtml}
+              ${buildSessionNotesHtml(notes)}
             </div>
           </div>`;
       })
