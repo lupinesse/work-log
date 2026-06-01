@@ -180,10 +180,8 @@ function _heroRenderRecentChips() {
         ` data-text="${escHtml(e.text)}" data-tag="${escHtml(e.tag)}"` +
         ` aria-label="Start tracking: ${escHtml(e.text)}">` +
         `&lt;span class="hero-chip-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true">&lt;/span>` +
-        escHtml(e.text) +
-        (isLast
-          ? `&lt;span style="font-size:10px;color:var(--ink-faint);margin-left:2px">← last&lt;/span>`
-          : '') +
+        `&lt;span class="hero-chip-text">${escHtml(e.text)}&lt;/span>` +
+        (isLast ? `&lt;span class="hero-chip-last" aria-hidden="true">← last&lt;/span>` : '') +
         `&lt;/button>` +
         `&lt;/li>`
       );
