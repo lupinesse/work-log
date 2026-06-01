@@ -95,5 +95,6 @@ const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
  * is recorded in the console log via wlLog.info but no UI notification appears.
  * Set to false to disable. Override in 00-config.local.js.
  * @type {boolean}
+ * @default false
  */
 let AUTO_PAUSE_ON_TAB_SWITCH = false;
