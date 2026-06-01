@@ -20,7 +20,8 @@ function render() {
   document.getElementById('prevDay').disabled = false;
   document.getElementById('nextDay').disabled = isToday(viewDate);
   const dateNavWeekEl = document.getElementById('dateNavWeek');
-  if (dateNavWeekEl) dateNavWeekEl.textContent = `Week ${getISOWeek(viewDate)}`;
+  if (dateNavWeekEl)
+    dateNavWeekEl.textContent = `Week ${getISOWeek(viewDate)}/${totalISOWeeks(viewDate.getFullYear())}`;
 
   /* ── 2. Timer bar ── */
   if (!activeTimer) {
