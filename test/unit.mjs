@@ -1551,6 +1551,9 @@ function loadTimeflowSandbox(overrides = {}) {
     document: {
       getElementById: () => null,
     },
+    wlLog: { info: () => {}, warn: () => {}, error: () => {} },
+    safeCssColor: (c) => c,
+    fmtHm: (ts) => String(ts),
     ...overrides,
   };
   vm.createContext(sandbox);
@@ -2931,5 +2934,208 @@ describe('jiraRenderTasks', () => {
     sandbox.jiraSelected = new Set();
     sandbox.jiraRenderTasks();
     assert.ok(!getContainerHtml().includes('background:'));
+  });
+});
+
+// ── buildDailyLogItems — session-note partitioning ───────────────────────────
+
+const dailylogSrc = readFileSync(join(__dirname, '../src/js/18-dailylog.js'), 'utf8');
+
+/**
+ * Minimal VM sandbox for buildDailyLogItems.
+ * @param {object} overrides
+ */
+function loadDailylogSandbox(overrides = {}) {
+  const sb = {
+    entries: [],
+    logNotes: [],
+    planTasks: [],
+    getCat: () => ({ label: 'work', color: '#378ADD' }),
+    escHtml: (s) => String(s),
+    dk: (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    fmtDur: (ms) => `${Math.round(ms / 60000)}m`,
+    sigSymbol: () => '',
+    wlLog: { info: () => {}, warn: () => {}, error: () => {} },
+    renderTodayFlow: () => {},
+    saveLogNotes: () => {},
+    document: { getElementById: () => null },
+    ...overrides,
+  };
+  vm.createContext(sb);
+  vm.runInContext(dailylogSrc, sb);
+  return sb;
+}
+
+describe('buildDailyLogItems — session-note partitioning', () => {
+  const TODAY = '2026-06-01';
+
+  it('emits type "note" for regular log notes', () => {
+    const sb = loadDailylogSandbox();
+    sb.logNotes = [{ id: 'n1', text: 'standup', ts: 1000, date: TODAY, type: 'note' }];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].type, 'note');
+    assert.ok(items[0].text.includes('standup'), 'note text preserved');
+  });
+
+  it('emits type "session-note" with parentEntryId for session notes', () => {
+    const sb = loadDailylogSandbox();
+    sb.logNotes = [
+      {
+        id: 'sn1',
+        text: 'checked logs',
+        ts: 2000,
+        date: TODAY,
+        type: 'session-note',
+        entryId: 'e42',
+      },
+    ];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].type, 'session-note');
+    assert.equal(items[0].parentEntryId, 'e42');
+    assert.equal(items[0].text, 'checked logs');
+  });
+
+  it('does not wrap session-note text in <em>', () => {
+    const sb = loadDailylogSandbox();
+    sb.logNotes = [
+      { id: 'sn2', text: 'raw text', ts: 3000, date: TODAY, type: 'session-note', entryId: 'e1' },
+    ];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.ok(!items[0].text.includes('<em>'), 'no <em> wrapper for session notes');
+  });
+
+  it('wraps regular note text in <em>', () => {
+    const sb = loadDailylogSandbox();
+    sb.logNotes = [{ id: 'n2', text: 'a thought', ts: 4000, date: TODAY, type: 'note' }];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.ok(items[0].text.includes('<em>'), 'regular note wrapped in <em>');
+  });
+
+  it('excludes notes from other days', () => {
+    const sb = loadDailylogSandbox();
+    sb.logNotes = [
+      {
+        id: 'sn3',
+        text: 'yesterday',
+        ts: 5000,
+        date: '2026-05-31',
+        type: 'session-note',
+        entryId: 'e1',
+      },
+    ];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.equal(items.length, 0);
+  });
+
+  it('returns both entry items and session-note items sorted by ts', () => {
+    const sb = loadDailylogSandbox();
+    sb.entries = [{ id: 'e1', text: 'Big task', tag: 'work', ts: 1000, date: TODAY, tsEnd: 5000 }];
+    sb.logNotes = [
+      {
+        id: 'sn1',
+        text: 'progress update',
+        ts: 3000,
+        date: TODAY,
+        type: 'session-note',
+        entryId: 'e1',
+      },
+    ];
+    const items = sb.buildDailyLogItems(TODAY);
+    assert.equal(items.length, 2);
+    assert.equal(items[0].type, 'entry');
+    assert.equal(items[1].type, 'session-note');
+    assert.equal(items[1].parentEntryId, 'e1');
+  });
+});
+
+// ── partitionSessionNotes ────────────────────────────────────────────────────
+
+describe('partitionSessionNotes', () => {
+  it('separates session-notes from regular items', () => {
+    const sb = loadTimeflowSandbox();
+    const allItems = [
+      { type: 'entry', entryId: 'e1', ts: 1000 },
+      { type: 'session-note', parentEntryId: 'e1', ts: 2000 },
+    ];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 1);
+    assert.equal(items[0].type, 'entry');
+    assert.ok(sessionNotesByEntry['e1']);
+    assert.equal(sessionNotesByEntry['e1'].length, 1);
+  });
+
+  it('groups multiple session-notes under the same parent', () => {
+    const sb = loadTimeflowSandbox();
+    const allItems = [
+      { type: 'session-note', parentEntryId: 'e1', ts: 1000 },
+      { type: 'session-note', parentEntryId: 'e1', ts: 2000 },
+    ];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 0);
+    assert.equal(sessionNotesByEntry['e1'].length, 2);
+  });
+
+  it('discards orphaned session-notes (no parentEntryId) and warns', () => {
+    const warnings = [];
+    const sb = loadTimeflowSandbox({
+      wlLog: { info: () => {}, warn: (m) => warnings.push(m), error: () => {} },
+    });
+    const allItems = [{ type: 'session-note', parentEntryId: null, id: 'sn-orphan', ts: 1000 }];
+    const { items, sessionNotesByEntry } = sb.partitionSessionNotes(allItems);
+    assert.equal(items.length, 0);
+    assert.deepEqual(Object.keys(sessionNotesByEntry), []);
+    assert.ok(
+      warnings.some((w) => w.includes('sn-orphan')),
+      'warn logged for orphan'
+    );
+  });
+
+  it('passes non-session-note items through unchanged', () => {
+    const sb = loadTimeflowSandbox();
+    const entry = { type: 'entry', entryId: 'e2', ts: 500 };
+    const note = { type: 'note', ts: 600 };
+    const { items } = sb.partitionSessionNotes([entry, note]);
+    assert.equal(items.length, 2);
+  });
+});
+
+// ── buildSessionNotesHtml ────────────────────────────────────────────────────
+
+describe('buildSessionNotesHtml', () => {
+  it('returns empty string for empty array', () => {
+    const sb = loadTimeflowSandbox();
+    assert.equal(sb.buildSessionNotesHtml([]), '');
+  });
+
+  it('wraps notes in <ul class="tf-session-notes">', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([{ ts: 1000, text: 'hello' }]);
+    assert.ok(html.includes('tf-session-notes'));
+    assert.ok(html.includes('hello'));
+  });
+
+  it('renders one <li> per note', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([
+      { ts: 1000, text: 'first' },
+      { ts: 2000, text: 'second' },
+    ]);
+    const liCount = (html.match(/<li /g) || []).length;
+    assert.equal(liCount, 2);
+  });
+
+  it('includes tf-sn-time and tf-sn-text spans', () => {
+    const sb = loadTimeflowSandbox();
+    const html = sb.buildSessionNotesHtml([{ ts: 9999, text: 'note body' }]);
+    assert.ok(html.includes('tf-sn-time'));
+    assert.ok(html.includes('tf-sn-text'));
+    assert.ok(html.includes('note body'));
   });
 });

@@ -3,10 +3,18 @@
 /**
  * Builds a chronologically sorted array of feed items for the Log view.
  * Merges time entries, log notes, and task status comments for the given day.
- * Entry items include `entryId` so the Today's Flow renderers can look up the
- * underlying entry object for live-timer state.
+ *
+ * Item types:
+ *  - `'entry'`        — a time-tracked entry; includes `entryId`.
+ *  - `'note'`         — a freeform log note; text is wrapped in `<em>`.
+ *  - `'session-note'` — a note attached to a running/completed entry;
+ *                       includes `parentEntryId`. Renderers nest these
+ *                       inside their parent entry row rather than as
+ *                       standalone timeline rows.
+ *  - `'task'`         — a plan-task status comment.
+ *
  * @param {string} dateKey - YYYY-MM-DD date string.
- * @returns {Array<{ts: number, type: string, entryId: (string|undefined), color: string, text: string, sub: string}>}
+ * @returns {Array<{ts: number, type: string, entryId?: string, parentEntryId?: string, color: string, text: string, sub: string}>}
  */
 function buildDailyLogItems(dateKey) {
   const items = [];
@@ -28,13 +36,25 @@ function buildDailyLogItems(dateKey) {
   logNotes
     .filter((n) => n.date === dateKey)
     .forEach((n) => {
-      items.push({
-        ts: n.ts,
-        type: 'note',
-        color: 'var(--bg3)',
-        text: `<em>${escHtml(n.text)}</em>`,
-        sub: 'Note',
-      });
+      if (n.type === 'session-note') {
+        // Session-notes render nested under their parent entry, not as standalone rows.
+        items.push({
+          ts: n.ts,
+          type: 'session-note',
+          parentEntryId: n.entryId,
+          color: 'var(--bg3)',
+          text: escHtml(n.text),
+          sub: '',
+        });
+      } else {
+        items.push({
+          ts: n.ts,
+          type: 'note',
+          color: 'var(--bg3)',
+          text: `<em>${escHtml(n.text)}</em>`,
+          sub: 'Note',
+        });
+      }
     });
 
   planTasks

@@ -376,9 +376,10 @@ setInterval(() => {
 /* ── Banner controls (mood dropdown, note input, utility pills) ── */
 
 /**
- * Logs a quick note appended to the currently-active timer entry's text.
- * The note is saved as a separate time entry with tag inherited from the
- * active task; this keeps the data model simple and preserves timestamps.
+ * Saves a timestamped note attached to the currently-active timer entry.
+ * The note is stored in logNotes (type: 'session-note') and rendered nested
+ * under its parent entry in the flow/log views, rather than as a standalone
+ * time-tracked entry.
  * No-ops when there is no active timer or the note is empty.
  */
 function commitBannerNote() {
@@ -387,16 +388,6 @@ function commitBannerNote() {
   const note = inp.value.trim();
   if (!note || !activeTimer) return;
 
-  const src = entries.find((e) => e.id === activeTimer.entryId);
-  const entry = {
-    id: Date.now() + '',
-    text: note,
-    tag: src ? src.tag : categories[0] ? categories[0].id : 'other',
-    ts: safeRoundedStart(),
-    date: dk(new Date()),
-  };
-  entries.push(entry);
-  // Also record the note in logNotes so the hero card can surface "↳ last note X ago".
   const snTs = Date.now();
   logNotes.push({
     id: snTs + '-sn',
@@ -407,7 +398,6 @@ function commitBannerNote() {
     entryId: activeTimer.entryId,
   });
   saveLogNotes();
-  save();
   inp.value = '';
   render();
   renderHeroCard();

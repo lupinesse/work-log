@@ -263,6 +263,34 @@
   margin-top: 2px;
 }
 
+.tf-session-notes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 8px;
+  border-left: 2px solid var(--border2);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tf-session-note {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 11px;
+}
+
+.tf-sn-time {
+  font-family: var(--mono);
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+.tf-sn-text {
+  color: var(--text2);
+  line-height: 1.4;
+}
+
 // ── Log view ────────────────────────────────────────────────────────────────
 
 .tf-log-feed {
