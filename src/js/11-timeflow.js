@@ -268,7 +268,21 @@ function renderFlowView(dateKey) {
   const el = document.getElementById('tfFlowPane');
   if (!el) return;
 
-  const items = buildDailyLogItems(dateKey);
+  const allItems = buildDailyLogItems(dateKey);
+
+  // Partition session-notes by parent entry id — they render nested inside
+  // the parent row rather than as standalone timeline entries.
+  const sessionNotesByEntry = {};
+  const items = allItems.filter((item) => {
+    if (item.type !== 'session-note') return true;
+    const pid = item.parentEntryId;
+    if (pid) {
+      if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
+      sessionNotesByEntry[pid].push(item);
+    }
+    return false;
+  });
+
   if (!items.length) {
     el.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
     return;
@@ -297,6 +311,19 @@ function renderFlowView(dateKey) {
       // Strip height scales with duration; non-entry items (notes, tasks) get a fixed height
       const stripH = item.type === 'entry' ? Math.max(64, Math.round(0.6 * durationMin)) : 40;
 
+      const notes = entryObj ? sessionNotesByEntry[entryObj.id] || [] : [];
+      const notesHtml = notes.length
+        ? `<ul class="tf-session-notes" aria-label="Session notes">${notes
+            .map(
+              (n) =>
+                `<li class="tf-session-note">` +
+                `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
+                `<span class="tf-sn-text">${n.text}</span>` +
+                `</li>`
+            )
+            .join('')}</ul>`
+        : '';
+
       return `
         <div class="tf-flow-row${isLive ? ' live' : ''}">
           <div class="tf-flow-time">
@@ -309,6 +336,7 @@ function renderFlowView(dateKey) {
           <div class="tf-flow-body" style="min-height:${stripH}px">
             <div class="tf-flow-text">${item.text}</div>
             <div class="tf-flow-sub">${item.sub}</div>
+            ${notesHtml}
           </div>
         </div>`;
     })
@@ -326,7 +354,21 @@ function renderLogView(dateKey) {
   const feedEl = document.getElementById('tfLogFeed');
   if (!feedEl) return;
 
-  const items = buildDailyLogItems(dateKey);
+  const allItems = buildDailyLogItems(dateKey);
+
+  // Partition session-notes by parent entry id — they render nested inside
+  // the parent row rather than as standalone timeline entries.
+  const sessionNotesByEntry = {};
+  const items = allItems.filter((item) => {
+    if (item.type !== 'session-note') return true;
+    const pid = item.parentEntryId;
+    if (pid) {
+      if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
+      sessionNotesByEntry[pid].push(item);
+    }
+    return false;
+  });
+
   if (!items.length) {
     feedEl.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
   } else {
@@ -339,6 +381,20 @@ function renderLogView(dateKey) {
           ? `<span class="tf-log-dot live" aria-hidden="true"></span>`
           : `<span class="tf-log-dot" style="border-color:${safeCssColor(item.color)}" aria-hidden="true"></span>`;
 
+        const notes =
+          item.type === 'entry' && item.entryId ? sessionNotesByEntry[item.entryId] || [] : [];
+        const notesHtml = notes.length
+          ? `<ul class="tf-session-notes" aria-label="Session notes">${notes
+              .map(
+                (n) =>
+                  `<li class="tf-session-note">` +
+                  `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
+                  `<span class="tf-sn-text">${n.text}</span>` +
+                  `</li>`
+              )
+              .join('')}</ul>`
+          : '';
+
         return `
           <div class="tf-log-row">
             <div class="tf-log-time"><span class="tf-log-hm">${startLabel}</span></div>
@@ -349,6 +405,7 @@ function renderLogView(dateKey) {
             <div class="tf-log-body">
               <div class="tf-log-text">${item.text}</div>
               <div class="tf-log-sub">${item.sub}</div>
+              ${notesHtml}
             </div>
           </div>`;
       })

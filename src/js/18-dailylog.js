@@ -28,13 +28,25 @@ function buildDailyLogItems(dateKey) {
   logNotes
     .filter((n) => n.date === dateKey)
     .forEach((n) => {
-      items.push({
-        ts: n.ts,
-        type: 'note',
-        color: 'var(--bg3)',
-        text: `<em>${escHtml(n.text)}</em>`,
-        sub: 'Note',
-      });
+      if (n.type === 'session-note') {
+        // Session-notes render nested under their parent entry, not as standalone rows.
+        items.push({
+          ts: n.ts,
+          type: 'session-note',
+          parentEntryId: n.entryId,
+          color: 'var(--bg3)',
+          text: escHtml(n.text),
+          sub: '',
+        });
+      } else {
+        items.push({
+          ts: n.ts,
+          type: 'note',
+          color: 'var(--bg3)',
+          text: `<em>${escHtml(n.text)}</em>`,
+          sub: 'Note',
+        });
+      }
     });
 
   planTasks
