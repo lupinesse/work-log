@@ -17,6 +17,7 @@
 - **Docs-only PRs skip the AI review dialogue** — `chatgpt-pr-review.yml` and `pr-review.yml` now detect PRs that only change documentation files (`.md`, `.txt`, `.rst`, `LICENSE`, `CODEOWNERS`) and exit early without calling any AI, saving API credits.
 - **`pr-review.yml` max-turns reduced 8 → 4** — the standalone Claude review rarely needs more than 4 turns to read the diff and produce a verdict.
 - **Removed `anthropic-beta: prompt-caching-2024-07-31` header** — prompt caching is now GA; the beta header is no longer required.
+- **`weekly-qa-review.yml` renamed to "QA Review"** — the workflow no longer runs on a weekly cron; the name "Weekly" was misleading.
 
 ### Fixed
 - **Jira category dot colour sanitised** — `jiraRenderTasks` in `14-jira.js` now wraps `cat.color` with `safeCssColor()` instead of `escHtml()`, preventing a stored colour value from injecting arbitrary CSS into the `style` attribute. This was the one instance missed by the earlier `safeCssColor` rollout.
