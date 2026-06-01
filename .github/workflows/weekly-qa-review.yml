@@ -1,6 +1,6 @@
-name: Weekly QA Review
+name: QA Review
 
-# Runs the /qa-review skill once a week and commits the dated report
+# Runs the /qa-review skill on demand and commits the dated report
 # to docs/qa-reports/ so quality is tracked over time.
 
 on:
