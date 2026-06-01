@@ -96,4 +96,4 @@ const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
  * Set to false to disable. Override in 00-config.local.js.
  * @type {boolean}
  */
-const AUTO_PAUSE_ON_TAB_SWITCH = true;
+let AUTO_PAUSE_ON_TAB_SWITCH = false;
