@@ -711,25 +711,19 @@ function patchCarriedTasks() {
       .sort((a, b) => b.date.localeCompare(a.date))[0];
     if (!prev) return;
 
-    // If the most recent past version was pending/blocked, carry that status forward
-    // regardless of what intermediate copies were (fixes: marked upcoming on Friday
-    // but Saturday/Sunday copies were already todo)
-    if (
-      (prev.status === 'pending' || prev.status === 'blocked' || prev.status === 'upcoming') &&
-      (todayTask.status === 'todo' || todayTask.status === 'inprogress')
-    ) {
-      todayTask.status = prev.status;
-      if (prev.statusComments && prev.statusComments.length && !todayTask.statusComments) {
-        todayTask.statusComments = prev.statusComments.map((c) => ({ ...c }));
-      }
-      changed = true;
-    }
+    const newStatus = resolveCarryStatus(todayTask, prev);
+    if (newStatus === null) return;
 
-    // Only promote todo→inprogress if the most recent past version was inprogress
-    if (todayTask.status === 'todo' && prev.status === 'inprogress') {
-      todayTask.status = 'inprogress';
-      changed = true;
+    todayTask.status = newStatus;
+    if (
+      ['pending', 'blocked', 'upcoming'].includes(newStatus) &&
+      prev.statusComments &&
+      prev.statusComments.length &&
+      !todayTask.statusComments
+    ) {
+      todayTask.statusComments = prev.statusComments.map((c) => ({ ...c }));
     }
+    changed = true;
   });
 
   if (changed) savePlan();

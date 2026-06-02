@@ -37,6 +37,7 @@ const {
   buildBillableSummaryParts,
   computeDayBounds,
   formatGroupedLines,
+  resolveCarryStatus,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -2362,6 +2363,112 @@ describe('writeCollapseState', () => {
   });
 });
 
+// ── 07-lifecycle.js — ensureDayStarted ───────────────────────────────────────
+// We extract the SOD helper block (sodKey, getDayStart, renderSodBtn,
+// ensureDayStarted) by slicing up to the first module-level DOM listener so we
+// can test without stubbing the full browser environment.
+
+/**
+ * Evaluates the SOD helper block from 07-lifecycle.js in a minimal VM sandbox.
+ * @param {object} [opts]
+ * @param {Record<string,string>} [opts.preloaded] - Initial localStorage contents.
+ * @returns {{ ensureDayStarted: Function, getDayStart: Function, store: Record<string,string>, calls: { renderSodBtn: number, renderTimeblock: number } }}
+ */
+function loadSodSandbox({ preloaded = {} } = {}) {
+  const store = { ...preloaded };
+  const calls = { renderSodBtn: 0, renderTimeblock: 0 };
+  const fakeEl = { textContent: '', appendChild: () => {}, setAttribute: () => {} };
+  const sandbox = {
+    dk: pureFns.dk,
+    localStorage: {
+      getItem: (key) => (key in store ? store[key] : null),
+      setItem: (key, value) => {
+        store[key] = String(value);
+      },
+    },
+    document: {
+      getElementById: () => fakeEl,
+      createElement: () => ({ className: '', setAttribute: () => {} }),
+      createTextNode: () => ({}),
+    },
+    // renderTimeblock is not declared by the vm script so this property survives.
+    renderTimeblock: () => {
+      calls.renderTimeblock++;
+    },
+  };
+  // Extract from start of file up to (not including) the module-level sodBtn
+  // click listener so no DOM event is attached during evaluation.
+  const cutIdx = lifecycleSrc.indexOf("document.getElementById('sodBtn').addEventListener");
+  if (cutIdx === -1) throw new Error('Could not locate sodBtn listener in 07-lifecycle.js');
+  vm.createContext(sandbox);
+  vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
+  // renderSodBtn was defined by the vm script (function declaration). Replace
+  // the sandbox property with a spy — mutations to the sandbox object are
+  // visible as global-scope changes inside the vm context, so subsequent calls
+  // from ensureDayStarted will invoke the spy.
+  sandbox.renderSodBtn = () => {
+    calls.renderSodBtn++;
+  };
+  return {
+    ensureDayStarted: sandbox.ensureDayStarted,
+    getDayStart: sandbox.getDayStart,
+    store,
+    calls,
+  };
+}
+
+describe('ensureDayStarted', () => {
+  it('records SOD in localStorage when day is not started', () => {
+    const before = Date.now();
+    const { ensureDayStarted, store } = loadSodSandbox();
+    ensureDayStarted();
+    const key = Object.keys(store).find((k) => k.startsWith('wl_sod_'));
+    assert.ok(key, 'wl_sod_ key should be written');
+    const ts = parseInt(store[key]);
+    assert.ok(ts >= before && ts <= Date.now(), 'stored timestamp should be approximately now');
+  });
+
+  it('calls renderSodBtn after recording SOD', () => {
+    const { ensureDayStarted, calls } = loadSodSandbox();
+    ensureDayStarted();
+    assert.equal(calls.renderSodBtn, 1);
+  });
+
+  it('calls renderTimeblock after recording SOD', () => {
+    const { ensureDayStarted, calls } = loadSodSandbox();
+    ensureDayStarted();
+    assert.equal(calls.renderTimeblock, 1);
+  });
+
+  it('is idempotent: does not overwrite SOD when already started', () => {
+    const todayKey = pureFns.dk(new Date());
+    const existing = '1000000000000';
+    const { ensureDayStarted, store } = loadSodSandbox({
+      preloaded: { ['wl_sod_' + todayKey]: existing },
+    });
+    ensureDayStarted();
+    assert.equal(store['wl_sod_' + todayKey], existing, 'SOD timestamp must not be overwritten');
+  });
+
+  it('does not call renderSodBtn when day is already started', () => {
+    const todayKey = pureFns.dk(new Date());
+    const { ensureDayStarted, calls } = loadSodSandbox({
+      preloaded: { ['wl_sod_' + todayKey]: '1000000000000' },
+    });
+    ensureDayStarted();
+    assert.equal(calls.renderSodBtn, 0);
+  });
+
+  it('does not call renderTimeblock when day is already started', () => {
+    const todayKey = pureFns.dk(new Date());
+    const { ensureDayStarted, calls } = loadSodSandbox({
+      preloaded: { ['wl_sod_' + todayKey]: '1000000000000' },
+    });
+    ensureDayStarted();
+    assert.equal(calls.renderTimeblock, 0);
+  });
+});
+
 // ── 08-pomodoro.js — pomoAffirmation / pomoAddTime / pomoTapOut ───────────────
 // Functions under test close over `let` state variables (pomoTotal, pomoLeft,
 // pomoRunning) that are declared in the pomodoro source.  We work around this
@@ -3145,4 +3252,54 @@ describe('buildSessionNotesHtml', () => {
     assert.ok(html.includes('tf-sn-text'));
     assert.ok(html.includes('note body'));
   });
+});
+
+// ── resolveCarryStatus ────────────────────────────────────────────────────────
+describe('resolveCarryStatus', () => {
+  const prev = (status, date = '2026-01-01') => ({ status, date, text: 'Task' });
+  const today = (status) => ({ status, text: 'Task' });
+
+  // ── pending / blocked: override todo or inprogress ──
+  it('pending prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('pending')), 'pending'));
+
+  it('pending prev overrides inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('pending')), 'pending'));
+
+  it('blocked prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('blocked')), 'blocked'));
+
+  it('blocked prev overrides inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('blocked')), 'blocked'));
+
+  // ── upcoming: only overrides todo, NOT inprogress (bug-fix guard) ──
+  it('upcoming prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('upcoming')), 'upcoming'));
+
+  it('upcoming prev does NOT override inprogress today', () =>
+    assert.equal(
+      resolveCarryStatus(today('inprogress'), prev('upcoming')),
+      null,
+      'should not revert an inprogress task to upcoming on reload'
+    ));
+
+  // ── inprogress promotion ──
+  it('inprogress prev promotes todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('inprogress')), 'inprogress'));
+
+  it('inprogress prev does not touch inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('inprogress')), null));
+
+  // ── no-change cases ──
+  it('returns null when prev is done', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('done')), null));
+
+  it('returns null when today is done', () =>
+    assert.equal(resolveCarryStatus(today('done'), prev('pending')), null));
+
+  it('returns null when today is pending and prev is pending', () =>
+    assert.equal(resolveCarryStatus(today('pending'), prev('pending')), null));
+
+  it('returns null when today is upcoming', () =>
+    assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
 });

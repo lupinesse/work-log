@@ -41,6 +41,18 @@ function renderSodBtn() {
   }
 }
 
+/**
+ * Records start-of-day silently (no backup-restore dialog) if the day has not
+ * already been started. Called automatically when the first task timer begins.
+ * @returns {void}
+ */
+function ensureDayStarted() {
+  if (getDayStart()) return;
+  localStorage.setItem(sodKey(), String(Date.now()));
+  renderSodBtn();
+  renderTimeblock();
+}
+
 document.getElementById('sodBtn').addEventListener('click', () => {
   const existing = getDayStart();
   if (existing) {
