@@ -5,14 +5,13 @@
   margin-left: 4px;
 }
 
-/* ── TIME LOG inline ad-hoc entry row ── */
+/* ── TIME LOG inline ad-hoc entry row — pinned at the bottom of the Log view ── */
 .tl-adhoc-row {
   display: flex;
   gap: 6px;
   align-items: center;
   padding: 6px 8px 4px;
-  border-bottom: 0.5px solid var(--border);
-  margin-bottom: 4px;
+  border-top: 0.5px solid var(--border);
 }
 
 .tl-adhoc-input {

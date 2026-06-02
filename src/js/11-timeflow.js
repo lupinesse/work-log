@@ -14,23 +14,28 @@ const TF_STRIP_START = 7 * 60;
 const TF_STRIP_END = 21 * 60;
 
 /** Ordered list of view ids — drives the segmented control and keyboard nav. */
-const TF_VIEWS = ['flow', 'log', 'blocks'];
+const TF_VIEWS = ['flow', 'log', 'blocks', 'month'];
 
 /** Display labels for the segmented control. Static so we avoid recomputing on every render. */
-const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks' };
+const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks', month: 'Month' };
 
 /** Maps each view to the DOM id of the pane that hosts it. */
-const TF_PANE_IDS = { flow: 'tfFlowPane', log: 'tfLogPane', blocks: 'tfBlocksPane' };
+const TF_PANE_IDS = {
+  flow: 'tfFlowPane',
+  log: 'tfLogPane',
+  blocks: 'tfBlocksPane',
+  month: 'monthlyLogSection',
+};
 
 // ─────────────────────────── view preference ───────────────────────────
 
 /**
  * Returns the persisted view preference, defaulting to 'flow'.
- * @returns {'flow'|'log'|'blocks'}
+ * @returns {'flow'|'log'|'blocks'|'month'}
  */
 function getFlowView() {
   const stored = localStorage.getItem(STORE_FLOW_VIEW);
-  return stored === 'log' || stored === 'blocks' ? stored : 'flow';
+  return stored === 'log' || stored === 'blocks' || stored === 'month' ? stored : 'flow';
 }
 
 /**
@@ -367,60 +372,11 @@ function renderFlowView(dateKey) {
     .join('');
 }
 
-// ─────────────────────────── Log view ───────────────────────────
-
-/**
- * Renders the Log view: a compact timeline with a vertical rail and circle markers.
- * Notes input is shown for today only.
- * @param {string} dateKey
- */
-function renderLogView(dateKey) {
-  const feedEl = document.getElementById('tfLogFeed');
-  if (!feedEl) return;
-
-  const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
-
-  if (!items.length) {
-    feedEl.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
-  } else {
-    feedEl.innerHTML = items
-      .map((item, i) => {
-        const startLabel = fmtHm(item.ts);
-        const isLive = item.type === 'entry' && activeTimer && item.entryId === activeTimer.entryId;
-
-        const dot = isLive
-          ? `<span class="tf-log-dot live" aria-hidden="true"></span>`
-          : `<span class="tf-log-dot" style="border-color:${safeCssColor(item.color)}" aria-hidden="true"></span>`;
-
-        const notes =
-          item.type === 'entry' && item.entryId ? sessionNotesByEntry[item.entryId] || [] : [];
-
-        return `
-          <div class="tf-log-row">
-            <div class="tf-log-time"><span class="tf-log-hm">${startLabel}</span></div>
-            <div class="tf-log-dot-col">
-              ${dot}
-              ${i < items.length - 1 ? '<div class="tf-log-line"></div>' : ''}
-            </div>
-            <div class="tf-log-body">
-              <div class="tf-log-text">${item.text}</div>
-              <div class="tf-log-sub">${item.sub}</div>
-              ${buildSessionNotesHtml(notes)}
-            </div>
-          </div>`;
-      })
-      .join('');
-  }
-
-  const noteRow = document.getElementById('dailyLogNoteRow');
-  if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
-}
-
 // ─────────────────────────── main render ───────────────────────────
 
 /**
  * Renders the Today's Flow section: header, day-overview strip, gap reminder,
- * and the active view pane (Flow / Log / Blocks).
+ * and the active view pane (Flow / Log / Blocks / Month).
  * Called from render() on every state change and when the view toggle fires.
  */
 function renderTodayFlow() {
@@ -428,8 +384,18 @@ function renderTodayFlow() {
   const activeView = getFlowView();
 
   renderFlowHeader(dateKey, activeView);
-  renderDayStrip(dateKey);
-  renderGapReminder(dateKey);
+
+  // Day strip and gap reminder are hidden in Month view
+  const stripWrap = document.querySelector('.tf-day-strip-wrap');
+  const gapEl = document.getElementById('tfGapReminder');
+  const hideStripAndGap = activeView === 'month';
+  if (stripWrap) stripWrap.style.display = hideStripAndGap ? 'none' : '';
+  if (!hideStripAndGap) {
+    renderDayStrip(dateKey);
+    renderGapReminder(dateKey);
+  } else if (gapEl) {
+    gapEl.style.display = 'none';
+  }
 
   Object.entries(TF_PANE_IDS).forEach(([view, id]) => {
     const pane = document.getElementById(id);
@@ -437,8 +403,11 @@ function renderTodayFlow() {
   });
 
   if (activeView === 'flow') renderFlowView(dateKey);
-  else if (activeView === 'log') renderLogView(dateKey);
-  else renderTimeblock(); // blocks: delegate to existing timeblock renderer
+  else if (activeView === 'log') {
+    const noteRow = document.getElementById('dailyLogNoteRow');
+    if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
+  } else if (activeView === 'blocks') renderTimeblock();
+  else if (activeView === 'month') renderMonthlyLog();
 }
 
 /**
@@ -482,6 +451,11 @@ function initTodayFlow() {
     const btn = e.target.closest('.tf-seg-btn');
     if (!btn) return;
     setFlowView(btn.dataset.view);
+    // Sync month calendar to viewDate when entering Month tab
+    if (btn.dataset.view === 'month') {
+      _mlYear = viewDate.getFullYear();
+      _mlMonth = viewDate.getMonth();
+    }
     renderTodayFlow();
   });
 

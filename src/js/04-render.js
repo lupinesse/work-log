@@ -156,11 +156,7 @@ function render() {
   const list = viewEntries();
   const timelineEl = document.getElementById('timeline');
 
-  const mlActive = document.getElementById('monthlyLogSection')?.style.display !== 'none';
-  const timelogIcon = `<span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.88"/></svg></span>`;
-  const logHeader = `<div class="timelog-header">${timelogIcon}<span class="plan-header-title">time log</span><div class="timelog-tabs"><button class="tab-btn${mlActive ? ' active' : ''}" id="tabMonthlyLog">Monthly Log</button></div></div>`;
-
-  // Ad-hoc inline log row — shown only when viewing today
+  // Ad-hoc inline log row — shown only when viewing today, pinned at the bottom
   const adHocRow = isToday(viewDate)
     ? `<div class="tl-adhoc-row">
          <input class="tl-adhoc-input" id="tlAdHocInput"
@@ -173,14 +169,14 @@ function render() {
   // Empty state: render sub-components (plan, timeblock) and bail out early
   if (!list.length) {
     timelineEl.innerHTML =
-      logHeader +
-      adHocRow +
       '<div class="empty-state">' +
       (isToday(viewDate)
-        ? 'nothing logged yet — type something above.'
+        ? 'nothing logged yet — type something below.'
         : 'nothing was logged on this day.') +
-      '</div>';
-    document.getElementById('chart').innerHTML = '';
+      '</div>' +
+      adHocRow;
+    const chartEl = document.getElementById('chart');
+    if (chartEl) chartEl.innerHTML = '';
     renderQuickPick();
     renderPlan();
     renderCompleted();
@@ -188,10 +184,8 @@ function render() {
     renderTrackers();
     return;
   }
-  // Build entry row HTML — one <div class="entry"> per log entry
+  // Build entry row HTML — one <div class="entry"> per log entry; ad-hoc row pinned at bottom
   timelineEl.innerHTML =
-    logHeader +
-    adHocRow +
     list
       .map((e) => {
         const isTiming = activeTimer && activeTimer.entryId === e.id;
@@ -249,7 +243,7 @@ function render() {
           <button class="edel" data-id="${e.id}" title="delete">&times;</button>
         </div>`;
       })
-      .join('');
+      .join('') + adHocRow;
 
   /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
 
@@ -450,7 +444,6 @@ function render() {
   renderPlan();
   renderCompleted();
   renderTodayFlow();
-  if (document.getElementById('monthlyLogSection')?.style.display !== 'none') renderMonthlyLog();
   renderTrackers();
 }
 
@@ -544,6 +537,7 @@ function renderQuickPick() {
  */
 function renderChart(list) {
   const el = document.getElementById('chart');
+  if (!el) return;
   // Decorate the active timer's entry with a synthetic tsEnd so its accumulated
   // time appears in the chart in (near) real time — not just after the timer stops.
   // Re-runs naturally on every render; a 15-min interval also forces a refresh.

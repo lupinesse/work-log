@@ -280,8 +280,6 @@
 <div id="quickPick" style="display:none"></div>
 <div class="tag-row" id="tagRow" style="display:none"></div>
 
-<div id="timeline"></div>
-<div id="chart"></div>
 <div id="distractionSection" style="margin-top:10px"></div>
 
 <div id="parkSection" style="display:none" class="park-section">
@@ -317,9 +315,9 @@
        since it has no focusable children (WCAG 2.1.1) -->
   <div class="tf-pane" id="tfFlowPane" role="tabpanel" aria-labelledby="tfTab-flow" tabindex="0"></div>
 
-  <!-- Log view pane -->
+  <!-- Log view pane — contains the editable #timeline (relocated from top-level) -->
   <div class="tf-pane" id="tfLogPane" role="tabpanel" aria-labelledby="tfTab-log" tabindex="0" style="display:none">
-    <div class="tf-log-feed" id="tfLogFeed"></div>
+    <div id="timeline"></div>
     <div class="capture-row" id="dailyLogNoteRow" style="display:none">
       <label for="dailyLogNoteInput" class="sr-only">Add a note to today&#39;s log</label>
       <input class="capture-input" id="dailyLogNoteInput"
