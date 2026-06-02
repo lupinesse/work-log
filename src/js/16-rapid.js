@@ -7,7 +7,7 @@
 // "Log without tracking" either commits typed text as a log entry or
 // redirects to the ad-hoc row in the time log when input is empty.
 
-/** @type {boolean} Whether the quick-capture overlay is currently visible. */
+/** @type {boolean} */
 let _rapidOpen = false;
 
 /**
@@ -19,10 +19,10 @@ let _rapidOpen = false;
  */
 let _qcFilterCat = null;
 
-/** @type {string} Current text in the search/filter input. */
+/** @type {string} */
 let _qcSearch = '';
 
-/** @type {number|null} setInterval handle for the running-strip elapsed ticker. */
+/** @type {number|null} */
 let _qcTickInterval = null;
 
 // ── Open / close ─────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ function _qcLogOnly() {
     parsed.tag || _qcFilterCat || selectedTag || (categories[0] && categories[0].id) || 'other';
   const entryDate = parsed.date || dk(new Date());
 
-  /** @type {Object} New log entry; flagged uncategorised when neither a token nor a chip provided a category. */
+  /** @type {Object} */
   const entry = {
     id: Date.now() + '',
     text: parsed.text,
