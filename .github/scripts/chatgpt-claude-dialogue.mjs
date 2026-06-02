@@ -18,10 +18,10 @@
  *   HEAD_SHA           Head SHA of the PR
  *
  * Optional env vars:
- *   MODEL                default 'gpt-4o-2024-08-06'
+ *   MODEL                default 'gpt-4o-mini'
  *   MAX_DIFF_CHARS       default 25000
- *   MAX_TOKENS           default 8192
- *   MAX_CONTEXT_CHARS    default 3000 — cap on synthesis + final-review context
+ *   MAX_TOKENS           default 3072
+ *   MAX_CONTEXT_CHARS    default 3000 — cap on the final-review context block
  *   DIFF_PATH            default 'pr.diff'
  */
 
@@ -63,9 +63,9 @@ const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
-const MODEL = process.env.MODEL || 'gpt-4o-2024-08-06';
+const MODEL = process.env.MODEL || 'gpt-4o-mini';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '25000', 10);
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '8192', 10);
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '3072', 10);
 const MAX_CONTEXT_CHARS = parseInt(process.env.MAX_CONTEXT_CHARS || '3000', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
@@ -210,24 +210,17 @@ async function fetchClaudeContext() {
  * @returns {Promise<string>} Raw text response.
  */
 async function callOpenAI(diff, claudeContext) {
-  const { synthesis, finalReview, threads } = claudeContext;
+  const { finalReview, threads } = claudeContext;
 
-  // Build the context block shown to ChatGPT — include whatever is available.
-  // The threads block is the dedup signal (each thread is indexed so the model
-  // can reply to it instead of opening a new one).
+  // Build the context block shown to ChatGPT.
+  // Thread replies already carry Claude's full verdict body (up to 400 chars
+  // each), so the Phase 2 synthesis is redundant here — omitting it saves
+  // tokens without losing signal. Only the final /pr-review verdict is
+  // included as supplementary context.
   const contextBlocks = [];
   contextBlocks.push(
     `**All existing review threads on this PR (each shows path:line, author, resolution state, the original finding, and any replies including Claude's verdict emoji):**\n\n${formatThreadsForPrompt(threads)}`
   );
-  if (synthesis) {
-    const truncatedSynthesis =
-      synthesis.length > MAX_CONTEXT_CHARS
-        ? synthesis.slice(0, MAX_CONTEXT_CHARS) + '\n\n[truncated]'
-        : synthesis;
-    contextBlocks.push(
-      `**Claude's synthesis (Phase 2 — response to your Phase 1 threads):**\n\n${truncatedSynthesis}`
-    );
-  }
   if (finalReview) {
     const truncatedFinalReview =
       finalReview.length > MAX_CONTEXT_CHARS
@@ -330,8 +323,12 @@ async function main() {
   }
 
   const claudeContext = await fetchClaudeContext();
-  if (!claudeContext.synthesis && !claudeContext.finalReview) {
-    console.log('  No Claude comments found (synthesis or /pr-review) — skipping.');
+  if (!claudeContext.finalReview) {
+    console.log('  No Claude /pr-review verdict found — skipping.');
+    return;
+  }
+  if (claudeContext.threads.length === 0) {
+    console.log('  No review threads on PR — nothing to reply to.');
     return;
   }
   const rejected = claudeContext.threads.filter(
