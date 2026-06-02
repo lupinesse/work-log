@@ -69,7 +69,7 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: ${{ secrets.CLAUDE_REVIEWER_APP_ID != '' }}
+        if: secrets.CLAUDE_REVIEWER_APP_ID != ''
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
