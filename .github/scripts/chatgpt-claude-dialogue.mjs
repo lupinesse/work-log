@@ -324,7 +324,9 @@ async function main() {
 
   const claudeContext = await fetchClaudeContext();
   if (!claudeContext.finalReview) {
-    console.log('  No Claude /pr-review verdict found — skipping.');
+    console.log(
+      '  No Claude /pr-review verdict (Phase 3) found — skipping; synthesis alone is not enough for Phase 4.'
+    );
     return;
   }
   if (claudeContext.threads.length === 0) {
