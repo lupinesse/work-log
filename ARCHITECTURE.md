@@ -1,4 +1,4 @@
-# Work Log Architecture
+﻿# Work Log Architecture
 
 <!-- Design certificate -->
 | Field | Value |
@@ -166,7 +166,7 @@ Started: 08:45 | Ended: 17:30 | Workday: 8h 45min
 ...
 ```
 
-Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`) live in `00-pure-fns.js` and are unit-tested there.
+Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`) live in `pure-fns.js` and are unit-tested there.
 
 ---
 
@@ -301,7 +301,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (929 lines) — Task Management
+#### **10-tasks.js** (142 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -334,7 +334,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (730 lines) — Visual Time Grid
+#### **11-timeblock.js** (1 050 lines) — Visual Time Grid
 **Responsibility**: 8:00–18:00 grid view for planning
 
 **Features**:
@@ -720,8 +720,8 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (311 tests via Node assert):
-- `test/unit.cjs` — 42 describe blocks covering pure functions in `00-pure-fns.js`, `validateBackupFile`, schema migrations; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
+**Unit Tests** (397 tests via Node assert):
+- `test/unit.mjs` — 57 suites covering pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
 
 **Smoke Tests** (272 tests via Playwright):
 - Load test: Verify no JS errors
