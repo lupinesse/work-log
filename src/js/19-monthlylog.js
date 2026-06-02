@@ -1,8 +1,10 @@
 // ── 19-monthlylog.js — Monthly Log heatmap + task inventory ──
 
-let _mlYear = new Date().getFullYear();
-let _mlMonth = new Date().getMonth(); // 0-indexed
-let _mlActive = false;
+// eslint-disable-next-line no-var -- var (not let): 11-timeflow.js loads before this module
+// and reads these at runtime; let would cause a temporal dead zone ReferenceError.
+var _mlYear = new Date().getFullYear(); // eslint-disable-line no-var
+var _mlMonth = new Date().getMonth(); // eslint-disable-line no-var -- 0-indexed
+var _mlActive = false; // eslint-disable-line no-var
 
 /**
  * Returns the number of days in a given month.
@@ -111,13 +113,13 @@ function renderMonthlyCalendar(calEl, year, month) {
         .join('')}
     </div>`;
 
-  // Cell click → navigate to that day and close the monthly log
+  // Cell click → navigate to that day and switch to the Log view
   calEl.querySelectorAll('.ml-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
       wlLog.info('monthlyLog: cell clicked, navigating', { dateKey: cell.dataset.date });
       viewDate = new Date(cell.dataset.date + 'T12:00:00');
-      document.getElementById('monthlyLogSection').style.display = 'none';
       _mlActive = false;
+      setFlowView('log');
       render();
     });
   });
@@ -256,26 +258,12 @@ function renderMonthlyLog() {
 
 /**
  * Bootstraps the Monthly Log feature.
- * Uses event delegation on `document` to handle clicks on the tab button
- * (which is rebuilt by render() and cannot be bound directly). Toggles the
- * section visibility and syncs the heatmap to the currently viewed month.
- * Called once on DOMContentLoaded.
+ * The Monthly Log is now the "Month" tab in Today's Flow; its visibility and
+ * rendering are driven by renderTodayFlow(). Month sync happens in initTodayFlow()
+ * when the Month tab is clicked. This function is kept as a no-op so the call
+ * site in 07-lifecycle.js does not need to change.
  * @returns {void}
  */
 function initMonthlyLog() {
-  // Button lives inside tl.innerHTML (rebuilt on every render) — use delegation
-  document.addEventListener('click', (e) => {
-    if (e.target.id !== 'tabMonthlyLog') return;
-    _mlActive = !_mlActive;
-    wlLog.info('monthlyLog: section toggled', { active: _mlActive });
-    const section = document.getElementById('monthlyLogSection');
-    if (section) section.style.display = _mlActive ? '' : 'none';
-    if (_mlActive) {
-      // Sync to viewed month when opening
-      _mlYear = viewDate.getFullYear();
-      _mlMonth = viewDate.getMonth();
-      renderMonthlyLog();
-    }
-    render();
-  });
+  // no-op: see initTodayFlow() in 11-timeflow.js
 }

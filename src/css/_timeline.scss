@@ -356,10 +356,20 @@
   pointer-events: none;
 }
 
-/* scrollable timeline */
+/* scrollable timeline — standalone position */
 #timeline {
   max-height: 400px;
   overflow-y: auto;
+}
+
+/* Inside the Log pane the pane itself provides the container; shed the
+   standalone border, scroll cap, and bottom margin. */
+#tfLogPane #timeline {
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  max-height: none;
+  margin-bottom: 0;
 }
 
 #timeline::-webkit-scrollbar {

@@ -2086,15 +2086,23 @@ async function runTests() {
     await page.waitForSelector('.tf-seg-btn[data-view="log"]');
     await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
     await page.waitForSelector('#tfLogPane:visible');
-    const html = await page.evaluate(() => document.getElementById('tfLogFeed').innerHTML);
-    assert('Daily Log renders entry', html.includes('Deep work'), 'entry text not found in feed');
+    // Entries now live in #timeline inside #tfLogPane
+    const html = await page.evaluate(() => document.getElementById('timeline').innerHTML);
+    assert(
+      'Daily Log renders entry',
+      html.includes('Deep work'),
+      'entry text not found in timeline'
+    );
     // Add a note via the programmatic helper
     await page.evaluate(() => {
       document.getElementById('dailyLogNoteInput').value = 'remembered to call back';
       window.__wl.addLogNote();
     });
-    const noteHtml = await page.evaluate(() => document.getElementById('tfLogFeed').innerHTML);
-    assert('Daily Log renders note', noteHtml.includes('remembered to call back'));
+    // Notes appear in the Flow view (renderFlowView uses buildDailyLogItems which includes session notes)
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="flow"]')?.click());
+    await page.waitForSelector('#tfFlowPane:visible');
+    const noteHtml = await page.evaluate(() => document.getElementById('tfFlowPane').innerHTML);
+    assert('Daily Log renders note in Flow view', noteHtml.includes('remembered to call back'));
     const noteCount = await page.evaluate(() => window.__wl.getState().logNotes.length);
     assert('Log note persisted to state', noteCount === 1, `got ${noteCount}`);
     await page.close();
@@ -2382,13 +2390,14 @@ async function runTests() {
         },
       ],
     });
-    // Tab click shows the section
-    await page.click('#tabMonthlyLog');
+    // Month tab in Today's Flow shows the section
+    await page.waitForSelector('.tf-seg-btn[data-view="month"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="month"]')?.click());
     await page.waitForSelector('#monthlyLogSection:visible');
     const tabActive = await page.evaluate(() =>
-      document.getElementById('tabMonthlyLog').classList.contains('active')
+      document.querySelector('.tf-seg-btn[data-view="month"]').classList.contains('active')
     );
-    assert('Monthly Log tab has active class', tabActive);
+    assert('Monthly Log Month tab has active class', tabActive);
 
     // Heatmap grid renders
     const cellCount = await page.evaluate(() => document.querySelectorAll('.ml-cell').length);
@@ -2406,12 +2415,12 @@ async function runTests() {
     const hrs = await page.evaluate((d) => window.__wl.mlHoursForDay(d), today);
     assert('mlHoursForDay > 0 for today', hrs > 0, `got ${hrs}`);
 
-    // Second tab click hides the section
-    await page.click('#tabMonthlyLog');
+    // Switching to a different tab hides the month section
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="flow"]')?.click());
     const hidden = await page.evaluate(
       () => document.getElementById('monthlyLogSection').style.display === 'none'
     );
-    assert('Monthly Log section hides on second tab click', hidden);
+    assert('Monthly Log section hides when switching to another tab', hidden);
 
     await page.close();
   }
@@ -2621,8 +2630,8 @@ async function runTests() {
     );
     await page.keyboard.press('End');
     assert(
-      'End jumps to last tab (Blocks)',
-      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'blocks')
+      'End jumps to last tab (Month)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'month')
     );
 
     await page.close();
