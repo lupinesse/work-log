@@ -39,9 +39,10 @@ function Get-TodayMeetings {
             $ns    = $ol.GetNamespace('MAPI')
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-            $cult = [Globalization.CultureInfo]::CurrentCulture
-            $d1   = $today.ToString($cult.DateTimeFormat.ShortDatePattern)
-            $d2   = $tomorrow.ToString($cult.DateTimeFormat.ShortDatePattern)
+            # Outlook MAPI Restrict requires US-English date format regardless of system locale
+            $enUS = [Globalization.CultureInfo]::new('en-US')
+            $d1   = $today.ToString('M/d/yyyy HH:mm', $enUS)
+            $d2   = $tomorrow.ToString('M/d/yyyy HH:mm', $enUS)
 
             $seen    = @{}
             $results = @()
