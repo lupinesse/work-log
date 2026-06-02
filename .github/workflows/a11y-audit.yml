@@ -1,14 +1,13 @@
 name: Accessibility Audit
 
-# Runs the /a11y-audit skill on every PR push and posts a WCAG 2.1 AA
-# compliance report covering HTML, dynamically created DOM in JS, and SCSS
-# focus/visibility rules.
+# Runs pa11y (WCAG 2.1 AA) on every PR that touches HTML, JS, or CSS, and
+# posts a structured violation report as a PR comment. No API key required.
 #
-# Required secrets:
-#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token; optional if ANTHROPIC_API_KEY is set
-#   ANTHROPIC_API_KEY           — Anthropic API key; fallback when OAuth token is absent or expired
-#   CLAUDE_REVIEWER_APP_ID      — App ID of the "Claude Reviewer" GitHub App
-#   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
+# Required secrets: none (uses the built-in GITHUB_TOKEN for PR comments).
+# Optional secrets:
+#   CLAUDE_REVIEWER_APP_ID      — GitHub App ID for a named-bot commenter
+#   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key for the same App
+#   (If absent, comments are posted by the github-actions[bot] identity.)
 
 on:
   pull_request:
@@ -29,93 +28,62 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "24"
+          cache: "npm"
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Write diff to pr.diff
+      - name: Build
+        run: npm run build
+
+      - name: Install pa11y
+        run: npm install -g pa11y
+
+      - name: Start preview server
+        run: npx vite preview &
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:8090/work-log.html --timeout 30000
+
+      # pa11y exits 1 when violations are found (still valid JSON) and 2 on
+      # a technical error. continue-on-error lets us always reach the report
+      # and comment steps regardless of exit code.
+      - name: Run pa11y WCAG 2.1 AA audit
+        continue-on-error: true
+        run: |
+          pa11y http://localhost:8090/work-log.html \
+            --standard WCAG2AA \
+            --reporter json \
+            --timeout 30000 \
+            > pa11y-raw.json
+
+      - name: Format audit report
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
-          echo "Diff size: $(wc -l < pr.diff) lines"
-
-      - name: Check auth is present
-        id: key-check
-        env:
-          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping accessibility audit."
-          fi
-
-      - name: Run accessibility audit
-        if: steps.key-check.outputs.present == 'true'
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            unset CLAUDE_CODE_OAUTH_TOKEN
-          fi
-          if ! claude -p "/a11y-audit" \
-            --model claude-sonnet-4-6 \
-            --allowedTools "Read" "Grep" "Glob" \
-                           "Bash(cat:*)" "Bash(wc:*)" \
-            > a11y-output.txt 2>&1; then
-            rm -f a11y-output.txt
-            exit 0
-          fi
-          echo "Accessibility audit complete ($(wc -l < a11y-output.txt) lines)"
+        run: node .github/scripts/format-a11y-report.mjs
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: steps.key-check.outputs.present == 'true'
+        if: ${{ secrets.CLAUDE_REVIEWER_APP_ID != '' }}
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Post or update accessibility report as PR comment
-        if: steps.key-check.outputs.present == 'true'
         env:
           GH_TOKEN:   ${{ steps.claude-token.outputs.token || github.token }}
-          GH_REPO:    ${{ github.repository }}
           PR_NUMBER:  ${{ github.event.pull_request.number }}
-          HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
           REPO:       ${{ github.repository }}
         run: |
           MARKER='<!-- claude-a11y-audit-comment -->'
-          if [ -f a11y-output.txt ]; then
-            {
-              echo "$MARKER"
-              cat a11y-output.txt
-              echo ""
-              echo "---"
-              echo "*Automated audit by [Claude Code](https://claude.ai/claude-code) \`/a11y-audit\` · commit \`${HEAD_SHA::7}\`*"
-            } > comment-body.txt
-          else
-            {
-              echo "$MARKER"
-              echo "> ⚠️ Accessibility audit skipped — API unavailable (credentials may be expired or credits exhausted)."
-            } > comment-body.txt
-          fi
-
           PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
             --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
-
           if [ -n "$PREV_ID" ]; then
             echo "Updating existing comment $PREV_ID"
             gh api "repos/$REPO/issues/comments/$PREV_ID" \
