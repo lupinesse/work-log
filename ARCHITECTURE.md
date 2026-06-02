@@ -3,9 +3,9 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.8.9 |
-| Covers app version | v1.8.9 |
-| Last reviewed | 2026-05-29 |
+| Document version | 1.8.9-r2 |
+| Covers app version | v1.8.9 + unreleased (main, 2026-06-03) |
+| Last reviewed | 2026-06-03 |
 | Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
 | Status | **Approved** — reflects current implementation |
 
@@ -720,16 +720,16 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (397 tests via Node assert):
+**Unit Tests** (398 tests via Node assert):
 - `test/unit.mjs` — 57 suites covering pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
 
-**Smoke Tests** (272 tests via Playwright):
+**Smoke Tests** (~272 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**Total: 583 tests (311 unit + 272 smoke)**
+**Total: ~670 tests (398 unit + ~272 smoke)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
@@ -740,17 +740,13 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **Split Module**: `10-tasks.js` is 1 100+ lines — too large for a single file
-   - → `10-tasks-ui.js` (rendering + event binding)
-   - → `10-tasks-logic.js` (status transitions, nesting, carry-over)
+1. **Split `11-timeblock.js`** (1 050 lines) — the largest module in the codebase; good split points are the drag-and-drop logic, overlap detection, and the rendering loop.
 
-2. **API Validation**: Add schema validators for external API responses
+2. **Split `pure-fns.js`** (824 lines) — group into themed sub-modules (date/time helpers, string helpers, export helpers) so individual imports are smaller and Jest can cover each group in isolation.
+
+3. **API Validation**: Add schema validators for external API responses
    - Outlook calendar response
    - Weather API response
    - Jira CSV format
 
-3. **BuJo module size**: `renderMonthlyLog()` in `19-monthlylog.js` mixes HTML build, event binding, and summary calculation in one ~120-line function — split into focused sub-functions
-
-4. **Node version alignment**: `.nvmrc` pins 24.15.0 but CI uses Node 20 and `.devcontainer` also uses Node 20; align all three to the same version
-
-This architecture has been stable through v1.0 → v1.1 releases with only feature additions.
+This architecture has been stable through v1.0 → v1.8 releases with only feature additions.
