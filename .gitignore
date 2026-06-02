@@ -28,6 +28,9 @@ verify-*.png
 # Personal JS config overrides — never commit
 src/js/00-config.local.js
 
+# Personal PowerShell config overrides — never commit (*.local only matches no-extension files)
+config.local.ps1
+
 # Personal data — never commit
 timesheets/
 JSON backups/
