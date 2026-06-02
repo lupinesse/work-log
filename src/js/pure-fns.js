@@ -784,3 +784,40 @@ export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabe
   });
   return lines;
 }
+
+/**
+ * Determines the carry-forward status a today-task should adopt based on its
+ * most recent past peer, implementing the following rules:
+ *
+ * - `pending` or `blocked` prev overrides `todo` or `inprogress` today — the
+ *   task is still blocked so the blocking state wins.
+ * - `upcoming` prev overrides **only** a `todo` today — a todo placeholder
+ *   created from an even-older copy should reflect the more recent intent to
+ *   defer. It must NOT override `inprogress`, because the user explicitly
+ *   started the task and a reload must not undo that.
+ * - `inprogress` prev promotes a `todo` today — the task was already being
+ *   worked on and the carry placeholder should show that.
+ *
+ * Returns `null` when no change is needed.
+ *
+ * @param {{ status: string, text: string }} todayTask - Today's task object.
+ * @param {{ status: string, text: string, date: string }} prev - Most recent
+ *   past task with the same text (case-insensitive).
+ * @returns {string|null} The new status to apply, or `null` for no change.
+ * @example
+ * resolveCarryStatus({ status: 'todo' }, { status: 'upcoming' }) // → 'upcoming'
+ * resolveCarryStatus({ status: 'inprogress' }, { status: 'upcoming' }) // → null
+ * resolveCarryStatus({ status: 'todo' }, { status: 'pending' })  // → 'pending'
+ */
+export function resolveCarryStatus(todayTask, prev) {
+  const prevIsBlocking = prev.status === 'pending' || prev.status === 'blocked';
+  const todayIsActive = todayTask.status === 'todo' || todayTask.status === 'inprogress';
+
+  if (prevIsBlocking && todayIsActive) return prev.status;
+
+  if (prev.status === 'upcoming' && todayTask.status === 'todo') return 'upcoming';
+
+  if (todayTask.status === 'todo' && prev.status === 'inprogress') return 'inprogress';
+
+  return null;
+}

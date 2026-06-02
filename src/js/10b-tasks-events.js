@@ -526,7 +526,7 @@ function bindPlanEvents(lists) {
         date: dk(new Date()),
       };
       entries.push(entry);
-      if (t && t.status === 'todo') {
+      if (t && (t.status === 'todo' || t.status === 'upcoming')) {
         t.status = 'inprogress';
         if (t.parentId) {
           const parent = planTasks.find((p) => p.id === t.parentId);
@@ -535,6 +535,7 @@ function bindPlanEvents(lists) {
         savePlan();
         renderPlan();
       }
+      ensureDayStarted();
       viewDate = new Date();
       save();
       startTimer(entry.id);

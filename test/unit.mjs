@@ -37,6 +37,7 @@ const {
   buildBillableSummaryParts,
   computeDayBounds,
   formatGroupedLines,
+  resolveCarryStatus,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -3145,4 +3146,54 @@ describe('buildSessionNotesHtml', () => {
     assert.ok(html.includes('tf-sn-text'));
     assert.ok(html.includes('note body'));
   });
+});
+
+// ── resolveCarryStatus ────────────────────────────────────────────────────────
+describe('resolveCarryStatus', () => {
+  const prev = (status, date = '2026-01-01') => ({ status, date, text: 'Task' });
+  const today = (status) => ({ status, text: 'Task' });
+
+  // ── pending / blocked: override todo or inprogress ──
+  it('pending prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('pending')), 'pending'));
+
+  it('pending prev overrides inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('pending')), 'pending'));
+
+  it('blocked prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('blocked')), 'blocked'));
+
+  it('blocked prev overrides inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('blocked')), 'blocked'));
+
+  // ── upcoming: only overrides todo, NOT inprogress (bug-fix guard) ──
+  it('upcoming prev overrides todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('upcoming')), 'upcoming'));
+
+  it('upcoming prev does NOT override inprogress today', () =>
+    assert.equal(
+      resolveCarryStatus(today('inprogress'), prev('upcoming')),
+      null,
+      'should not revert an inprogress task to upcoming on reload'
+    ));
+
+  // ── inprogress promotion ──
+  it('inprogress prev promotes todo today', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('inprogress')), 'inprogress'));
+
+  it('inprogress prev does not touch inprogress today', () =>
+    assert.equal(resolveCarryStatus(today('inprogress'), prev('inprogress')), null));
+
+  // ── no-change cases ──
+  it('returns null when prev is done', () =>
+    assert.equal(resolveCarryStatus(today('todo'), prev('done')), null));
+
+  it('returns null when today is done', () =>
+    assert.equal(resolveCarryStatus(today('done'), prev('pending')), null));
+
+  it('returns null when today is pending and prev is pending', () =>
+    assert.equal(resolveCarryStatus(today('pending'), prev('pending')), null));
+
+  it('returns null when today is upcoming', () =>
+    assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
 });
