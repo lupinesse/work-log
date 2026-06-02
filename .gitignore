@@ -9,6 +9,7 @@ styles.css
 docs/*
 !docs/qa-reports/
 !docs/dead-code-reports/
+!docs/ab-tests/
 .portable-dest
 .DS_Store
 *.local
