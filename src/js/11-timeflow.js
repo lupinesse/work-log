@@ -180,14 +180,16 @@ function findLargestGap(dateKey) {
     }
   }
 
-  // Trailing gap: last entry's end → now. Suppressed while a live timer is
-  // running, since the user is actively tracking and the gap will close itself.
+  // Trailing gap: last entry's end → now (or EOD if the day has been ended).
+  // Suppressed while a live timer is running, since the user is actively
+  // tracking and the gap will close itself.
   if (timed.length && !activeTimer) {
     const last = timed[timed.length - 1];
-    const now = Date.now();
-    const trailingMin = Math.floor((now - last.tsEnd) / 60000);
+    const eodTs = getEodTs();
+    const ceiling = eodTs || Date.now();
+    const trailingMin = Math.floor((ceiling - last.tsEnd) / 60000);
     if (trailingMin >= 15 && (!largest || trailingMin > largest.gapMin)) {
-      largest = { startTs: last.tsEnd, endTs: now, gapMin: trailingMin };
+      largest = { startTs: last.tsEnd, endTs: ceiling, gapMin: trailingMin };
     }
   }
 
