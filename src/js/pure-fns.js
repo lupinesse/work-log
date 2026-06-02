@@ -811,13 +811,14 @@ export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabe
  */
 export function resolveCarryStatus(todayTask, prev) {
   const prevIsBlocking = prev.status === 'pending' || prev.status === 'blocked';
-  const todayIsActive = todayTask.status === 'todo' || todayTask.status === 'inprogress';
+  const todayIsTodo = todayTask.status === 'todo';
+  const todayIsActive = todayIsTodo || todayTask.status === 'inprogress';
 
   if (prevIsBlocking && todayIsActive) return prev.status;
 
-  if (prev.status === 'upcoming' && todayTask.status === 'todo') return 'upcoming';
+  if (prev.status === 'upcoming' && todayIsTodo) return 'upcoming';
 
-  if (todayTask.status === 'todo' && prev.status === 'inprogress') return 'inprogress';
+  if (todayIsTodo && prev.status === 'inprogress') return 'inprogress';
 
   return null;
 }

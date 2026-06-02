@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- **Auto start-of-day on first task timer** — clicking the start-timer button on any task now silently records start-of-day if the day has not already been started (no backup-restore dialog required).
+- **Starting an upcoming task moves it to in-progress** — the start-timer button previously only promoted `todo → inprogress`; it now also promotes `upcoming → inprogress`.
+
+### Fixed
+- **Upcoming tasks no longer revert on reload** — `patchCarriedTasks` was reverting `inprogress` tasks back to `upcoming` on every page reload when an older past version carried `upcoming` status. The fix restricts the `upcoming` override to `todo` placeholders only; an explicitly started task's `inprogress` status is now preserved across reloads.
+
+### Added
 - **Hero Card: last-note reference line** — after saving a quick note (↵ in the note row), the running and paused panels now show "↳ last note X min ago" below the task title. The line stays blank when no notes have been added. `fmtAgo()` added to `pure-fns.js` with 10 unit tests.
 - **Hero Card: category quick-switch** — the category row on running and paused panels now shows a faint ▾ caret and opens a picker panel on click. Selecting a category re-tags the live session and updates the UI immediately. Keyboard-accessible (Enter/Space opens; arrows navigate; Esc closes; outside-click dismisses).
 
