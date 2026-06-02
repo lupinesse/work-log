@@ -57,6 +57,47 @@ Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md`.
 
 ---
 
+## v1.8.5–v1.8.9 — 2026-05-27 / 2026-05-28
+
+### Changes since v1.8.4
+
+| Release | Key changes |
+|---|---|
+| v1.8.5 | Quick Capture modal redesigned (QC_FinalV3); `_qcRenderTaskList` split into three single-purpose functions; smoke tests added for filter chips and running strip |
+| v1.8.6 | Hero Card unified timer state machine (Variant C) with four CSS-panel states; legacy compat IDs preserved |
+| v1.8.7 | Anthropic API key moved server-side; `connect-src` CSP tightened; `localStorage` migration added |
+| v1.8.8 | Hero Card overflow fix (mood dropdown no longer clipped); 24 unit tests for `15-notion.js`; mood-dropdown smoke test added |
+| v1.8.9 | Cool-palette design refresh; new CSS custom property tokens (`--in-progress`, `--jira`); ESM refactoring (`00-pure-fns.js` → `pure-fns.js`, `logger.js` extracted) |
+
+### QA checklist delta
+
+All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
+
+| Checklist item | Status | Evidence |
+|---|---|---|
+| Core functionality unit tested | ✅ Pass | `test/unit.mjs` (renamed from `test/unit.cjs` in v1.8.9 ESM refactor) — **397 tests across 57 suites** |
+| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **282 Playwright tests** across 43 sections |
+| Total test count | ✅ Pass | **679 tests** (397 unit + 282 smoke); up from 344 at v1.8.4 |
+| Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
+| No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
+| All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |
+| Commits tagged at significant stages | ✅ Pass | All releases v1.0.0–v1.8.9 have annotated git tags |
+| ARCHITECTURE.md design certificate | ✅ Pass | Updated to `Covers app version: v1.8.9`, `Last reviewed: 2026-05-29` |
+
+### Stakeholder acceptance
+
+| Field | Value |
+|---|---|
+| Accepted by | Jenni Järvinen (sole author and user) |
+| Date | 2026-05-28 |
+| Scope | v1.8.5–v1.8.9 — all features listed in `CHANGELOG.md §§ v1.8.5–v1.8.9` |
+| Method | Automated suite (679 tests: 397 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
+| AI co-reviewer | Claude Sonnet 4.6 (pair review of Hero Card, Quick Capture, ESM refactoring, API key migration) |
+| Outcome | **Accepted** — all 679 tests passing; design certificate updated; no regressions |
+| Outstanding known issues | `QA.md` test counts were stale from v1.8.4 until this update; resolved here |
+
+---
+
 *This document is maintained per-release. Future releases should add a new dated section.*
 
 ---
