@@ -1,2 +1,3 @@
 #!/usr/bin/env sh
+# --no-stash: avoids stash backup/restore cycle that can misdirect commits when the stash list is large
 npx lint-staged --no-stash
