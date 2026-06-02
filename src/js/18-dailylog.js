@@ -14,7 +14,7 @@
  *  - `'task'`         — a plan-task status comment.
  *
  * @param {string} dateKey - YYYY-MM-DD date string.
- * @returns {Array<{ts: number, type: string, entryId?: string, parentEntryId?: string, color: string, text: string, sub: string}>}
+ * @returns {Array<{ts: number, type: string, entryId: (string|undefined), parentEntryId: (string|undefined), color: string, text: string, sub: string}>}
  */
 function buildDailyLogItems(dateKey) {
   const items = [];

@@ -13,10 +13,10 @@
 //   heroEnterStopped()   – called by stopTimer() to show the confirmation panel
 //   initHero()           – binds button events; called once from DOMContentLoaded
 
-/** @type {boolean} True during the 6-second stopped confirmation window. */
+/** @type {boolean} */
 let _heroStopped = false;
 
-/** @type {number|null} Auto-dismiss handle for stopped state. */
+/** @type {number|null} */
 let _heroStoppedTimer = null;
 
 /**
