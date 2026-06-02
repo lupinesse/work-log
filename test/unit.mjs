@@ -1552,6 +1552,7 @@ function loadTimeflowSandbox(overrides = {}) {
     document: {
       getElementById: () => null,
     },
+    getEodTs: () => null,
     wlLog: { info: () => {}, warn: () => {}, error: () => {} },
     safeCssColor: (c) => c,
     fmtHm: (ts) => String(ts),
@@ -1666,6 +1667,27 @@ describe('findLargestGap', () => {
     ];
     sb.activeTimer = { entryId: 'live', paused: false, startTs: now - 5 * 60000 };
     assert.equal(sb.findLargestGap(TODAY), null);
+  });
+
+  it('caps the trailing gap at EOD when the day has been marked as ended', () => {
+    const now = Date.now();
+    const eodTs = now - 60 * 60000; // EOD was 1 hour ago
+    const sb = loadTimeflowSandbox({ getEodTs: () => eodTs });
+    // Last entry ended 90 minutes ago; without cap the gap would be 90 min,
+    // but EOD was 60 min ago so the capped gap should be ~30 min.
+    sb.entries = [
+      {
+        date: TODAY,
+        ts: now - 120 * 60000,
+        tsEnd: now - 90 * 60000,
+        signifier: null,
+      },
+    ];
+    sb.activeTimer = null;
+    const gap = sb.findLargestGap(TODAY);
+    assert.ok(gap !== null, 'should still find a gap');
+    assert.ok(gap.gapMin >= 29 && gap.gapMin <= 31, `expected ~30 min gap, got ${gap.gapMin}`);
+    assert.equal(gap.endTs, eodTs, 'gap end should be EOD, not now');
   });
 
   it('prefers the trailing gap when it is larger than any internal gap', () => {
