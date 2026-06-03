@@ -266,7 +266,32 @@
       <input class="plan-input" id="planInput" aria-label="Add a task" placeholder="add a task or paste a Jira ticket…" autocomplete="off" />
       <button class="plan-add-btn" id="planAddBtn">+ add</button>
     </div>
-    <div id="planList" role="list" aria-label="Today's tasks"></div>
+    <div id="boardCols" class="board-cols">
+      <div class="kb-col" id="todoCol">
+        <div class="kb-col__head">
+          <span class="kb-col__dot" style="background:#94a3b8" aria-hidden="true"></span>
+          <span class="kb-col__title">To Do</span>
+          <span class="kb-col__count" id="todoColCount" aria-live="polite"></span>
+        </div>
+        <div id="planList" class="kb-cards" role="list" aria-label="To do tasks"></div>
+      </div>
+      <div class="kb-col" id="progressCol">
+        <div class="kb-col__head">
+          <span class="kb-col__dot" style="background:#2563eb" aria-hidden="true"></span>
+          <span class="kb-col__title">In Progress</span>
+          <span class="kb-col__count" id="progressColCount" aria-live="polite"></span>
+        </div>
+        <div id="progressList" class="kb-cards" role="list" aria-label="In progress tasks"></div>
+      </div>
+      <div class="kb-col" id="doneCol">
+        <div class="kb-col__head">
+          <span class="kb-col__dot" style="background:#059669" aria-hidden="true"></span>
+          <span class="kb-col__title">Done</span>
+          <span class="kb-col__count" id="doneColCount" aria-live="polite"></span>
+        </div>
+        <div id="doneList" class="kb-cards" role="list" aria-label="Done tasks"></div>
+      </div>
+    </div>
     <div id="planTrackRecent" class="plan-track-recent" style="display:none" aria-label="Track a recent entry"></div>
   </div>
 </div>

@@ -223,6 +223,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
   else pauseTimer();
 });
 initHero();
+initBoardColumnDnD();
 initRapid();
 initTodayFlow();
 initMonthlyLog();

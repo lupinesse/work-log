@@ -17,6 +17,10 @@ let _expandedHistoryId = null;
 let _cpOpenIds = new Set();
 let _cpEditId = null; // pid of task whose checkpoint is being edited
 let _cpEditIdx = null; // index of checkpoint being edited
+/** Whether the Done column's older-history expander is open. */
+let doneHistoryOpen = false;
+/** Whether the WIP-over warning banner has been dismissed this render cycle. */
+let wipWarnDismissed = false;
 
 /**
  * Loads plan tasks from localStorage into `planTasks`, filtering out invalid

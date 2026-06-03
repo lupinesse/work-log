@@ -973,3 +973,173 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+/* ── Kanban board columns ── */
+
+.board-cols {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.kb-col {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  min-width: 0;
+}
+
+.kb-col--wip {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+@media (prefers-color-scheme: dark) {
+  .kb-col--wip {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+}
+
+.kb-col--drop-over {
+  outline: 2px dashed var(--info-text);
+  outline-offset: -2px;
+}
+
+.kb-col__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.kb-col__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.kb-col__title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text3);
+  flex: 1;
+}
+
+.kb-col__count {
+  font-size: 10px;
+  color: var(--text3);
+  min-width: 12px;
+  text-align: right;
+}
+
+.kb-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 24px;
+}
+
+/* Quiet empty state — no text, just minimal height */
+.kb-empty-quiet {
+  min-height: 24px;
+}
+
+/* Dragging card visual feedback */
+.plan-item.kb-dragging {
+  opacity: 0.4;
+}
+
+/* WIP over-limit warning banner */
+.wip-warn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin-bottom: 7px;
+  border-radius: var(--radius);
+  background: #fef3c7;
+  border: 0.5px solid #fde68a;
+  font-size: 11px;
+  color: #92400e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wip-warn {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+  }
+}
+
+.wip-warn__msg {
+  flex: 1;
+}
+
+.wip-warn__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: #b45309;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .wip-warn__dismiss {
+    color: #fbbf24;
+  }
+}
+
+/* Done column history expander */
+.done-history-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-family: var(--font);
+  color: #047857;
+  border: 0.5px dashed #a7f3d0;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+
+.done-history-btn:hover {
+  background: #ecfdf5;
+}
+
+@media (prefers-color-scheme: dark) {
+  .done-history-btn {
+    color: #34d399;
+    border-color: rgba(52, 211, 153, 0.3);
+  }
+
+  .done-history-btn:hover {
+    background: rgba(52, 211, 153, 0.06);
+  }
+}
+
+.done-history-group {
+  margin-top: 6px;
+}
+
+.done-history-day {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text3);
+  padding: 4px 2px 2px;
+}
