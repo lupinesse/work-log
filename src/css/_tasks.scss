@@ -1197,14 +1197,12 @@
   overflow: hidden;
 }
 
-/* Status dropdown hidden — column + left border communicates status */
+/* Compact dropdown pill — narrower than the default 92px list-view size */
 .kb-cards .plan-status {
-  display: none;
-}
-
-/* Restore dropdown when keyboard focus lands inside the card */
-.kb-cards .plan-item:focus-within .plan-status {
-  display: block;
+  width: 80px;
+  min-width: 80px;
+  font-size: 10px;
+  padding-right: 14px;
 }
 
 /* At medium widths: To Do + In Progress side by side, Done full-width below */
