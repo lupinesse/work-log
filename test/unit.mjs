@@ -2557,6 +2557,16 @@ describe('per-day start/end lookup', () => {
     });
     assert.equal(getDayStart(new Date('2026-01-01T08:00:00')), 1600000000000);
   });
+
+  it('sodKey defaults to the day in view when called with no argument', () => {
+    const { sodKey } = loadSodSandbox({ viewDate: PAST });
+    assert.equal(sodKey(), 'wl_sod_' + PAST_KEY);
+  });
+
+  it('eodKey defaults to the day in view when called with no argument', () => {
+    const { eodKey } = loadSodSandbox({ viewDate: PAST });
+    assert.equal(eodKey(), 'wl_eod_' + PAST_KEY);
+  });
 });
 
 // ── 08-pomodoro.js — pomoAffirmation / pomoAddTime / pomoTapOut ───────────────
