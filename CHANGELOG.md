@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Changed
+- **Date-nav header shows work location instead of the ISO week** — the small "Week N/53" line above the day navigator is replaced by a Remote / Office toggle (🏠 Remote / 🏢 Office). Location is tracked per day, so navigating with ← → shows that day's location; unset days default to Remote. Click (or focus + Enter/Space) to switch. The ISO week number is still shown in the almanac header (`#liveWeek`). New pure helpers `locationFor()` and `nextLocation()` in `pure-fns.js` with unit tests.
+
+### Changed
 - **3-column kanban board** — the four stacked task sections (Today's Tasks, Upcoming, Pending/Blocked, Completed) are replaced by a lean To Do / In Progress / Done board. Pending and blocked tasks absorb into the To Do column with their existing badge/comment treatment; the Done column shows today's completed tasks and a collapsible expander for older iteration history. Drag-and-drop between columns starts or stops the active timer automatically.
 - **Soft WIP warn** — when more than one task is In Progress the column gains an amber tint and a dismissable "N in progress — pick one to focus" banner.
 

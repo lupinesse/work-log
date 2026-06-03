@@ -38,6 +38,10 @@ const {
   computeDayBounds,
   formatGroupedLines,
   resolveCarryStatus,
+  locationFor,
+  nextLocation,
+  WORK_LOCATIONS,
+  DEFAULT_WORK_LOCATION,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -3324,4 +3328,37 @@ describe('resolveCarryStatus', () => {
 
   it('returns null when today is upcoming', () =>
     assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
+});
+
+// ── work location ─────────────────────────────────────────────────────────────
+describe('locationFor', () => {
+  it('returns the stored location for a known day', () =>
+    assert.equal(locationFor({ '2026-06-03': 'office' }, '2026-06-03'), 'office'));
+
+  it('defaults to remote when the day is unset', () =>
+    assert.equal(locationFor({}, '2026-06-03'), DEFAULT_WORK_LOCATION));
+
+  it('defaults to remote when the day is not in the map', () =>
+    assert.equal(locationFor({ '2026-06-02': 'office' }, '2026-06-03'), 'remote'));
+
+  it('falls back to the default for an unknown stored value', () =>
+    assert.equal(locationFor({ '2026-06-03': 'moon-base' }, '2026-06-03'), 'remote'));
+
+  it('tolerates a null map', () =>
+    assert.equal(locationFor(null, '2026-06-03'), DEFAULT_WORK_LOCATION));
+
+  it('only ever returns ids present in WORK_LOCATIONS', () =>
+    assert.ok(Object.prototype.hasOwnProperty.call(WORK_LOCATIONS, locationFor({}, '2026-06-03'))));
+});
+
+describe('nextLocation', () => {
+  it('flips remote to office', () => assert.equal(nextLocation('remote'), 'office'));
+
+  it('flips office to remote', () => assert.equal(nextLocation('office'), 'remote'));
+
+  it('wraps an unknown value back to the first location', () =>
+    assert.equal(nextLocation('bogus'), Object.keys(WORK_LOCATIONS)[0]));
+
+  it('returns to the original after two toggles', () =>
+    assert.equal(nextLocation(nextLocation('remote')), 'remote'));
 });

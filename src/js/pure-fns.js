@@ -822,3 +822,52 @@ export function resolveCarryStatus(todayTask, prev) {
 
   return null;
 }
+
+/* ── Work location ── */
+
+/**
+ * Work-location presets keyed by their stored id. Each entry carries the emoji
+ * and human-readable label shown in the date-nav header. The first key is the
+ * default applied to any day with no stored location.
+ * @type {Readonly<Record<string, { emoji: string, label: string }>>}
+ */
+export const WORK_LOCATIONS = Object.freeze({
+  remote: { emoji: '🏠', label: 'Remote' },
+  office: { emoji: '🏢', label: 'Office' },
+});
+
+/** Location id used for any day that has no stored value. */
+export const DEFAULT_WORK_LOCATION = 'remote';
+
+/**
+ * Resolves the stored work location for a given day, falling back to the
+ * default when the day is unset or holds an unknown value.
+ * @param {Record<string, string>} map - Date-key → location-id map.
+ * @param {string} dateKey - Day key in YYYY-MM-DD form (see {@link dk}).
+ * @returns {string} A valid location id present in {@link WORK_LOCATIONS}.
+ * @example
+ * locationFor({ '2026-06-03': 'office' }, '2026-06-03') // → 'office'
+ * locationFor({}, '2026-06-03')                         // → 'remote'
+ * locationFor({ '2026-06-03': 'bogus' }, '2026-06-03')  // → 'remote'
+ */
+export function locationFor(map, dateKey) {
+  const stored = map && map[dateKey];
+  return Object.prototype.hasOwnProperty.call(WORK_LOCATIONS, stored)
+    ? stored
+    : DEFAULT_WORK_LOCATION;
+}
+
+/**
+ * Returns the next location id when toggling, cycling through the keys of
+ * {@link WORK_LOCATIONS}. With the two presets this flips Remote ↔ Office.
+ * @param {string} loc - Current location id.
+ * @returns {string} The following location id (wraps around).
+ * @example
+ * nextLocation('remote') // → 'office'
+ * nextLocation('office') // → 'remote'
+ */
+export function nextLocation(loc) {
+  const ids = Object.keys(WORK_LOCATIONS);
+  const idx = ids.indexOf(loc);
+  return ids[(idx + 1) % ids.length];
+}

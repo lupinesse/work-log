@@ -563,6 +563,45 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 10b. Work location toggle ────────────────────────────────────────────────
+  console.log('\n10b. Work location toggle');
+  {
+    const page = await freshPage(ctx);
+    const btn = '#dateNavLocation';
+    assert('Location button exists', await page.evaluate((s) => !!document.querySelector(s), btn));
+    assert(
+      'Defaults to Remote',
+      (await page.evaluate(
+        (s) => document.querySelector(s).querySelector('.date-nav-location__label').textContent,
+        btn
+      )) === 'Remote'
+    );
+    await page.click(btn);
+    assert(
+      'Click toggles to Office',
+      (await page.evaluate(
+        (s) => document.querySelector(s).querySelector('.date-nav-location__label').textContent,
+        btn
+      )) === 'Office'
+    );
+    assert(
+      'Office persisted to localStorage',
+      await page.evaluate(() => {
+        const map = JSON.parse(localStorage.getItem('wl_location_v1') || '{}');
+        return Object.values(map).includes('office');
+      })
+    );
+    await page.click(btn);
+    assert(
+      'Click toggles back to Remote',
+      (await page.evaluate(
+        (s) => document.querySelector(s).querySelector('.date-nav-location__label').textContent,
+        btn
+      )) === 'Remote'
+    );
+    await page.close();
+  }
+
   // ── 11. Distraction tracking ───────────────────────────────────────────────
   console.log('\n11. Distraction tracking');
   {

@@ -19,9 +19,7 @@ function render() {
   document.getElementById('dateLabel').textContent = fmtLabel(viewDate);
   document.getElementById('prevDay').disabled = false;
   document.getElementById('nextDay').disabled = isToday(viewDate);
-  const dateNavWeekEl = document.getElementById('dateNavWeek');
-  if (dateNavWeekEl)
-    dateNavWeekEl.textContent = `Week ${getISOWeek(viewDate)}/${totalISOWeeks(viewDate.getFullYear())}`;
+  renderLocation();
 
   /* ── 2. Timer bar ── */
   if (!activeTimer) {
