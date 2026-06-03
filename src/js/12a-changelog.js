@@ -15,6 +15,7 @@ const TEST_AREA_NAMES = {
   12: 'Export format',
   13: 'Timeline rendering',
   14: 'Work location',
+  15: 'Session timing',
 };
 
 // Updated each session by Claude — id format: YYYYMMDD-NNN
@@ -611,6 +612,12 @@ const DEV_CHANGES = [
     desc: 'Date-nav week number replaced by a per-day Remote/Office location toggle',
     areas: [14],
   },
+  {
+    id: '20260603-002',
+    date: '2026-06-03',
+    desc: 'Session chip and end-the-day button now show the in-view day’s start/end times',
+    areas: [15],
+  },
 ];
 
 /**
@@ -646,8 +653,10 @@ function openEodModal() {
   exportTxt();
   exportBackup();
   localStorage.setItem('wl_last_export', todayKey);
-  // Save EOD timestamp
-  if (!getEodTs()) localStorage.setItem(eodKey(), String(Date.now()));
+  // Save EOD timestamp against today — ending the day is always a "now" action,
+  // independent of which day is currently in view.
+  const today = new Date();
+  if (!getEodTs(today)) localStorage.setItem(eodKey(today), String(Date.now()));
   renderEodBtn();
   // Note: portable deploy is triggered by the "Done — close" button, NOT here,
   // so the JSON + .txt have time to flush to disk before the build script reads them.
