@@ -860,11 +860,14 @@ export function locationFor(map, dateKey) {
 /**
  * Returns the next location id when toggling, cycling through the keys of
  * {@link WORK_LOCATIONS}. With the two presets this flips Remote ↔ Office.
+ * An unrecognised `loc` (indexOf → -1) is treated as "before the first" and
+ * wraps to the first location, so the toggle always recovers to a valid state.
  * @param {string} loc - Current location id.
  * @returns {string} The following location id (wraps around).
  * @example
  * nextLocation('remote') // → 'office'
  * nextLocation('office') // → 'remote'
+ * nextLocation('bogus')  // → 'remote'  (unknown input recovers to the first)
  */
 export function nextLocation(loc) {
   const ids = Object.keys(WORK_LOCATIONS);

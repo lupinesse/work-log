@@ -6,6 +6,7 @@ const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
 const STORE_LOGNOTES = 'wl_lognotes_v1';
 const STORE_TRACKERS = 'wl_trackers_v1';
 const STORE_MIGRATION = 'wl_migration_v1';
+const STORE_LOCATION = 'wl_location_v1';
 
 // Lowercase task texts the user has dismissed from the recent-tasks list
 let qpHidden = (() => {

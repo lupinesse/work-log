@@ -7,10 +7,13 @@
  *
  * Pure helpers (locationFor, nextLocation, WORK_LOCATIONS) live in pure-fns.js
  * and are unit-tested; this module is the localStorage + DOM glue around them.
+ *
+ * The storage key (STORE_LOCATION) is declared in 01-state.js alongside the
+ * other wl_*_v1 keys. It must live there, not here: modules are concatenated in
+ * filename order, and render() (04-render.js) calls renderLocation() during boot
+ * — before this file's top-level code would run — so a const declared here would
+ * be in the temporal dead zone at that point.
  */
-
-/** localStorage key for the date-key → location-id map. */
-const LOCATION_STORE_KEY = 'wl_location_v1';
 
 /**
  * Reads the stored location map from localStorage.
@@ -19,7 +22,7 @@ const LOCATION_STORE_KEY = 'wl_location_v1';
  * @returns {Record<string, string>} Date-key → location-id map.
  */
 function loadLocationMap() {
-  const raw = localStorage.getItem(LOCATION_STORE_KEY);
+  const raw = localStorage.getItem(STORE_LOCATION);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
@@ -36,7 +39,7 @@ function loadLocationMap() {
  * @returns {void}
  */
 function saveLocationMap(map) {
-  localStorage.setItem(LOCATION_STORE_KEY, JSON.stringify(map));
+  localStorage.setItem(STORE_LOCATION, JSON.stringify(map));
 }
 
 /**
@@ -56,8 +59,8 @@ function toggleViewLocation() {
   const dateKey = dk(viewDate);
   const map = loadLocationMap();
   const updated = nextLocation(locationFor(map, dateKey));
-  map[dateKey] = updated;
-  saveLocationMap(map);
+  // Write a fresh copy rather than mutating the loaded object in place.
+  saveLocationMap({ ...map, [dateKey]: updated });
   wlLog.info(`Work location for ${dateKey} set to ${updated}`);
   renderLocation();
 }
@@ -79,8 +82,11 @@ function renderLocation() {
 }
 
 /**
- * Binds the location toggle button. Called once from DOMContentLoaded in
- * 07-lifecycle.js. Safe to call when the button is missing.
+ * Binds the location toggle button. Called exactly once from the boot sequence
+ * in 07-lifecycle.js; there is no re-invocation path, so the click listener is
+ * attached without a guard. If a future caller invokes this more than once, add
+ * a removeEventListener (or an "already bound" flag) first to avoid duplicate
+ * handlers. Safe to call when the button is missing.
  * @returns {void}
  */
 function initLocation() {
