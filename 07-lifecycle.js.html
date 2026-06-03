@@ -29,25 +29,29 @@
             <pre class="prettyprint source linenums"><code>/* ── Start of day ── */
 
 /**
- * Returns the localStorage key used to store today's start-of-day timestamp.
+ * Returns the localStorage key for a given day's start-of-day timestamp.
+ * @param {Date} [day=viewDate] - Day to key by; defaults to the day in view so
+ *   the session chip reflects whichever day the user has navigated to.
  * @returns {string} Key in the format `wl_sod_YYYY-MM-DD`.
  */
-function sodKey() {
-  return 'wl_sod_' + dk(new Date());
+function sodKey(day = viewDate) {
+  return 'wl_sod_' + dk(day);
 }
 /**
- * Retrieves today's recorded start-of-day timestamp from localStorage.
+ * Retrieves a given day's recorded start-of-day timestamp from localStorage.
+ * @param {Date} [day=viewDate] - Day to read; defaults to the day in view.
  * @returns {number|null} Unix timestamp (ms), or null if not yet set.
  */
-function getDayStart() {
-  return parseInt(localStorage.getItem(sodKey()) || '0') || null;
+function getDayStart(day = viewDate) {
+  return parseInt(localStorage.getItem(sodKey(day)) || '0') || null;
 }
 
 /**
- * Updates the session chip to show the recorded start time (with a green dot)
- * when a session is live, or the default "start the day" label otherwise.
- * The button's text content is its accessible name; no static aria-label is used
- * so screen readers announce the current state ("started HH:MM" or "start the day").
+ * Updates the session chip to show the start time recorded for the day in view
+ * (with a green dot), or the default "start the day" label when that day has no
+ * recorded start. The button's text content is its accessible name; no static
+ * aria-label is used so screen readers announce the current state
+ * ("started HH:MM" or "start the day").
  * @returns {void}
  */
 function renderSodBtn() {
@@ -75,30 +79,36 @@ function renderSodBtn() {
  * @returns {void}
  */
 function ensureDayStarted() {
-  if (getDayStart()) return;
-  localStorage.setItem(sodKey(), String(Date.now()));
+  // Always records against today: a timer starts "now", regardless of which
+  // day the user happens to be viewing.
+  const today = new Date();
+  if (getDayStart(today)) return;
+  localStorage.setItem(sodKey(today), String(Date.now()));
   renderSodBtn();
   renderTimeblock();
 }
 
 document.getElementById('sodBtn').addEventListener('click', () => {
   const existing = getDayStart();
-  if (existing) {
-    // Day already started — allow the user to correct the start time.
-    const d = new Date(existing);
+  if (existing || !isToday(viewDate)) {
+    // Set or correct the start time for the day in view. Also the path for
+    // back-filling a past day that has no recorded start (no "restore" prompt —
+    // that only makes sense for today's first start).
+    const base = existing ? new Date(existing) : new Date(viewDate);
     const cur =
-      String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      String(base.getHours()).padStart(2, '0') + ':' + String(base.getMinutes()).padStart(2, '0');
     const val = prompt(`Started at (HH:MM):`, cur);
     if (!val) return;
     const [h, m] = val.split(':').map(Number);
     if (isNaN(h) || isNaN(m)) return;
-    const ts = new Date();
+    // Anchor the timestamp to the viewed day's calendar date, not today's.
+    const ts = new Date(viewDate);
     ts.setHours(h, m, 0, 0);
     localStorage.setItem(sodKey(), String(ts.getTime()));
     renderSodBtn();
     renderTimeblock();
   } else {
-    // First click of the day — offer a chance to restore from backup before
+    // First click of today — offer a chance to restore from backup before
     // recording start-of-day. The SOD timestamp is written first so it
     // survives the page reload that importBackup() triggers: the backup only
     // overwrites data keys (entries, tasks, …) and leaves wl_sod_* alone.
@@ -107,7 +117,7 @@ document.getElementById('sodBtn').addEventListener('click', () => {
         'OK     → select a backup file to restore, then start the day\n' +
         'Cancel → start the day now without restoring'
     );
-    localStorage.setItem(sodKey(), String(Date.now()));
+    localStorage.setItem(sodKey(new Date()), String(Date.now()));
     renderSodBtn();
     renderTimeblock();
     if (wantRestore) {
@@ -120,24 +130,26 @@ document.getElementById('sodBtn').addEventListener('click', () => {
 /* ── End of day button state ── */
 
 /**
- * Returns the localStorage key used to store today's end-of-day timestamp.
+ * Returns the localStorage key for a given day's end-of-day timestamp.
+ * @param {Date} [day=viewDate] - Day to key by; defaults to the day in view.
  * @returns {string} Key in the format `wl_eod_YYYY-MM-DD`.
  */
-function eodKey() {
-  return 'wl_eod_' + dk(new Date());
+function eodKey(day = viewDate) {
+  return 'wl_eod_' + dk(day);
 }
 
 /**
- * Retrieves today's recorded end-of-day timestamp from localStorage.
+ * Retrieves a given day's recorded end-of-day timestamp from localStorage.
+ * @param {Date} [day=viewDate] - Day to read; defaults to the day in view.
  * @returns {number|null} Unix timestamp (ms), or null if not yet set.
  */
-function getEodTs() {
-  return parseInt(localStorage.getItem(eodKey()) || '0') || null;
+function getEodTs(day = viewDate) {
+  return parseInt(localStorage.getItem(eodKey(day)) || '0') || null;
 }
 
 /**
- * Updates the "end the day" button to show the recorded end time (if any)
- * or its default label, and dims the button once a time is set.
+ * Updates the "end the day" button to show the end time recorded for the day in
+ * view (if any) or its default label, and dims the button once a time is set.
  */
 function renderEodBtn() {
   const btn = document.getElementById('eodBtn');
