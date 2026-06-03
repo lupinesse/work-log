@@ -1,12 +1,11 @@
 name: Cross-Module Impact Check
 
-# Runs the /impact-check skill on every PR push and posts a report showing
-# which downstream modules depend on the changed src/js files, helping
-# reviewers understand blast radius before merging.
+# Runs .github/scripts/impact-check.mjs on every PR push and posts a report
+# showing which downstream modules depend on the changed src/js files.
 #
-# Required secrets:
-#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token; optional if ANTHROPIC_API_KEY is set
-#   ANTHROPIC_API_KEY           — Anthropic API key; fallback when OAuth token is absent or expired
+# No Claude API credentials required — this is pure static analysis.
+#
+# Required secrets (only for posting the comment):
 #   CLAUDE_REVIEWER_APP_ID      — App ID of the "Claude Reviewer" GitHub App
 #   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 
@@ -34,9 +33,6 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install Claude Code
-        run: npm install -g @anthropic-ai/claude-code
-
       - name: Write diff to pr.diff
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -45,71 +41,32 @@ jobs:
           git diff "$BASE_SHA"..."$HEAD_SHA" > pr.diff
           echo "Diff size: $(wc -l < pr.diff) lines"
 
-      - name: Check auth is present
-        id: key-check
-        env:
-          OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$OAUTH_TOKEN" ] || [ -n "$API_KEY" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Neither CLAUDE_CODE_OAUTH_TOKEN nor ANTHROPIC_API_KEY is set — skipping impact check."
-          fi
-
       - name: Run impact check
-        if: steps.key-check.outputs.present == 'true'
-        env:
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            unset CLAUDE_CODE_OAUTH_TOKEN
-          fi
-          if ! claude -p "/impact-check" \
-            --model claude-sonnet-4-6 \
-            --allowedTools "Read" "Grep" "Glob" \
-                           "Bash(git diff:*)" "Bash(git log:*)" \
-                           "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
-            > impact-output.txt 2>&1; then
-            rm -f impact-output.txt
-            exit 0
-          fi
-          echo "Impact check complete ($(wc -l < impact-output.txt) lines)"
+        run: node .github/scripts/impact-check.mjs > impact-output.txt
+        # Script always exits 0; findings are embedded in stdout.
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: steps.key-check.outputs.present == 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Post or update impact report as PR comment
-        if: steps.key-check.outputs.present == 'true'
         env:
-          GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
-          GH_REPO:    ${{ github.repository }}
-          PR_NUMBER:  ${{ github.event.pull_request.number }}
-          HEAD_SHA:   ${{ github.event.pull_request.head.sha }}
-          REPO:       ${{ github.repository }}
+          GH_TOKEN:  ${{ steps.claude-token.outputs.token || github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA:  ${{ github.event.pull_request.head.sha }}
+          REPO:      ${{ github.repository }}
         run: |
           MARKER='<!-- claude-impact-check-comment -->'
-          if [ -f impact-output.txt ]; then
-            {
-              echo "$MARKER"
-              cat impact-output.txt
-              echo ""
-              echo "---"
-              echo "*Automated analysis by [Claude Code](https://claude.ai/claude-code) \`/impact-check\` · commit \`${HEAD_SHA::7}\`*"
-            } > comment-body.txt
-          else
-            {
-              echo "$MARKER"
-              echo "> ⚠️ Impact check skipped — API unavailable (credentials may be expired or credits exhausted)."
-            } > comment-body.txt
-          fi
+          {
+            echo "$MARKER"
+            cat impact-output.txt
+            echo ""
+            echo "---"
+            echo "*Automated analysis · commit \`${HEAD_SHA::7}\`*"
+          } > comment-body.txt
 
           PREV_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
             --jq "[.[] | select(.body | contains(\"$MARKER\"))] | last | .id // empty")
