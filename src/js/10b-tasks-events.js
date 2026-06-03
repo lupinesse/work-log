@@ -623,25 +623,32 @@ function bindPlanEvents(lists) {
  */
 function moveTaskToColumn(taskId, newStatus) {
   const t = planTasks.find((p) => p.id === taskId);
-  if (!t || t.status === newStatus) return;
+  if (!t) {
+    wlLog.warn('board: moveTaskToColumn — task not found', { id: taskId });
+    return;
+  }
+  if (t.status === newStatus) return;
 
   wlLog.info('board: moveTaskToColumn', { id: taskId, from: t.status, to: newStatus });
   t.status = newStatus;
 
+  // Stop the active timer only if it was tracking this exact task
+  const stopTimerIfMatches = () => {
+    if (activeTimer) {
+      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
+      if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
+    }
+  };
+
   if (newStatus === 'done') {
     if (!t.completedAt) t.completedAt = Date.now();
-    if (activeTimer) {
-      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
-      if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
-    }
+    stopTimerIfMatches();
   } else if (newStatus === 'todo') {
     delete t.completedAt;
-    if (activeTimer) {
-      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
-      if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
-    }
+    stopTimerIfMatches();
   } else if (newStatus === 'inprogress') {
     delete t.completedAt;
+    // Stop any active timer unconditionally — only one task can be tracked at a time
     if (activeTimer) stopTimer();
     const entry = {
       id: Date.now() + '',

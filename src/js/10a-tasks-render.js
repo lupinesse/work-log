@@ -286,6 +286,20 @@ function renderRow(t) {
 }
 
 /**
+ * Partitions today's plan tasks into the three kanban column groups.
+ * @param {string} viewKey - Date key (YYYY-MM-DD) for the current view.
+ * @returns {{ todoTasks: object[], inProgressTasks: object[], todayDoneTasks: object[] }}
+ */
+function groupTasksByColumn(viewKey) {
+  const allViewTasks = planTasks.filter((t) => t.date === viewKey);
+  return {
+    todoTasks: allViewTasks.filter((t) => !['inprogress', 'done'].includes(t.status)),
+    inProgressTasks: allViewTasks.filter((t) => t.status === 'inprogress'),
+    todayDoneTasks: allViewTasks.filter((t) => t.status === 'done'),
+  };
+}
+
+/**
  * Re-renders the entire plan UI as a 3-column kanban board (To Do / In Progress / Done).
  * Pending and blocked tasks absorb into the To Do column with their existing badge treatment.
  * The Done column shows today's completed tasks and a collapsible history expander for older ones.
@@ -296,11 +310,7 @@ function renderRow(t) {
 function renderPlan() {
   /* ── 1. Partition tasks for the current view date ── */
   const viewKey = dk(viewDate);
-  const allViewTasks = planTasks.filter((t) => t.date === viewKey);
-
-  const todoTasks = allViewTasks.filter((t) => !['inprogress', 'done'].includes(t.status));
-  const inProgressTasks = allViewTasks.filter((t) => t.status === 'inprogress');
-  const todayDoneTasks = allViewTasks.filter((t) => t.status === 'done');
+  const { todoTasks, inProgressTasks, todayDoneTasks } = groupTasksByColumn(viewKey);
 
   const todoCount = todoTasks.length;
   const progressCount = inProgressTasks.length;
