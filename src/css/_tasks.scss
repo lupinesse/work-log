@@ -1205,6 +1205,19 @@
   padding-right: 14px;
 }
 
+/* Category line: override fit-content so long Jira parent-ticket labels truncate */
+.kb-cards .plan-cat-line {
+  width: auto;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.kb-cards .plan-cat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* At medium widths: To Do + In Progress side by side, Done full-width below */
 @media (width <= 768px) {
   .board-cols {
