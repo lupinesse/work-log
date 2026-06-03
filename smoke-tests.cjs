@@ -463,12 +463,60 @@ async function runTests() {
       },
     ];
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
-    const order = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('.plan-item')).map((el) => el.dataset.pid)
+    // Board layout: each status has its own column — verify correct column placement
+    const placement = await page.evaluate(() => ({
+      s1InTodo: !!document.querySelector('#planList .plan-item[data-pid="s1"]'),
+      s2InTodo: !!document.querySelector('#planList .plan-item[data-pid="s2"]'),
+      s3InProgress: !!document.querySelector('#progressList .plan-item[data-pid="s3"]'),
+      s4InDone: !!document.querySelector('#doneList .plan-item[data-pid="s4"]'),
+      s4NotInTodo: !document.querySelector('#planList .plan-item[data-pid="s4"]'),
+    }));
+    assert('In Progress task in progress column', placement.s3InProgress);
+    assert('Alpha todo in To Do column', placement.s2InTodo);
+    assert('Zebra todo in To Do column', placement.s1InTodo);
+    assert('Done task in Done column', placement.s4InDone);
+    assert('Done task not in To Do column', placement.s4NotInTodo);
+    // Alpha before Zebra within the To Do column
+    const todoOrder = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('#planList .plan-item')).map((el) => el.dataset.pid)
     );
-    assert('In Progress before To do', order.indexOf('s3') < order.indexOf('s1'));
-    assert('Alpha todo before Zebra todo', order.indexOf('s2') < order.indexOf('s1'));
-    assert('Done task not in plan list', !order.includes('s4'));
+    assert('Alpha todo before Zebra todo', todoOrder.indexOf('s2') < todoOrder.indexOf('s1'));
+    await page.close();
+  }
+
+  // ── 8b. Kanban board — WIP warn and pending/blocked in To Do ─────────────────
+  console.log('\n8b. Kanban board — WIP warn and pending/blocked');
+  {
+    const today = dk(new Date());
+    const tasks = [
+      { id: 'wb1', text: 'First in progress', tag: 'work', status: 'inprogress', date: today },
+      { id: 'wb2', text: 'Second in progress', tag: 'work', status: 'inprogress', date: today },
+      { id: 'wb3', text: 'Pending task', tag: 'work', status: 'pending', date: today },
+      { id: 'wb4', text: 'Blocked task', tag: 'work', status: 'blocked', date: today },
+    ];
+    const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
+    await page.waitForTimeout(50);
+
+    // WIP warn should appear when > 1 task is in progress
+    const wipVisible = await page.evaluate(() => !!document.querySelector('.wip-warn'));
+    assert('WIP warn shown with 2 in-progress tasks', wipVisible);
+
+    // Pending and blocked tasks fold into the To Do column
+    const pendingInTodo = await page.evaluate(
+      () => !!document.querySelector('#planList .plan-item[data-pid="wb3"]')
+    );
+    const blockedInTodo = await page.evaluate(
+      () => !!document.querySelector('#planList .plan-item[data-pid="wb4"]')
+    );
+    assert('Pending task in To Do column', pendingInTodo);
+    assert('Blocked task in To Do column', blockedInTodo);
+
+    // Dismiss the WIP warn
+    await page.evaluate(() => document.querySelector('.wip-warn__dismiss').click());
+    await page.waitForTimeout(50);
+    const warnAfterDismiss = await page.evaluate(() => !!document.querySelector('.wip-warn'));
+    assert('WIP warn hidden after dismiss', !warnAfterDismiss);
+
     await page.close();
   }
 
@@ -1228,22 +1276,24 @@ async function runTests() {
     const page = await freshPage(ctx, { wl_plan_v1: tasks, wl_cats_v1: CATS });
     await page.waitForTimeout(50);
 
-    const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
-    assert('cp-badge rendered for task with checkpoints', planHtml.includes('cp-badge'));
+    // Board layout: cp1 (inprogress) is in #progressList; todo tasks are in #planList.
+    // Query the full board so badge assertions cover both columns.
+    const boardHtml = await page.evaluate(() => document.getElementById('boardCols').innerHTML);
+    assert('cp-badge rendered for task with checkpoints', boardHtml.includes('cp-badge'));
     // Invariant: ✓ K/N when any step ticked, plain K/N when none done, + steps when empty
     assert(
       'Badge shows ✓-prefixed fraction when progress exists (✓ 1/3)',
-      planHtml.includes('✓ 1/3')
+      boardHtml.includes('✓ 1/3')
     );
-    assert('Badge shows plain fraction when nothing done (0/2)', planHtml.includes('0/2'));
-    assert('Badge shows ✓ N/N when all steps complete (✓ 2/2)', planHtml.includes('✓ 2/2'));
-    assert('+ steps badge on task with no checkpoints', planHtml.includes('+ steps'));
+    assert('Badge shows plain fraction when nothing done (0/2)', boardHtml.includes('0/2'));
+    assert('Badge shows ✓ N/N when all steps complete (✓ 2/2)', boardHtml.includes('✓ 2/2'));
+    assert('+ steps badge on task with no checkpoints', boardHtml.includes('+ steps'));
 
     // Open checkpoints by clicking the badge — fail loudly if the badge is missing
     await page.waitForSelector('.cp-badge[data-pid="cp1"]');
     await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
     await page.waitForTimeout(50);
-    const openHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
+    const openHtml = await page.evaluate(() => document.getElementById('progressList').innerHTML);
     assert('Checkpoint area opens on badge click', openHtml.includes('cp-area'));
     assert('Step text rendered', openHtml.includes('Step one'));
     assert('Done step has cp-checked class', openHtml.includes('cp-checked'));
@@ -1305,10 +1355,13 @@ async function runTests() {
       window.__wl.renderPlan();
     });
     await page.waitForTimeout(50);
-    const planHtml = await page.evaluate(() => document.getElementById('planList').innerHTML);
-    assert('Handoff note shown in plan row', planHtml.includes('pick up from line 42'));
-    assert('Handoff dismiss button rendered', planHtml.includes('plan-handoff-dismiss'));
-    assert('Unfinished task has handoff note class', planHtml.includes('plan-handoff-note'));
+    // hn1 is inprogress → lives in #progressList on the kanban board
+    const progressHtml = await page.evaluate(
+      () => document.getElementById('progressList').innerHTML
+    );
+    assert('Handoff note shown in plan row', progressHtml.includes('pick up from line 42'));
+    assert('Handoff dismiss button rendered', progressHtml.includes('plan-handoff-dismiss'));
+    assert('Unfinished task has handoff note class', progressHtml.includes('plan-handoff-note'));
 
     // Verify EOD notes only show worked-on tasks (not done tasks, not unworked tasks)
     await page.evaluate(() => window.__wl.openEodModal());

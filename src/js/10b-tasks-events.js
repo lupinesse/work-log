@@ -2,10 +2,18 @@
 
 /**
  * Binds all plan list event handlers after each render.
- * @param {HTMLElement[]} lists - [mainListEl, pendingListEl, upcomingListEl].
+ * @param {HTMLElement[]} lists - Column list elements (To Do, In Progress, Done).
  */
 function bindPlanEvents(lists) {
   const qa = (sel) => lists.flatMap((L) => [...L.querySelectorAll(sel)]);
+
+  // WIP warn dismiss
+  document.querySelectorAll('.wip-warn__dismiss').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      wipWarnDismissed = true;
+      renderPlan();
+    });
+  });
   qa('.plan-text').forEach((span) => {
     span.addEventListener('click', () => {
       const pid = span.closest('.plan-item').dataset.pid;
@@ -594,6 +602,109 @@ function bindPlanEvents(lists) {
       } else if (e.key === 'Escape') {
         splitInputId = null;
         renderPlan();
+      }
+    });
+  });
+}
+
+/**
+ * Moves a task to a new board column, updating its status and timer state.
+ * Dropping into In Progress stops any running timer, creates a new time entry,
+ * and starts tracking. Dropping into Done or To Do stops the active timer.
+ * @param {string} taskId    - The plan task ID to move.
+ * @param {string} newStatus - Target status: 'todo' | 'inprogress' | 'done'.
+ */
+function moveTaskToColumn(taskId, newStatus) {
+  const t = planTasks.find((p) => p.id === taskId);
+  if (!t || t.status === newStatus) return;
+
+  wlLog.info('board: moveTaskToColumn', { id: taskId, from: t.status, to: newStatus });
+  t.status = newStatus;
+
+  if (newStatus === 'done') {
+    if (!t.completedAt) t.completedAt = Date.now();
+    if (activeTimer) {
+      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
+      if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
+    }
+  } else if (newStatus === 'todo') {
+    delete t.completedAt;
+    if (activeTimer) {
+      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
+      if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
+    }
+  } else if (newStatus === 'inprogress') {
+    delete t.completedAt;
+    if (activeTimer) stopTimer();
+    const entry = {
+      id: Date.now() + '',
+      text: t.text,
+      tag: t.tag || 'other',
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+    };
+    entries.push(entry);
+    save();
+    startTimer(entry.id);
+  }
+
+  savePlan();
+  renderPlan();
+}
+
+/**
+ * Binds HTML5 drag-and-drop on the three board column lists so cards can be
+ * moved between columns. Skips `.cp-row` elements (checkpoint reorder has its
+ * own DnD) and non-task interactive controls.
+ * Called once per `renderPlan()` cycle, after the columns are populated.
+ */
+function bindBoardColumnDnD() {
+  const COLUMN_MAP = {
+    planList: 'todo',
+    progressList: 'inprogress',
+    doneList: 'done',
+  };
+
+  let _dragTaskId = null;
+
+  // Make each rendered card draggable (skip checkpoint rows and the history expander)
+  document.querySelectorAll('.kb-cards > .plan-item').forEach((card) => {
+    card.setAttribute('draggable', 'true');
+    card.addEventListener('dragstart', (e) => {
+      _dragTaskId = card.dataset.pid;
+      e.dataTransfer.effectAllowed = 'move';
+      card.classList.add('kb-dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('kb-dragging');
+      document
+        .querySelectorAll('.kb-col--drop-over')
+        .forEach((el) => el.classList.remove('kb-col--drop-over'));
+    });
+  });
+
+  // Column drop zones
+  Object.keys(COLUMN_MAP).forEach((listId) => {
+    const listEl = document.getElementById(listId);
+    if (!listEl) return;
+
+    listEl.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      listEl.closest('.kb-col').classList.add('kb-col--drop-over');
+    });
+    listEl.addEventListener('dragleave', (e) => {
+      // Only remove highlight when truly leaving the column (not a child element)
+      if (!listEl.closest('.kb-col').contains(e.relatedTarget)) {
+        listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
+      }
+    });
+    listEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
+      if (_dragTaskId) {
+        moveTaskToColumn(_dragTaskId, COLUMN_MAP[listId]);
+        _dragTaskId = null;
       }
     });
   });

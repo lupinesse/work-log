@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- **3-column kanban board** — the four stacked task sections (Today's Tasks, Upcoming, Pending/Blocked, Completed) are replaced by a lean To Do / In Progress / Done board. Pending and blocked tasks absorb into the To Do column with their existing badge/comment treatment; the Done column shows today's completed tasks and a collapsible expander for older iteration history. Drag-and-drop between columns starts or stops the active timer automatically.
+- **Soft WIP warn** — when more than one task is In Progress the column gains an amber tint and a dismissable "N in progress — pick one to focus" banner.
+
 ### Added
 - **Auto start-of-day on first task timer** — clicking the start-timer button on any task now silently records start-of-day if the day has not already been started (no backup-restore dialog required).
 - **Starting an upcoming task moves it to in-progress** — the start-timer button previously only promoted `todo → inprogress`; it now also promotes `upcoming → inprogress`.

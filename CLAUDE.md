@@ -251,3 +251,42 @@ acceptance testing.
 
 Do not pretend to perform these. When your change would normally trigger one,
 say so — e.g. "add a CI job to run these tests".
+
+---
+
+## Architecture decisions
+
+### June 2026 — Standalone TIME LOG merged into Today's Flow
+The standalone **TIME LOG** card and the **bar chart** were removed and folded into
+the **Today's Flow** section. This is intentional — do **not** "restore" them.
+
+- The time log now renders as the **Log** view *inside* `#todayFlowSection`. The
+  editable `#timeline` element was relocated into `#tfLogPane`; it keeps the existing
+  editable rows and the **"log something…"** ad-hoc entry row, pinned to the bottom.
+- The **bar chart (`#chart`)** was removed entirely. `renderChart()` is guarded
+  (`if (!el) return;`) and the 15-min `setInterval` that calls it is now a no-op.
+- **Month** is now a 4th Today's Flow tab (Flow / Log / Blocks / Month) that shows
+  `#monthlyLogSection`. The old standalone toggle button (`#tabMonthlyLog`) is gone.
+
+Files: `work-log.html`, `src/js/04-render.js`, `src/js/11-timeflow.js`,
+`src/js/19-monthlylog.js`, `src/css/_timeline.scss`, `src/css/_timer.scss`.
+
+### June 2026 — Task sections replaced by a 3-column kanban board
+The four stacked task sections (Today's Tasks, Upcoming, Pending/Blocked, Completed)
+were consolidated into a **lean 3-column board** (To Do / In Progress / Done) inside
+`#planSection`. Intentional — do **not** restore the stacked lists.
+
+- `renderPlan()` groups `planTasks` by status into three column bodies:
+  `#planList` (To Do — absorbs `todo` + `upcoming` + `pending` + `blocked`),
+  `#progressList` (`inprogress`), `#doneList` (`done`).
+  Column markup lives in `work-log.html` under `#boardCols`.
+- Legacy `#upcomingSection`, `#pendingSection`, `#completedSection` kept but
+  force-hidden by `renderPlan()`. Done history folds into the Done column as a
+  `▸ N earlier this iteration` expander rendered by `renderBoardDoneHistory()`.
+- **Drag-and-drop** (`bindBoardColumnDnD()` + `moveTaskToColumn()`): dropping into
+  In Progress starts tracking; dropping into Done or To Do stops the timer.
+- **WIP soft warn**: when >1 task is `inprogress`, the column gets `.kb-col--wip`
+  (amber tint) and a dismissable `.wip-warn` banner.
+
+Files: `work-log.html`, `src/js/10-tasks.js`, `src/js/10a-tasks-render.js`,
+`src/js/10b-tasks-events.js`, `src/css/_tasks.scss`.

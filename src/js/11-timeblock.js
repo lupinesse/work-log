@@ -946,9 +946,9 @@ function renderCompleted() {
     return true;
   });
   const sec = document.getElementById('completedSection');
-  sec.style.display = deduped.length ? '' : 'none';
+  // Completed history is now shown in the board Done column expander; keep this section hidden.
+  sec.style.display = 'none';
   if (!deduped.length) {
-    // Clear stale items from prior renders so DOM matches the data
     document.getElementById('completedBody').innerHTML = '';
     document.getElementById('completedCount').textContent = '0';
     return;

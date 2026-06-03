@@ -286,39 +286,27 @@ function renderRow(t) {
 }
 
 /**
- * Re-renders the entire plan UI for the currently viewed date: main task list,
- * pending/blocked section, upcoming section, all associated controls (status
- * dropdowns, checkpoints, billable buttons, Notion/emoji buttons), and section
- * headers with counts. Also renders the completed-tasks section.
+ * Re-renders the entire plan UI as a 3-column kanban board (To Do / In Progress / Done).
+ * Pending and blocked tasks absorb into the To Do column with their existing badge treatment.
+ * The Done column shows today's completed tasks and a collapsible history expander for older ones.
  *
- * Design trade-off: full DOM re-render on every state change rather than
- * targeted updates. Acceptable for a personal tool where the task list is small
- * (typically < 20 items) and the simplicity of "always consistent" outweighs
- * the cost of targeted diffing. If list size grows, consider partial updates.
+ * Design trade-off: full DOM re-render on every state change rather than targeted updates.
+ * Acceptable for a personal tool where the task list is small (< 20 items).
  */
 function renderPlan() {
-  /* ── 1. Filter and count tasks for the current view date ── */
+  /* ── 1. Partition tasks for the current view date ── */
   const viewKey = dk(viewDate);
   const allViewTasks = planTasks.filter((t) => t.date === viewKey);
-  const mainTasks = allViewTasks.filter(
-    (t) =>
-      t.status !== 'done' &&
-      t.status !== 'pending' &&
-      t.status !== 'blocked' &&
-      t.status !== 'upcoming'
-  );
-  const pendingTasks = allViewTasks.filter((t) => t.status === 'pending' || t.status === 'blocked');
-  const upcomingTasks = allViewTasks.filter((t) => t.status === 'upcoming');
-  const todoCount = allViewTasks.filter((t) => (t.status || 'todo') === 'todo').length;
-  const progressCount = allViewTasks.filter((t) => t.status === 'inprogress').length;
-  const pendingCount = allViewTasks.filter((t) => t.status === 'pending').length;
-  const blockedCount = allViewTasks.filter((t) => t.status === 'blocked').length;
-  const upcomingCount = allViewTasks.filter((t) => t.status === 'upcoming').length;
-  const doneCount = isToday(viewDate)
-    ? planTasks.filter((t) => t.date === viewKey && t.status === 'done').length
-    : allViewTasks.filter((t) => t.status === 'done').length;
 
-  // Main section header — only counts active/done tasks
+  const todoTasks = allViewTasks.filter((t) => !['inprogress', 'done'].includes(t.status));
+  const inProgressTasks = allViewTasks.filter((t) => t.status === 'inprogress');
+  const todayDoneTasks = allViewTasks.filter((t) => t.status === 'done');
+
+  const todoCount = todoTasks.length;
+  const progressCount = inProgressTasks.length;
+  const doneCount = todayDoneTasks.length;
+
+  /* ── 2. Section header and column count badges ── */
   const mainParts = [];
   if (todoCount > 0) mainParts.push(`${todoCount} to do`);
   if (progressCount > 0) mainParts.push(`${progressCount} in progress`);
@@ -327,61 +315,149 @@ function renderPlan() {
     todoCount + progressCount + doneCount ? mainParts.join(' · ') : '';
   document.getElementById('planSection').classList.toggle('collapsed', planCollapsed);
 
-  /* ── 2. Section header visibility and counts ── */
-  const upcomingSectionEl = document.getElementById('upcomingSection');
-  if (upcomingTasks.length > 0) {
-    upcomingSectionEl.style.display = '';
-    upcomingSectionEl.classList.toggle('collapsed', upcomingCollapsed);
-    document.getElementById('upcomingCount').textContent = `${upcomingCount} upcoming`;
-  } else {
-    upcomingSectionEl.style.display = 'none';
-  }
-
-  // Pending section header
-  const pendingParts = [];
-  if (pendingCount > 0) pendingParts.push(`${pendingCount} pending`);
-  if (blockedCount > 0) pendingParts.push(`${blockedCount} blocked`);
-  const pendingSectionEl = document.getElementById('pendingSection');
-  if (pendingTasks.length > 0) {
-    pendingSectionEl.style.display = '';
-    pendingSectionEl.classList.toggle('collapsed', pendingCollapsed);
-    document.getElementById('pendingCount').textContent = pendingParts.join(' · ');
-  } else {
-    pendingSectionEl.style.display = 'none';
-  }
+  document.getElementById('todoColCount').textContent = todoCount || '';
+  document.getElementById('progressColCount').textContent = progressCount ? `${progressCount}` : '';
+  document.getElementById('doneColCount').textContent = doneCount || '';
 
   // Hide add form when not viewing today
   const addRow = document.getElementById('planAddRow');
   if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
 
-  /* ── 3. List DOM references and empty state ── */
-  const mainListEl = document.getElementById('planList');
-  const pendingListEl = document.getElementById('pendingList');
-  const upcomingListEl = document.getElementById('upcomingList');
+  // Force-hide legacy stacked sections — their parse-time listeners remain intact
+  document.getElementById('upcomingSection').style.display = 'none';
+  document.getElementById('pendingSection').style.display = 'none';
+  document.getElementById('completedSection').style.display = 'none';
 
-  // Empty-state for main list (the pending list is shown/hidden entirely)
-  if (!mainTasks.length) {
-    mainListEl.innerHTML = `<div class="plan-empty">${
+  /* ── 3. Column DOM references ── */
+  const todoListEl = document.getElementById('planList');
+  const progressListEl = document.getElementById('progressList');
+  const doneListEl = document.getElementById('doneList');
+  const progressColEl = document.getElementById('progressCol');
+
+  /* ── 4. WIP guard — soft warn when more than 1 task is In Progress ── */
+  const isWipOver = progressCount > 1;
+  progressColEl.classList.toggle('kb-col--wip', isWipOver);
+
+  // Reset dismiss flag whenever count drops back to safe
+  if (!isWipOver) wipWarnDismissed = false;
+
+  /* ── 5. Render To Do column (todo + upcoming + pending + blocked) ── */
+  if (!todoTasks.length) {
+    todoListEl.innerHTML = `<div class="plan-empty">${
       isToday(viewDate)
-        ? pendingTasks.length
-          ? 'all active tasks are pending or blocked — see below'
+        ? inProgressTasks.length
+          ? 'all tasks are in progress or done'
           : 'no tasks yet — add some above'
         : 'no tasks were planned for this day'
     }</div>`;
+  } else {
+    todoListEl.innerHTML = flatSort(todoTasks).map(renderRow).join('');
   }
 
-  /* ── 4. Sort tasks and write HTML to DOM ── */
-  const mainSorted = flatSort(mainTasks);
-  const pendingSorted = flatSort(pendingTasks);
-  const upcomingSorted = flatSort(upcomingTasks);
-  if (mainTasks.length) mainListEl.innerHTML = mainSorted.map(renderRow).join('');
-  pendingListEl.innerHTML = pendingSorted.map(renderRow).join('');
-  upcomingListEl.innerHTML = upcomingSorted.map(renderRow).join('');
+  /* ── 6. Render In Progress column ── */
+  if (!inProgressTasks.length) {
+    progressListEl.innerHTML = '<div class="plan-empty kb-empty-quiet"></div>';
+  } else {
+    // WIP warn banner (prepended inside column, before list)
+    const warnHtml =
+      isWipOver && !wipWarnDismissed
+        ? `<div class="wip-warn" role="alert">
+            <span class="wip-warn__msg">⚠ ${progressCount} in progress — pick one to focus</span>
+            <button class="wip-warn__dismiss" aria-label="Dismiss WIP warning">×</button>
+          </div>`
+        : '';
+    progressListEl.innerHTML = warnHtml + flatSort(inProgressTasks).map(renderRow).join('');
+  }
 
-  /* ── 5. Bind event handlers ── */
-  bindPlanEvents([mainListEl, pendingListEl, upcomingListEl]);
+  /* ── 7. Render Done column (today) + history expander ── */
+  const doneHtml = todayDoneTasks.length
+    ? flatSort(todayDoneTasks).map(renderRow).join('')
+    : '<div class="plan-empty kb-empty-quiet"></div>';
+  doneListEl.innerHTML = doneHtml;
+  renderBoardDoneHistory(doneListEl, viewKey);
+
+  /* ── 8. Bind all event handlers across the three column lists ── */
+  bindPlanEvents([todoListEl, progressListEl, doneListEl]);
+  bindBoardColumnDnD();
 
   if (isToday(viewDate)) renderTrackRecent();
+}
+
+/**
+ * Appends the collapsible "older history" expander to the Done column list.
+ * Shows completed tasks from prior dates, grouped by day, within the active iteration.
+ * @param {HTMLElement} doneListEl - The `#doneList` container element.
+ * @param {string}      viewKey   - The current view date key (YYYY-MM-DD).
+ */
+function renderBoardDoneHistory(doneListEl, viewKey) {
+  const viewTs = new Date(viewKey + 'T12:00:00').getTime();
+  const activeTodayTexts = new Set(
+    planTasks
+      .filter((t) => t.date === viewKey && t.status !== 'done')
+      .map((t) => t.text.toLowerCase())
+  );
+
+  const olderDone = planTasks
+    .filter((t) => {
+      if (t.status !== 'done') return false;
+      if (activeTodayTexts.has(t.text.toLowerCase())) return false;
+      const completedTs = t.completedAt || new Date((t.date || viewKey) + 'T23:59:00').getTime();
+      const completedDay = dk(new Date(completedTs));
+      if (completedDay === viewKey) return false;
+      const expiryDay = getIterationExpiry(completedDay);
+      if (!expiryDay) return viewKey >= completedDay;
+      return viewKey >= completedDay && viewKey < expiryDay;
+    })
+    .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+
+  if (!olderDone.length) return;
+
+  // Deduplicate by text — keep most recently completed
+  const seen = new Set();
+  const deduped = olderDone.filter((t) => {
+    const key = t.text.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (!deduped.length) return;
+
+  // Group by completion day
+  const byDay = {};
+  deduped.forEach((t) => {
+    const day = t.completedAt ? dk(new Date(t.completedAt)) : t.date || viewKey;
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(t);
+  });
+
+  const btn = document.createElement('button');
+  btn.className = 'done-history-btn';
+  btn.setAttribute('aria-expanded', doneHistoryOpen ? 'true' : 'false');
+  btn.textContent = `${doneHistoryOpen ? '▾' : '▸'} ${deduped.length} earlier this iteration`;
+
+  const historyEl = document.createElement('div');
+  historyEl.id = 'doneHistory';
+  historyEl.style.display = doneHistoryOpen ? '' : 'none';
+
+  Object.entries(byDay).forEach(([day, tasks]) => {
+    const group = document.createElement('div');
+    group.className = 'done-history-group';
+    group.innerHTML = `<div class="done-history-day">${day}</div>` + tasks.map(renderRow).join('');
+    historyEl.appendChild(group);
+  });
+
+  btn.addEventListener('click', () => {
+    doneHistoryOpen = !doneHistoryOpen;
+    btn.setAttribute('aria-expanded', doneHistoryOpen ? 'true' : 'false');
+    btn.textContent = `${doneHistoryOpen ? '▾' : '▸'} ${deduped.length} earlier this iteration`;
+    historyEl.style.display = doneHistoryOpen ? '' : 'none';
+    // Re-bind events for newly revealed tasks
+    if (doneHistoryOpen) bindPlanEvents([historyEl]);
+  });
+
+  doneListEl.appendChild(btn);
+  doneListEl.appendChild(historyEl);
+  if (doneHistoryOpen) bindPlanEvents([historyEl]);
 }
 
 /**
