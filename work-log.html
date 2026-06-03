@@ -31,7 +31,10 @@
 
   <!-- Col 3: date nav + session chip -->
   <div class="date-nav-wrap">
-    <div class="date-nav-week" id="dateNavWeek" aria-live="polite" aria-atomic="true"></div>
+    <button type="button" class="date-nav-location" id="dateNavLocation" aria-live="polite" aria-atomic="true">
+      <span class="date-nav-location__emoji" aria-hidden="true"></span>
+      <span class="date-nav-location__label"></span>
+    </button>
     <div class="date-nav">
       <button class="nav-btn" id="prevDay" aria-label="Previous day">&#8592;</button>
       <div class="date-label" id="dateLabel" aria-live="polite" aria-atomic="true"></div>

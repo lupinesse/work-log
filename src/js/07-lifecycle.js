@@ -231,6 +231,7 @@ initMigration();
 initSprints();
 initTrackers();
 initBannerControls();
+initLocation();
 
 document.getElementById('prevDay').addEventListener('click', () => {
   viewDate = new Date(viewDate);

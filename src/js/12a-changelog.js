@@ -14,6 +14,7 @@ const TEST_AREA_NAMES = {
   11: 'Billable tracking',
   12: 'Export format',
   13: 'Timeline rendering',
+  14: 'Work location',
 };
 
 // Updated each session by Claude — id format: YYYYMMDD-NNN
@@ -603,6 +604,12 @@ const DEV_CHANGES = [
     date: '2026-05-13',
     desc: 'Calendar integration: flag days, notable days, and holidays via official API',
     areas: [1],
+  },
+  {
+    id: '20260603-001',
+    date: '2026-06-03',
+    desc: 'Date-nav week number replaced by a per-day Remote/Office location toggle',
+    areas: [14],
   },
 ];
 

@@ -38,6 +38,10 @@ const {
   computeDayBounds,
   formatGroupedLines,
   resolveCarryStatus,
+  locationFor,
+  nextLocation,
+  WORK_LOCATIONS,
+  DEFAULT_WORK_LOCATION,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -3324,4 +3328,105 @@ describe('resolveCarryStatus', () => {
 
   it('returns null when today is upcoming', () =>
     assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
+});
+
+// ── work location ─────────────────────────────────────────────────────────────
+describe('locationFor', () => {
+  it('returns the stored location for a known day', () =>
+    assert.equal(locationFor({ '2026-06-03': 'office' }, '2026-06-03'), 'office'));
+
+  it('defaults to remote when the day is unset', () =>
+    assert.equal(locationFor({}, '2026-06-03'), DEFAULT_WORK_LOCATION));
+
+  it('defaults to remote when the day is not in the map', () =>
+    assert.equal(locationFor({ '2026-06-02': 'office' }, '2026-06-03'), 'remote'));
+
+  it('falls back to the default for an unknown stored value', () =>
+    assert.equal(locationFor({ '2026-06-03': 'moon-base' }, '2026-06-03'), 'remote'));
+
+  it('tolerates a null map', () =>
+    assert.equal(locationFor(null, '2026-06-03'), DEFAULT_WORK_LOCATION));
+
+  it('only ever returns ids present in WORK_LOCATIONS', () =>
+    assert.ok(Object.prototype.hasOwnProperty.call(WORK_LOCATIONS, locationFor({}, '2026-06-03'))));
+});
+
+describe('nextLocation', () => {
+  it('flips remote to office', () => assert.equal(nextLocation('remote'), 'office'));
+
+  it('flips office to remote', () => assert.equal(nextLocation('office'), 'remote'));
+
+  it('wraps an unknown value back to the first location', () =>
+    assert.equal(nextLocation('bogus'), Object.keys(WORK_LOCATIONS)[0]));
+
+  it('returns to the original after two toggles', () =>
+    assert.equal(nextLocation(nextLocation('remote')), 'remote'));
+});
+
+// ── loadLocationMap (24-location.js localStorage glue) ─────────────────────────
+const locationSrc = readFileSync(join(__dirname, '../src/js/24-location.js'), 'utf8');
+
+/**
+ * Creates a vm sandbox exposing 24-location.js's functions with a stubbed
+ * localStorage seeded from `preloaded`. STORE_LOCATION (normally declared in
+ * 01-state.js) is injected directly so the module can resolve it.
+ * @param {Record<string, string>} [preloaded] - Initial localStorage contents.
+ * @returns {object} The vm sandbox with the module's functions attached.
+ */
+function loadLocationSandbox(preloaded = {}) {
+  const store = { ...preloaded };
+  const warnings = [];
+  const sandbox = {
+    STORE_LOCATION: 'wl_location_v1',
+    WORK_LOCATIONS,
+    DEFAULT_WORK_LOCATION,
+    locationFor,
+    nextLocation,
+    viewDate: new Date('2026-06-03T12:00:00'),
+    dk: (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    },
+    localStorage: {
+      getItem: (k) => store[k] ?? null,
+      setItem: (k, v) => {
+        store[k] = v;
+      },
+    },
+    document: { getElementById: () => null },
+    wlLog: { info: () => {}, warn: (m) => warnings.push(m), error: () => {} },
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(locationSrc, sandbox);
+  sandbox.__warnings = warnings;
+  return sandbox;
+}
+
+describe('loadLocationMap', () => {
+  // The map is built inside the vm realm, so spread it into a this-realm object
+  // before deepEqual — cross-realm objects have a different Object.prototype.
+  const plain = (sb) => ({ ...sb.loadLocationMap() });
+
+  it('returns the parsed map for valid stored JSON', () => {
+    const sb = loadLocationSandbox({ wl_location_v1: '{"2026-06-03":"office"}' });
+    assert.deepEqual(plain(sb), { '2026-06-03': 'office' });
+  });
+
+  it('returns an empty map when the key is missing', () => {
+    const sb = loadLocationSandbox();
+    assert.deepEqual(plain(sb), {});
+  });
+
+  it('returns an empty map and warns on corrupt JSON', () => {
+    const sb = loadLocationSandbox({ wl_location_v1: '{not valid json' });
+    assert.deepEqual(plain(sb), {});
+    assert.equal(sb.__warnings.length, 1);
+  });
+
+  it('returns an empty map when the stored value is not an object', () => {
+    const sb = loadLocationSandbox({ wl_location_v1: '42' });
+    assert.deepEqual(plain(sb), {});
+  });
 });
