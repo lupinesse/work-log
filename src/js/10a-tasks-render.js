@@ -390,7 +390,6 @@ function renderPlan() {
  * @param {string}      viewKey   - The current view date key (YYYY-MM-DD).
  */
 function renderBoardDoneHistory(doneListEl, viewKey) {
-  const viewTs = new Date(viewKey + 'T12:00:00').getTime();
   const activeTodayTexts = new Set(
     planTasks
       .filter((t) => t.date === viewKey && t.status !== 'done')

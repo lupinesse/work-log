@@ -1,5 +1,8 @@
 /* ── Today's tasks — event binding ── */
 
+/** Shared drag-state for board column DnD (set by dragstart, read by drop). */
+let _boardDragTaskId = null;
+
 /**
  * Binds all plan list event handlers after each render.
  * @param {HTMLElement[]} lists - Column list elements (To Do, In Progress, Done).
@@ -7,12 +10,16 @@
 function bindPlanEvents(lists) {
   const qa = (sel) => lists.flatMap((L) => [...L.querySelectorAll(sel)]);
 
-  // WIP warn dismiss
+  // WIP warn dismiss — { once: true } so re-renders don't stack listeners
   document.querySelectorAll('.wip-warn__dismiss').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      wipWarnDismissed = true;
-      renderPlan();
-    });
+    btn.addEventListener(
+      'click',
+      () => {
+        wipWarnDismissed = true;
+        renderPlan();
+      },
+      { once: true }
+    );
   });
   qa('.plan-text').forEach((span) => {
     span.addEventListener('click', () => {
@@ -653,25 +660,15 @@ function moveTaskToColumn(taskId, newStatus) {
 }
 
 /**
- * Binds HTML5 drag-and-drop on the three board column lists so cards can be
- * moved between columns. Skips `.cp-row` elements (checkpoint reorder has its
- * own DnD) and non-task interactive controls.
- * Called once per `renderPlan()` cycle, after the columns are populated.
+ * Makes each rendered board card draggable and wires its dragstart/dragend.
+ * Called once per `renderPlan()` cycle after columns are populated.
+ * Static column drop-zone listeners are set up once in `initBoardColumnDnD()`.
  */
 function bindBoardColumnDnD() {
-  const COLUMN_MAP = {
-    planList: 'todo',
-    progressList: 'inprogress',
-    doneList: 'done',
-  };
-
-  let _dragTaskId = null;
-
-  // Make each rendered card draggable (skip checkpoint rows and the history expander)
   document.querySelectorAll('.kb-cards > .plan-item').forEach((card) => {
     card.setAttribute('draggable', 'true');
     card.addEventListener('dragstart', (e) => {
-      _dragTaskId = card.dataset.pid;
+      _boardDragTaskId = card.dataset.pid;
       e.dataTransfer.effectAllowed = 'move';
       card.classList.add('kb-dragging');
     });
@@ -682,8 +679,20 @@ function bindBoardColumnDnD() {
         .forEach((el) => el.classList.remove('kb-col--drop-over'));
     });
   });
+}
 
-  // Column drop zones
+/**
+ * Registers dragover, dragleave, and drop listeners on the three static board
+ * column lists. Called exactly once on DOMContentLoaded from `07-lifecycle.js`.
+ * Card draggable wiring (re-rendered each cycle) stays in `bindBoardColumnDnD()`.
+ */
+function initBoardColumnDnD() {
+  const COLUMN_MAP = {
+    planList: 'todo',
+    progressList: 'inprogress',
+    doneList: 'done',
+  };
+
   Object.keys(COLUMN_MAP).forEach((listId) => {
     const listEl = document.getElementById(listId);
     if (!listEl) return;
@@ -702,9 +711,9 @@ function bindBoardColumnDnD() {
     listEl.addEventListener('drop', (e) => {
       e.preventDefault();
       listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
-      if (_dragTaskId) {
-        moveTaskToColumn(_dragTaskId, COLUMN_MAP[listId]);
-        _dragTaskId = null;
+      if (_boardDragTaskId) {
+        moveTaskToColumn(_boardDragTaskId, COLUMN_MAP[listId]);
+        _boardDragTaskId = null;
       }
     });
   });
