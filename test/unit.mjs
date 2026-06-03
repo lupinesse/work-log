@@ -2400,12 +2400,21 @@ describe('writeCollapseState', () => {
  * @param {Record<string,string>} [opts.preloaded] - Initial localStorage contents.
  * @returns {{ ensureDayStarted: Function, getDayStart: Function, store: Record<string,string>, calls: { renderSodBtn: number, renderTimeblock: number } }}
  */
-function loadSodSandbox({ preloaded = {} } = {}) {
+function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
   const store = { ...preloaded };
   const calls = { renderSodBtn: 0, renderTimeblock: 0 };
-  const fakeEl = { textContent: '', appendChild: () => {}, setAttribute: () => {} };
+  const fakeEl = {
+    textContent: '',
+    appendChild: () => {},
+    setAttribute: () => {},
+    addEventListener: () => {},
+  };
   const sandbox = {
     dk: pureFns.dk,
+    // viewDate is the day the user has navigated to; the SOD/EOD key helpers
+    // default to it so the chip reflects whichever day is in view.
+    viewDate,
+    isToday: (d) => pureFns.dk(d) === pureFns.dk(new Date()),
     localStorage: {
       getItem: (key) => (key in store ? store[key] : null),
       setItem: (key, value) => {
@@ -2422,10 +2431,14 @@ function loadSodSandbox({ preloaded = {} } = {}) {
       calls.renderTimeblock++;
     },
   };
-  // Extract from start of file up to (not including) the module-level sodBtn
-  // click listener so no DOM event is attached during evaluation.
-  const cutIdx = lifecycleSrc.indexOf("document.getElementById('sodBtn').addEventListener");
-  if (cutIdx === -1) throw new Error('Could not locate sodBtn listener in 07-lifecycle.js');
+  // Evaluate from the start of the file up to (not including) the section
+  // collapse handlers, which run top-level DOM code. This range includes the SOD
+  // and EOD helper declarations; the only top-level executable in it is the
+  // sodBtn listener, whose bind is a no-op because fakeEl.addEventListener is
+  // stubbed.
+  const cutIdx = lifecycleSrc.indexOf('/* ── Section collapse handlers ── */');
+  if (cutIdx === -1)
+    throw new Error('Could not locate collapse handlers marker in 07-lifecycle.js');
   vm.createContext(sandbox);
   vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
   // renderSodBtn was defined by the vm script (function declaration). Replace
@@ -2438,6 +2451,9 @@ function loadSodSandbox({ preloaded = {} } = {}) {
   return {
     ensureDayStarted: sandbox.ensureDayStarted,
     getDayStart: sandbox.getDayStart,
+    getEodTs: sandbox.getEodTs,
+    sodKey: sandbox.sodKey,
+    eodKey: sandbox.eodKey,
     store,
     calls,
   };
@@ -2492,6 +2508,64 @@ describe('ensureDayStarted', () => {
     });
     ensureDayStarted();
     assert.equal(calls.renderTimeblock, 0);
+  });
+
+  it('records SOD against today even when a past day is in view', () => {
+    const past = new Date('2026-05-20T09:00:00');
+    const todayKey = pureFns.dk(new Date());
+    const { ensureDayStarted, store } = loadSodSandbox({ viewDate: past });
+    ensureDayStarted();
+    assert.ok(store['wl_sod_' + todayKey], 'today key should be written');
+    assert.ok(!store['wl_sod_2026-05-20'], 'the viewed past day must not be written');
+  });
+});
+
+// ── getDayStart / getEodTs read the day in view ───────────────────────────────
+describe('per-day start/end lookup', () => {
+  const PAST = new Date('2026-05-20T12:00:00');
+  const PAST_KEY = '2026-05-20';
+
+  it('getDayStart reads the SOD for the day in view, not today', () => {
+    const { getDayStart } = loadSodSandbox({
+      viewDate: PAST,
+      preloaded: { ['wl_sod_' + PAST_KEY]: '1700000000000' },
+    });
+    assert.equal(getDayStart(), 1700000000000);
+  });
+
+  it('getDayStart returns null when the viewed day has no SOD', () => {
+    const todayKey = pureFns.dk(new Date());
+    const { getDayStart } = loadSodSandbox({
+      viewDate: PAST,
+      preloaded: { ['wl_sod_' + todayKey]: '1700000000000' },
+    });
+    assert.equal(getDayStart(), null);
+  });
+
+  it('getEodTs reads the EOD for the day in view, not today', () => {
+    const { getEodTs } = loadSodSandbox({
+      viewDate: PAST,
+      preloaded: { ['wl_eod_' + PAST_KEY]: '1700000050000' },
+    });
+    assert.equal(getEodTs(), 1700000050000);
+  });
+
+  it('an explicit day argument overrides the viewDate default', () => {
+    const { getDayStart } = loadSodSandbox({
+      viewDate: PAST,
+      preloaded: { ['wl_sod_2026-01-01']: '1600000000000' },
+    });
+    assert.equal(getDayStart(new Date('2026-01-01T08:00:00')), 1600000000000);
+  });
+
+  it('sodKey defaults to the day in view when called with no argument', () => {
+    const { sodKey } = loadSodSandbox({ viewDate: PAST });
+    assert.equal(sodKey(), 'wl_sod_' + PAST_KEY);
+  });
+
+  it('eodKey defaults to the day in view when called with no argument', () => {
+    const { eodKey } = loadSodSandbox({ viewDate: PAST });
+    assert.equal(eodKey(), 'wl_eod_' + PAST_KEY);
   });
 });
 

@@ -20,6 +20,10 @@ function render() {
   document.getElementById('prevDay').disabled = false;
   document.getElementById('nextDay').disabled = isToday(viewDate);
   renderLocation();
+  // Session chip + end-the-day button track the day in view, so refresh them
+  // whenever the date changes.
+  renderSodBtn();
+  renderEodBtn();
 
   /* ── 2. Timer bar ── */
   if (!activeTimer) {

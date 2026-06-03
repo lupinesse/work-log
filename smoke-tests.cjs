@@ -1212,6 +1212,49 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 23b. Session chip tracks the day in view ────────────────────────────────
+  console.log('\n23b. Session chip tracks the day in view');
+  {
+    const yesterday = new Date(Date.now() - 86400000);
+    const yKey = dk(yesterday);
+    const sodTs = new Date(yesterday);
+    sodTs.setHours(9, 15, 0, 0);
+    const eodTs = new Date(yesterday);
+    eodTs.setHours(17, 30, 0, 0);
+
+    const page = await ctx.newPage();
+    await page.addInitScript(
+      (d) => {
+        localStorage.clear();
+        // Raw timestamp strings (not JSON) — matches how the app stores them.
+        localStorage.setItem('wl_sod_' + d.yKey, String(d.sod));
+        localStorage.setItem('wl_eod_' + d.yKey, String(d.eod));
+      },
+      { yKey, sod: sodTs.getTime(), eod: eodTs.getTime() }
+    );
+    await page.goto(FILE);
+    await page.waitForFunction(() => typeof window.__wl === 'object', { timeout: 8000 });
+
+    // Today has no recorded start/end, so the chips show their default labels.
+    const sodToday = await page.evaluate(() => document.getElementById('sodBtn').textContent);
+    assert('Today: chip shows default "start the day"', sodToday.includes('start the day'));
+
+    // Navigate back one day → chips must reflect yesterday's recorded times.
+    await page.evaluate(() => document.getElementById('prevDay').click());
+    await page.waitForTimeout(50);
+    const sodPrev = await page.evaluate(() => document.getElementById('sodBtn').textContent);
+    const eodPrev = await page.evaluate(() => document.getElementById('eodBtn').textContent);
+    assert('Yesterday: chip shows that day’s start time', sodPrev.includes('started 09:15'));
+    assert('Yesterday: end-the-day shows that day’s end time', eodPrev.includes('ended 17:30'));
+
+    // Navigate forward to today again → back to the default label.
+    await page.evaluate(() => document.getElementById('nextDay').click());
+    await page.waitForTimeout(50);
+    const sodBack = await page.evaluate(() => document.getElementById('sodBtn').textContent);
+    assert('Back to today: chip resets to default', sodBack.includes('start the day'));
+    await page.close();
+  }
+
   // ── 24. Streak counter (checks from yesterday, not today) ────────────────────
   console.log('\n24. Streak counter');
   {
