@@ -230,7 +230,7 @@ function renderRow(t) {
 
   // Pending/blocked: simplified layout — no action buttons, bubble tooltip, timestamp at far right
   if (status === 'pending' || status === 'blocked') {
-    return `<div class="plan-item plan-pb-item${isLive ? ' active-timer' : ''}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
+    return `<div class="plan-item plan-pb-item${isLive ? ' active-timer' : ''}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}" data-status="${status}">
         <select class="plan-status ${status}" data-pid="${t.id}">${statusOpts(status)}</select>
         ${billBtnHtml(t, status)}
         <div class="plan-left">
@@ -254,7 +254,7 @@ function renderRow(t) {
   const indent = isChild ? ' plan-child-item' : '';
   const childPrefix = isChild ? '<span class="plan-child-arrow">↳</span>' : '';
 
-  return `<div class="plan-item${status === 'done' ? ' done' : ''}${status === 'inprogress' && !isLive ? ' inprogress' : ''}${isLive ? ' active-timer' : ''}${indent}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}">
+  return `<div class="plan-item${status === 'done' ? ' done' : ''}${status === 'inprogress' && !isLive ? ' inprogress' : ''}${isLive ? ' active-timer' : ''}${indent}" data-pid="${t.id}" data-dtxt="${escHtml(t.text)}" data-dtag="${tag}" data-status="${status}">
       ${childPrefix}<select class="plan-status ${status === 'done' ? 'done-st' : status}" data-pid="${t.id}">${statusOpts(status)}</select>
       ${billBtnHtml(t, status)}
       <div class="plan-left">
