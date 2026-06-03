@@ -1144,32 +1144,14 @@
   padding: 4px 2px 2px;
 }
 
-/* ── Kanban card compact adjustments — cards in narrow 1/3-width columns ── */
+/* ── Kanban card adjustments ── */
 
-.kb-cards .plan-item {
-  padding: 4px 2px;
-}
-
-/* Narrower status dropdown — frees ~22 px of card width */
-.kb-cards .plan-status {
-  width: 70px;
-  min-width: 70px;
-  font-size: 10px;
-  padding-right: 14px;
-}
-
-/* Prevent runaway wrapping — two lines is enough for a glance */
+/* 2-line cap is a deliberate kanban convention — applied at all widths */
 .kb-cards .plan-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-/* Category dot stays as a color cue; label and chevron omitted to save a line */
-.kb-cards .plan-cat-name,
-.kb-cards .plan-cat-chevron {
-  display: none;
 }
 
 /* At medium widths: To Do + In Progress side by side, Done full-width below */
@@ -1180,6 +1162,24 @@
 
   #doneCol {
     grid-column: 1 / -1;
+  }
+
+  /* Compact card chrome only when columns are actually narrow */
+  .kb-cards .plan-item {
+    padding: 4px 2px;
+  }
+
+  .kb-cards .plan-status {
+    width: 70px;
+    min-width: 70px;
+    font-size: 10px;
+    padding-right: 14px;
+  }
+
+  /* Hide category label; dot color cue remains and is still clickable */
+  .kb-cards .plan-cat-name,
+  .kb-cards .plan-cat-chevron {
+    display: none;
   }
 }
 
