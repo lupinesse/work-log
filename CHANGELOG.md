@@ -4,11 +4,8 @@
 
 ### Changed
 - **Session start/end times follow the day you're viewing** — the "started HH:MM" session chip and the "🌙 ended HH:MM" end-the-day button now reflect whichever day is in view, not always today. Navigating with ← → updates them to that day's recorded start and end. Recording actions stay anchored to today: starting a timer and "end the day" always record against the current day, while editing the chip lets you set or correct the start time for the day in view (including back-filling a past day). `sodKey`/`getDayStart`/`eodKey`/`getEodTs` now take an optional day argument defaulting to the viewed day; covered by new unit and smoke tests.
-
-### Changed
 - **Date-nav header shows work location instead of the ISO week** — the small "Week N/53" line above the day navigator is replaced by a Remote / Office toggle (🏠 Remote / 🏢 Office). Location is tracked per day, so navigating with ← → shows that day's location; unset days default to Remote. Click (or focus + Enter/Space) to switch. The ISO week number is still shown in the almanac header (`#liveWeek`). New pure helpers `locationFor()` and `nextLocation()` in `pure-fns.js` with unit tests.
-
-### Changed
+- **Responsive layout** — header columns wrap at ≤680px with the almanac moving to its own row; stats grid reflows 3→2→1 columns at ≤640px/≤420px; kanban board steps 3→2 columns at ≤768px (Done spans full width below) then 1 column at ≤580px; body padding reduces to 10px at ≤480px. Compact kanban card chrome (tighter padding, narrower status dropdown, hidden category label) activates only at ≤768px. Kanban task names capped at 2 lines at all widths.
 - **3-column kanban board** — the four stacked task sections (Today's Tasks, Upcoming, Pending/Blocked, Completed) are replaced by a lean To Do / In Progress / Done board. Pending and blocked tasks absorb into the To Do column with their existing badge/comment treatment; the Done column shows today's completed tasks and a collapsible expander for older iteration history. Drag-and-drop between columns starts or stops the active timer automatically.
 - **Soft WIP warn** — when more than one task is In Progress the column gains an amber tint and a dismissable "N in progress — pick one to focus" banner.
 
