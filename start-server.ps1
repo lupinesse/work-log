@@ -83,13 +83,27 @@ function Get-TodayMeetings {
                         $items = $calFolder.Items
                         $items.IncludeRecurrences = $useRecurring
                         $items.Sort('[Start]')
-                        $filtered = $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
+                        # When IncludeRecurrences is $true, Restrict date filters are
+                        # unreliable on some Outlook versions: they match the master
+                        # appointment's original start date rather than each occurrence's
+                        # date, so they return April/May masters instead of today's
+                        # instances. Instead, iterate the sorted collection and break once
+                        # we pass today. For non-recurring items ($false) Restrict is fast
+                        # and correct, so keep it.
+                        $source = if ($useRecurring) { $items } else {
+                            $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
+                        }
 
-                        foreach ($item in $filtered) {
-                            try {
-                                $startDate = ([DateTime]$item.Start).Date
+                        foreach ($item in $source) {
+                            $startDate = $null
+                            try { $startDate = ([DateTime]$item.Start).Date } catch { continue }
+
+                            if ($useRecurring) {
+                                if ($startDate -lt $today) { continue }
+                                if ($startDate -gt $today) { break }
+                            } else {
                                 if ($startDate -ne $today) { continue }
-                            } catch { continue }
+                            }
 
                             $subject = try { $item.Subject  } catch { '(no title)' }
                             $key     = "$subject|$($item.Start)"
