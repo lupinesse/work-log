@@ -21,8 +21,13 @@ your computer is awake. GitHub-event and API triggers are **Remote only**.
 | Daily commit review | **Local** | Read-only digest, no PR, no laptop-awake concern |
 | Weekly QA audit | **Remote** | Opens a PR; must run even with the laptop closed |
 | PR review on open | **Remote only** | Needs a `pull_request.opened` GitHub trigger |
-| CI auto-fix | **Remote only** | Needs a GitHub/API trigger |
 | Pre-release sweep | **Remote** | Opens a PR |
+
+> **CI auto-fix is intentionally not a routine.** It is already implemented
+> in-runner by `.github/workflows/auto-fix-ci.yml`, which installs the Claude
+> Code CLI and runs `/ci-fix` directly when a CI run fails on a PR. Adding a
+> routine for the same job would create a second auto-fixer racing on the same
+> PR. See the **CI auto-fix** section below for details.
 
 ## Shared settings (Remote routines)
 
@@ -31,8 +36,8 @@ your computer is awake. GitHub-event and API triggers are **Remote only**.
   on the default allowlist). Add a setup script of `npm ci` so `build`, `lint`,
   and `test` work on the fresh clone.
 - **Connectors:** remove all unless a routine explicitly needs one.
-- **Permissions:** leave "Allow unrestricted branch pushes" off (so changes land
-  on `claude/`-prefixed branches and PRs) — except CI auto-fix, which needs it.
+- **Permissions:** leave "Allow unrestricted branch pushes" off, so changes land
+  on `claude/`-prefixed branches and PRs.
 
 Routines run with no approval prompts, so the instructions below are written to
 be self-contained and explicit about what success looks like.
@@ -151,40 +156,24 @@ PR that has any blocking finding.
 
 ---
 
-## 4. CI auto-fix (Remote only)
+## 4. CI auto-fix — handled by a workflow, not a routine
 
-**Name**
+CI auto-fix is **deliberately not a routine**. It is already implemented by
+`.github/workflows/auto-fix-ci.yml`, which triggers on the CI workflow
+completing, and — when a PR run fails — checks out the PR branch, installs the
+Claude Code CLI, runs `/ci-fix` in the runner, pushes an `auto-fix:` commit, and
+posts a diagnosis comment. A loop-guard skips runs whose last commit already
+starts with `auto-fix:` to prevent infinite retry cycles.
 
-```
-ci-auto-fix
-```
+Because that workflow does the whole job in-runner, creating a routine for the
+same purpose would put a second auto-fixer on the same PR, racing the first and
+risking duplicate commits or conflicts. If you ever want to move the logic into
+a routine instead, retire the in-runner Claude steps in that workflow first and
+replace them with a `curl` that fires the routine's API endpoint with the
+failure log — do not run both.
 
-**Description**
-
-```
-On CI failure, run /ci-fix, verify build/lint/test, push an "auto-fix:" commit
-```
-
-**Trigger:** GitHub event → `pull_request.synchronize` (or an API trigger your
-CI POSTs the failing log to). Enable **Allow unrestricted branch pushes** so it
-can push onto the PR branch.
-
-**Instructions**
-
-```
-A CI run on this pull request failed. Make the minimum change to get it green.
-
-1. Read ci-failure.log if present; otherwise reproduce with
-   npm run build && npm run lint && npm test.
-2. Invoke the committed /ci-fix skill to fix the SOURCE files. Never edit
-   build artefacts (script.js, styles.css, docs/*.html).
-3. Re-run build + lint + test and confirm all pass.
-4. Commit with a message STARTING WITH "auto-fix:" (required by the workflow
-   loop-guard) and push to the PR branch.
-
-Surgical fix only. If the failure is a genuine logic/spec problem rather than
-a mechanical lint/test issue, stop and comment with the diagnosis instead.
-```
+The `/ci-fix` skill itself (`.claude/skills/ci-fix/`) remains the single source
+of the fix logic, invoked by the workflow.
 
 ---
 
