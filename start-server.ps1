@@ -81,8 +81,8 @@ function Get-TodayMeetings {
                 foreach ($useRecurring in @($true, $false)) {
                     try {
                         $items = $calFolder.Items
-                        $items.Sort('[Start]')
                         $items.IncludeRecurrences = $useRecurring
+                        $items.Sort('[Start]')
                         $filtered = $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
 
                         foreach ($item in $filtered) {
