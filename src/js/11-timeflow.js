@@ -14,10 +14,16 @@ const TF_STRIP_START = 7 * 60;
 const TF_STRIP_END = 21 * 60;
 
 /** Ordered list of view ids — drives the segmented control and keyboard nav. */
-const TF_VIEWS = ['flow', 'log', 'blocks', 'month'];
+const TF_VIEWS = ['flow', 'log', 'blocks', 'month', 'summary'];
 
 /** Display labels for the segmented control. Static so we avoid recomputing on every render. */
-const TF_VIEW_LABELS = { flow: 'Flow', log: 'Log', blocks: 'Blocks', month: 'Month' };
+const TF_VIEW_LABELS = {
+  flow: 'Flow',
+  log: 'Log',
+  blocks: 'Blocks',
+  month: 'Month',
+  summary: 'Summary',
+};
 
 /** Maps each view to the DOM id of the pane that hosts it. */
 const TF_PANE_IDS = {
@@ -25,17 +31,18 @@ const TF_PANE_IDS = {
   log: 'tfLogPane',
   blocks: 'tfBlocksPane',
   month: 'monthlyLogSection',
+  summary: 'tfSummaryPane',
 };
 
 // ─────────────────────────── view preference ───────────────────────────
 
 /**
  * Returns the persisted view preference, defaulting to 'flow'.
- * @returns {'flow'|'log'|'blocks'|'month'}
+ * @returns {'flow'|'log'|'blocks'|'month'|'summary'}
  */
 function getFlowView() {
   const stored = localStorage.getItem(STORE_FLOW_VIEW);
-  return stored === 'log' || stored === 'blocks' || stored === 'month' ? stored : 'flow';
+  return TF_VIEWS.includes(stored) ? stored : 'flow';
 }
 
 /**
@@ -387,10 +394,10 @@ function renderTodayFlow() {
 
   renderFlowHeader(dateKey, activeView);
 
-  // Day strip and gap reminder are hidden in Month view
+  // Day strip and gap reminder are hidden in Month and Summary views
   const stripWrap = document.querySelector('.tf-day-strip-wrap');
   const gapEl = document.getElementById('tfGapReminder');
-  const hideStripAndGap = activeView === 'month';
+  const hideStripAndGap = activeView === 'month' || activeView === 'summary';
   if (stripWrap) stripWrap.style.display = hideStripAndGap ? 'none' : '';
   if (!hideStripAndGap) {
     renderDayStrip(dateKey);
@@ -410,6 +417,7 @@ function renderTodayFlow() {
     if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
   } else if (activeView === 'blocks') renderTimeblock();
   else if (activeView === 'month') renderMonthlyLog();
+  else if (activeView === 'summary') renderRollingSummary();
 }
 
 /**

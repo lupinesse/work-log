@@ -2765,8 +2765,8 @@ async function runTests() {
     );
     await page.keyboard.press('End');
     assert(
-      'End jumps to last tab (Month)',
-      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'month')
+      'End jumps to last tab (Summary)',
+      await page.evaluate(() => localStorage.getItem('wl_flow_view') === 'summary')
     );
 
     await page.close();
