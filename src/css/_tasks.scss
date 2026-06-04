@@ -1143,3 +1143,108 @@
   color: var(--text3);
   padding: 4px 2px 2px;
 }
+
+/* ── Kanban card style ── */
+
+/* Card appearance: white card with colored left accent border (status via position + border) */
+.kb-cards .plan-item {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-left: 3px solid var(--border2);
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+
+/* Override global inprogress/active-timer background + padding in kanban context */
+.kb-cards .plan-item.inprogress,
+.kb-cards .plan-item.active-timer {
+  background: var(--bg);
+  padding-left: 8px;
+}
+
+.kb-cards .plan-item.inprogress:hover,
+.kb-cards .plan-item.active-timer:hover {
+  background: var(--bg2);
+}
+
+/* Left accent color per status — matches prototype COL_ACCENT palette */
+.kb-cards .plan-item[data-status='inprogress'],
+.kb-cards .plan-item.active-timer {
+  border-left-color: var(--live);
+}
+
+.kb-cards .plan-item[data-status='done'] {
+  border-left-color: #059669;
+}
+
+.kb-cards .plan-item[data-status='pending'] {
+  border-left-color: #d97706;
+}
+
+.kb-cards .plan-item[data-status='blocked'] {
+  border-left-color: #dc2626;
+}
+
+.kb-cards .plan-item[data-status='upcoming'] {
+  border-left-color: #1d9e75;
+}
+
+/* 2-line cap — deliberate kanban convention at all widths */
+.kb-cards .plan-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Status pill — hides dropdown arrow so it reads as a badge, not a form control */
+.kb-cards .plan-status {
+  width: auto;
+  min-width: 0;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background-image: none;
+  margin-right: 6px;
+}
+
+/* Category line: override fit-content so long Jira parent-ticket labels truncate */
+.kb-cards .plan-cat-line {
+  width: auto;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.kb-cards .plan-cat-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* At medium widths: To Do + In Progress side by side, Done full-width below */
+@media (width <= 768px) {
+  .board-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #doneCol {
+    grid-column: 1 / -1;
+  }
+
+  /* Narrow columns: category label not worth the line — dot colour cue is enough */
+  .kb-cards .plan-cat-name,
+  .kb-cards .plan-cat-chevron {
+    display: none;
+  }
+}
+
+/* Collapse to single column when the panel is too narrow for two columns */
+@media (width <= 580px) {
+  .board-cols {
+    grid-template-columns: 1fr;
+  }
+
+  #doneCol {
+    grid-column: auto;
+  }
+}

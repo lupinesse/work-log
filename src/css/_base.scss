@@ -120,6 +120,12 @@ body {
   min-height: 100vh;
 }
 
+@media (width <= 480px) {
+  body {
+    padding: 10px;
+  }
+}
+
 // Inline SVG icon in a section header strip. flex/inline-flex ensures the SVG
 // sits on the text baseline without the extra line-height of a span/emoji.
 .section-icon {
