@@ -78,55 +78,81 @@ function Get-TodayMeetings {
             foreach ($entry in $calFolders) {
                 $calFolder   = $entry.folder
                 $accountKey = $entry.label
-                foreach ($useRecurring in @($true, $false)) {
-                    try {
-                        $items = $calFolder.Items
-                        $items.IncludeRecurrences = $useRecurring
-                        $items.Sort('[Start]')
-                        # When IncludeRecurrences is $true, Restrict date filters are
-                        # unreliable on some Outlook versions: they match the master
-                        # appointment's original start date rather than each occurrence's
-                        # date, so they return April/May masters instead of today's
-                        # instances. Instead, iterate the sorted collection and break once
-                        # we pass today. For non-recurring items ($false) Restrict is fast
-                        # and correct, so keep it.
-                        $source = if ($useRecurring) { $items } else {
-                            $items.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
-                        }
+                # Pass 1 — recurring occurrences via Find/FindNext.
+                # Restrict is unreliable when IncludeRecurrences=$true on some Outlook
+                # versions: it matches the master appointment's original start date
+                # (e.g. April) rather than each occurrence's date. Find/FindNext
+                # correctly walks occurrences at their actual start times and jumps
+                # straight to today without iterating the full calendar history.
+                try {
+                    $items = $calFolder.Items
+                    $items.IncludeRecurrences = $true
+                    $items.Sort('[Start]')
+                    $cur = try { $items.Find("[Start] >= '$d1'") } catch { $null }
+                    while ($cur -ne $null) {
+                        $startDate = $null
+                        try { $startDate = ([DateTime]$cur.Start).Date } catch {}
+                        if ($startDate -eq $null -or $startDate -gt $today) { break }
 
-                        foreach ($item in $source) {
-                            $startDate = $null
-                            try { $startDate = ([DateTime]$item.Start).Date } catch { continue }
-
-                            if ($useRecurring) {
-                                if ($startDate -lt $today) { continue }
-                                if ($startDate -gt $today) { break }
-                            } else {
-                                if ($startDate -ne $today) { continue }
-                            }
-
-                            $subject = try { $item.Subject  } catch { '(no title)' }
-                            $key     = "$subject|$($item.Start)"
-                            if ($seen.ContainsKey($key)) { continue }
-                            $seen[$key] = $true
-
-                            $loc     = try { $item.Location } catch { '' }
-                            $body    = try { $item.Body     } catch { '' }
-                            $joinUrl = $null
-                            if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
-                                $joinUrl = $matches[0] -replace '&amp;','&'
-                            }
-                            $results += @{
-                                subject  = $subject
-                                start    = ([DateTime]$item.Start).ToString('o')
-                                end      = ([DateTime]$item.End).ToString('o')
-                                location = $loc
-                                joinUrl  = $joinUrl
-                                account  = $accountKey
+                        if ($startDate -eq $today) {
+                            $subject = try { $cur.Subject  } catch { '(no title)' }
+                            $key     = "$subject|$($cur.Start)"
+                            if (-not $seen.ContainsKey($key)) {
+                                $seen[$key] = $true
+                                $loc     = try { $cur.Location } catch { '' }
+                                $body    = try { $cur.Body     } catch { '' }
+                                $joinUrl = $null
+                                if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                                    $joinUrl = $matches[0] -replace '&amp;','&'
+                                }
+                                $results += @{
+                                    subject  = $subject
+                                    start    = ([DateTime]$cur.Start).ToString('o')
+                                    end      = ([DateTime]$cur.End).ToString('o')
+                                    location = $loc
+                                    joinUrl  = $joinUrl
+                                    account  = $accountKey
+                                }
                             }
                         }
-                    } catch { continue }
-                }
+                        $cur = try { $items.FindNext() } catch { $null }
+                    }
+                } catch {}
+
+                # Pass 2 — non-recurring items via Restrict (fast and correct without
+                # IncludeRecurrences). The $seen map deduplicates any overlap.
+                try {
+                    $items2 = $calFolder.Items
+                    $items2.IncludeRecurrences = $false
+                    $items2.Sort('[Start]')
+                    $filtered = $items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'")
+                    foreach ($item in $filtered) {
+                        try {
+                            $startDate = ([DateTime]$item.Start).Date
+                            if ($startDate -ne $today) { continue }
+                        } catch { continue }
+
+                        $subject = try { $item.Subject  } catch { '(no title)' }
+                        $key     = "$subject|$($item.Start)"
+                        if ($seen.ContainsKey($key)) { continue }
+                        $seen[$key] = $true
+
+                        $loc     = try { $item.Location } catch { '' }
+                        $body    = try { $item.Body     } catch { '' }
+                        $joinUrl = $null
+                        if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                            $joinUrl = $matches[0] -replace '&amp;','&'
+                        }
+                        $results += @{
+                            subject  = $subject
+                            start    = ([DateTime]$item.Start).ToString('o')
+                            end      = ([DateTime]$item.End).ToString('o')
+                            location = $loc
+                            joinUrl  = $joinUrl
+                            account  = $accountKey
+                        }
+                    }
+                } catch {}
             }
 
             return $results
