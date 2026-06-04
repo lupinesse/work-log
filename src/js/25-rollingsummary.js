@@ -42,15 +42,23 @@ function summaryGetEodTs(dateKey) {
   return parseInt(localStorage.getItem('wl_eod_' + dateKey) || '0') || null;
 }
 
-/**
- * Resolves the location emoji for a date key using the stored location map.
- * @param {string} dateKey
- * @returns {string}
- */
-function summaryGetLocationEmoji(dateKey) {
-  const loc = locationFor(loadLocationMap(), dateKey);
-  return WORK_LOCATIONS[loc].emoji;
-}
+/** Day-of-week abbreviations used by fmtDateLabel — module-level to avoid per-call allocation. */
+const DATE_LABEL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Month abbreviations used by fmtDateLabel — module-level to avoid per-call allocation. */
+const DATE_LABEL_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 /**
  * Formats a YYYY-MM-DD date key as a short day-of-week + date label.
@@ -61,22 +69,7 @@ function summaryGetLocationEmoji(dateKey) {
 function fmtDateLabel(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(y, m - 1, d);
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const MONTHS = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  return `${DAYS[date.getDay()]} ${String(d).padStart(2, '0')} ${MONTHS[m - 1]}`;
+  return `${DATE_LABEL_DAYS[date.getDay()]} ${String(d).padStart(2, '0')} ${DATE_LABEL_MONTHS[m - 1]}`;
 }
 
 /**
@@ -85,10 +78,10 @@ function fmtDateLabel(dateKey) {
  * on failure.
  * @param {object[]} rows - Output of buildRollingSummary.
  * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
+ * @param {Record<string, string>} locationMap - Pre-read location map (avoids a redundant read).
  * @returns {void}
  */
-function copySummaryText(rows, weekTotalMs) {
-  const locationMap = loadLocationMap();
+function copySummaryText(rows, weekTotalMs, locationMap) {
   const lines = rows
     .filter((r) => r.sodTs || r.totalMs > 0)
     .map((row) => {
@@ -132,12 +125,14 @@ function renderRollingSummary() {
   const el = document.getElementById('tfSummaryPane');
   if (!el) return;
 
+  // Read the location map once; the closure below and copySummaryText both share it.
+  const locationMap = loadLocationMap();
   const dateKeys = rollingDateKeys(7);
   const rows = buildRollingSummary(dateKeys, {
     entries,
     getDayStartTs: summaryGetSodTs,
     getDayEodTs: summaryGetEodTs,
-    getLocationEmoji: summaryGetLocationEmoji,
+    getLocationEmoji: (dateKey) => WORK_LOCATIONS[locationFor(locationMap, dateKey)].emoji,
   });
 
   const weekTotalMs = rows.reduce((sum, r) => sum + r.totalMs, 0);
@@ -178,6 +173,6 @@ function renderRollingSummary() {
   </div>`;
 
   document.getElementById('rsCopyBtn')?.addEventListener('click', () => {
-    copySummaryText(rows, weekTotalMs);
+    copySummaryText(rows, weekTotalMs, locationMap);
   });
 }
