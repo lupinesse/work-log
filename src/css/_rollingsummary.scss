@@ -1,0 +1,113 @@
+// ── _rollingsummary.scss — Rolling 7-day summary pane ──
+
+.rs-wrap {
+  padding: 4px 0 8px;
+}
+
+.rs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rs-row {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--bg2);
+}
+
+.rs-row--empty {
+  opacity: 0.4;
+}
+
+.rs-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.rs-emoji {
+  font-size: 1rem;
+  width: 1.4em;
+  flex-shrink: 0;
+}
+
+.rs-date {
+  font-weight: 600;
+  color: var(--fg);
+  min-width: 7em;
+}
+
+.rs-session {
+  color: var(--fg2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-total {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--live);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-tasks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 10px;
+  margin-top: 3px;
+  padding-left: 2.2em;
+}
+
+.rs-task {
+  font-size: 0.8rem;
+  color: var(--fg2);
+}
+
+.rs-task-dur {
+  color: var(--fg3, #888);
+  font-variant-numeric: tabular-nums;
+}
+
+.rs-no-tasks {
+  font-size: 0.8rem;
+  color: var(--fg3, #888);
+  font-style: italic;
+}
+
+.rs-week-total {
+  margin-top: 10px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: var(--fg);
+  border-top: 1px solid var(--bg3);
+}
+
+.rs-copy-btn {
+  margin: 8px 10px 0;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  background: var(--bg3);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.rs-copy-btn:hover {
+  background: var(--bg4, var(--bg3));
+  border-color: var(--border, var(--bg3));
+}
+
+.rs-copy-btn:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+}
+
+.rs-copy-feedback {
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: var(--live);
+  min-height: 1.3em;
+}
