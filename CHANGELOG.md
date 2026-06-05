@@ -10,10 +10,12 @@
 - **Soft WIP warn** — when more than one task is In Progress the column gains an amber tint and a dismissable "N in progress — pick one to focus" banner.
 
 ### Added
+- **Rolling Summary tab in Today's Flow** — a fourth view (Flow / Log / Blocks / Month → now also Summary) showing the last 7 days at a glance: one row per day with tracked total, start/end times, location emoji, and a week total. Pure data calculation lives in `buildRollingSummary()` in `pure-fns.js` (covered by unit tests); rendering and a "copy as text" action live in `25-rollingsummary.js`.
 - **Auto start-of-day on first task timer** — clicking the start-timer button on any task now silently records start-of-day if the day has not already been started (no backup-restore dialog required).
 - **Starting an upcoming task moves it to in-progress** — the start-timer button previously only promoted `todo → inprogress`; it now also promotes `upcoming → inprogress`.
 
 ### Fixed
+- **Recurring meetings now appear in the calendar strip** — the Outlook calendar fetch in `start-server.ps1` set `IncludeRecurrences` *after* `Sort`, so recurring occurrences were silently dropped; it now sorts after enabling recurrences. The fetch also no longer relies on `Restrict` for recurring items (it matched each series' original master date rather than today's occurrence on some Outlook versions) and instead walks sorted occurrences via `Find`/`FindNext`, deduplicating against non-recurring items with a `$seen` map.
 - **Upcoming tasks no longer revert on reload** — `patchCarriedTasks` was reverting `inprogress` tasks back to `upcoming` on every page reload when an older past version carried `upcoming` status. The fix restricts the `upcoming` override to `todo` placeholders only; an explicitly started task's `inprogress` status is now preserved across reloads.
 
 ### Added
