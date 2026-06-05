@@ -1174,19 +1174,19 @@
 }
 
 .kb-cards .plan-item[data-status='done'] {
-  border-left-color: #059669;
+  border-left-color: var(--status-done);
 }
 
 .kb-cards .plan-item[data-status='pending'] {
-  border-left-color: #d97706;
+  border-left-color: var(--status-pending);
 }
 
 .kb-cards .plan-item[data-status='blocked'] {
-  border-left-color: #dc2626;
+  border-left-color: var(--status-blocked);
 }
 
 .kb-cards .plan-item[data-status='upcoming'] {
-  border-left-color: #1d9e75;
+  border-left-color: var(--status-upcoming);
 }
 
 /* 2-line cap — deliberate kanban convention at all widths */

@@ -57,6 +57,12 @@
   --sig-event: #1d9e75; /* ○ meeting / event */
   --sig-flagged: #ef9f27; /* ★ flagged for review */
   --sig-overtime: #d32f2f; /* ! overtime */
+
+  /* ── Kanban card status accent colours (left border) ── */
+  --status-done: #059669; /* done — emerald-600 */
+  --status-pending: #d97706; /* pending — amber-600 */
+  --status-blocked: #dc2626; /* blocked — red-600 */
+  --status-upcoming: #1d9e75; /* upcoming — green (= --sig-event) */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -107,6 +113,12 @@
     --sig-event: #34d399; /* brighter green on dark bg */
     --sig-flagged: #fbbf24; /* brighter amber on dark bg */
     --sig-overtime: #f87171; /* brighter red on dark bg */
+
+    /* ── Kanban card status accent colours — dark mode ── */
+    --status-done: #34d399; /* brighter emerald on dark bg */
+    --status-pending: #fbbf24; /* brighter amber on dark bg */
+    --status-blocked: #f87171; /* brighter red on dark bg */
+    --status-upcoming: #34d399; /* brighter green on dark bg (= --sig-event dark) */
   }
 }
 
