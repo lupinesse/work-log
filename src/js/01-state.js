@@ -9,7 +9,7 @@ const STORE_MIGRATION = 'wl_migration_v1';
 const STORE_LOCATION = 'wl_location_v1';
 
 // Lowercase task texts the user has dismissed from the recent-tasks list
-let qpHidden = (() => {
+const qpHidden = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_QP_HIDDEN) || '[]');
     return new Set(Array.isArray(raw) ? raw.map((s) => String(s).toLowerCase()) : []);
@@ -71,17 +71,23 @@ function nextDistinctColor() {
   return `hsl(${hue}, 65%, 52%)`;
 }
 
+// eslint-disable-next-line prefer-const -- reassigned by 04-render.js, 05-entries.js, 07-lifecycle.js
 let viewDate = new Date();
+// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04-render.js
 let selectedTag = 'work';
 let logNotes = [];
+// eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
 let trackers = [];
 let entries = [];
 let activeTimer = null;
+// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04-render.js
 let timerInterval = null;
 let categories = [...DEFAULT_CATS];
+// eslint-disable-next-line prefer-const -- reassigned by 04-render.js
 let chartMode = 'task';
+// eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
-let planDragId = null;
+const planDragId = null;
 
 /* ── Load / Save ── */
 // Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,

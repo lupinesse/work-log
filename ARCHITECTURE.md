@@ -550,6 +550,15 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
+#### **25-rollingsummary.js** — Rolling Summary
+**Responsibility**: Renders the Rolling Summary tab inside the Today's Flow section. Builds a compact, categorised digest of recent entries (current sprint or last 7 days) grouped by task and epic, showing time totals and a sparkline of daily activity.
+
+**Key export**: `renderRollingSummary()`
+
+**Dependencies**: `buildRollingSummary()` in `pure-fns.js`; reads `entries`, `categories` from `01-state.js`.
+
+---
+
 ## Data Flow Diagram
 
 ```
@@ -720,8 +729,8 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (398 tests via Node assert):
-- `test/unit.mjs` — 57 suites covering pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
+**Unit Tests** (429 tests via Node assert):
+- `test/unit.mjs` — 62 suites covering pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, and calendar recurrence; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
 
 **Smoke Tests** (~272 tests via Playwright):
 - Load test: Verify no JS errors
@@ -729,7 +738,7 @@ async function fetchWeather() {
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**Total: ~670 tests (398 unit + ~272 smoke)**
+**Total: ~701 tests (429 unit + ~272 smoke)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
@@ -742,7 +751,7 @@ async function fetchWeather() {
 
 1. **Split `11-timeblock.js`** (1 050 lines) — the largest module in the codebase; good split points are the drag-and-drop logic, overlap detection, and the rendering loop.
 
-2. **Split `pure-fns.js`** (824 lines) — group into themed sub-modules (date/time helpers, string helpers, export helpers) so individual imports are smaller and Jest can cover each group in isolation.
+2. **Split `pure-fns.js`** (939 lines) — group into themed sub-modules (date/time helpers, string helpers, export helpers) so individual imports are smaller and Jest can cover each group in isolation.
 
 3. **API Validation**: Add schema validators for external API responses
    - Outlook calendar response

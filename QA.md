@@ -75,9 +75,9 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 
 | Checklist item | Status | Evidence |
 |---|---|---|
-| Core functionality unit tested | ✅ Pass | `test/unit.mjs` (renamed from `test/unit.cjs` in v1.8.9 ESM refactor) — **397 tests across 57 suites** |
+| Core functionality unit tested | ✅ Pass | `test/unit.mjs` (renamed from `test/unit.cjs` in v1.8.9 ESM refactor) — **429 tests across 62 suites** (as of 2026-06-08; up from 397/57 at v1.8.9) |
 | Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **282 Playwright tests** across 43 sections |
-| Total test count | ✅ Pass | **679 tests** (397 unit + 282 smoke); up from 344 at v1.8.4 |
+| Total test count | ✅ Pass | **711 tests** (429 unit + 282 smoke); up from 344 at v1.8.4 |
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
 | No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |
@@ -91,9 +91,9 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Accepted by | Jenni Järvinen (sole author and user) |
 | Date | 2026-05-28 |
 | Scope | v1.8.5–v1.8.9 — all features listed in `CHANGELOG.md §§ v1.8.5–v1.8.9` |
-| Method | Automated suite (679 tests: 397 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
+| Method | Automated suite (711 tests: 429 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
 | AI co-reviewer | Claude Sonnet 4.6 (pair review of Hero Card, Quick Capture, ESM refactoring, API key migration) |
-| Outcome | **Accepted** — all 679 tests passing; design certificate updated; no regressions |
+| Outcome | **Accepted** — all 711 tests passing; design certificate updated; no regressions |
 | Outstanding known issues | `QA.md` test counts were stale from v1.8.4 until this update; resolved here |
 
 ---

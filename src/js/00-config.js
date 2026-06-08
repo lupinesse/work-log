@@ -23,6 +23,7 @@
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
+// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
 let WEATHER_LAT = 60.1887;
 
 /**
@@ -30,6 +31,7 @@ let WEATHER_LAT = 60.1887;
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
+// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
 let WEATHER_LON = 24.927;
 
 /**
@@ -37,6 +39,7 @@ let WEATHER_LON = 24.927;
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {string}
  */
+// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
 let WEATHER_NAME = 'Helsinki';
 
 // ---------------------------------------------------------------------------
@@ -51,6 +54,7 @@ let WEATHER_NAME = 'Helsinki';
  * src/js/00-config.local.example.js and set your real instance URL.
  * @type {string}
  */
+// eslint-disable-next-line prefer-const -- overridden in 00-config.local.js (concatenated before runtime modules)
 let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
 
 // ---------------------------------------------------------------------------
@@ -97,4 +101,4 @@ const DAILY_GOAL_MS = 7.5 * 60 * 60 * 1000; // 7h 30m
  * @type {boolean}
  * @default false
  */
-let AUTO_PAUSE_ON_TAB_SWITCH = false;
+const AUTO_PAUSE_ON_TAB_SWITCH = false;

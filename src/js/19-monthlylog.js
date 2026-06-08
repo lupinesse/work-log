@@ -1,7 +1,7 @@
 // ── 19-monthlylog.js — Monthly Log heatmap + task inventory ──
 
-// eslint-disable-next-line no-var -- var (not let): 11-timeflow.js loads before this module
-// and reads these at runtime; let would cause a temporal dead zone ReferenceError.
+// var (not let): 11-timeflow.js loads before this module and reads these at runtime;
+// let would cause a temporal dead zone ReferenceError.
 var _mlYear = new Date().getFullYear(); // eslint-disable-line no-var
 var _mlMonth = new Date().getMonth(); // eslint-disable-line no-var -- 0-indexed
 var _mlActive = false; // eslint-disable-line no-var
