@@ -36,14 +36,14 @@ function Get-TodayMeetings {
         # .NET GC holds COM references across runspace teardown and Outlook
         # eventually reports "exhausted all shared resources".
         $comRefs = [System.Collections.Generic.List[object]]::new()
-        function Track-Com($obj) { if ($null -ne $obj) { $comRefs.Add($obj) }; return $obj }
+        function Add-ComRef($obj) { if ($null -ne $obj) { $comRefs.Add($obj) }; return $obj }
 
         try {
             $ol = $null
-            try   { $ol = Track-Com ([Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')) }
-            catch { $ol = Track-Com (New-Object -ComObject Outlook.Application) }
+            try   { $ol = Add-ComRef ([Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')) }
+            catch { $ol = Add-ComRef (New-Object -ComObject Outlook.Application) }
 
-            $ns    = Track-Com ($ol.GetNamespace('MAPI'))
+            $ns    = Add-ComRef ($ol.GetNamespace('MAPI'))
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
             # Outlook MAPI Restrict requires US-English date format regardless of system locale
@@ -56,7 +56,8 @@ function Get-TodayMeetings {
 
             # Collect all calendar folders across all accounts
             $calFolders = @()
-            foreach ($store in $ns.Stores) {
+            $stores = Add-ComRef ($ns.Stores)
+            foreach ($store in $stores) {
                 # Skip public folders
                 try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
 
@@ -65,14 +66,15 @@ function Get-TodayMeetings {
                 $accountKey = if ($storeDisplay) { $storeDisplay } else { $null }
 
                 # Method 1: GetDefaultFolder
-                try { $calFolders += @{ folder = Track-Com ($store.GetDefaultFolder(9)); label = $accountKey } } catch {}
+                try { $calFolders += @{ folder = Add-ComRef ($store.GetDefaultFolder(9)); label = $accountKey } } catch {}
 
                 # Method 2: Walk root folders looking for IPF.Appointment (calendar class)
                 try {
-                    $rootFolder = Track-Com ($store.GetRootFolder())
-                    foreach ($folder in $rootFolder.Folders) {
+                    $rootFolder = Add-ComRef ($store.GetRootFolder())
+                    $subFolders = Add-ComRef ($rootFolder.Folders)
+                    foreach ($folder in $subFolders) {
                         try {
-                            $f = Track-Com $folder
+                            $f = Add-ComRef $folder
                             if ($f.DefaultItemType -eq 1) {
                                 $alreadyAdded = $calFolders | Where-Object { $_.folder.EntryID -eq $f.EntryID }
                                 if (-not $alreadyAdded) { $calFolders += @{ folder = $f; label = $accountKey } }
@@ -93,10 +95,10 @@ function Get-TodayMeetings {
                 # correctly walks occurrences at their actual start times and jumps
                 # straight to today without iterating the full calendar history.
                 try {
-                    $items = Track-Com ($calFolder.Items)
+                    $items = Add-ComRef ($calFolder.Items)
                     $items.IncludeRecurrences = $true
                     $items.Sort('[Start]')
-                    $cur = try { Track-Com ($items.Find("[Start] >= '$d1'")) } catch { $null }
+                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$d1'")) } catch { $null }
                     while ($cur -ne $null) {
                         $startDate = $null
                         try { $startDate = ([DateTime]$cur.Start).Date } catch {}
@@ -123,17 +125,17 @@ function Get-TodayMeetings {
                                 }
                             }
                         }
-                        $cur = try { Track-Com ($items.FindNext()) } catch { $null }
+                        $cur = try { Add-ComRef ($items.FindNext()) } catch { $null }
                     }
                 } catch {}
 
                 # Pass 2 — non-recurring items via Restrict (fast and correct without
                 # IncludeRecurrences). The $seen map deduplicates any overlap.
                 try {
-                    $items2 = Track-Com ($calFolder.Items)
+                    $items2 = Add-ComRef ($calFolder.Items)
                     $items2.IncludeRecurrences = $false
                     $items2.Sort('[Start]')
-                    $filtered = Track-Com ($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'"))
+                    $filtered = Add-ComRef ($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'"))
                     foreach ($item in $filtered) {
                         try {
                             $startDate = ([DateTime]$item.Start).Date
