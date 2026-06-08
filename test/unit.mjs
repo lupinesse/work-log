@@ -43,6 +43,7 @@ const {
   WORK_LOCATIONS,
   DEFAULT_WORK_LOCATION,
   buildRollingSummary,
+  filterNewBackupEntries,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -3675,5 +3676,73 @@ describe('buildRollingSummary', () => {
     });
     assert.equal(row.totalMs, 0);
     assert.deepEqual(row.topTasks, []);
+  });
+});
+
+// ── filterNewBackupEntries ────────────────────────────────────────────────────
+
+/** Minimal valid entry factory for merge tests. */
+function makeBackupEntry(id, date = '2026-06-03') {
+  return { id, text: 'task', ts: 1000, date };
+}
+
+const alwaysValid = () => true;
+const alwaysInvalid = () => false;
+
+describe('filterNewBackupEntries', () => {
+  it('returns backup entries whose id is absent from currentEntries', () => {
+    const current = [makeBackupEntry('a'), makeBackupEntry('b')];
+    const backup = [makeBackupEntry('b'), makeBackupEntry('c')];
+    const result = filterNewBackupEntries(current, backup, alwaysValid);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, 'c');
+  });
+
+  it('returns all backup entries when currentEntries is empty', () => {
+    const backup = [makeBackupEntry('x'), makeBackupEntry('y')];
+    const result = filterNewBackupEntries([], backup, alwaysValid);
+    assert.equal(result.length, 2);
+  });
+
+  it('returns an empty array when backupEntries is empty', () => {
+    const current = [makeBackupEntry('a')];
+    const result = filterNewBackupEntries(current, [], alwaysValid);
+    assert.deepEqual(result, []);
+  });
+
+  it('returns an empty array when all backup ids are already present', () => {
+    const current = [makeBackupEntry('a'), makeBackupEntry('b')];
+    const backup = [makeBackupEntry('a'), makeBackupEntry('b')];
+    const result = filterNewBackupEntries(current, backup, alwaysValid);
+    assert.deepEqual(result, []);
+  });
+
+  it('excludes backup entries that fail the isValid predicate', () => {
+    const current = [];
+    const backup = [makeBackupEntry('a'), makeBackupEntry('b')];
+    const result = filterNewBackupEntries(current, backup, alwaysInvalid);
+    assert.deepEqual(result, []);
+  });
+
+  it('excludes invalid entries even when their id is new', () => {
+    const current = [makeBackupEntry('existing')];
+    const backup = [
+      makeBackupEntry('new-valid'),
+      { id: 'new-invalid' }, // missing required fields → validEntry returns false
+    ];
+    const isValid = (e) => typeof e.text === 'string' && typeof e.ts === 'number';
+    const result = filterNewBackupEntries(current, backup, isValid);
+    assert.equal(result.length, 1);
+    assert.equal(result[0].id, 'new-valid');
+  });
+
+  it('does not mutate the currentEntries or backupEntries arrays', () => {
+    const current = [makeBackupEntry('a')];
+    const backup = [makeBackupEntry('b')];
+    const currentCopy = [...current];
+    const backupCopy = [...backup];
+    filterNewBackupEntries(current, backup, alwaysValid);
+    assert.deepEqual(current, currentCopy);
+    assert.deepEqual(backup, backupCopy);
   });
 });

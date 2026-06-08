@@ -251,8 +251,7 @@ async function mergeBackupEntries(file) {
     return;
   }
 
-  const existingIds = new Set(entries.map((e) => e.id));
-  const incoming = backup.entries.filter((e) => !existingIds.has(e.id));
+  const incoming = filterNewBackupEntries(entries, backup.entries, validEntry);
 
   if (!incoming.length) {
     alert('No new entries found — all entries in this backup already exist in your current data.');
