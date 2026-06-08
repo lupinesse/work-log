@@ -67,7 +67,7 @@ function exportTxt() {
   writeExportFile('timesheets', filename, blob);
 }
 
-/* ── JSON backup / restore ── */
+/* ── JSON backup / restore / merge ── */
 
 /**
  * Reads and parses an optional JSON-array log from localStorage for inclusion
@@ -210,6 +210,78 @@ async function importBackup(file) {
     wlLog.warn('importBackup: failed to write to localStorage', e);
     alert(
       'Import failed — could not write to localStorage. Your existing data has not been changed.'
+    );
+  }
+}
+
+/**
+ * Merges entries from a JSON backup file into the current data set without
+ * replacing any existing records. Only entries whose `id` is not already
+ * present in localStorage are added. Categories, tasks, and all other backup
+ * fields are ignored — this is an entries-only operation.
+ *
+ * Intended for the "worked on another machine" case: the backup from the
+ * remote session contains new entries that are absent from the local store.
+ *
+ * @param {File} file - The .json backup file selected by the user.
+ * @returns {Promise<void>}
+ */
+async function mergeBackupEntries(file) {
+  let text;
+  try {
+    text = await file.text();
+  } catch (e) {
+    wlLog.warn('mergeBackupEntries: failed to read file', e);
+    alert('Could not read the file. Please try again.');
+    return;
+  }
+
+  let backup;
+  try {
+    backup = JSON.parse(text);
+  } catch (e) {
+    wlLog.warn('mergeBackupEntries: file is not valid JSON', e);
+    alert('The selected file is not valid JSON. Please choose a work-log backup file.');
+    return;
+  }
+
+  const { valid, error } = validateBackupFile(backup);
+  if (!valid) {
+    alert(error);
+    return;
+  }
+
+  const existingIds = new Set(entries.map((e) => e.id));
+  const incoming = backup.entries.filter((e) => !existingIds.has(e.id));
+
+  if (!incoming.length) {
+    alert('No new entries found — all entries in this backup already exist in your current data.');
+    return;
+  }
+
+  const dates = [...new Set(incoming.map((e) => e.date).filter(Boolean))].sort();
+  const exportedAt = backup.exported ? new Date(backup.exported).toLocaleString() : 'unknown date';
+
+  const confirmed = window.confirm(
+    `Merge ${incoming.length} new entr${incoming.length === 1 ? 'y' : 'ies'} from backup?\n\n` +
+      `Backup exported: ${exportedAt}\n` +
+      `Dates: ${dates.join(', ')}\n\n` +
+      'Your existing entries will not be changed. The page will reload after merging.'
+  );
+  if (!confirmed) return;
+
+  try {
+    const merged = [...entries, ...incoming];
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(merged));
+    wlLog.info(
+      `mergeBackupEntries: merged ${incoming.length} new entries ` +
+        `(dates: ${dates.join(', ')}) from backup exported ${backup.exported ?? 'unknown'}`
+    );
+    location.reload();
+  } catch (e) {
+    wlLog.warn('mergeBackupEntries: failed to write to localStorage', e);
+    alert(
+      'Merge failed — could not write to localStorage. Your existing data has not been changed.'
     );
   }
 }

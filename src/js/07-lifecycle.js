@@ -225,6 +225,18 @@ document.getElementById('backupFileInput').addEventListener('change', (e) => {
   e.target.value = '';
 });
 
+// Merge backup: triggered from the export section's "merge backup" button.
+// Adds entries from a backup that are absent in the current store; does not
+// replace any existing data.
+document.getElementById('mergeBackupBtn').addEventListener('click', () => {
+  document.getElementById('mergeFileInput').click();
+});
+document.getElementById('mergeFileInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) mergeBackupEntries(file);
+  e.target.value = '';
+});
+
 document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
 document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
 document.getElementById('captureInput').addEventListener('keydown', (e) => {
