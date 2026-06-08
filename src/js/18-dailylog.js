@@ -65,8 +65,9 @@ function buildDailyLogItems(dateKey) {
           items.push({
             ts: c.ts,
             type: 'task',
+            taskId: t.id,
             color: '#ef9f27',
-            text: `<span class="tl-task-name">${escHtml(t.text)}</span> — ${escHtml(c.text)}`,
+            text: `<span class="tl-task-name">${escHtml(t.text)}</span>${c.comment ? ` — ${escHtml(c.comment)}` : ''}`,
             sub: 'Task update',
           });
         }

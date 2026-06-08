@@ -49,6 +49,41 @@ function notionBtnHtml(t) {
 }
 
 /**
+ * Builds the note toggle button HTML for a task row.
+ * Visually distinct when the task already has a note.
+ * @param {{ id: string, note?: string }} t - The plan task.
+ * @returns {string} HTML button element.
+ */
+function noteBtnHtml(t) {
+  const has = !!(t.note && t.note.trim());
+  return `<button class="plan-note-btn${has ? ' plan-note-btn--has' : ''}" data-pid="${t.id}" title="${has ? 'edit note' : 'add note'}" aria-label="${has ? 'edit note' : 'add note'}">📝</button>`;
+}
+
+/**
+ * Builds the inline note display / edit area for a task row.
+ * Renders a read-only line when the task has a note and the area is closed;
+ * renders a textarea with save/remove/cancel when open.
+ * @param {{ id: string, note?: string }} t - The plan task.
+ * @returns {string} HTML string, or '' when no note and area is closed.
+ */
+function noteAreaHtml(t) {
+  const isOpen = _noteOpenIds.has(t.id);
+  const hasNote = !!(t.note && t.note.trim());
+  if (!isOpen && !hasNote) return '';
+  if (!isOpen) {
+    return `<button class="plan-note-display" data-pid="${t.id}" title="click to edit note">📝 ${escHtml(t.note)}</button>`;
+  }
+  return `<div class="plan-note-area">
+      <textarea class="plan-note-input" data-pid="${t.id}" rows="2" aria-label="note for task" placeholder="add a note…">${escHtml(t.note || '')}</textarea>
+      <div class="plan-note-btns">
+        <button class="plan-note-save" data-pid="${t.id}">save</button>
+        ${hasNote ? `<button class="plan-note-del" data-pid="${t.id}">remove</button>` : ''}
+        <button class="plan-note-cancel" data-pid="${t.id}">cancel</button>
+      </div>
+    </div>`;
+}
+
+/**
  * Builds the billable toggle button HTML for a task row.
  * Returns empty string for pending/blocked/upcoming tasks where billing is irrelevant.
  * @param {{ id: string, billable: (boolean|undefined) }} t - The plan task.
@@ -235,11 +270,12 @@ function renderRow(t) {
         ${billBtnHtml(t, status)}
         <div class="plan-left">
           <div class="plan-top">
-            <span class="plan-text">${taskNameHtml}${pbCommentBubble ? '&thinsp;' + pbCommentBubble : ''}<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen ? 'collapse steps' : 'expand steps'}">${cpBadgeLabel}</button>${prioBtnHtml(t)}${notionBtnHtml(t)}</span>
+            <span class="plan-text">${taskNameHtml}${pbCommentBubble ? '&thinsp;' + pbCommentBubble : ''}<button class="${cpBadgeClass}" data-pid="${t.id}" title="${cpOpen ? 'collapse steps' : 'expand steps'}">${cpBadgeLabel}</button>${prioBtnHtml(t)}${notionBtnHtml(t)}${noteBtnHtml(t)}</span>
           </div>
           ${handoffNoteHtml}
           ${cpAreaHtml}
           ${commentRowHtml}
+          ${noteAreaHtml(t)}
           ${catLineHtml}
         </div>
         ${pbTsText ? `<span class="plan-pb-ts">${escHtml(pbTsText)}</span>` : ''}
@@ -264,12 +300,14 @@ function renderRow(t) {
         ${handoffNoteHtml}
         ${!isChild ? cpAreaHtml : ''}
         ${commentRowHtml}
+        ${noteAreaHtml(t)}
         ${isChild ? '' : catLineHtml}
       </div>
       <div class="plan-actions">
         ${childBadge}
         ${status !== 'done' && !isChild ? `<button class="plan-split-btn" data-pid="${t.id}" title="split into subtasks">⊕</button>` : ''}
         <button class="plan-log-btn" data-pid="${t.id}" data-text="${escHtml(t.text)}">▸ track</button>
+        ${noteBtnHtml(t)}
         <button class="plan-edit-btn" data-pid="${t.id}" title="edit">&#9998;</button>
         <button class="plan-del-btn" data-pid="${t.id}">&times;</button>
       </div>
