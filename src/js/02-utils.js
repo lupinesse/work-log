@@ -258,7 +258,7 @@ function renderTagRow() {
 }
 
 /* ── Utility ── */
-// dk(), fmtTime(), fmtElapsed(), roundUp30(), roundToNearest30(), safeCssColor(), escHtml()
+// dk(), fmtTime(), fmtElapsed(), roundToNearest30(), safeCssColor(), escHtml()
 // are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
 
 /**

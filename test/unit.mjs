@@ -17,7 +17,6 @@ const {
   fmtDur,
   fmtDurLong,
   fmtAgo,
-  roundUp30,
   roundToNearest30,
   validEntry,
   validCategory,
@@ -29,7 +28,6 @@ const {
   validWeatherResponse,
   validCalendarMeeting,
   validJiraCsvRow,
-  resolveRapidDate,
   parseRapidTokens,
   stripJiraPrefix,
   groupEntriesByCategory,
@@ -41,7 +39,6 @@ const {
   locationFor,
   nextLocation,
   WORK_LOCATIONS,
-  DEFAULT_WORK_LOCATION,
   buildRollingSummary,
   filterNewBackupEntries,
 } = pureFns;
@@ -175,20 +172,6 @@ describe('fmtAgo', () => {
     assert.equal(fmtAgo(NOW - 89 * 60_000, NOW), '1h ago'));
   it('defaults now to Date.now() when omitted (smoke test — result is a string)', () =>
     assert.equal(typeof fmtAgo(Date.now() - 5_000), 'string'));
-});
-
-// ── roundUp30 ─────────────────────────────────────────────────────────────────
-describe('roundUp30', () => {
-  const SLOT = 30 * 60 * 1000; // 30 min in ms
-
-  it('returns 30 min for 0ms (minimum billable)', () => assert.equal(roundUp30(0), SLOT));
-  it('returns 30 min for 1ms', () => assert.equal(roundUp30(1), SLOT));
-  it('returns 30 min for exactly 30 min', () => assert.equal(roundUp30(SLOT), SLOT));
-  it('returns 60 min for 30 min + 1ms', () => assert.equal(roundUp30(SLOT + 1), SLOT * 2));
-  it('returns 60 min for exactly 60 min', () => assert.equal(roundUp30(SLOT * 2), SLOT * 2));
-  it('returns 90 min for 60 min + 1ms', () => assert.equal(roundUp30(SLOT * 2 + 1), SLOT * 3));
-  it('returns 90 min for a 75-minute task', () =>
-    assert.equal(roundUp30(75 * 60 * 1000), SLOT * 3));
 });
 
 // ── roundToNearest30 ──────────────────────────────────────────────────────────
@@ -1841,52 +1824,55 @@ describe('fmtHm', () => {
   });
 });
 
-// ── resolveRapidDate ──────────────────────────────────────────────────────────
-// 2026-05-29 is a Friday (getDay() === 5).
-describe('resolveRapidDate', () => {
+// ── resolveRapidDate (via parseRapidTokens) ───────────────────────────────────
+// resolveRapidDate is an internal helper; these cases are exercised through the
+// public parseRapidTokens API using the >token prefix. 2026-05-29 is a Friday.
+describe('resolveRapidDate (via parseRapidTokens)', () => {
+  /** Resolve a bare date token through parseRapidTokens and return .date. */
+  function resolve(token, refDate) {
+    return parseRapidTokens(`>${token}`, [], refDate).date;
+  }
+
   const friday = localDate(2026, 5, 29);
 
-  it('resolves "today"', () => {
-    assert.equal(resolveRapidDate('today', friday), '2026-05-29');
-  });
+  it('resolves "today"', () => assert.equal(resolve('today', friday), '2026-05-29'));
 
-  it('resolves "TODAY" case-insensitively', () => {
-    assert.equal(resolveRapidDate('TODAY', friday), '2026-05-29');
-  });
+  it('resolves "TODAY" case-insensitively', () =>
+    assert.equal(resolve('TODAY', friday), '2026-05-29'));
 
-  it('resolves "tomorrow"', () => {
-    assert.equal(resolveRapidDate('tomorrow', friday), '2026-05-30');
-  });
+  it('resolves "tomorrow"', () => assert.equal(resolve('tomorrow', friday), '2026-05-30'));
 
-  it('resolves "tomorrow" across a month boundary', () => {
-    assert.equal(resolveRapidDate('tomorrow', localDate(2026, 5, 31)), '2026-06-01');
-  });
+  it('resolves "tomorrow" across a month boundary', () =>
+    assert.equal(resolve('tomorrow', localDate(2026, 5, 31)), '2026-06-01'));
 
-  it('passes through a valid YYYY-MM-DD verbatim', () => {
-    assert.equal(resolveRapidDate('2026-12-25', friday), '2026-12-25');
-  });
+  it('passes through a valid YYYY-MM-DD verbatim', () =>
+    assert.equal(resolve('2026-12-25', friday), '2026-12-25'));
 
   it('resolves "fri" to the NEXT Friday (not today when today is Friday)', () => {
     // diff = ((5 - 5 + 7) % 7) || 7 = 0 || 7 = 7
-    assert.equal(resolveRapidDate('fri', friday), '2026-06-05');
+    assert.equal(resolve('fri', friday), '2026-06-05');
   });
 
   it('resolves "mon" to the next Monday from a Friday', () => {
     // diff = ((1 - 5 + 7) % 7) || 7 = 3
-    assert.equal(resolveRapidDate('mon', friday), '2026-06-01');
+    assert.equal(resolve('mon', friday), '2026-06-01');
   });
 
   it('resolves weekday abbreviations case-insensitively', () => {
-    assert.equal(resolveRapidDate('FRI', friday), '2026-06-05');
-    assert.equal(resolveRapidDate('Mon', friday), '2026-06-01');
+    assert.equal(resolve('FRI', friday), '2026-06-05');
+    assert.equal(resolve('Mon', friday), '2026-06-01');
   });
 
-  it('returns null for an unrecognised token', () => {
-    assert.equal(resolveRapidDate('nextweek', friday), null);
+  it('leaves unrecognised token in text and sets date to null', () => {
+    const result = parseRapidTokens('>nextweek', [], friday);
+    assert.equal(result.date, null);
+    assert.equal(result.text, '>nextweek');
   });
 
-  it('returns null for a partial ISO date like "2026-05"', () => {
-    assert.equal(resolveRapidDate('2026-05', friday), null);
+  it('leaves partial ISO date in text and sets date to null', () => {
+    const result = parseRapidTokens('>2026-05', [], friday);
+    assert.equal(result.date, null);
+    assert.equal(result.text, '>2026-05');
   });
 });
 
@@ -3412,7 +3398,7 @@ describe('locationFor', () => {
     assert.equal(locationFor({ '2026-06-03': 'office' }, '2026-06-03'), 'office'));
 
   it('defaults to remote when the day is unset', () =>
-    assert.equal(locationFor({}, '2026-06-03'), DEFAULT_WORK_LOCATION));
+    assert.equal(locationFor({}, '2026-06-03'), 'remote'));
 
   it('defaults to remote when the day is not in the map', () =>
     assert.equal(locationFor({ '2026-06-02': 'office' }, '2026-06-03'), 'remote'));
@@ -3420,8 +3406,7 @@ describe('locationFor', () => {
   it('falls back to the default for an unknown stored value', () =>
     assert.equal(locationFor({ '2026-06-03': 'moon-base' }, '2026-06-03'), 'remote'));
 
-  it('tolerates a null map', () =>
-    assert.equal(locationFor(null, '2026-06-03'), DEFAULT_WORK_LOCATION));
+  it('tolerates a null map', () => assert.equal(locationFor(null, '2026-06-03'), 'remote'));
 
   it('only ever returns ids present in WORK_LOCATIONS', () =>
     assert.ok(Object.prototype.hasOwnProperty.call(WORK_LOCATIONS, locationFor({}, '2026-06-03'))));
@@ -3455,7 +3440,7 @@ function loadLocationSandbox(preloaded = {}) {
   const sandbox = {
     STORE_LOCATION: 'wl_location_v1',
     WORK_LOCATIONS,
-    DEFAULT_WORK_LOCATION,
+    DEFAULT_WORK_LOCATION: 'remote',
     locationFor,
     nextLocation,
     viewDate: new Date('2026-06-03T12:00:00'),

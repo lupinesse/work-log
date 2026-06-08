@@ -153,27 +153,6 @@ export function fmtDurLong(ms) {
 /* ── Billing time rounding ── */
 
 /**
- * Rounds a duration up to the nearest 30-minute slot, with a minimum of 30 min.
- * Used for billing time estimates — even a 1-second task costs one half-hour slot.
- *
- * Assumption: billing granularity is 30 minutes and the minimum billable unit is
- * 30 minutes. Changing this assumption requires updating both this function and
- * any UI that displays billable totals (e.g. the billable-time section in exports).
- *
- * @param {number} ms - Duration in milliseconds.
- * @returns {number} Duration rounded up to nearest 30-min slot, in milliseconds.
- * @example
- * roundUp30(0)                    // → 1_800_000  (30 min — minimum)
- * roundUp30(1)                    // → 1_800_000  (1 ms still costs one slot)
- * roundUp30(30 * 60 * 1000)       // → 1_800_000  (exactly 30 min stays at 30 min)
- * roundUp30(30 * 60 * 1000 + 1)   // → 3_600_000  (30 min + 1 ms rounds up to 60 min)
- */
-export function roundUp30(ms) {
-  const SLOT = 30 * 60 * 1000;
-  return Math.max(SLOT, Math.ceil(ms / SLOT) * SLOT);
-}
-
-/**
  * Rounds a timestamp to the nearest 30-minute clock mark.
  *
  * Tie-breaking rule (at exactly 15 min into a 30-min slot): rounds DOWN.
@@ -515,7 +494,7 @@ const RAPID_SIG_SHORTCUTS = {
  * @param {Date} [now] - Reference date for relative resolution; defaults to new Date().
  * @returns {string|null} Resolved date key, or null if the token is unrecognised.
  */
-export function resolveRapidDate(token, now) {
+function resolveRapidDate(token, now) {
   const ref = now || new Date();
   const t = token.toLowerCase();
 
@@ -857,7 +836,7 @@ export const WORK_LOCATIONS = Object.freeze({
 });
 
 /** Location id used for any day that has no stored value. */
-export const DEFAULT_WORK_LOCATION = 'remote';
+const DEFAULT_WORK_LOCATION = 'remote';
 
 /**
  * Resolves the stored work location for a given day, falling back to the
