@@ -34,6 +34,7 @@ export function referencesModule(content, basename) {
   const esc = basename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   // Must be preceded by a quote or slash (path separator) and optionally
   // have a .js extension before the closing quote — prevents partial matches.
+  // eslint-disable-next-line security/detect-non-literal-regexp -- esc is sanitised above with replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return new RegExp(`(?:['"/])${esc}(?:\\.js)?['"/]`).test(content);
 }
 

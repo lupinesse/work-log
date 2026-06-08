@@ -9,18 +9,27 @@ const STORE_PLAN = 'wl_plan_v1';
 let planTasks = [];
 let planCollapsed = readCollapseState('planSection', false);
 let pendingCollapsed = readCollapseState('pendingSection', true);
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let editingPlanId = null;
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let _pendingCommentId = null;
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let splitInputId = null;
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let _pendingCommentText = '';
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let _expandedHistoryId = null;
-let _cpOpenIds = new Set();
+const _cpOpenIds = new Set();
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let _cpEditId = null; // pid of task whose checkpoint is being edited
+// eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
 let _cpEditIdx = null; // index of checkpoint being edited
-let _noteOpenIds = new Set();
+const _noteOpenIds = new Set();
 /** Whether the Done column's older-history expander is open. */
+// eslint-disable-next-line prefer-const -- reassigned by 10a-tasks-render.js
 let doneHistoryOpen = false;
 /** Whether the WIP-over warning banner has been dismissed this render cycle. */
+// eslint-disable-next-line prefer-const -- reassigned by 10a-tasks-render.js, 10b-tasks-events.js
 let wipWarnDismissed = false;
 
 /**
