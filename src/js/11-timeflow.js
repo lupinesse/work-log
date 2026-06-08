@@ -342,19 +342,34 @@ function buildFlowTaskNoteHtml(task, isEditing) {
         </div>
       </div>`;
   }
+  const label = hasNote ? 'edit note' : 'add note';
   return `<div class="tf-task-note">
       ${hasNote ? `<span class="tf-task-note-text">${escHtml(task.note)}</span>` : ''}
-      <button class="tf-task-note-btn${hasNote ? ' tf-task-note-btn--has' : ''}" data-taskid="${task.id}" title="${hasNote ? 'edit note' : 'add note'}">${hasNote ? '📝' : '+ note'}</button>
+      <button class="tf-task-note-btn${hasNote ? ' tf-task-note-btn--has' : ''}" data-taskid="${task.id}" title="${label}" aria-label="${label}">${hasNote ? '📝' : '+ note'}</button>
     </div>`;
 }
 
 /**
  * Binds note edit/save/remove/cancel events on the Flow pane after each render.
- * Uses direct delegation on the pane element so re-renders don't leave orphan listeners.
+ * Listeners are attached to freshly-rendered child elements; prior children are
+ * discarded by the innerHTML replacement in renderFlowView, so there are no
+ * orphan listeners. Both renderFlowView and renderPlan are called after mutations
+ * so the Flow pane and the kanban board stay in sync.
  * @param {HTMLElement} pane - The #tfFlowPane element.
  */
 function bindFlowNoteEvents(pane) {
   const dateKey = dk(viewDate);
+
+  /** Focuses the note textarea for the given task ID after the next render. */
+  function focusFlowNoteInput(tid) {
+    setTimeout(() => {
+      const ta = pane.querySelector(`.tf-task-note-input[data-taskid="${tid}"]`);
+      if (ta) {
+        ta.focus();
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+      }
+    }, 0);
+  }
 
   pane.querySelectorAll('.tf-task-note-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -362,15 +377,7 @@ function bindFlowNoteEvents(pane) {
       const tid = btn.dataset.taskid;
       _flowNoteEditId = _flowNoteEditId === tid ? null : tid;
       renderFlowView(dateKey);
-      if (_flowNoteEditId) {
-        setTimeout(() => {
-          const ta = pane.querySelector(`.tf-task-note-input[data-taskid="${tid}"]`);
-          if (ta) {
-            ta.focus();
-            ta.setSelectionRange(ta.value.length, ta.value.length);
-          }
-        }, 0);
-      }
+      if (_flowNoteEditId) focusFlowNoteInput(tid);
     });
   });
 
@@ -387,6 +394,7 @@ function bindFlowNoteEvents(pane) {
       }
       _flowNoteEditId = null;
       renderFlowView(dateKey);
+      renderPlan();
     });
   });
 
@@ -400,6 +408,7 @@ function bindFlowNoteEvents(pane) {
       }
       _flowNoteEditId = null;
       renderFlowView(dateKey);
+      renderPlan();
     });
   });
 

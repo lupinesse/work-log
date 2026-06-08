@@ -322,6 +322,17 @@ function bindPlanEvents(lists) {
     });
   });
 
+  /** Focuses the note textarea for the given task ID after the next render. */
+  function focusNoteInput(pid) {
+    setTimeout(() => {
+      const ta = document.querySelector(`.plan-note-input[data-pid="${pid}"]`);
+      if (ta) {
+        ta.focus();
+        ta.setSelectionRange(ta.value.length, ta.value.length);
+      }
+    }, 0);
+  }
+
   // Note button — toggle textarea open/closed
   qa('.plan-note-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -330,15 +341,7 @@ function bindPlanEvents(lists) {
       if (_noteOpenIds.has(pid)) _noteOpenIds.delete(pid);
       else _noteOpenIds.add(pid);
       renderPlan();
-      if (_noteOpenIds.has(pid)) {
-        setTimeout(() => {
-          const ta = document.querySelector(`.plan-note-input[data-pid="${pid}"]`);
-          if (ta) {
-            ta.focus();
-            ta.setSelectionRange(ta.value.length, ta.value.length);
-          }
-        }, 0);
-      }
+      if (_noteOpenIds.has(pid)) focusNoteInput(pid);
     });
   });
 
@@ -348,13 +351,7 @@ function bindPlanEvents(lists) {
       const pid = el.dataset.pid;
       _noteOpenIds.add(pid);
       renderPlan();
-      setTimeout(() => {
-        const ta = document.querySelector(`.plan-note-input[data-pid="${pid}"]`);
-        if (ta) {
-          ta.focus();
-          ta.setSelectionRange(ta.value.length, ta.value.length);
-        }
-      }, 0);
+      focusNoteInput(pid);
     });
   });
 
