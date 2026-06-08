@@ -404,3 +404,102 @@
     font-size: 11px;
   }
 }
+
+// ── Task note widget in Flow rows ────────────────────────────────────────────
+
+.tf-task-note {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.tf-task-note-text {
+  font-size: 12px;
+  color: var(--text3);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.tf-task-note-btn {
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--border2);
+  border-radius: 99px;
+  background: none;
+  cursor: pointer;
+  color: var(--text3);
+  white-space: nowrap;
+  flex-shrink: 0;
+
+  &:hover {
+    color: var(--text2);
+    border-color: var(--text3);
+  }
+
+  &.tf-task-note-btn--has {
+    color: var(--text2);
+  }
+}
+
+.tf-task-note-edit {
+  margin-top: 6px;
+
+  .tf-task-note-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 12px;
+    padding: 5px 7px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    background: var(--bg2);
+    color: var(--text);
+    resize: vertical;
+    font-family: inherit;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent, #7b61ff);
+    }
+  }
+
+  .tf-task-note-actions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+
+    button {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      border: 1px solid var(--border2);
+      background: none;
+      cursor: pointer;
+      color: var(--text2);
+
+      &:hover {
+        background: var(--bg2);
+      }
+    }
+
+    .tf-task-note-save {
+      background: var(--info-bg, #e8f0fe);
+      border-color: transparent;
+      color: var(--info-text, #1a73e8);
+
+      &:hover {
+        filter: brightness(0.95);
+      }
+    }
+
+    .tf-task-note-del {
+      color: var(--danger, #c62828);
+
+      &:hover {
+        background: #fdecea;
+        border-color: transparent;
+      }
+    }
+  }
+}

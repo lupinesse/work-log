@@ -34,6 +34,9 @@ const TF_PANE_IDS = {
   summary: 'tfSummaryPane',
 };
 
+/** Task ID whose note is currently being edited inline in the Flow view. */
+let _flowNoteEditId = null;
+
 // ─────────────────────────── view preference ───────────────────────────
 
 /**
@@ -321,6 +324,108 @@ function buildSessionNotesHtml(notes) {
 }
 
 /**
+ * Builds the note display / edit widget for a task-type flow row.
+ * Shows read-only text when not editing; shows a textarea when editing.
+ * @param {{ id: string, note?: string }} task - The plan task object.
+ * @param {boolean} isEditing - Whether this task's note is being edited.
+ * @returns {string} HTML string.
+ */
+function buildFlowTaskNoteHtml(task, isEditing) {
+  const hasNote = !!(task.note && task.note.trim());
+  if (isEditing) {
+    return `<div class="tf-task-note-edit" data-taskid="${task.id}">
+        <textarea class="tf-task-note-input" data-taskid="${task.id}" rows="2">${escHtml(task.note || '')}</textarea>
+        <div class="tf-task-note-actions">
+          <button class="tf-task-note-save" data-taskid="${task.id}">save</button>
+          ${hasNote ? `<button class="tf-task-note-del" data-taskid="${task.id}">remove</button>` : ''}
+          <button class="tf-task-note-cancel" data-taskid="${task.id}">cancel</button>
+        </div>
+      </div>`;
+  }
+  return `<div class="tf-task-note">
+      ${hasNote ? `<span class="tf-task-note-text">${escHtml(task.note)}</span>` : ''}
+      <button class="tf-task-note-btn${hasNote ? ' tf-task-note-btn--has' : ''}" data-taskid="${task.id}" title="${hasNote ? 'edit note' : 'add note'}">${hasNote ? '📝' : '+ note'}</button>
+    </div>`;
+}
+
+/**
+ * Binds note edit/save/remove/cancel events on the Flow pane after each render.
+ * Uses direct delegation on the pane element so re-renders don't leave orphan listeners.
+ * @param {HTMLElement} pane - The #tfFlowPane element.
+ */
+function bindFlowNoteEvents(pane) {
+  const dateKey = dk(viewDate);
+
+  pane.querySelectorAll('.tf-task-note-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const tid = btn.dataset.taskid;
+      _flowNoteEditId = _flowNoteEditId === tid ? null : tid;
+      renderFlowView(dateKey);
+      if (_flowNoteEditId) {
+        setTimeout(() => {
+          const ta = pane.querySelector(`.tf-task-note-input[data-taskid="${tid}"]`);
+          if (ta) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+          }
+        }, 0);
+      }
+    });
+  });
+
+  pane.querySelectorAll('.tf-task-note-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.taskid;
+      const ta = btn.closest('.tf-task-note-edit').querySelector('.tf-task-note-input');
+      const val = ta.value.trim();
+      const task = planTasks.find((t) => t.id === tid);
+      if (task) {
+        if (val) task.note = val;
+        else delete task.note;
+        savePlan();
+      }
+      _flowNoteEditId = null;
+      renderFlowView(dateKey);
+    });
+  });
+
+  pane.querySelectorAll('.tf-task-note-del').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.taskid;
+      const task = planTasks.find((t) => t.id === tid);
+      if (task) {
+        delete task.note;
+        savePlan();
+      }
+      _flowNoteEditId = null;
+      renderFlowView(dateKey);
+    });
+  });
+
+  pane.querySelectorAll('.tf-task-note-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _flowNoteEditId = null;
+      renderFlowView(dateKey);
+    });
+  });
+
+  pane.querySelectorAll('.tf-task-note-input').forEach((ta) => {
+    ta.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        ta.closest('.tf-task-note-edit').querySelector('.tf-task-note-save').click();
+      }
+      if (e.key === 'Escape') {
+        ta.closest('.tf-task-note-edit').querySelector('.tf-task-note-cancel').click();
+      }
+    });
+    ta.addEventListener('click', (e) => e.stopPropagation());
+  });
+}
+
+/**
  * Renders the Flow view: a vertical list where each entry's accent strip height
  * is proportional to its duration (height = max(64, 0.6 × minutes) px), giving
  * longer tasks more visual weight.
@@ -344,6 +449,10 @@ function renderFlowView(dateKey) {
       // Look up the underlying entry object for entry-type items
       const entryObj =
         item.type === 'entry' && item.entryId ? entries.find((e) => e.id === item.entryId) : null;
+
+      // Look up the task object for task-type items (status update rows)
+      const taskObj =
+        item.type === 'task' && item.taskId ? planTasks.find((t) => t.id === item.taskId) : null;
 
       let durationMin = 0;
       let durMs = 0;
@@ -375,10 +484,13 @@ function renderFlowView(dateKey) {
             <div class="tf-flow-text">${item.text}</div>
             <div class="tf-flow-sub">${item.sub}</div>
             ${buildSessionNotesHtml(notes)}
+            ${taskObj ? buildFlowTaskNoteHtml(taskObj, _flowNoteEditId === taskObj.id) : ''}
           </div>
         </div>`;
     })
     .join('');
+
+  bindFlowNoteEvents(el);
 }
 
 // ─────────────────────────── main render ───────────────────────────

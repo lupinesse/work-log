@@ -3,7 +3,7 @@ const STORE_PLAN = 'wl_plan_v1';
 
 /**
  * Plan task list — each item:
- * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority] }`
+ * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority], [note] }`
  * @type {Array<Object>}
  */
 let planTasks = [];
@@ -17,6 +17,7 @@ let _expandedHistoryId = null;
 let _cpOpenIds = new Set();
 let _cpEditId = null; // pid of task whose checkpoint is being edited
 let _cpEditIdx = null; // index of checkpoint being edited
+let _noteOpenIds = new Set();
 /** Whether the Done column's older-history expander is open. */
 let doneHistoryOpen = false;
 /** Whether the WIP-over warning banner has been dismissed this render cycle. */

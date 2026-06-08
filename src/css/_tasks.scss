@@ -1248,3 +1248,103 @@
     grid-column: auto;
   }
 }
+
+// ── Task notes ──────────────────────────────────────────────────────────────
+
+.plan-note-btn {
+  font-size: 12px;
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  color: var(--text3);
+  opacity: 0.6;
+  flex-shrink: 0;
+  line-height: 1;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &.plan-note-btn--has {
+    opacity: 1;
+    color: var(--text2);
+  }
+}
+
+.plan-note-display {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 4px;
+  padding: 3px 6px;
+  border-left: 2px solid var(--border2);
+  cursor: pointer;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+
+  &:hover {
+    color: var(--text2);
+    border-color: var(--text3);
+  }
+}
+
+.plan-note-area {
+  margin-top: 6px;
+}
+
+.plan-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+  padding: 5px 7px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--bg2);
+  color: var(--text);
+  resize: vertical;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent, #7b61ff);
+  }
+}
+
+.plan-note-btns {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+
+  button {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--border2);
+    background: none;
+    cursor: pointer;
+    color: var(--text2);
+
+    &:hover {
+      background: var(--bg2);
+    }
+  }
+
+  .plan-note-save {
+    background: var(--info-bg, #e8f0fe);
+    border-color: transparent;
+    color: var(--info-text, #1a73e8);
+
+    &:hover {
+      filter: brightness(0.95);
+    }
+  }
+
+  .plan-note-del {
+    color: var(--danger, #c62828);
+
+    &:hover {
+      background: #fdecea;
+      border-color: transparent;
+    }
+  }
+}

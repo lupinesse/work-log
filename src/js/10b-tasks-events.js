@@ -322,6 +322,96 @@ function bindPlanEvents(lists) {
     });
   });
 
+  // Note button — toggle textarea open/closed
+  qa('.plan-note-btn').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.dataset.pid;
+      if (_noteOpenIds.has(pid)) _noteOpenIds.delete(pid);
+      else _noteOpenIds.add(pid);
+      renderPlan();
+      if (_noteOpenIds.has(pid)) {
+        setTimeout(() => {
+          const ta = document.querySelector(`.plan-note-input[data-pid="${pid}"]`);
+          if (ta) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+          }
+        }, 0);
+      }
+    });
+  });
+
+  // Note display row — click to open edit
+  qa('.plan-note-display').forEach((el) => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.pid;
+      _noteOpenIds.add(pid);
+      renderPlan();
+      setTimeout(() => {
+        const ta = document.querySelector(`.plan-note-input[data-pid="${pid}"]`);
+        if (ta) {
+          ta.focus();
+          ta.setSelectionRange(ta.value.length, ta.value.length);
+        }
+      }, 0);
+    });
+  });
+
+  // Note save
+  qa('.plan-note-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pid = btn.dataset.pid;
+      const ta = btn.closest('.plan-note-area').querySelector('.plan-note-input');
+      const val = ta.value.trim();
+      const t = planTasks.find((t) => t.id === pid);
+      if (t) {
+        if (val) t.note = val;
+        else delete t.note;
+        savePlan();
+      }
+      _noteOpenIds.delete(pid);
+      renderPlan();
+    });
+  });
+
+  // Note remove
+  qa('.plan-note-del').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const pid = btn.dataset.pid;
+      const t = planTasks.find((t) => t.id === pid);
+      if (t) {
+        delete t.note;
+        savePlan();
+      }
+      _noteOpenIds.delete(pid);
+      renderPlan();
+    });
+  });
+
+  // Note cancel
+  qa('.plan-note-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _noteOpenIds.delete(btn.dataset.pid);
+      renderPlan();
+    });
+  });
+
+  // Note textarea keyboard shortcuts
+  qa('.plan-note-input').forEach((ta) => {
+    ta.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        ta.closest('.plan-note-area').querySelector('.plan-note-save').click();
+      }
+      if (e.key === 'Escape') {
+        ta.closest('.plan-note-area').querySelector('.plan-note-cancel').click();
+      }
+    });
+    ta.addEventListener('click', (e) => e.stopPropagation());
+  });
+
   // Checkpoint: toggle open/closed
   qa('.cp-badge').forEach((btn) => {
     btn.addEventListener('click', (e) => {
