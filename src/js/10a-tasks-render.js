@@ -71,10 +71,10 @@ function noteAreaHtml(t) {
   const hasNote = !!(t.note && t.note.trim());
   if (!isOpen && !hasNote) return '';
   if (!isOpen) {
-    return `<div class="plan-note-display" data-pid="${t.id}" title="click to edit note">📝 ${escHtml(t.note)}</div>`;
+    return `<button class="plan-note-display" data-pid="${t.id}" title="click to edit note">📝 ${escHtml(t.note)}</button>`;
   }
   return `<div class="plan-note-area">
-      <textarea class="plan-note-input" data-pid="${t.id}" rows="2" placeholder="add a note…">${escHtml(t.note || '')}</textarea>
+      <textarea class="plan-note-input" data-pid="${t.id}" rows="2" aria-label="note for task" placeholder="add a note…">${escHtml(t.note || '')}</textarea>
       <div class="plan-note-btns">
         <button class="plan-note-save" data-pid="${t.id}">save</button>
         ${hasNote ? `<button class="plan-note-del" data-pid="${t.id}">remove</button>` : ''}

@@ -1273,11 +1273,17 @@
 }
 
 .plan-note-display {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-left: 2px solid var(--border2);
   font-size: 12px;
+  font-family: inherit;
   color: var(--text3);
   margin-top: 4px;
   padding: 3px 6px;
-  border-left: 2px solid var(--border2);
   cursor: pointer;
   white-space: pre-wrap;
   overflow-wrap: break-word;

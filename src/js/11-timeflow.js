@@ -334,7 +334,7 @@ function buildFlowTaskNoteHtml(task, isEditing) {
   const hasNote = !!(task.note && task.note.trim());
   if (isEditing) {
     return `<div class="tf-task-note-edit" data-taskid="${task.id}">
-        <textarea class="tf-task-note-input" data-taskid="${task.id}" rows="2">${escHtml(task.note || '')}</textarea>
+        <textarea class="tf-task-note-input" data-taskid="${task.id}" rows="2" aria-label="note for task" placeholder="add a note…">${escHtml(task.note || '')}</textarea>
         <div class="tf-task-note-actions">
           <button class="tf-task-note-save" data-taskid="${task.id}">save</button>
           ${hasNote ? `<button class="tf-task-note-del" data-taskid="${task.id}">remove</button>` : ''}

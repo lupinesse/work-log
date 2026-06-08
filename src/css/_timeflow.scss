@@ -477,10 +477,10 @@
       background: none;
       cursor: pointer;
       color: var(--text2);
+    }
 
-      &:hover {
-        background: var(--bg2);
-      }
+    button:hover {
+      background: var(--bg2);
     }
 
     .tf-task-note-save {
