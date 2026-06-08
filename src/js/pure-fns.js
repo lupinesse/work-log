@@ -355,6 +355,26 @@ export function validateBackupFile(backup) {
   return { valid: true };
 }
 
+/**
+ * Returns entries from `backupEntries` that are both schema-valid and absent
+ * from `currentEntries` (compared by `id`). Pure: no side-effects, no browser
+ * APIs.
+ *
+ * Separated from the import flow so the deduplication logic can be
+ * unit-tested independently of localStorage and the File API.
+ * `mergeBackupEntries()` calls this before writing to localStorage.
+ *
+ * @param {Array<Object>} currentEntries - Entries already in the local store.
+ * @param {Array<Object>} backupEntries  - Entries from the backup file.
+ * @param {function(Object): boolean} isValid - Entry-schema predicate (e.g. `validEntry`).
+ * @returns {Array<Object>} Valid entries from `backupEntries` whose `id` does
+ *   not appear in `currentEntries`.
+ */
+export function filterNewBackupEntries(currentEntries, backupEntries, isValid) {
+  const existingIds = new Set(currentEntries.map((e) => e.id));
+  return backupEntries.filter((e) => isValid(e) && !existingIds.has(e.id));
+}
+
 /* ── External API response validators ── */
 // Pure validators for shapes received from external data sources.
 // Each function returns a boolean; callers are responsible for logging and

@@ -404,11 +404,15 @@
 <!-- Hidden file input for backup restore — triggered from the Start of Day flow -->
 <input type="file" id="backupFileInput" accept=".json" style="display:none"
        aria-label="Select JSON backup file to restore" />
+<!-- Hidden file input for entry merge — triggered from the export section -->
+<input type="file" id="mergeFileInput" accept=".json" style="display:none"
+       aria-label="Select JSON backup file to merge entries from" />
 
 <div class="export-section">
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px;align-items:center">
+      <button class="expiry-btn" id="mergeBackupBtn" title="Merge entries from a backup made on another machine">⇣ merge backup</button>
       <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
