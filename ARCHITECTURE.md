@@ -702,7 +702,7 @@ localStorage.setItem('wl_entries_v1', JSON.stringify(entries));
 ## Extension Points
 
 ### Adding a New Feature
-1. **New module**: Create `src/js/24-feature.js` with functions (next available number)
+1. **New module**: Create `src/js/26-feature.js` with functions (next available number)
 2. **UI**: Add HTML to `work-log.html`
 3. **State**: If persists, add to localStorage and validators
 4. **Rendering**: Add function in `04-render.js` call stack

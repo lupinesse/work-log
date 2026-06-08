@@ -91,9 +91,9 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Accepted by | Jenni Järvinen (sole author and user) |
 | Date | 2026-05-28 |
 | Scope | v1.8.5–v1.8.9 — all features listed in `CHANGELOG.md §§ v1.8.5–v1.8.9` |
-| Method | Automated suite (711 tests: 429 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
+| Method | Automated suite (679 tests: 397 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
 | AI co-reviewer | Claude Sonnet 4.6 (pair review of Hero Card, Quick Capture, ESM refactoring, API key migration) |
-| Outcome | **Accepted** — all 711 tests passing; design certificate updated; no regressions |
+| Outcome | **Accepted** — all 679 tests passing; design certificate updated; no regressions |
 | Outstanding known issues | `QA.md` test counts were stale from v1.8.4 until this update; resolved here |
 
 ---
