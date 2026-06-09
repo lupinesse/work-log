@@ -1371,8 +1371,11 @@ async function runTests() {
     assert('Badge shows ✓ N/N when all steps complete (✓ 2/2)', boardHtml.includes('✓ 2/2'));
     assert('+ steps badge on task with no checkpoints', boardHtml.includes('+ steps'));
 
+    // Switch to the In Progress tab so cp1's badge is visible
+    await page.click('.board-tab[data-tab="inprogress"]');
+
     // Open checkpoints by clicking the badge — fail loudly if the badge is missing
-    await page.waitForSelector('.cp-badge[data-pid="cp1"]');
+    await page.waitForSelector('.cp-badge[data-pid="cp1"]', { state: 'visible' });
     await page.evaluate(() => document.querySelector('.cp-badge[data-pid="cp1"]').click());
     await page.waitForTimeout(50);
     const openHtml = await page.evaluate(() => document.getElementById('progressList').innerHTML);
@@ -1382,7 +1385,7 @@ async function runTests() {
     assert('Progress bar rendered', openHtml.includes('cp-fill'));
 
     // Tick an unchecked checkpoint — three-state: false → 'partial' → true
-    await page.waitForSelector('.cp-check[data-pid="cp1"][data-cpidx="0"]');
+    await page.waitForSelector('.cp-check[data-pid="cp1"][data-cpidx="0"]', { state: 'visible' });
     await page.evaluate(() =>
       document.querySelector('.cp-check[data-pid="cp1"][data-cpidx="0"]').click()
     );
@@ -2803,6 +2806,126 @@ async function runTests() {
       await page2.evaluate(() => document.getElementById('tfBlocksPane').style.display !== 'none')
     );
     await page2.close();
+  }
+
+  // ── Tabbed board (initBoardTabs) ─────────────────────────────────────────
+  console.log('\nTabbed board');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_cats_v1: CATS,
+      wl_plan_v1: [
+        {
+          id: 'tb1',
+          text: 'Todo task',
+          tag: 'work',
+          status: 'todo',
+          done: false,
+          notes: '',
+          date: today,
+        },
+        {
+          id: 'tb2',
+          text: 'Active task',
+          tag: 'work',
+          status: 'inprogress',
+          done: false,
+          notes: '',
+          date: today,
+        },
+        {
+          id: 'tb3',
+          text: 'Done task',
+          tag: 'work',
+          status: 'done',
+          done: true,
+          notes: '',
+          date: today,
+        },
+      ],
+    });
+
+    // Default tab is To Do
+    assert(
+      'To Do tab is active by default',
+      await page.evaluate(() =>
+        document.querySelector('.board-tab[data-tab="todo"]')?.classList.contains('is-active')
+      )
+    );
+    assert(
+      'To Do column is visible by default',
+      await page.evaluate(() =>
+        document.querySelector('#todoCol')?.classList.contains('kb-col--active')
+      )
+    );
+    assert(
+      'In Progress column is hidden by default',
+      await page.evaluate(
+        () => !document.querySelector('#progressCol')?.classList.contains('kb-col--active')
+      )
+    );
+
+    // Clicking In Progress tab reveals that column
+    await page.click('.board-tab[data-tab="inprogress"]');
+    assert(
+      'In Progress tab becomes active on click',
+      await page.evaluate(() =>
+        document.querySelector('.board-tab[data-tab="inprogress"]')?.classList.contains('is-active')
+      )
+    );
+    assert(
+      'In Progress column visible after tab click',
+      await page.evaluate(() =>
+        document.querySelector('#progressCol')?.classList.contains('kb-col--active')
+      )
+    );
+    assert(
+      'To Do column hidden after switching tab',
+      await page.evaluate(
+        () => !document.querySelector('#todoCol')?.classList.contains('kb-col--active')
+      )
+    );
+
+    // Tab choice is persisted in localStorage
+    assert(
+      'Active tab persisted to localStorage',
+      await page.evaluate(() => localStorage.getItem('wl_board_tab') === 'inprogress')
+    );
+
+    // Tab counts reflect task distribution
+    assert(
+      'To Do tab count shows 1',
+      await page.evaluate(() => document.getElementById('tabTodoCount')?.textContent === '1')
+    );
+    assert(
+      'In Progress tab count shows 1',
+      await page.evaluate(() => document.getElementById('tabProgCount')?.textContent === '1')
+    );
+    assert(
+      'Done tab count shows 1',
+      await page.evaluate(() => document.getElementById('tabDoneCount')?.textContent === '1')
+    );
+
+    // aria-selected reflects active state
+    assert(
+      'Active tab has aria-selected=true',
+      await page.evaluate(
+        () =>
+          document
+            .querySelector('.board-tab[data-tab="inprogress"]')
+            ?.getAttribute('aria-selected') === 'true'
+      )
+    );
+    assert(
+      'Inactive tab has aria-selected=false',
+      await page.evaluate(
+        () =>
+          document.querySelector('.board-tab[data-tab="todo"]')?.getAttribute('aria-selected') ===
+          'false'
+      )
+    );
+
+    await page.close();
   }
 
   // ── Pomodoro dashboard grid ───────────────────────────────────────────────
