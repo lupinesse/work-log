@@ -57,7 +57,8 @@ function Get-TodayMeetings {
             $ns    = Add-ComRef ($ol.GetNamespace('MAPI'))
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-            # Outlook MAPI Restrict requires US-English date format regardless of system locale
+            # $d1/$d2 are kept for the debug dateRange field only.
+            # Filtering now uses locale-independent year-boundary anchors (see Pass 1/2).
             $enUS = [Globalization.CultureInfo]::new('en-US')
             $d1   = $today.ToString('M/d/yyyy HH:mm', $enUS)
             $d2   = $tomorrow.ToString('M/d/yyyy HH:mm', $enUS)
@@ -122,14 +123,27 @@ function Get-TodayMeetings {
                 # Pass 1 — recurring occurrences via Find/FindNext.
                 # Restrict is unreliable when IncludeRecurrences=$true on some Outlook
                 # versions: it matches the master appointment's original start date
-                # (e.g. April) rather than each occurrence's date. Find/FindNext
-                # correctly walks occurrences at their actual start times and jumps
-                # straight to today without iterating the full calendar history.
+                # (e.g. April) rather than each occurrence's date. Find/FindNext walks
+                # occurrences at their actual start times.
+                #
+                # Root cause of previous "no meetings" bug: MAPI date strings like
+                # "6/9/2026" are locale-sensitive. Finnish Outlook reads M/d/yyyy as
+                # d/M/yyyy, so "6/9/2026" means September 6 (not June 9). The fix:
+                # use "1/1/YYYY" as the Find anchor — January 1 is identical in both
+                # M/d and d/M locales — then compare to today in PowerShell.
                 try {
                     $items = Add-ComRef ($calFolder.Items)
                     $items.IncludeRecurrences = $true
                     $items.Sort('[Start]')
-                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$d1'")) } catch { $null }
+                    $yearAnchor = "1/1/$($today.Year)"
+                    $useGetNext = $false
+                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
+                    if ($null -eq $cur) {
+                        # Separator mismatch or truly empty year — fall back to GetFirst
+                        # and iterate from the beginning (slower but reliable).
+                        $useGetNext = $true
+                        $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
+                    }
                     while ($cur -ne $null) {
                         $startDate = $null
                         try { $startDate = ([DateTime]$cur.Start).Date } catch {}
@@ -157,17 +171,26 @@ function Get-TodayMeetings {
                                 $dbg.pass1Count++
                             }
                         }
-                        $cur = try { Add-ComRef ($items.FindNext()) } catch { $null }
+                        $cur = if ($useGetNext) {
+                            try { Add-ComRef ($items.GetNext()) } catch { $null }
+                        } else {
+                            try { Add-ComRef ($items.FindNext()) } catch { $null }
+                        }
                     }
                 } catch {}
 
-                # Pass 2 — non-recurring items via Restrict (fast and correct without
+                # Pass 2 — non-recurring items via Restrict (correct without
                 # IncludeRecurrences). The $seen map deduplicates any overlap.
+                # Uses year-boundary anchors for locale-independence; today's
+                # exact date is checked in PowerShell below.
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
                     $items2.IncludeRecurrences = $false
-                    $items2.Sort('[Start]')
-                    $filtered = Add-ComRef ($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'"))
+                    $yearAnchor2    = "1/1/$($today.Year)"
+                    $nextYearAnchor = "1/1/$($today.Year + 1)"
+                    $filtered = try {
+                        Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor2' AND [Start] < '$nextYearAnchor'"))
+                    } catch { $items2 }
                     foreach ($item in $filtered) {
                         try {
                             $startDate = ([DateTime]$item.Start).Date
