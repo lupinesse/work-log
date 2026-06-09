@@ -2925,6 +2925,93 @@ async function runTests() {
       )
     );
 
+    // Roving tabindex: active tab is in tab order; others are not
+    assert(
+      'Active tab has tabindex=0',
+      await page.evaluate(
+        () => document.querySelector('.board-tab[data-tab="inprogress"]')?.tabIndex === 0
+      )
+    );
+    assert(
+      'Inactive tab has tabindex=-1',
+      await page.evaluate(
+        () => document.querySelector('.board-tab[data-tab="todo"]')?.tabIndex === -1
+      )
+    );
+
+    await page.close();
+  }
+
+  // ── Board Live strip (updateBoardLive) ────────────────────────────────────
+  console.log('\nBoard Live strip');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_cats_v1: CATS,
+      wl_entries_v1: [
+        { id: 'bl1', text: 'Live work', tag: 'work', ts: Date.now() - 60000, date: today },
+      ],
+      wl_plan_v1: [
+        {
+          id: 'blt1',
+          text: 'Live work',
+          tag: 'work',
+          status: 'inprogress',
+          done: false,
+          notes: '',
+          date: today,
+        },
+      ],
+    });
+
+    // Strip is hidden before any timer starts
+    assert(
+      'Board Live strip hidden when no timer active',
+      await page.evaluate(() => document.getElementById('boardLive')?.hidden)
+    );
+
+    // Start timer → strip becomes visible after renderPlan
+    await page.evaluate(() => {
+      window.__wl.startTimer('bl1');
+      window.__wl.renderPlan();
+    });
+    assert(
+      'Board Live strip visible when timer is running',
+      await page.evaluate(() => !document.getElementById('boardLive')?.hidden)
+    );
+    assert(
+      '#boardLiveClock element present and non-empty',
+      await page.evaluate(() => {
+        const el = document.getElementById('boardLiveClock');
+        return el !== null && el.textContent.trim().length > 0;
+      })
+    );
+
+    // Pause timer → strip hides
+    await page.evaluate(() => {
+      window.__wl.pauseTimer();
+      window.__wl.renderPlan();
+    });
+    assert(
+      'Board Live strip hidden when timer is paused',
+      await page.evaluate(() => document.getElementById('boardLive')?.hidden)
+    );
+
+    // Resume and click the strip → In Progress tab activates
+    await page.evaluate(() => {
+      window.__wl.startTimer('bl1');
+      window.__wl.renderPlan();
+      // Switch to todo so we can confirm the click moves us back
+      document.querySelector('.board-tab[data-tab="todo"]')?.click();
+    });
+    await page.click('#boardLiveCard');
+    assert(
+      'Clicking Board Live strip switches to In Progress tab',
+      await page.evaluate(() =>
+        document.querySelector('.board-tab[data-tab="inprogress"]')?.classList.contains('is-active')
+      )
+    );
+
     await page.close();
   }
 

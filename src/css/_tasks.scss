@@ -1250,17 +1250,17 @@
 }
 
 /* ── Tabbed board (narrow-mode): one lane visible at a time ── */
-.board-cols.board-tabbed {
+.board-cols.board-cols--tabbed {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.board-tabbed .kb-col__head {
+.board-cols--tabbed .kb-col__head {
   display: none;
 }
 
-.board-tabbed .kb-col {
+.board-cols--tabbed .kb-col {
   display: none;
   background: none;
   border: 0;
@@ -1269,12 +1269,12 @@
   min-width: 0;
 }
 
-.board-tabbed .kb-col.kb-col--active {
+.board-cols--tabbed .kb-col.kb-col--active {
   display: block;
 }
 
 /* WIP tint isn't useful without the column chrome — keep it quiet here */
-.board-tabbed .kb-col.kb-col--wip {
+.board-cols--tabbed .kb-col.kb-col--wip {
   background: none;
 }
 
@@ -1387,7 +1387,7 @@
   }
 
   70% {
-    box-shadow: 0 0 0 7px color-mix(in srgb, var(--live) 0%, transparent);
+    box-shadow: 0 0 0 var(--radius) color-mix(in srgb, var(--live) 0%, transparent);
   }
 
   100% {

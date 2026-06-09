@@ -832,6 +832,8 @@ function initBoardTabs() {
       const active = btn.dataset.tab === tabId;
       btn.classList.toggle('is-active', active);
       btn.setAttribute('aria-selected', String(active));
+      // Roving tabindex: only the active tab is in the tab order (WCAG 2.1.1)
+      btn.tabIndex = active ? 0 : -1;
     });
     document.querySelectorAll('.kb-col[data-col]').forEach((col) => {
       col.classList.toggle('kb-col--active', col.dataset.col === tabId);
@@ -864,6 +866,29 @@ function initBoardTabs() {
     btn.addEventListener('dragleave', () => btn.classList.remove('board-tab--drop'));
     btn.addEventListener('drop', () => btn.classList.remove('board-tab--drop'));
   });
+
+  // Arrow-key navigation between tabs (WCAG SC 4.1.2 tablist pattern)
+  const tabsEl = document.getElementById('boardTabs');
+  if (tabsEl) {
+    tabsEl.addEventListener('keydown', (e) => {
+      const tabs = [...document.querySelectorAll('.board-tab')];
+      const idx = tabs.findIndex((t) => t === document.activeElement);
+      if (idx === -1) return;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        tabs[(idx + 1) % tabs.length].focus();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        tabs[(idx - 1 + tabs.length) % tabs.length].focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        tabs[0].focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        tabs[tabs.length - 1].focus();
+      }
+    });
+  }
 }
 
 /**
@@ -888,8 +913,9 @@ function updateBoardLive() {
     return;
   }
 
-  const liveTask = planTasks.find((t) => t.text.toLowerCase() === liveEntry.text.toLowerCase());
-  const cat = getCat(liveTask?.tag || 'other');
+  if (!liveEntry.tag)
+    wlLog.warn('updateBoardLive: entry has no tag, falling back to "other"', liveEntry.id);
+  const cat = getCat(liveEntry.tag || 'other');
   const elapsed = fmtElapsed(getElapsedMs());
 
   stripEl.innerHTML = `<button class="board-live__card" id="boardLiveCard"
