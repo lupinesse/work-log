@@ -6,9 +6,9 @@ ADHD-friendly work tracker — single HTML file, runs locally in your browser.
 
 ![Overview](screenshots/ss1-overview.png)
 
-![Today's Tasks](screenshots/ss2-tasks.png)
+![Kanban board](screenshots/ss2-tasks.png)
 
-![Timeblock](screenshots/ss3-timeblock.png)
+![Today's Flow — Log & Timeblock](screenshots/ss3-timeblock.png)
 
 ![Pomodoro](screenshots/ss4-pomodoro.png)
 
@@ -37,17 +37,23 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ### Time tracking
 - **Live timer** — start a timer on any task, pause and resume, add a handoff note when stopping
-- **Time log** — every logged entry shown with duration, epic, and billable flag
 - **Billable tracking** — mark epics and individual entries as billable; totals shown per task and per day
 - **Quick pick** — recent tasks shown as chips for fast re-logging
 
 ### Tasks
-- **Today's tasks** — To do / In Progress / Done with epic colour coding
+- **Kanban board** — drag tasks between To Do / In Progress / Done columns with epic colour coding
+- **WIP warning** — amber highlight and dismissable banner when more than one task is in progress
 - **Task subtasks** — split any task into child steps; completing all steps completes the parent
 - **Deadlines** — date picker with overdue (red) and due-today (amber) highlighting
 - **Auto-carry** — unfinished tasks roll over to the next day automatically
 - **Jira import** — paste a Jira CSV export to bulk-add tickets as tasks
-- **Completion history** — done tasks shown for 14 days with timestamp, then expire by iteration
+
+### Today's Flow
+- **Flow view** — chronological feed merging time entries, log notes, and task updates for the day
+- **Log view** — editable time log with duration, epic, billable flag, and ad-hoc entry row
+- **Blocks view** — visual 08:00–18:00 timeblock grid auto-filled from logged entries; drag to rearrange
+- **Month view** — heatmap of hours per day with intensity colouring; monthly summary and task inventory
+- **Rolling Summary** — AI-ready summary of recent activity across configurable days
 
 ### Focus mode
 - **Focus screen** — one-click distraction-free view showing only the active task and next steps
@@ -56,7 +62,6 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ### Planning
 - **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link
-- **Timeblock** — visual 08:00–18:00 grid auto-filled from logged entries; drag to rearrange
 - **Day streak** — consecutive days with logged work
 
 ### Export & review
