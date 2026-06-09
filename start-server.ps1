@@ -39,14 +39,19 @@ function Get-TodayMeetings {
         function Add-ComRef($obj) { if ($null -ne $obj -and -not $comRefs.Contains($obj)) { $comRefs.Add($obj) }; return $obj }
 
         $dbg = [ordered]@{
-            storeCount    = 0
-            storesSkipped = 0
-            folderCount   = 0
-            pass1Count    = 0
-            pass2Count    = 0
-            dateRange     = ''
-            stores        = @()
-            folders       = @()
+            storeCount      = 0
+            storesSkipped   = 0
+            folderCount     = 0
+            pass1Count      = 0
+            pass2Count      = 0
+            pass1UsedGetFirst = $false
+            pass1Error      = ''
+            pass2Error      = ''
+            dateRange       = ''
+            sep             = ''
+            yearAnchor      = ''
+            stores          = @()
+            folders         = @()
         }
 
         try {
@@ -61,8 +66,13 @@ function Get-TodayMeetings {
             # dateRange is kept in the debug payload using en-US strings for readability.
             $enUS = [Globalization.CultureInfo]::new('en-US')
             $dbg.dateRange = "$($today.ToString('M/d/yyyy HH:mm', $enUS)) → $($tomorrow.ToString('M/d/yyyy HH:mm', $enUS))"
-            # Year anchor used by both passes — "1/1/YYYY" is locale-independent.
-            $yearAnchor = "1/1/$($today.Year)"
+            # Year anchors use the system locale's date separator so Outlook's MAPI
+            # filter parser accepts the string.  Day=1 and month=1 are identical in
+            # both d/M and M/d orderings, so the anchor date is locale-independent.
+            $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
+            $dbg.sep        = $sep
+            $yearAnchor     = "1${sep}1${sep}$($today.Year)"
+            $dbg.yearAnchor = $yearAnchor
 
             $seen    = @{}
             $results = @()
@@ -109,10 +119,12 @@ function Get-TodayMeetings {
             $dbg.folderCount = $calFolders.Count
             $dbg.folders = @($calFolders | ForEach-Object {
                 $fn          = try { $_.folder.Name } catch { '(error)' }
-                $itemCount   = try { $_.folder.Items.Count } catch { -1 }
+                $itemCount   = try { $folderItems = Add-ComRef ($_.folder.Items); $folderItems.Count } catch { -1 }
                 $subCalNames = @(try {
-                    $sf = $_.folder.Folders
-                    @(0..($sf.Count - 1)) | ForEach-Object { try { $sf.Item($_ + 1).Name } catch {} }
+                    $sf = Add-ComRef ($_.folder.Folders)
+                    @(0..($sf.Count - 1)) | ForEach-Object {
+                        try { $subF = Add-ComRef ($sf.Item($_ + 1)); $subF.Name } catch {}
+                    }
                 } catch {})
                 [ordered]@{ name = $fn; account = $_.label; itemCount = $itemCount; subFolders = $subCalNames }
             })
@@ -133,8 +145,9 @@ function Get-TodayMeetings {
                 # M/d and d/M locales — then compare to today in PowerShell.
                 try {
                     $items = Add-ComRef ($calFolder.Items)
-                    $items.IncludeRecurrences = $true
+                    # Sort must be applied before IncludeRecurrences per Outlook COM docs.
                     $items.Sort('[Start]')
+                    $items.IncludeRecurrences = $true
                     $useGetNext = $false
                     $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
                     if ($null -eq $cur) {
@@ -142,6 +155,7 @@ function Get-TodayMeetings {
                         # and iterate from the beginning (slower but reliable).
                         Write-Host '[cal] Pass 1: year-anchor Find returned null, falling back to GetFirst' -ForegroundColor Yellow
                         $useGetNext = $true
+                        $dbg.pass1UsedGetFirst = $true
                         $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
                     }
                     while ($cur -ne $null) {
@@ -177,7 +191,7 @@ function Get-TodayMeetings {
                             try { Add-ComRef ($items.FindNext()) } catch { $null }
                         }
                     }
-                } catch {}
+                } catch { $dbg.pass1Error += "$($_.Exception.Message); " }
 
                 # Pass 2 — non-recurring items via Restrict (correct without
                 # IncludeRecurrences). The $seen map deduplicates any overlap.
@@ -186,7 +200,7 @@ function Get-TodayMeetings {
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
                     $items2.IncludeRecurrences = $false
-                    $nextYearAnchor = "1/1/$($today.Year + 1)"
+                    $nextYearAnchor = "1${sep}1${sep}$($today.Year + 1)"
                     $filtered = try {
                         Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor' AND [Start] < '$nextYearAnchor'"))
                     } catch {
@@ -220,7 +234,7 @@ function Get-TodayMeetings {
                         }
                         $dbg.pass2Count++
                     }
-                } catch {}
+                } catch { $dbg.pass2Error += "$($_.Exception.Message); " }
             }
 
             return @{ meetings = $results; debug = $dbg }
