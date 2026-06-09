@@ -472,15 +472,18 @@ while ($listener.IsListening) {
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
                 $isDebug = ($req.Url.Query -eq '?debug=1' -or $req.Url.Query -match '[?&]debug=1(&|$)')
-                $rawOut  = Get-TodayMeetings
-                $result  = if ($rawOut.Count -gt 0) { $rawOut[0] } else { @{} }
+                # PowerShell unrolls the single-item Collection[PSObject] on return,
+                # so $result is the wrapper hashtable directly, not a collection.
+                $result = Get-TodayMeetings
 
-                if ($result.ContainsKey('error')) {
-                    $errMsg = $result.error -replace '"',"'"
+                if ($null -eq $result) {
+                    Send-Json $res '[]'
+                } elseif ($null -ne $result.error) {
+                    $errMsg = [string]$result.error -replace '"',"'"
                     Send-Json $res "{`"error`":`"$errMsg`"}" 500
-                } elseif ($result.ContainsKey('meetings')) {
+                } else {
                     $meetings = @($result.meetings)
-                    if ($isDebug) {
+                    if ($isDebug -and $null -ne $result.debug) {
                         $meetingsJson = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
                         $debugJson    = ConvertTo-Json -InputObject $result.debug -Compress -Depth 3
                         Send-Json $res "{`"meetings`":$meetingsJson,`"_debug`":$debugJson}"
@@ -488,9 +491,6 @@ while ($listener.IsListening) {
                         $json = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
                         Send-Json $res $json
                     }
-                } else {
-                    Write-Host '[cal] Unexpected result shape from Get-TodayMeetings — returning empty' -ForegroundColor Yellow
-                    Send-Json $res '[]'
                 }
             } catch {
                 $msg = $_.Exception.Message -replace '"',"'"
