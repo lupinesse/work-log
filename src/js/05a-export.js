@@ -92,7 +92,7 @@ function readOptionalLogForBackup(storeKey, label) {
 }
 
 /** How many days of entries to include in each backup file. */
-const BACKUP_RETENTION_DAYS = 90;
+const BACKUP_RETENTION_DAYS = 21;
 
 /**
  * Exports a JSON backup of recent application state: entries from the last
@@ -127,7 +127,7 @@ function exportBackup() {
     qpHidden: [...qpHidden],
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-  const filename = `work-log-backup-${dk(new Date())}.json`;
+  const filename = `work-log-backup-${BACKUP_RETENTION_DAYS}d-${dk(new Date())}.json`;
   writeExportFile('JSON backups', filename, blob);
 }
 
