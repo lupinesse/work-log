@@ -57,12 +57,12 @@ function Get-TodayMeetings {
             $ns    = Add-ComRef ($ol.GetNamespace('MAPI'))
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-            # $d1/$d2 are kept for the debug dateRange field only.
-            # Filtering now uses locale-independent year-boundary anchors (see Pass 1/2).
+            # Filtering uses locale-independent year-boundary anchors (see Pass 1/2).
+            # dateRange is kept in the debug payload using en-US strings for readability.
             $enUS = [Globalization.CultureInfo]::new('en-US')
-            $d1   = $today.ToString('M/d/yyyy HH:mm', $enUS)
-            $d2   = $tomorrow.ToString('M/d/yyyy HH:mm', $enUS)
-            $dbg.dateRange = "$d1 → $d2"
+            $dbg.dateRange = "$($today.ToString('M/d/yyyy HH:mm', $enUS)) → $($tomorrow.ToString('M/d/yyyy HH:mm', $enUS))"
+            # Year anchor used by both passes — "1/1/YYYY" is locale-independent.
+            $yearAnchor = "1/1/$($today.Year)"
 
             $seen    = @{}
             $results = @()
@@ -135,12 +135,12 @@ function Get-TodayMeetings {
                     $items = Add-ComRef ($calFolder.Items)
                     $items.IncludeRecurrences = $true
                     $items.Sort('[Start]')
-                    $yearAnchor = "1/1/$($today.Year)"
                     $useGetNext = $false
                     $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
                     if ($null -eq $cur) {
                         # Separator mismatch or truly empty year — fall back to GetFirst
                         # and iterate from the beginning (slower but reliable).
+                        Write-Host '[cal] Pass 1: year-anchor Find returned null, falling back to GetFirst' -ForegroundColor Yellow
                         $useGetNext = $true
                         $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
                     }
@@ -186,11 +186,13 @@ function Get-TodayMeetings {
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
                     $items2.IncludeRecurrences = $false
-                    $yearAnchor2    = "1/1/$($today.Year)"
                     $nextYearAnchor = "1/1/$($today.Year + 1)"
                     $filtered = try {
-                        Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor2' AND [Start] < '$nextYearAnchor'"))
-                    } catch { $items2 }
+                        Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor' AND [Start] < '$nextYearAnchor'"))
+                    } catch {
+                        Write-Host "[cal] Pass 2: Restrict failed ($($_.Exception.Message)), iterating all items" -ForegroundColor Yellow
+                        $items2
+                    }
                     foreach ($item in $filtered) {
                         try {
                             $startDate = ([DateTime]$item.Start).Date
@@ -521,6 +523,7 @@ while ($listener.IsListening) {
                 $result = Get-TodayMeetings
 
                 if ($null -eq $result) {
+                    Write-Host '[cal] Get-TodayMeetings returned null — returning empty' -ForegroundColor Yellow
                     Send-Json $res '[]'
                 } elseif ($null -ne $result.error) {
                     $errMsg = [string]$result.error -replace '"',"'"
