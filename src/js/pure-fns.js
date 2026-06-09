@@ -936,3 +936,35 @@ export function buildRollingSummary(dateKeys, opts) {
     };
   });
 }
+
+/**
+ * Filters an entries array to those whose `date` field falls within the
+ * retention window (today minus `retentionDays`, inclusive). Entries with a
+ * missing or unparseable date are excluded to keep backups clean.
+ *
+ * The cutoff is computed from `nowMs` so the function stays pure and testable.
+ *
+ * @param {Array<{date?: string}>} entries - Raw entries array from localStorage.
+ * @param {number} retentionDays - How many days back to keep (e.g. 90).
+ * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
+ * @returns {{ kept: Array, dropped: number }} The filtered entries and count of dropped ones.
+ * @example
+ * applyBackupRetention(entries, 90, Date.now())
+ * // → { kept: [...], dropped: 12 }
+ */
+export function applyBackupRetention(entries, retentionDays, nowMs) {
+  // Compare as YYYY-MM-DD strings (lexicographic = chronological) to avoid
+  // the UTC-midnight parse problem: new Date('2026-03-11') is UTC midnight,
+  // which can be earlier than a cutoff derived from local-time arithmetic.
+  const cutoffDate = dk(new Date(nowMs - retentionDays * 24 * 60 * 60 * 1000));
+  const kept = [];
+  let dropped = 0;
+  for (const e of entries) {
+    if (!e.date || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || e.date < cutoffDate) {
+      dropped++;
+    } else {
+      kept.push(e);
+    }
+  }
+  return { kept, dropped };
+}
