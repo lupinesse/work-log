@@ -898,7 +898,7 @@ function updateBoardLive() {
     <span class="board-live__body">
       <span class="board-live__title">${escHtml(liveEntry.text)}</span>
       <span class="board-live__meta">
-        <span class="board-live__dot" style="background:${cat.color}" aria-hidden="true"></span>
+        <span class="board-live__dot" style="background:${escHtml(cat.color)}" aria-hidden="true"></span>
         ${escHtml(cat.label)}
       </span>
     </span>
