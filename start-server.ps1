@@ -44,6 +44,9 @@ function Get-TodayMeetings {
             folderCount   = 0
             pass1Count    = 0
             pass2Count    = 0
+            dateRange     = ''
+            stores        = @()
+            folders       = @()
         }
 
         try {
@@ -58,6 +61,7 @@ function Get-TodayMeetings {
             $enUS = [Globalization.CultureInfo]::new('en-US')
             $d1   = $today.ToString('M/d/yyyy HH:mm', $enUS)
             $d2   = $tomorrow.ToString('M/d/yyyy HH:mm', $enUS)
+            $dbg.dateRange = "$d1 → $d2"
 
             $seen    = @{}
             $results = @()
@@ -67,13 +71,15 @@ function Get-TodayMeetings {
             $stores = Add-ComRef ($ns.Stores)
             foreach ($store in $stores) {
                 $dbg.storeCount++
+                $storeType = try { [int]$store.ExchangeStoreType } catch { -1 }
                 # Skip public folders
-                try { if ($store.ExchangeStoreType -eq 3) { $dbg.storesSkipped++; continue } } catch {}
+                if ($storeType -eq 3) { $dbg.storesSkipped++; continue }
 
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
                 $accountKey = if ($storeDisplay) { $storeDisplay } else { $null }
 
+                $beforeCount = $calFolders.Count
                 # Method 1: GetDefaultFolder
                 try { $calFolders += @{ folder = Add-ComRef ($store.GetDefaultFolder(9)); label = $accountKey } } catch {}
 
@@ -91,9 +97,19 @@ function Get-TodayMeetings {
                         } catch {}
                     }
                 } catch {}
+
+                $dbg.stores += [ordered]@{
+                    name        = $storeDisplay
+                    type        = $storeType
+                    foldersFound = ($calFolders.Count - $beforeCount)
+                }
             }
 
             $dbg.folderCount = $calFolders.Count
+            $dbg.folders = @($calFolders | ForEach-Object {
+                $fn = try { $_.folder.Name } catch { '(error)' }
+                [ordered]@{ name = $fn; account = $_.label }
+            })
             # Read meetings from every calendar folder found
             foreach ($entry in $calFolders) {
                 $calFolder   = $entry.folder
