@@ -36,7 +36,15 @@ function Get-TodayMeetings {
         # .NET GC holds COM references across runspace teardown and Outlook
         # eventually reports "exhausted all shared resources".
         $comRefs = [System.Collections.Generic.List[object]]::new()
-        function Add-ComRef($obj) { if ($null -ne $obj) { $comRefs.Add($obj) }; return $obj }
+        function Add-ComRef($obj) { if ($null -ne $obj -and -not $comRefs.Contains($obj)) { $comRefs.Add($obj) }; return $obj }
+
+        $dbg = [ordered]@{
+            storeCount    = 0
+            storesSkipped = 0
+            folderCount   = 0
+            pass1Count    = 0
+            pass2Count    = 0
+        }
 
         try {
             $ol = $null
@@ -58,8 +66,9 @@ function Get-TodayMeetings {
             $calFolders = @()
             $stores = Add-ComRef ($ns.Stores)
             foreach ($store in $stores) {
+                $dbg.storeCount++
                 # Skip public folders
-                try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
+                try { if ($store.ExchangeStoreType -eq 3) { $dbg.storesSkipped++; continue } } catch {}
 
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
@@ -84,6 +93,7 @@ function Get-TodayMeetings {
                 } catch {}
             }
 
+            $dbg.folderCount = $calFolders.Count
             # Read meetings from every calendar folder found
             foreach ($entry in $calFolders) {
                 $calFolder   = $entry.folder
@@ -123,6 +133,7 @@ function Get-TodayMeetings {
                                     joinUrl  = $joinUrl
                                     account  = $accountKey
                                 }
+                                $dbg.pass1Count++
                             }
                         }
                         $cur = try { Add-ComRef ($items.FindNext()) } catch { $null }
@@ -161,11 +172,12 @@ function Get-TodayMeetings {
                             joinUrl  = $joinUrl
                             account  = $accountKey
                         }
+                        $dbg.pass2Count++
                     }
                 } catch {}
             }
 
-            return $results
+            return @{ meetings = $results; debug = $dbg }
         } catch {
             return @{ error = $_.Exception.Message }
         } finally {
@@ -459,15 +471,26 @@ while ($listener.IsListening) {
 
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
-                $meetings = Get-TodayMeetings
-                # Check if first result is an error object
-                if ($meetings.Count -eq 1 -and $meetings[0].ContainsKey('error')) {
-                    Send-Json $res "{`"error`":`"$($meetings[0].error -replace '"',"'")`"}" 500
+                $isDebug = ($req.Url.Query -eq '?debug=1' -or $req.Url.Query -match '[?&]debug=1(&|$)')
+                $rawOut  = Get-TodayMeetings
+                $result  = if ($rawOut.Count -gt 0) { $rawOut[0] } else { @{} }
+
+                if ($result.ContainsKey('error')) {
+                    $errMsg = $result.error -replace '"',"'"
+                    Send-Json $res "{`"error`":`"$errMsg`"}" 500
+                } elseif ($result.ContainsKey('meetings')) {
+                    $meetings = @($result.meetings)
+                    if ($isDebug) {
+                        $meetingsJson = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
+                        $debugJson    = ConvertTo-Json -InputObject $result.debug -Compress -Depth 3
+                        Send-Json $res "{`"meetings`":$meetingsJson,`"_debug`":$debugJson}"
+                    } else {
+                        $json = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
+                        Send-Json $res $json
+                    }
                 } else {
-                    $json = if ($meetings.Count -gt 0) {
-                        ConvertTo-Json -InputObject @($meetings) -Compress -Depth 3
-                    } else { '[]' }
-                    Send-Json $res $json
+                    Write-Host '[cal] Unexpected result shape from Get-TodayMeetings — returning empty' -ForegroundColor Yellow
+                    Send-Json $res '[]'
                 }
             } catch {
                 $msg = $_.Exception.Message -replace '"',"'"
