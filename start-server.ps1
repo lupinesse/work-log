@@ -107,8 +107,13 @@ function Get-TodayMeetings {
 
             $dbg.folderCount = $calFolders.Count
             $dbg.folders = @($calFolders | ForEach-Object {
-                $fn = try { $_.folder.Name } catch { '(error)' }
-                [ordered]@{ name = $fn; account = $_.label }
+                $fn          = try { $_.folder.Name } catch { '(error)' }
+                $itemCount   = try { $_.folder.Items.Count } catch { -1 }
+                $subCalNames = @(try {
+                    $sf = $_.folder.Folders
+                    @(0..($sf.Count - 1)) | ForEach-Object { try { $sf.Item($_ + 1).Name } catch {} }
+                } catch {})
+                [ordered]@{ name = $fn; account = $_.label; itemCount = $itemCount; subFolders = $subCalNames }
             })
             # Read meetings from every calendar folder found
             foreach ($entry in $calFolders) {
