@@ -812,3 +812,128 @@ function initBoardColumnDnD() {
     });
   });
 }
+
+/**
+ * Initialises the tabbed board: wires tab-click handlers, restores the last
+ * active tab from localStorage, and sets up drag-over-tab lane switching so
+ * users can drag a card onto a tab label to reveal that column before dropping.
+ * Called once on DOMContentLoaded from `07-lifecycle.js`.
+ * @returns {void}
+ */
+function initBoardTabs() {
+  const BOARD_TAB_KEY = 'wl_board_tab';
+
+  /**
+   * Activates one board tab: marks it `is-active`, shows its column, hides the rest.
+   * @param {string} tabId - One of 'todo' | 'inprogress' | 'done'.
+   */
+  function activateBoardTab(tabId) {
+    document.querySelectorAll('.board-tab').forEach((btn) => {
+      const active = btn.dataset.tab === tabId;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', String(active));
+      // Roving tabindex: only the active tab is in the tab order (WCAG 2.1.1)
+      btn.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll('.kb-col[data-col]').forEach((col) => {
+      col.classList.toggle('kb-col--active', col.dataset.col === tabId);
+    });
+    try {
+      localStorage.setItem(BOARD_TAB_KEY, tabId);
+    } catch {
+      /* quota */
+    }
+  }
+
+  const storedTab = (() => {
+    try {
+      return localStorage.getItem(BOARD_TAB_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  activateBoardTab(storedTab || 'todo');
+
+  document.querySelectorAll('.board-tab').forEach((btn) => {
+    btn.addEventListener('click', () => activateBoardTab(btn.dataset.tab));
+
+    // Drag over a tab → switch to that lane so the card can be dropped there
+    btn.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      btn.classList.add('board-tab--drop');
+      activateBoardTab(btn.dataset.tab);
+    });
+    btn.addEventListener('dragleave', () => btn.classList.remove('board-tab--drop'));
+    btn.addEventListener('drop', () => btn.classList.remove('board-tab--drop'));
+  });
+
+  // Arrow-key navigation between tabs (WCAG SC 4.1.2 tablist pattern)
+  const tabsEl = document.getElementById('boardTabs');
+  if (tabsEl) {
+    tabsEl.addEventListener('keydown', (e) => {
+      const tabs = [...document.querySelectorAll('.board-tab')];
+      const idx = tabs.findIndex((t) => t === document.activeElement);
+      if (idx === -1) return;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        tabs[(idx + 1) % tabs.length].focus();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        tabs[(idx - 1 + tabs.length) % tabs.length].focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        tabs[0].focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        tabs[tabs.length - 1].focus();
+      }
+    });
+  }
+}
+
+/**
+ * Updates the `#boardLive` running-task strip above the board tabs.
+ * Shows the strip (with task title, category, and elapsed clock) when a
+ * non-paused timer is active; hides it otherwise.
+ * Called from `renderPlan()` after every render cycle.
+ * @returns {void}
+ */
+function updateBoardLive() {
+  const stripEl = document.getElementById('boardLive');
+  if (!stripEl) return;
+
+  if (!activeTimer || activeTimer.paused) {
+    stripEl.hidden = true;
+    return;
+  }
+
+  const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+  if (!liveEntry) {
+    stripEl.hidden = true;
+    return;
+  }
+
+  if (!liveEntry.tag)
+    wlLog.warn('updateBoardLive: entry has no tag, falling back to "other"', liveEntry.id);
+  const cat = getCat(liveEntry.tag || 'other');
+  const elapsed = fmtElapsed(getElapsedMs());
+
+  stripEl.innerHTML = `<button class="board-live__card" id="boardLiveCard"
+      aria-label="Currently tracking: ${escHtml(liveEntry.text)}">
+    <span class="board-live__pulse" aria-hidden="true"></span>
+    <span class="board-live__body">
+      <span class="board-live__title">${escHtml(liveEntry.text)}</span>
+      <span class="board-live__meta">
+        <span class="board-live__dot" style="background:${escHtml(cat.color)}" aria-hidden="true"></span>
+        ${escHtml(cat.label)}
+      </span>
+    </span>
+    <span class="board-live__clock" id="boardLiveClock">${elapsed}</span>
+  </button>`;
+  stripEl.hidden = false;
+
+  // Clicking the live strip navigates to the In Progress tab
+  document.getElementById('boardLiveCard')?.addEventListener('click', () => {
+    document.querySelector('.board-tab[data-tab="inprogress"]')?.click();
+  });
+}

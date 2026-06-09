@@ -367,6 +367,14 @@ function renderPlan() {
   document.getElementById('progressColCount').textContent = progressCount ? `${progressCount}` : '';
   document.getElementById('doneColCount').textContent = doneCount || '';
 
+  // Tab bar count badges (tabbed board mode)
+  const tabTodoEl = document.getElementById('tabTodoCount');
+  const tabProgEl = document.getElementById('tabProgCount');
+  const tabDoneEl = document.getElementById('tabDoneCount');
+  if (tabTodoEl) tabTodoEl.textContent = todoCount || '';
+  if (tabProgEl) tabProgEl.textContent = progressCount || '';
+  if (tabDoneEl) tabDoneEl.textContent = doneCount || '';
+
   // Hide add form when not viewing today
   const addRow = document.getElementById('planAddRow');
   if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
@@ -427,6 +435,7 @@ function renderPlan() {
   /* ── 8. Bind all event handlers across the three column lists ── */
   bindPlanEvents([todoListEl, progressListEl, doneListEl]);
   bindBoardColumnDnD();
+  updateBoardLive();
 
   if (isToday(viewDate)) renderTrackRecent();
 }

@@ -299,6 +299,8 @@ function tickTimer() {
     updateTimerArc(elapsed);
     updateLiveBlock();
     updateTabAndFavicon();
+    const boardLiveClockEl = document.getElementById('boardLiveClock');
+    if (boardLiveClockEl) boardLiveClockEl.textContent = fmtElapsed(elapsed);
     updateTimerBarColor();
     checkChime(elapsed);
     if (emergencyMode) {

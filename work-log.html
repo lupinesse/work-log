@@ -306,8 +306,14 @@
       <input class="plan-input" id="planInput" aria-label="Add a task" placeholder="add a task or paste a Jira ticket…" autocomplete="off" />
       <button class="plan-add-btn" id="planAddBtn">+ add</button>
     </div>
-    <div id="boardCols" class="board-cols">
-      <div class="kb-col" id="todoCol">
+    <div id="boardCols" class="board-cols board-cols--tabbed">
+      <div id="boardLive" class="board-live" hidden></div>
+      <div class="board-tabs" id="boardTabs" role="tablist" aria-label="Task board lanes">
+        <button type="button" class="board-tab" id="boardTab-todo" data-tab="todo" role="tab" aria-controls="todoCol" aria-selected="false"><span class="board-tab__dot" style="background:#94a3b8" aria-hidden="true"></span><span class="board-tab__label">To Do</span><span class="board-tab__count" id="tabTodoCount" aria-live="polite"></span></button>
+        <button type="button" class="board-tab board-tab--prog" id="boardTab-inprogress" data-tab="inprogress" role="tab" aria-controls="progressCol" aria-selected="false"><span class="board-tab__dot" style="background:#2563eb" aria-hidden="true"></span><span class="board-tab__label">In Progress</span><span class="board-tab__count" id="tabProgCount" aria-live="polite"></span></button>
+        <button type="button" class="board-tab" id="boardTab-done" data-tab="done" role="tab" aria-controls="doneCol" aria-selected="false"><span class="board-tab__dot" style="background:#059669" aria-hidden="true"></span><span class="board-tab__label">Done</span><span class="board-tab__count" id="tabDoneCount" aria-live="polite"></span></button>
+      </div>
+      <div class="kb-col" id="todoCol" data-col="todo" role="tabpanel" aria-labelledby="boardTab-todo">
         <div class="kb-col__head">
           <span class="kb-col__dot" style="background:#94a3b8" aria-hidden="true"></span>
           <span class="kb-col__title">To Do</span>
@@ -315,7 +321,7 @@
         </div>
         <div id="planList" class="kb-cards" role="list" aria-label="To do tasks"></div>
       </div>
-      <div class="kb-col" id="progressCol">
+      <div class="kb-col" id="progressCol" data-col="inprogress" role="tabpanel" aria-labelledby="boardTab-inprogress">
         <div class="kb-col__head">
           <span class="kb-col__dot" style="background:#2563eb" aria-hidden="true"></span>
           <span class="kb-col__title">In Progress</span>
@@ -323,7 +329,7 @@
         </div>
         <div id="progressList" class="kb-cards" role="list" aria-label="In progress tasks"></div>
       </div>
-      <div class="kb-col" id="doneCol">
+      <div class="kb-col" id="doneCol" data-col="done" role="tabpanel" aria-labelledby="boardTab-done">
         <div class="kb-col__head">
           <span class="kb-col__dot" style="background:#059669" aria-hidden="true"></span>
           <span class="kb-col__title">Done</span>

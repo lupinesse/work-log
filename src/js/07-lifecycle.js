@@ -248,6 +248,7 @@ document.getElementById('timerPause').addEventListener('click', () => {
 });
 initHero();
 initBoardColumnDnD();
+initBoardTabs();
 initRapid();
 initTodayFlow();
 initMonthlyLog();
