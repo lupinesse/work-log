@@ -36,7 +36,18 @@ function Get-TodayMeetings {
         # .NET GC holds COM references across runspace teardown and Outlook
         # eventually reports "exhausted all shared resources".
         $comRefs = [System.Collections.Generic.List[object]]::new()
-        function Add-ComRef($obj) { if ($null -ne $obj) { $comRefs.Add($obj) }; return $obj }
+        function Add-ComRef($obj) { if ($null -ne $obj -and -not $comRefs.Contains($obj)) { $comRefs.Add($obj) }; return $obj }
+
+        $dbg = [ordered]@{
+            storeCount    = 0
+            storesSkipped = 0
+            folderCount   = 0
+            pass1Count    = 0
+            pass2Count    = 0
+            dateRange     = ''
+            stores        = @()
+            folders       = @()
+        }
 
         try {
             $ol = $null
@@ -46,10 +57,12 @@ function Get-TodayMeetings {
             $ns    = Add-ComRef ($ol.GetNamespace('MAPI'))
             $today    = [DateTime]::Today
             $tomorrow = $today.AddDays(1)
-            # Outlook MAPI Restrict requires US-English date format regardless of system locale
+            # Filtering uses locale-independent year-boundary anchors (see Pass 1/2).
+            # dateRange is kept in the debug payload using en-US strings for readability.
             $enUS = [Globalization.CultureInfo]::new('en-US')
-            $d1   = $today.ToString('M/d/yyyy HH:mm', $enUS)
-            $d2   = $tomorrow.ToString('M/d/yyyy HH:mm', $enUS)
+            $dbg.dateRange = "$($today.ToString('M/d/yyyy HH:mm', $enUS)) → $($tomorrow.ToString('M/d/yyyy HH:mm', $enUS))"
+            # Year anchor used by both passes — "1/1/YYYY" is locale-independent.
+            $yearAnchor = "1/1/$($today.Year)"
 
             $seen    = @{}
             $results = @()
@@ -58,13 +71,16 @@ function Get-TodayMeetings {
             $calFolders = @()
             $stores = Add-ComRef ($ns.Stores)
             foreach ($store in $stores) {
+                $dbg.storeCount++
+                $storeType = try { [int]$store.ExchangeStoreType } catch { -1 }
                 # Skip public folders
-                try { if ($store.ExchangeStoreType -eq 3) { continue } } catch {}
+                if ($storeType -eq 3) { $dbg.storesSkipped++; continue }
 
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
                 $accountKey = if ($storeDisplay) { $storeDisplay } else { $null }
 
+                $beforeCount = $calFolders.Count
                 # Method 1: GetDefaultFolder
                 try { $calFolders += @{ folder = Add-ComRef ($store.GetDefaultFolder(9)); label = $accountKey } } catch {}
 
@@ -82,8 +98,24 @@ function Get-TodayMeetings {
                         } catch {}
                     }
                 } catch {}
+
+                $dbg.stores += [ordered]@{
+                    name        = $storeDisplay
+                    type        = $storeType
+                    foldersFound = ($calFolders.Count - $beforeCount)
+                }
             }
 
+            $dbg.folderCount = $calFolders.Count
+            $dbg.folders = @($calFolders | ForEach-Object {
+                $fn          = try { $_.folder.Name } catch { '(error)' }
+                $itemCount   = try { $_.folder.Items.Count } catch { -1 }
+                $subCalNames = @(try {
+                    $sf = $_.folder.Folders
+                    @(0..($sf.Count - 1)) | ForEach-Object { try { $sf.Item($_ + 1).Name } catch {} }
+                } catch {})
+                [ordered]@{ name = $fn; account = $_.label; itemCount = $itemCount; subFolders = $subCalNames }
+            })
             # Read meetings from every calendar folder found
             foreach ($entry in $calFolders) {
                 $calFolder   = $entry.folder
@@ -91,14 +123,27 @@ function Get-TodayMeetings {
                 # Pass 1 — recurring occurrences via Find/FindNext.
                 # Restrict is unreliable when IncludeRecurrences=$true on some Outlook
                 # versions: it matches the master appointment's original start date
-                # (e.g. April) rather than each occurrence's date. Find/FindNext
-                # correctly walks occurrences at their actual start times and jumps
-                # straight to today without iterating the full calendar history.
+                # (e.g. April) rather than each occurrence's date. Find/FindNext walks
+                # occurrences at their actual start times.
+                #
+                # Root cause of previous "no meetings" bug: MAPI date strings like
+                # "6/9/2026" are locale-sensitive. Finnish Outlook reads M/d/yyyy as
+                # d/M/yyyy, so "6/9/2026" means September 6 (not June 9). The fix:
+                # use "1/1/YYYY" as the Find anchor — January 1 is identical in both
+                # M/d and d/M locales — then compare to today in PowerShell.
                 try {
                     $items = Add-ComRef ($calFolder.Items)
                     $items.IncludeRecurrences = $true
                     $items.Sort('[Start]')
-                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$d1'")) } catch { $null }
+                    $useGetNext = $false
+                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
+                    if ($null -eq $cur) {
+                        # Separator mismatch or truly empty year — fall back to GetFirst
+                        # and iterate from the beginning (slower but reliable).
+                        Write-Host '[cal] Pass 1: year-anchor Find returned null, falling back to GetFirst' -ForegroundColor Yellow
+                        $useGetNext = $true
+                        $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
+                    }
                     while ($cur -ne $null) {
                         $startDate = $null
                         try { $startDate = ([DateTime]$cur.Start).Date } catch {}
@@ -123,19 +168,31 @@ function Get-TodayMeetings {
                                     joinUrl  = $joinUrl
                                     account  = $accountKey
                                 }
+                                $dbg.pass1Count++
                             }
                         }
-                        $cur = try { Add-ComRef ($items.FindNext()) } catch { $null }
+                        $cur = if ($useGetNext) {
+                            try { Add-ComRef ($items.GetNext()) } catch { $null }
+                        } else {
+                            try { Add-ComRef ($items.FindNext()) } catch { $null }
+                        }
                     }
                 } catch {}
 
-                # Pass 2 — non-recurring items via Restrict (fast and correct without
+                # Pass 2 — non-recurring items via Restrict (correct without
                 # IncludeRecurrences). The $seen map deduplicates any overlap.
+                # Uses year-boundary anchors for locale-independence; today's
+                # exact date is checked in PowerShell below.
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
                     $items2.IncludeRecurrences = $false
-                    $items2.Sort('[Start]')
-                    $filtered = Add-ComRef ($items2.Restrict("[Start] >= '$d1' AND [Start] < '$d2'"))
+                    $nextYearAnchor = "1/1/$($today.Year + 1)"
+                    $filtered = try {
+                        Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor' AND [Start] < '$nextYearAnchor'"))
+                    } catch {
+                        Write-Host "[cal] Pass 2: Restrict failed ($($_.Exception.Message)), iterating all items" -ForegroundColor Yellow
+                        $items2
+                    }
                     foreach ($item in $filtered) {
                         try {
                             $startDate = ([DateTime]$item.Start).Date
@@ -161,11 +218,12 @@ function Get-TodayMeetings {
                             joinUrl  = $joinUrl
                             account  = $accountKey
                         }
+                        $dbg.pass2Count++
                     }
                 } catch {}
             }
 
-            return $results
+            return @{ meetings = $results; debug = $dbg }
         } catch {
             return @{ error = $_.Exception.Message }
         } finally {
@@ -459,15 +517,27 @@ while ($listener.IsListening) {
 
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
-                $meetings = Get-TodayMeetings
-                # Check if first result is an error object
-                if ($meetings.Count -eq 1 -and $meetings[0].ContainsKey('error')) {
-                    Send-Json $res "{`"error`":`"$($meetings[0].error -replace '"',"'")`"}" 500
+                $isDebug = ($req.Url.Query -eq '?debug=1' -or $req.Url.Query -match '[?&]debug=1(&|$)')
+                # PowerShell unrolls the single-item Collection[PSObject] on return,
+                # so $result is the wrapper hashtable directly, not a collection.
+                $result = Get-TodayMeetings
+
+                if ($null -eq $result) {
+                    Write-Host '[cal] Get-TodayMeetings returned null — returning empty' -ForegroundColor Yellow
+                    Send-Json $res '[]'
+                } elseif ($null -ne $result.error) {
+                    $errMsg = [string]$result.error -replace '"',"'"
+                    Send-Json $res "{`"error`":`"$errMsg`"}" 500
                 } else {
-                    $json = if ($meetings.Count -gt 0) {
-                        ConvertTo-Json -InputObject @($meetings) -Compress -Depth 3
-                    } else { '[]' }
-                    Send-Json $res $json
+                    $meetings = @($result.meetings)
+                    if ($isDebug -and $null -ne $result.debug) {
+                        $meetingsJson = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
+                        $debugJson    = ConvertTo-Json -InputObject $result.debug -Compress -Depth 3
+                        Send-Json $res "{`"meetings`":$meetingsJson,`"_debug`":$debugJson}"
+                    } else {
+                        $json = if ($meetings.Count -gt 0) { ConvertTo-Json -InputObject $meetings -Compress -Depth 3 } else { '[]' }
+                        Send-Json $res $json
+                    }
                 }
             } catch {
                 $msg = $_.Exception.Message -replace '"',"'"
