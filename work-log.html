@@ -290,6 +290,17 @@
 
   <!-- Summary view pane: 7-day rolling summary (renderRollingSummary fills this) -->
   <div class="tf-pane" id="tfSummaryPane" role="tabpanel" aria-labelledby="tfTab-summary" tabindex="0" style="display:none"></div>
+
+  <!-- Month view pane: monthly heatmap + summary (renderMonthlyLog fills this) -->
+  <div class="tf-pane" id="monthlyLogSection" role="tabpanel" aria-labelledby="tfTab-month" tabindex="0" style="display:none">
+    <div class="ml-layout">
+      <div class="ml-calendar" id="mlCalendar"></div>
+      <div class="ml-sidebar">
+        <div class="ml-summary" id="mlSummary"></div>
+        <div class="ml-tasks" id="mlTasks"></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <div class="plan-section" id="planSection">
@@ -486,16 +497,6 @@
     </div>
   </div>
 </div>
-
-<section id="monthlyLogSection" style="display:none">
-  <div class="ml-layout">
-    <div class="ml-calendar" id="mlCalendar"></div>
-    <div class="ml-sidebar">
-      <div class="ml-summary" id="mlSummary"></div>
-      <div class="ml-tasks" id="mlTasks"></div>
-    </div>
-  </div>
-</section>
 
 <!-- Sprint setup panel -->
 <div id="sprintSetup" style="display:none">
