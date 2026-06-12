@@ -326,7 +326,7 @@ function buildSessionNotesHtml(notes) {
 /**
  * Builds the note display / edit widget for a task-type flow row.
  * Shows read-only text when not editing; shows a textarea when editing.
- * @param {{ id: string, note?: string }} task - The plan task object.
+ * @param {{ id: string, note: (string|undefined) }} task - The plan task object.
  * @param {boolean} isEditing - Whether this task's note is being edited.
  * @returns {string} HTML string.
  */
