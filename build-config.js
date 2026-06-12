@@ -41,20 +41,40 @@ export const DEST_FILE = '.portable-dest';
  * Leaf ES modules imported at the top of script.js and inlined first in the
  * portable build (leaf modules first, then others). Excluded from the main
  * concatenation step in all build scripts.
+ * The list now includes the pure-fns sub-modules followed by the pure-fns.js
+ * barrel. Order matters for the portable build: it inlines files in list
+ * order, and the barrel strips down to comments only — the sub-modules that
+ * actually declare the functions must already be in scope when later files run.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
-export const LEAF_MODULES = ['logger.js', 'pure-fns.js'];
+export const LEAF_MODULES = [
+  'logger.js',
+  'pure-fns-export.js',
+  'pure-fns-format.js',
+  'pure-fns-tasks.js',
+  'pure-fns-validate.js',
+  'pure-fns.js',
+];
 
 /**
  * Reads named exports from pure-fns.js so the import statement in script.js
- * stays in sync without a hand-maintained list. Handles regular and async
- * function exports.
+ * stays in sync without a hand-maintained list. Parses both declaration
+ * exports (regular and async functions, const/let/class) and barrel
+ * `export { … } from …` re-export lines — pure-fns.js is now a barrel over
+ * the pure-fns-*.js sub-modules.
  * @returns {string[]} Exported symbol names.
  */
 export function readPureFnsExports() {
   const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
-  return [...src.matchAll(/^export (?:async\s+)?(?:function|const|let|class) (\w+)/gm)].map(
-    (m) => m[1]
+  const declared = [
+    ...src.matchAll(/^export (?:async\s+)?(?:function|const|let|class) (\w+)/gm),
+  ].map((m) => m[1]);
+  const reExported = [...src.matchAll(/export\s*\{([^}]*)\}\s*from/g)].flatMap((m) =>
+    m[1]
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
   );
+  return [...declared, ...reExported];
 }
