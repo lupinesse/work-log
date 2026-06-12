@@ -91,16 +91,33 @@ function readOptionalLogForBackup(storeKey, label) {
   }
 }
 
+/** How many days of entries to include in each backup file. */
+const BACKUP_RETENTION_DAYS = 21;
+
 /**
- * Exports a full JSON backup of all application state: entries, categories,
- * plan tasks, time blocks, pomodoro log, dev log, distractions, and hidden
- * quick-pick items. Triggers a file download or writes to the save folder.
+ * Exports a JSON backup of recent application state: entries from the last
+ * {@link BACKUP_RETENTION_DAYS} days, plus categories, plan tasks, time
+ * blocks, pomodoro log, dev log, distractions, and hidden quick-pick items.
+ * Older entries are excluded to keep the file size stable; they remain in
+ * earlier backup files.
+ * Triggers a file download or writes to the save folder.
  */
 function exportBackup() {
+  const { kept: recentEntries, dropped } = applyBackupRetention(
+    entries,
+    BACKUP_RETENTION_DAYS,
+    Date.now()
+  );
+  if (dropped > 0) {
+    wlLog.info(
+      `exportBackup: excluded ${dropped} entr${dropped === 1 ? 'y' : 'ies'} older than ${BACKUP_RETENTION_DAYS} days`
+    );
+  }
   const backup = {
     version: '1',
     exported: new Date().toISOString(),
-    entries,
+    retentionDays: BACKUP_RETENTION_DAYS,
+    entries: recentEntries,
     categories,
     planTasks,
     blocks,
@@ -110,7 +127,7 @@ function exportBackup() {
     qpHidden: [...qpHidden],
   };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-  const filename = `work-log-backup-${dk(new Date())}.json`;
+  const filename = `work-log-backup-${BACKUP_RETENTION_DAYS}d-${dk(new Date())}.json`;
   writeExportFile('JSON backups', filename, blob);
 }
 
