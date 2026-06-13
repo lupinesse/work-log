@@ -33,9 +33,9 @@ function loadBlocks() {
         total: all.length,
         kept: blocks.length,
       });
-  } catch (e) {
+  } catch (err) {
     blocks = [];
-    wlLog.error('loadBlocks: failed to parse time blocks from localStorage', e);
+    wlLog.error('loadBlocks: failed to parse time blocks from localStorage', err);
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {
@@ -849,8 +849,8 @@ function loadExpiryDates() {
         .sort();
       return;
     }
-  } catch (e) {
-    wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', e);
+  } catch (err) {
+    wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', err);
   }
   // Seed localStorage with defaults on first load
   _expiryDates = [...EXPIRY_SEED];

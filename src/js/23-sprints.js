@@ -19,9 +19,9 @@ const SPRINT_DURATIONS = [15, 25, 45, 60];
 function loadSprintLog() {
   try {
     sprintLog = JSON.parse(localStorage.getItem(STORE_SPRINTS) || '[]');
-  } catch (e) {
+  } catch (err) {
     sprintLog = [];
-    wlLog.warn('loadSprintLog: failed to parse sprint log from localStorage', e);
+    wlLog.warn('loadSprintLog: failed to parse sprint log from localStorage', err);
   }
 }
 

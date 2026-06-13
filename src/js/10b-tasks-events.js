@@ -293,7 +293,7 @@ function bindPlanEvents(lists) {
       const len = inp.value.length;
       try {
         inp.setSelectionRange(len, len);
-      } catch (e) {
+      } catch (err) {
         // Silently skip — setSelectionRange may fail on certain input types in some browsers
       }
     }
@@ -315,8 +315,8 @@ function bindPlanEvents(lists) {
         const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
         delete notes[btn.dataset.task];
         localStorage.setItem('wl_handoff', JSON.stringify(notes));
-      } catch (e) {
-        wlLog.warn('plan-handoff-dismiss: failed to update wl_handoff in localStorage', e);
+      } catch (err) {
+        wlLog.warn('plan-handoff-dismiss: failed to update wl_handoff in localStorage', err);
       }
       renderPlan();
     });

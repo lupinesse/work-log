@@ -153,7 +153,7 @@ function setFavicon(state) {
     ctx.fillStyle = color;
     ctx.fill();
     link.href = canvas.toDataURL();
-  } catch (e) {} // silently skip favicon if canvas unavailable
+  } catch (err) {} // silently skip favicon if canvas unavailable
 }
 
 /**
@@ -243,8 +243,8 @@ function playChime() {
       oscillator.start(toneStart);
       oscillator.stop(toneStart + 0.5);
     });
-  } catch (e) {
-    wlLog.warn('playChime: Web Audio API unavailable', e.message);
+  } catch (err) {
+    wlLog.warn('playChime: Web Audio API unavailable', err.message);
   }
 }
 
@@ -308,8 +308,8 @@ function tickTimer() {
       if (emergEl) emergEl.textContent = entry ? entry.text : '—';
       renderEmergencyCps();
     }
-  } catch (e) {
-    console.error('[wl] tickTimer error:', e);
+  } catch (err) {
+    console.error('[wl] tickTimer error:', err);
   }
 }
 /**
@@ -370,7 +370,7 @@ setInterval(() => {
   if (!activeTimer) return;
   try {
     renderChart(viewEntries());
-  } catch (e) {
+  } catch (err) {
     /* renderChart may not be ready on very first tick */
   }
 }, CHART_REFRESH_MS);

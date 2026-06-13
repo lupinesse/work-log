@@ -13,7 +13,7 @@ const qpHidden = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_QP_HIDDEN) || '[]');
     return new Set(Array.isArray(raw) ? raw.map((s) => String(s).toLowerCase()) : []);
-  } catch (e) {
+  } catch (err) {
     return new Set();
   }
 })();
@@ -110,18 +110,18 @@ function load() {
         total: allEntries.length,
         kept: entries.length,
       });
-  } catch (e) {
+  } catch (err) {
     entries = [];
-    wlLog.error('load: failed to parse entries from localStorage', e);
+    wlLog.error('load: failed to parse entries from localStorage', err);
   }
   try {
     const parsedTimer = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
     activeTimer = parsedTimer && validTimer(parsedTimer) ? parsedTimer : null;
     if (parsedTimer && !validTimer(parsedTimer))
       wlLog.warn('load: discarded invalid timer state', parsedTimer);
-  } catch (e) {
+  } catch (err) {
     activeTimer = null;
-    wlLog.error('load: failed to parse timer state', e);
+    wlLog.error('load: failed to parse timer state', err);
   }
   try {
     const parsedCategories = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
@@ -136,8 +136,8 @@ function load() {
           }
         );
     }
-  } catch (e) {
-    wlLog.error('load: failed to parse categories', e);
+  } catch (err) {
+    wlLog.error('load: failed to parse categories', err);
   }
   // Auto-restore from snapshot if entries are unexpectedly empty
   if (!entries.length) {
@@ -149,8 +149,8 @@ function load() {
           categories = snap.categories.filter(validCategory);
         wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
       }
-    } catch (e) {
-      wlLog.warn('load: failed to parse snapshot from localStorage', e);
+    } catch (err) {
+      wlLog.warn('load: failed to parse snapshot from localStorage', err);
     }
   }
   loadLogNotes();
@@ -161,9 +161,9 @@ function loadLogNotes() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
     logNotes = Array.isArray(raw) ? raw : [];
-  } catch (e) {
+  } catch (err) {
     logNotes = [];
-    wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', e);
+    wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', err);
   }
 }
 

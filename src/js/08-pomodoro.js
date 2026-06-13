@@ -165,8 +165,8 @@ function pomoGetLog() {
         kept: valid.length,
       });
     return valid;
-  } catch (e) {
-    wlLog.error('pomoGetLog: failed to parse pomodoro log', e);
+  } catch (err) {
+    wlLog.error('pomoGetLog: failed to parse pomodoro log', err);
     return [];
   }
 }
@@ -220,7 +220,7 @@ function playPomoBeep() {
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
         osc.start();
         osc.stop(ctx.currentTime + 0.25);
-      } catch (e) {
+      } catch (err) {
         // Silently skip — Web Audio API may be unavailable (browser policy, no hardware)
       }
     }, delay)
@@ -341,7 +341,7 @@ function setPomoFavicon() {
     ctx.fill();
 
     link.href = c.toDataURL('image/png');
-  } catch (e) {} // silently skip if canvas blocked by browser policy
+  } catch (err) {} // silently skip if canvas blocked by browser policy
 }
 
 /**
