@@ -19,6 +19,7 @@
  * safeCssColor('')             // → '#888780'
  */
 export function safeCssColor(c) {
+  if (c == null) return '#888780';
   // Allow hex (#rgb, #rrggbb, #rrggbbaa) and hsl() only — block anything else
   return /^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$/.test(String(c))
     ? c

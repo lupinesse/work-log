@@ -45,6 +45,7 @@ const RAPID_SIG_SHORTCUTS = {
  * @returns {string|null} Resolved date key, or null if the token is unrecognised.
  */
 function resolveRapidDate(token, now) {
+  if (!token) return null;
   const ref = now || new Date();
   const t = token.toLowerCase();
 

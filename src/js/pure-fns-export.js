@@ -22,6 +22,7 @@ import { dk } from './pure-fns-format.js';
  * stripJiraPrefix('Write tests')         // → 'Write tests'
  */
 export function stripJiraPrefix(text) {
+  if (!text || typeof text !== 'string') return text ?? '';
   return text.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
 }
 
