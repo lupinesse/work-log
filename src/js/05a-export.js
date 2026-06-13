@@ -85,7 +85,7 @@ function readOptionalLogForBackup(storeKey, label) {
   } catch (err) {
     wlLog.warn(
       `exportBackup: ${label} in localStorage is not valid JSON — backing up an empty array for it; the corrupt data is excluded from this backup`,
-      e
+      err
     );
     return [];
   }
