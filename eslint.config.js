@@ -39,12 +39,13 @@ export default [
     },
   },
 
-  // Extracted ES-module files — logger.js and pure-fns.js use 'export' syntax
-  // and are imported directly by unit tests. They run in the browser context.
+  // Extracted ES-module files — logger.js and the pure-fns barrel plus its
+  // pure-fns-*.js sub-modules use 'export' syntax and are imported directly by
+  // unit tests. They run in the browser context.
   // detect-object-injection: bracket-notation keys are internal constants,
   // never from untrusted external input.
   {
-    files: ['src/js/logger.js', 'src/js/pure-fns.js'],
+    files: ['src/js/logger.js', 'src/js/pure-fns*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -67,7 +68,7 @@ export default [
   // untrusted external input at that point.
   {
     files: ['src/js/*.js'],
-    ignores: ['src/js/logger.js', 'src/js/pure-fns.js'],
+    ignores: ['src/js/logger.js', 'src/js/pure-fns*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',

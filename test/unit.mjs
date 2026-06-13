@@ -54,6 +54,20 @@ function localDate(y, m, d, hh = 0, mm = 0, ss = 0) {
 function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
   return localDate(y, m, d, hh, mm, ss).getTime();
 }
+/**
+ * Reads the pure-fns sub-modules as classic-script source for the VM sandboxes.
+ * pure-fns.js is a barrel of `export { … } from …` re-exports, which are not
+ * valid classic-script syntax, so the sandboxes concatenate the sub-modules
+ * instead and strip the ESM import lines and `export` declaration prefixes.
+ * @returns {string} Concatenated pure-fns source, safe for vm.runInContext.
+ */
+function loadPureFnsScriptSource() {
+  return ['pure-fns-format.js', 'pure-fns-validate.js', 'pure-fns-tasks.js', 'pure-fns-export.js']
+    .map((f) => readFileSync(join(__dirname, '../src/js/' + f), 'utf8'))
+    .join('\n')
+    .replace(/^import\s[^;]*;\s*$/gm, '') // single-line imports only; all sub-module imports are single-line
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+}
 
 // ── safeCssColor ─────────────────────────────────────────────────────────────
 describe('safeCssColor', () => {
@@ -1045,10 +1059,7 @@ describe('Notion button click handler', () => {
  * @returns {Object} The populated VM sandbox.
  */
 function loadFlatSortSandbox(overrides = {}) {
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
-    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
-    '$1'
-  );
+  const pureSrc = loadPureFnsScriptSource();
   const tasksSrc = readFileSync(join(__dirname, '../src/js/10-tasks.js'), 'utf8');
   const sandbox = {
     document: {
@@ -1186,10 +1197,7 @@ describe('flatSort', () => {
  * @returns {Object} The populated VM sandbox.
  */
 function loadRapidSandbox(overrides = {}) {
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
-    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
-    '$1'
-  );
+  const pureSrc = loadPureFnsScriptSource();
   const rapidSrc = readFileSync(join(__dirname, '../src/js/16-rapid.js'), 'utf8')
     .replace(/\blet (_qcFilterCat)\b/, 'var $1')
     .replace(/\blet (_qcSearch)\b/, 'var $1');
@@ -2943,10 +2951,7 @@ describe('auto-pause on visibilitychange', () => {
  * @returns {{ sandbox: Object, getBodyHtml: () => string }}
  */
 function loadMigrationSandbox(overrides = {}) {
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
-    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
-    '$1'
-  );
+  const pureSrc = loadPureFnsScriptSource();
   const migSrc = readFileSync(join(__dirname, '../src/js/20-migration.js'), 'utf8')
     .replace(/\blet (_migItems)\b/, 'var $1')
     .replace(/\blet (_migIdx)\b/, 'var $1');
@@ -3048,10 +3053,7 @@ function loadJiraSandbox(overrides = {}) {
     throw new Error('loadJiraSandbox: IIFE strip or var-promotion failed — check 14-jira.js');
   if (jiraSrc.includes('(function initJiraImporter'))
     throw new Error('loadJiraSandbox: IIFE opening was not removed');
-  const pureSrc = readFileSync(join(__dirname, '../src/js/pure-fns.js'), 'utf8').replace(
-    /^export ((?:async\s+)?(?:const|function|let|class))\b/gm,
-    '$1'
-  );
+  const pureSrc = loadPureFnsScriptSource();
 
   let capturedHtml = '';
   const containerEl = {
