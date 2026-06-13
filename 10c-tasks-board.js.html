@@ -170,15 +170,16 @@ function initBoardTabs() {
     });
     try {
       localStorage.setItem(BOARD_TAB_KEY, tabId);
-    } catch {
-      /* quota */
+    } catch (err) {
+      wlLog.warn('initBoardTabs: localStorage.setItem failed (quota?)', err);
     }
   }
 
   const storedTab = (() => {
     try {
       return localStorage.getItem(BOARD_TAB_KEY);
-    } catch {
+    } catch (err) {
+      wlLog.warn('initBoardTabs: localStorage.getItem failed', err);
       return null;
     }
   })();
