@@ -492,6 +492,394 @@ unit-tested there. This module is the localStorage + DOM glue around it.</p></di
 
 <header>
     
+        <h2>pure-fns-export.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>pure-fns-export.js
+Entry/export/summary helpers: billable-export grouping and merging, day
+bounds, grouped-line formatting, rolling summary, and backup retention.
+Split out of pure-fns.js (re-exported there as a barrel). Pure functions
+with no side-effects and no global state — a leaf ES module (imports only
+from pure-fns-format.js).</p></div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="pure-fns-export.js.html">pure-fns-export.js</a>, <a href="pure-fns-export.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>pure-fns-format.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>pure-fns-format.js
+CSS/HTML safety, date/time/duration formatting, and billing time rounding.
+Split out of pure-fns.js (re-exported there as a barrel). Pure functions with
+no side-effects, no global state, and no imports — a leaf ES module.</p></div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="pure-fns-format.js.html">pure-fns-format.js</a>, <a href="pure-fns-format.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>pure-fns-tasks.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>pure-fns-tasks.js
+Task/day helpers: rapid-capture inline token grammar, carry-forward status
+resolution, and per-day work-location helpers. Split out of pure-fns.js
+(re-exported there as a barrel). Pure functions with no side-effects and no
+global state — a leaf ES module (imports only from pure-fns-format.js).</p></div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="pure-fns-tasks.js.html">pure-fns-tasks.js</a>, <a href="pure-fns-tasks.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>pure-fns-validate.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>pure-fns-validate.js
+Validators: localStorage schema validators, backup-import validation, and
+external-API response validators. Split out of pure-fns.js (re-exported
+there as a barrel). Pure functions with no side-effects, no global state,
+and no imports — a leaf ES module.</p></div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="pure-fns-validate.js.html">pure-fns-validate.js</a>, <a href="pure-fns-validate.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
         <h2>pure-fns.js</h2>
         
     
@@ -502,8 +890,13 @@ unit-tested there. This module is the localStorage + DOM glue around it.</p></di
     
         
             <div class="description"><p>pure-fns.js
-Pure functions with no side-effects and no dependencies on global state.
-Extracted here so they can be imported directly by other modules and by tests.</p></div>
+Barrel module for the pure-function helpers, which live in four themed leaf
+sub-modules: pure-fns-format.js (CSS/HTML safety, date/time/duration
+formatting, billing rounding), pure-fns-validate.js (schema, backup, and
+external-API validators), pure-fns-tasks.js (rapid-capture grammar,
+carry-forward status, work location), and pure-fns-export.js (billable
+export grouping, rolling summary, backup retention). Re-exports every public
+symbol so existing imports of './pure-fns.js' keep working unchanged.</p></div>
         
 
         
