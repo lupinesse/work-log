@@ -1,10 +1,11 @@
-/* ── Today's tasks — per-card editors: comments, notes, checkpoints (split out of 10b-tasks-events.js) ── */
+/* ── Today's tasks — per-card editors: comments, notes, checkpoints ── */
 
 /**
  * Binds the per-card status-comment editor handlers (accept/skip/edit input,
  * plus the comment-history expander). Called from `bindPlanEvents()` after
  * each render.
  * @param {Function} qa - Selector helper closed over the rendered column lists.
+ * @returns {void}
  */
 function bindPlanCommentEvents(qa) {
   // Accept / skip / edit for status comment
@@ -110,6 +111,7 @@ function bindPlanCommentEvents(qa) {
  * delete, cancel, and textarea keyboard shortcuts). Called from
  * `bindPlanEvents()` after each render.
  * @param {Function} qa - Selector helper closed over the rendered column lists.
+ * @returns {void}
  */
 function bindPlanNoteEvents(qa) {
   /** Focuses the note textarea for the given task ID after the next render. */
@@ -205,6 +207,7 @@ function bindPlanNoteEvents(qa) {
  * done toggles, inline edit, delete, add-on-Enter, and drag-to-reorder).
  * Called from `bindPlanEvents()` after each render.
  * @param {Function} qa - Selector helper closed over the rendered column lists.
+ * @returns {void}
  */
 function bindPlanCheckpointEvents(qa) {
   // Checkpoint: toggle open/closed
