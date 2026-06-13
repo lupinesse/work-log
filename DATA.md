@@ -190,6 +190,27 @@ transition-bridge banner in the current session.
 
 ---
 
+## Work location
+
+### `wl_location_v1`
+Object mapping `YYYY-MM-DD` date strings to a location ID. Managed by
+`24-location.js`; the key constant `STORE_LOCATION` is declared in `01-state.js`.
+
+```json
+{ "2026-06-12": "office", "2026-06-11": "remote" }
+```
+
+| Field | Type | Values | Description |
+|---|---|---|---|
+| key | string | `YYYY-MM-DD` | Calendar date |
+| value | string | `"remote"` \| `"office"` | Work location for that day |
+
+Days with no entry default to `"remote"` (see `DEFAULT_WORK_LOCATION` in
+`pure-fns.js`). The value is shown in the date-nav header and cycles on click.
+Lifetime: persistent; old date keys accumulate but are harmless.
+
+---
+
 ## Quick-pick
 
 ### `wl_qp_hidden`
