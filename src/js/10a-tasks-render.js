@@ -51,7 +51,7 @@ function notionBtnHtml(t) {
 /**
  * Builds the note toggle button HTML for a task row.
  * Visually distinct when the task already has a note.
- * @param {{ id: string, note?: string }} t - The plan task.
+ * @param {{ id: string, note: (string|undefined) }} t - The plan task.
  * @returns {string} HTML button element.
  */
 function noteBtnHtml(t) {
@@ -63,7 +63,7 @@ function noteBtnHtml(t) {
  * Builds the inline note display / edit area for a task row.
  * Renders a read-only line when the task has a note and the area is closed;
  * renders a textarea with save/remove/cancel when open.
- * @param {{ id: string, note?: string }} t - The plan task.
+ * @param {{ id: string, note: (string|undefined) }} t - The plan task.
  * @returns {string} HTML string, or '' when no note and area is closed.
  */
 function noteAreaHtml(t) {

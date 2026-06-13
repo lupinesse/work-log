@@ -944,7 +944,7 @@ export function buildRollingSummary(dateKeys, opts) {
  *
  * The cutoff is computed from `nowMs` so the function stays pure and testable.
  *
- * @param {Array<{date?: string}>} entries - Raw entries array from localStorage.
+ * @param {Array<{date: (string|undefined)}>} entries - Raw entries array from localStorage.
  * @param {number} retentionDays - How many days back to keep (e.g. 90).
  * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
  * @returns {{ kept: Array, dropped: number }} The filtered entries and count of dropped ones.
