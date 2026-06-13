@@ -93,16 +93,14 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (970 lines) — Pure Utility Library (LEAF MODULE)
-**Responsibility**: All stateless, side-effect-free helper functions shared across modules. Imported as an ES module; exports are auto-discovered by the build system.
+#### **pure-fns.js** (55 lines) — Pure Utility Library (LEAF MODULE — barrel)
+**Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
-**Sub-groups**:
-- **String / format**: `escHtml`, `fmtDurMs`, `fmtDurMsShort`, `safeCssColor`, `fmtAgo`
-- **Date / time**: `dk`, `roundToNearest30`, `getISOWeek`, `weekRange`, `isoDateDiff`
-- **Entry helpers**: `buildRollingSummary`, `applyBackupRetention`, `validateBackupFile`
-- **Task helpers**: `flatSort`, `autoCarryTasks`, `patchCarriedTasks`
-- **Export helpers**: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`
-- **Location helpers**: `locationFor`, `nextLocation`
+**Sub-modules**:
+- `pure-fns-format.js` (193 lines) — String, colour, and duration formatters: `escHtml`, `fmtDurMs`, `fmtDurMsShort`, `safeCssColor`, `fmtAgo`, `dk`
+- `pure-fns-export.js` (301 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-tasks.js` (231 lines) — Task lifecycle and location helpers: `flatSort`, `resolveCarryStatus`, `locationFor`, `nextLocation`, date/time utilities (`getISOWeek`, `weekRange`, `isoDateDiff`, `roundToNearest30`, `fmtAgo`)
+- `pure-fns-validate.js` (275 lines) — Backup schema validation: `validateBackupFile`
 
 ---
 
@@ -375,8 +373,8 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (729 lines) — Task Rendering
-**Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator. Primitive card-builder helpers (status `<select>`, priority button, checkpoint badge, deadline picker, note button) were split to `10a-tasks-row.js` (pending PR).
+#### **10a-tasks-render.js** (407 lines) — Task Rendering
+**Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `noteBtnHtml()`, `checkpointBadgeHtml()`
 
@@ -412,8 +410,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (1 050 lines) — Visual Time Grid Orchestrator
-**Responsibility**: 8:00–18:00 grid view for planning
+#### **11-timeblock.js** (327 lines) — Visual Time Grid Orchestrator
+**Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
+
+**Sub-modules**:
+- `11a-timeblock-render.js` (350 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11b-timeblock-carry.js` (390 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -421,18 +423,6 @@ upcoming    → Scheduled for future date
 - Current time red line indicator
 - Start buttons to activate tasks
 - Completed blocks shown dimmed with strikethrough
-
-**Grid Format**:
-```
-08:00 ┌─────────────────────────┐
-      │ Design homepage (1h 30m)  │
-09:30 └─────────────────────────┘
-10:00 ┌─────────────────────────┐
-      │ Code review (45min)       │
-10:45 └─────────────────────────┘
-...
-18:00 (end)
-```
 
 **Data Structure** (`blocks` array):
 ```javascript
@@ -459,8 +449,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (916 lines) — Changelog Modal & EOD Orchestration
-**Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration. The full `DEV_CHANGES` dataset lives in `12b-changelog-data.js` (pending PR).
+#### **12a-changelog.js** (268 lines) — Changelog Modal & EOD Orchestration
+**Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
+
+**Sub-modules**:
+- `12b-changelog-data.js` (633 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
+- `12c-startup.js` (40 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
