@@ -73,7 +73,7 @@ export function readPureFnsExports() {
   const reExported = [...src.matchAll(/export\s*\{([^}]*)\}\s*from/g)].flatMap((m) =>
     m[1]
       .split(',')
-      .map((s) => s.trim())
+      .map((s) => s.replace(/\s+as\s+\S+/, '').trim()) // drop "as alias" suffixes
       .filter(Boolean)
   );
   return [...declared, ...reExported];
