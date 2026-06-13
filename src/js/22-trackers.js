@@ -9,9 +9,9 @@ function loadTrackers() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
     trackers = Array.isArray(raw) ? raw : [];
-  } catch (e) {
+  } catch (err) {
     trackers = [];
-    wlLog.warn('loadTrackers: failed to parse trackers from localStorage', e);
+    wlLog.warn('loadTrackers: failed to parse trackers from localStorage', err);
   }
 }
 

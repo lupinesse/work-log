@@ -4,7 +4,7 @@ function loadDistractions() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_DISTRACTIONS) || '[]');
     return Array.isArray(raw) ? raw.filter((d) => d && typeof d.ts === 'number') : [];
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -74,7 +74,7 @@ function saveParked() {
 function loadParked() {
   try {
     parkedThoughts = JSON.parse(localStorage.getItem(STORE_PARKED) || '[]');
-  } catch (e) {
+  } catch (err) {
     parkedThoughts = [];
   }
 }
@@ -238,7 +238,7 @@ function getHook(taskText) {
   try {
     const map = JSON.parse(localStorage.getItem(STORE_HOOKS) || '{}');
     return map[taskText.toLowerCase()] || null;
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -251,8 +251,8 @@ function saveHook(taskText, hook) {
       map[taskText.toLowerCase()] = hook;
     }
     localStorage.setItem(STORE_HOOKS, JSON.stringify(map));
-  } catch (e) {
-    wlLog.warn('saveHook: failed to persist task hook to localStorage', e);
+  } catch (err) {
+    wlLog.warn('saveHook: failed to persist task hook to localStorage', err);
   }
 }
 

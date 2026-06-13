@@ -150,7 +150,7 @@ function renderCalStrip(meetings) {
   const hiddenMeetings = (() => {
     try {
       return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (e) {
+    } catch (err) {
       return [];
     }
   })();
@@ -224,7 +224,7 @@ async function fetchAndRenderCalendar() {
     const hiddenMeetings = (() => {
       try {
         return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-      } catch (e) {
+      } catch (err) {
         return [];
       }
     })();
@@ -252,7 +252,7 @@ const STORE_SEEN_ENDED = 'wl_seen_ended_v1';
 function getSeenEnded() {
   try {
     return new Set(JSON.parse(localStorage.getItem(STORE_SEEN_ENDED) || '[]'));
-  } catch (e) {
+  } catch (err) {
     return new Set();
   }
 }
@@ -417,7 +417,7 @@ setInterval(() => {
   const hiddenMeetings = (() => {
     try {
       return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (e) {
+    } catch (err) {
       return [];
     }
   })();

@@ -299,8 +299,8 @@
     let rows;
     try {
       rows = parseCSV(text);
-    } catch (e) {
-      setJiraMsg('Could not parse CSV: ' + e.message, false);
+    } catch (err) {
+      setJiraMsg('Could not parse CSV: ' + err.message, false);
       return;
     }
     if (!rows.length) {

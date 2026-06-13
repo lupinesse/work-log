@@ -10,7 +10,7 @@ let _migIdx = 0;
 function getMigrationRecord() {
   try {
     return JSON.parse(localStorage.getItem(STORE_MIGRATION) || '{}');
-  } catch (e) {
+  } catch (err) {
     return {};
   }
 }

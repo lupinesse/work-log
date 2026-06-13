@@ -82,7 +82,7 @@ function exportTxt() {
 function readOptionalLogForBackup(storeKey, label) {
   try {
     return JSON.parse(localStorage.getItem(storeKey) || '[]');
-  } catch (e) {
+  } catch (err) {
     wlLog.warn(
       `exportBackup: ${label} in localStorage is not valid JSON — backing up an empty array for it; the corrupt data is excluded from this backup`,
       e
@@ -150,8 +150,8 @@ async function importBackup(file) {
   let text;
   try {
     text = await file.text();
-  } catch (e) {
-    wlLog.warn('importBackup: failed to read file', e);
+  } catch (err) {
+    wlLog.warn('importBackup: failed to read file', err);
     alert('Could not read the file. Please try again.');
     return;
   }
@@ -159,8 +159,8 @@ async function importBackup(file) {
   let backup;
   try {
     backup = JSON.parse(text);
-  } catch (e) {
-    wlLog.warn('importBackup: file is not valid JSON', e);
+  } catch (err) {
+    wlLog.warn('importBackup: file is not valid JSON', err);
     alert('The selected file is not valid JSON. Please choose a work-log backup file.');
     return;
   }
@@ -223,8 +223,8 @@ async function importBackup(file) {
         `from backup exported ${backup.exported ?? 'unknown'}`
     );
     location.reload();
-  } catch (e) {
-    wlLog.warn('importBackup: failed to write to localStorage', e);
+  } catch (err) {
+    wlLog.warn('importBackup: failed to write to localStorage', err);
     alert(
       'Import failed — could not write to localStorage. Your existing data has not been changed.'
     );
@@ -247,8 +247,8 @@ async function mergeBackupEntries(file) {
   let text;
   try {
     text = await file.text();
-  } catch (e) {
-    wlLog.warn('mergeBackupEntries: failed to read file', e);
+  } catch (err) {
+    wlLog.warn('mergeBackupEntries: failed to read file', err);
     alert('Could not read the file. Please try again.');
     return;
   }
@@ -256,8 +256,8 @@ async function mergeBackupEntries(file) {
   let backup;
   try {
     backup = JSON.parse(text);
-  } catch (e) {
-    wlLog.warn('mergeBackupEntries: file is not valid JSON', e);
+  } catch (err) {
+    wlLog.warn('mergeBackupEntries: file is not valid JSON', err);
     alert('The selected file is not valid JSON. Please choose a work-log backup file.');
     return;
   }
@@ -294,8 +294,8 @@ async function mergeBackupEntries(file) {
         `(dates: ${dates.join(', ')}) from backup exported ${backup.exported ?? 'unknown'}`
     );
     location.reload();
-  } catch (e) {
-    wlLog.warn('mergeBackupEntries: failed to write to localStorage', e);
+  } catch (err) {
+    wlLog.warn('mergeBackupEntries: failed to write to localStorage', err);
     alert(
       'Merge failed — could not write to localStorage. Your existing data has not been changed.'
     );

@@ -18,9 +18,9 @@ let _reflEnergy = 0;
 function loadReflection() {
   try {
     _reflData = JSON.parse(localStorage.getItem(STORE_REFLECTION) || '{}');
-  } catch (e) {
+  } catch (err) {
     _reflData = {};
-    wlLog.warn('loadReflection: failed to parse reflection data from localStorage', e);
+    wlLog.warn('loadReflection: failed to parse reflection data from localStorage', err);
   }
 }
 

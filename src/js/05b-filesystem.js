@@ -35,8 +35,8 @@ async function getSavedDir() {
         res(null);
       };
     });
-  } catch (e) {
-    wlLog.warn('getSavedDir: could not open IndexedDB; treating as no saved folder', e);
+  } catch (err) {
+    wlLog.warn('getSavedDir: could not open IndexedDB; treating as no saved folder', err);
     return null;
   }
 }
@@ -63,8 +63,8 @@ async function storeDirHandle(handle) {
         res();
       };
     });
-  } catch (e) {
-    wlLog.warn('saveDirHandle: failed to persist FSA handle to IndexedDB', e);
+  } catch (err) {
+    wlLog.warn('saveDirHandle: failed to persist FSA handle to IndexedDB', err);
     // Future exports will fall back to browser downloads — data is not lost
   }
 }
@@ -80,8 +80,8 @@ async function clearDirHandle() {
     const db = await openIDB();
     const tx = db.transaction('handles', 'readwrite');
     tx.objectStore('handles').delete('saveDir');
-  } catch (e) {
-    wlLog.warn('clearDirHandle: failed to remove FSA handle from IndexedDB', e);
+  } catch (err) {
+    wlLog.warn('clearDirHandle: failed to remove FSA handle from IndexedDB', err);
     // In-memory cache is already cleared — future exports will fall back to browser downloads
   }
 }
@@ -113,8 +113,8 @@ async function writeExportFile(subfolder, filename, blob) {
         renderFolderStatus();
         return;
       }
-    } catch (e) {
-      wlLog.warn('writeExportFile: FSA write failed, falling back to browser download', e);
+    } catch (err) {
+      wlLog.warn('writeExportFile: FSA write failed, falling back to browser download', err);
     }
   }
   // Fallback: browser download
@@ -145,9 +145,9 @@ async function pickSaveFolder() {
     const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
     await storeDirHandle(handle);
     renderFolderStatus();
-  } catch (e) {
+  } catch (err) {
     // AbortError = user dismissed the folder picker; not an error worth logging
-    if (e.name !== 'AbortError') wlLog.error('pickSaveFolder: folder selection failed', e);
+    if (err.name !== 'AbortError') wlLog.error('pickSaveFolder: folder selection failed', err);
   }
 }
 

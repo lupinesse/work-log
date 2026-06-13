@@ -634,8 +634,8 @@ function mergeDevLog() {
       const merged = [...stored, ...newEntries].sort((a, b) => a.id.localeCompare(b.id));
       localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
     }
-  } catch (e) {
-    wlLog.warn('mergeDevChanges: failed to merge dev changelog entries', e);
+  } catch (err) {
+    wlLog.warn('mergeDevChanges: failed to merge dev changelog entries', err);
   }
 }
 
@@ -676,9 +676,9 @@ function openEodModal() {
   let handoffNotes = {};
   try {
     handoffNotes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
-  } catch (e) {
+  } catch (err) {
     // Silently fall back to empty object — existing notes are unavailable but EOD modal still works
-    wlLog.warn('openEodModal: failed to parse wl_handoff', e);
+    wlLog.warn('openEodModal: failed to parse wl_handoff', err);
   }
   const taskNotesEl = document.getElementById('eodTaskNotes');
   if (unfinishedTasks.length) {
@@ -708,8 +708,8 @@ function openEodModal() {
   let allLog = [];
   try {
     allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-  } catch (e) {
-    wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', e);
+  } catch (err) {
+    wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
   }
   const todayChanges = allLog.filter((e) => e.date === todayKey);
   const changesEl = document.getElementById('eodChanges');
@@ -790,8 +790,8 @@ function saveEodHandoffNotes() {
       else delete notes[key];
     });
     localStorage.setItem('wl_handoff', JSON.stringify(notes));
-  } catch (e) {
-    wlLog.warn('saveEodHandoffNotes: failed to persist handoff notes to localStorage', e);
+  } catch (err) {
+    wlLog.warn('saveEodHandoffNotes: failed to persist handoff notes to localStorage', err);
   }
 }
 document.getElementById('expiryBtn').addEventListener('click', openExpiryModal);

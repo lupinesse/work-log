@@ -92,8 +92,8 @@ function migrateEntryDatesToLocal() {
       localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));
       wlLog.info(`migrate: corrected ${changed} entry date(s) from UTC to local calendar date`);
     }
-  } catch (e) {
-    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', e);
+  } catch (err) {
+    wlLog.warn('migrate: failed to correct entry dates (UTC → local)', err);
   }
 }
 
