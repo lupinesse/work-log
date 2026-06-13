@@ -1,11 +1,11 @@
-﻿# Work Log Architecture
+# Work Log Architecture
 
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.8.9-r2 |
-| Covers app version | v1.8.9 + unreleased (main, 2026-06-03) |
-| Last reviewed | 2026-06-03 |
+| Document version | 1.9.0-r1 |
+| Covers app version | v1.9.0 (main, 2026-06-13) |
+| Last reviewed | 2026-06-13 |
 | Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
 | Status | **Approved** — reflects current implementation |
 
@@ -13,7 +13,7 @@
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (37 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (39 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -23,7 +23,21 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **01-state.js** (118 lines) — Data Store
+#### **00-config.js** (104 lines) — App Configuration
+**Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
+
+**Key constants**:
+- `DAILY_GOAL_MS` — Target working milliseconds per day (default 7 h 30 min)
+- `AUTO_PAUSE_ON_TAB_SWITCH` — Whether the timer auto-pauses when the tab is hidden (default `true`)
+- `CHART_REFRESH_MS` — Interval for the activity chart refresh (default 15 min)
+- `CAL_ACCOUNT_LABELS` — Map of calendar account keys to display names
+- `DEFAULT_WORK_LOCATION` — Fallback location when none is recorded (default `'remote'`)
+
+**Not for**: credentials, tokens, or user-specific paths — those go in `00-config.local.js` (gitignored).
+
+---
+
+#### **01-state.js** (194 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -65,7 +79,34 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (250 lines) — Utilities
+#### **01b-migrate.js** (102 lines) — Data Migration
+**Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
+
+**Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
+
+---
+
+#### **logger.js** (53 lines) — Structured Logger (LEAF MODULE)
+**Responsibility**: `wlLog` — the application's single logging interface. Wraps `console` with level filtering and structured output. Imported as an ES module at the top of `script.js`.
+
+**API**: `wlLog.debug()`, `wlLog.info()`, `wlLog.config()`, `wlLog.warn()`, `wlLog.error()` — each accepts a message string and an optional data object.
+
+---
+
+#### **pure-fns.js** (970 lines) — Pure Utility Library (LEAF MODULE)
+**Responsibility**: All stateless, side-effect-free helper functions shared across modules. Imported as an ES module; exports are auto-discovered by the build system.
+
+**Sub-groups**:
+- **String / format**: `escHtml`, `fmtDurMs`, `fmtDurMsShort`, `safeCssColor`, `fmtAgo`
+- **Date / time**: `dk`, `roundToNearest30`, `getISOWeek`, `weekRange`, `isoDateDiff`
+- **Entry helpers**: `buildRollingSummary`, `applyBackupRetention`, `validateBackupFile`
+- **Task helpers**: `flatSort`, `autoCarryTasks`, `patchCarriedTasks`
+- **Export helpers**: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`
+- **Location helpers**: `locationFor`, `nextLocation`
+
+---
+
+#### **02-utils.js** (340 lines) — Utilities
 **Responsibility**: Shared helper functions
 
 **Key Functions**:
@@ -83,7 +124,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (237 lines) — Timer Logic
+#### **03-timer.js** (522 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -103,7 +144,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (413 lines) — Top-Level UI Rendering
+#### **04-render.js** (690 lines) — Top-Level UI Rendering
 **Responsibility**: Orchestrate rendering of all visible sections
 
 **Main Function**:
@@ -141,7 +182,7 @@ render() → {
 
 **Key Functions**:
 - `addEntry(withTimer)` — Create new entry from capture input
-- `isEntryBillable(e)` — Check if entry is billable
+- `isEntryBillable(entry)` — Check if entry is billable
 
 **Data Validation**:
 - Each entry must have: id, text, ts (timestamp), date
@@ -170,7 +211,7 @@ Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries
 
 ---
 
-#### **05b-filesystem.js** — File System Access Persistence
+#### **05b-filesystem.js** (178 lines) — File System Access Persistence
 **Responsibility**: Persist the user's chosen save folder and write export files via the browser File System Access API; falls back to a `<a download>` click when FSA is unavailable.
 
 **Key Functions**:
@@ -182,7 +223,7 @@ Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries
 
 ---
 
-#### **06-focus.js** (122 lines) — Focus Mode (Emergency Mode)
+#### **06-focus.js** (193 lines) — Focus Mode (Emergency Mode)
 **Responsibility**: Distraction-free focus interface
 
 **Features**:
@@ -202,7 +243,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **06a-hero.js** — Hero Card State Machine
+#### **06a-hero.js** (596 lines) — Hero Card State Machine
 **Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
 
 **States**:
@@ -223,7 +264,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (128 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (359 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -244,7 +285,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (219 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (420 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -257,7 +298,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** — Pomodoro 4-Column Dashboard
+#### **08a-pomo-dashboard.js** (191 lines) — Pomodoro 4-Column Dashboard
 **Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
 
 **Layout columns** (CSS grid in `_pomo.scss`):
@@ -282,7 +323,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (404 lines) — Live Info Widgets
+#### **09-clock-weather.js** (608 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -301,7 +342,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (142 lines) — Task Management
+#### **10-tasks.js** (156 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -334,7 +375,44 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (1 050 lines) — Visual Time Grid
+#### **10a-tasks-render.js** (729 lines) — Task Rendering
+**Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator. Primitive card-builder helpers (status `<select>`, priority button, checkpoint badge, deadline picker, note button) were split to `10a-tasks-row.js` (pending PR).
+
+**Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `noteBtnHtml()`, `checkpointBadgeHtml()`
+
+---
+
+#### **10b-tasks-events.js** (362 lines) — Task Event Binding
+**Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
+
+**Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
+
+---
+
+#### **10b-signifiers.js** (89 lines) — Entry Signifiers
+**Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
+
+**Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
+
+**Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
+
+---
+
+#### **10c-tasks-board.js** (241 lines) — Kanban Board Drag-and-Drop
+**Responsibility**: Board-level drag-and-drop between columns, column tab switching, and the live "N in progress" WIP badge. Extracted from `10b-tasks-events.js` so column logic stays separate from card-level event binding.
+
+**Key Functions**: `moveTaskToColumn()`, `bindBoardColumnDnD()`, `initBoardColumnDnD()`, `initBoardTabs()`, `updateBoardLive()`
+
+---
+
+#### **10d-tasks-editors.js** (368 lines) — Per-Card Inline Editors
+**Responsibility**: Binds the inline comment, note, and checkpoint editors for individual task cards. One function per editor type; called from `10b-tasks-events.js`.
+
+**Key Functions**: `bindPlanCommentEvents(qa)`, `bindPlanNoteEvents(qa)`, `bindPlanCheckpointEvents(qa)`
+
+---
+
+#### **11-timeblock.js** (1 050 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning
 
 **Features**:
@@ -364,7 +442,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (164 lines) — Miscellaneous Features
+#### **12-misc.js** (458 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -381,16 +459,14 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (279 lines) — Changelog Modal
-**Responsibility**: Display version history and new features
+#### **12a-changelog.js** (916 lines) — Changelog Modal & EOD Orchestration
+**Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration. The full `DEV_CHANGES` dataset lives in `12b-changelog-data.js` (pending PR).
 
-**Data Source**: Hardcoded changelog object matching CHANGELOG.md
-
-**Modal**: Shows on first load or via help button
+**Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
 ---
 
-#### **13-calendar.js** (193 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (529 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -426,7 +502,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (279 lines) — Jira Import
+#### **14-jira.js** (494 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -446,7 +522,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **15-notion.js** — Notion Integration
+#### **15-notion.js** (120 lines) — Notion Integration
 **Responsibility**: Push tasks and log entries to a Notion database via the Notion API.
 
 **Configuration**: Notion token and database IDs in `src/js/00-config.local.js` (gitignored).
@@ -455,30 +531,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **10b-signifiers.js** — Entry Signifiers
-**Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
-
-**Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
-
-**Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
-
----
-
-#### **10a-tasks-render.js** — Task Rendering
-**Responsibility**: HTML generation for the plan list — status `<select>`, priority button, checkpoint badge, deadline picker, and the full task row template. Split from `10-tasks.js` to isolate rendering from business logic.
-
-**Key Functions**: `statusOpts(cur)`, `prioBtnHtml(t)`, `renderPlan()`
-
----
-
-#### **10b-tasks-events.js** — Task Event Binding
-**Responsibility**: Attaches all event listeners to the rendered plan list — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Split from `10-tasks.js` to isolate DOM binding from logic.
-
-**Key Functions**: `bindPlanEvents(lists)`
-
----
-
-#### **16-rapid.js** — Rapid Logging Overlay
+#### **16-rapid.js** (541 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -487,7 +540,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** — Today's Flow Unified Section
+#### **11-timeflow.js** (606 lines) — Today's Flow Unified Section
 **Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
 **Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
@@ -498,7 +551,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **18-dailylog.js** — Daily-log feed builder + note input
+#### **18-dailylog.js** (93 lines) — Daily-log feed builder + note input
 **Responsibility**: Pure data helper for the unified Today's Flow Log view. Builds chronological feed items by merging time entries, log notes, and task status comments for the given day; persists user-typed notes.
 
 **Key functions**: `buildDailyLogItems(dateKey)`, `addLogNote()`
@@ -507,14 +560,14 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** — Monthly Log Heatmap
+#### **19-monthlylog.js** (269 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`
 
 ---
 
-#### **20-migration.js** — End-of-Month Migration
+#### **20-migration.js** (210 lines) — End-of-Month Migration
 **Responsibility**: Modal flow that surfaces every unresolved task for the viewed month and requires an explicit decision: carry forward, schedule (date picker), or drop. Auto-prompts on the last day of the month.
 
 **Key functions**: `openMigration()`, `renderMigrationStep()`, `carryTask(task)`, `scheduleTask(task, dateStr)`, `dropTask(task)`, `initMigration()`
@@ -523,7 +576,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **21-reflection.js** — End-of-Day Reflection
+#### **21-reflection.js** (111 lines) — End-of-Day Reflection
 **Responsibility**: After the end-of-day export, shows a modal for a 1–5 focus-quality rating, a 1–5 energy-level rating, and an optional one-sentence note. Ratings are surfaced as indicator dots on Monthly Log heatmap cells.
 
 **Key functions**: `openReflection(onComplete)`, `renderReflStars(elId, current)`, `getReflectionForDate(dateKey)`
@@ -532,7 +585,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **22-trackers.js** — Custom Time-Goal Trackers
+#### **22-trackers.js** (251 lines) — Custom Time-Goal Trackers
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
 **Key functions**: `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `trackerStreak(tracker)`, `initTrackers()`
@@ -541,7 +594,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **23-sprints.js** — Sprint Mode
+#### **23-sprints.js** (227 lines) — Sprint Mode
 **Responsibility**: Enhances the Pomodoro with a sprint mode. User declares an intention; at the end a 3-button review (Yes / Partly / No) is shown and the session logged as a time entry with the intention as description and outcome tagged.
 
 **Key functions**: `openSprintSetup()`, `startSprint()`, `showSprintReview()`, `notifyPomodoroEnd()`, `initSprints()`
@@ -550,7 +603,18 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **25-rollingsummary.js** — Rolling Summary
+#### **24-location.js** (97 lines) — Work Location Tracker
+**Responsibility**: Tracks whether the user is working remotely or in the office on each day. Location is stored per-day and shown in the date-nav header in place of the ISO week number.
+
+**Key Functions**: `renderLocation()`, `bindLocationToggle()`
+
+**Pure helpers** (`locationFor`, `nextLocation`) live in `pure-fns.js` with unit tests.
+
+**localStorage key**: `wl_location_v1` — object keyed by `YYYY-MM-DD`, values `"remote" | "office"`.
+
+---
+
+#### **25-rollingsummary.js** (178 lines) — Rolling Summary
 **Responsibility**: Renders the Rolling Summary tab inside the Today's Flow section. Builds a compact, categorised digest of recent entries (current sprint or last 7 days) grouped by task and epic, showing time totals and a sparkline of daily activity.
 
 **Key export**: `renderRollingSummary()`
@@ -572,6 +636,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 │  • wl_sprints_v1 (sprint history)                            │
 │  • wl_trackers_v1 (tracker definitions)                      │
 │  • wl_migration_v1 (month close-out record)                  │
+│  • wl_location_v1 (work location per day)                    │
 └─────────────┬──────────────────────────────────────────────┘
               │
               ↓
@@ -729,16 +794,19 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (429 tests via Node assert):
-- `test/unit.mjs` — 62 suites covering pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, and calendar recurrence; `.github/scripts/test/anthropic-auth.test.mjs` covers CI auth/model helpers
+**Unit Tests** (449 tests, 63 suites via Node built-in test runner):
+- `test/unit.mjs` — covers pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, calendar recurrence, and `wlLog`; `.github/scripts/test/` covers CI auth/model helpers
 
-**Smoke Tests** (~272 tests via Playwright):
+**Smoke Tests** (~317 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**Total: ~701 tests (429 unit + ~272 smoke)**
+**CI Script Tests** (30 tests via Node built-in test runner):
+- `test/parse-phase4-response.test.mjs`, `test/github-threads.test.mjs`, `test/anthropic-auth.test.mjs`
+
+**Total: 796 tests (449 unit + 317 smoke + 30 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
@@ -749,13 +817,11 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **Split `11-timeblock.js`** (1 050 lines) — the largest module in the codebase; good split points are the drag-and-drop logic, overlap detection, and the rendering loop.
-
-2. **Split `pure-fns.js`** (939 lines) — group into themed sub-modules (date/time helpers, string helpers, export helpers) so individual imports are smaller and Jest can cover each group in isolation.
-
-3. **API Validation**: Add schema validators for external API responses
+1. **API Validation**: Add schema validators for external API responses
    - Outlook calendar response
    - Weather API response
    - Jira CSV format
 
-This architecture has been stable through v1.0 → v1.8 releases with only feature additions.
+2. **Consolidate CHANGELOG duplicate headings** — the v1.9.0 section still contains multiple `### Added / Changed / Fixed` groups; a follow-up PR should merge them into single headings per type.
+
+This architecture has been stable through v1.0 → v1.9 releases with only feature additions.
