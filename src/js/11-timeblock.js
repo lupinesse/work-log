@@ -31,9 +31,9 @@ function loadBlocks() {
         total: all.length,
         kept: blocks.length,
       });
-  } catch (e) {
+  } catch (err) {
     blocks = [];
-    wlLog.error('loadBlocks: failed to parse time blocks from localStorage', e);
+    wlLog.error('loadBlocks: failed to parse time blocks from localStorage', err);
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {

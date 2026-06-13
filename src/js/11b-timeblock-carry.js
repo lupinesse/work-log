@@ -193,8 +193,8 @@ function loadExpiryDates() {
         .sort();
       return;
     }
-  } catch (e) {
-    wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', e);
+  } catch (err) {
+    wlLog.warn('loadExpiryDates: failed to parse stored expiry dates — using defaults', err);
   }
   // Seed localStorage with defaults on first load
   _expiryDates = [...EXPIRY_SEED];
@@ -351,10 +351,6 @@ document.addEventListener(
       // Log entry — save billable directly on the entry, and sync to matching planTasks
       const entry = entries.find((e) => e.id === btn.dataset.eid);
       if (!entry) return;
-      const newBill =
-        entry.billable === false || entry.billable === undefined
-          ? !(getCat(entry.tag || 'other').billable !== false)
-          : false;
       // Determine toggle: if currently billable → make non-billable, and vice versa
       const curBill =
         entry.billable !== undefined

@@ -210,71 +210,68 @@ function renderTimeblock() {
     grid.appendChild(el);
   });
 
-  // Untracked time — show faint label on past slots with no coverage
-  if (isToday(viewDate) || !isToday(viewDate)) {
-    // show on any viewed date
-    const nowMins = isToday(viewDate)
-      ? new Date().getHours() * 60 + new Date().getMinutes()
-      : TB_END * 60; // for past days, all slots are "past"
+  // Untracked time — show faint label on past slots with no coverage (any viewed date)
+  const nowMins = isToday(viewDate)
+    ? new Date().getHours() * 60 + new Date().getMinutes()
+    : TB_END * 60; // for past days, all slots are "past"
 
-    // Use start-of-day as floor — slots before work started aren't "untracked"
-    const sodTs = isToday(viewDate) ? getDayStart() : null;
-    const sodMins = sodTs
-      ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
-      : TB_START * 60; // no start set — use grid start as default
+  // Use start-of-day as floor — slots before work started aren't "untracked"
+  const sodTs = isToday(viewDate) ? getDayStart() : null;
+  const sodMins = sodTs
+    ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
+    : TB_START * 60; // no start set — use grid start as default
 
-    // Build a set of 30-min slots that have coverage (from entries or planned blocks)
-    const coveredSlots = new Set();
-    entries
-      .filter((e) => e.date === dateKey && e.tsEnd)
-      .forEach((e) => {
-        const startSlot = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
-        // If tsEnd is exactly on a 30-min boundary (e.g. 09:30:00), back off 1 minute
-        // so we don't accidentally mark the NEXT slot as covered
-        const endD = new Date(e.tsEnd);
-        const onBoundary = endD.getMinutes() % 30 === 0 && endD.getSeconds() === 0;
-        // timeToSlot uses Math.round(m/30), so backing off 1 min (→29) still rounds to slot+1.
-        // Instead compute endSlot directly: if on a boundary, the entry ends AT that boundary,
-        // meaning the boundary's slot is NOT covered — use the slot before it.
-        const endSlot = onBoundary
-          ? timeToSlot(endD.getHours(), endD.getMinutes()) - 1
-          : timeToSlot(endD.getHours(), endD.getMinutes());
-        for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
-          coveredSlots.add(s);
-      });
-    if (activeTimer && liveEntry && liveEntry.date === dateKey) {
-      const startSlot = timeToSlot(
-        new Date(liveEntry.ts).getHours(),
-        new Date(liveEntry.ts).getMinutes()
-      );
-      if (activeTimer.paused) {
-        // Paused: only cover slots up to the pause point
-        const pauseEnd = new Date(liveEntry.ts + (activeTimer.accumulatedMs || 0));
-        const endSlot = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
-        for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
-          coveredSlots.add(s);
-      } else {
-        for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
-      }
+  // Build a set of 30-min slots that have coverage (from entries or planned blocks)
+  const coveredSlots = new Set();
+  entries
+    .filter((e) => e.date === dateKey && e.tsEnd)
+    .forEach((e) => {
+      const startSlot = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
+      // If tsEnd is exactly on a 30-min boundary (e.g. 09:30:00), back off 1 minute
+      // so we don't accidentally mark the NEXT slot as covered
+      const endD = new Date(e.tsEnd);
+      const onBoundary = endD.getMinutes() % 30 === 0 && endD.getSeconds() === 0;
+      // timeToSlot uses Math.round(m/30), so backing off 1 min (→29) still rounds to slot+1.
+      // Instead compute endSlot directly: if on a boundary, the entry ends AT that boundary,
+      // meaning the boundary's slot is NOT covered — use the slot before it.
+      const endSlot = onBoundary
+        ? timeToSlot(endD.getHours(), endD.getMinutes()) - 1
+        : timeToSlot(endD.getHours(), endD.getMinutes());
+      for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
+        coveredSlots.add(s);
+    });
+  if (activeTimer && liveEntry && liveEntry.date === dateKey) {
+    const startSlot = timeToSlot(
+      new Date(liveEntry.ts).getHours(),
+      new Date(liveEntry.ts).getMinutes()
+    );
+    if (activeTimer.paused) {
+      // Paused: only cover slots up to the pause point
+      const pauseEnd = new Date(liveEntry.ts + (activeTimer.accumulatedMs || 0));
+      const endSlot = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
+      for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
+        coveredSlots.add(s);
+    } else {
+      for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
     }
-    blocks
-      .filter((b) => b.date === dateKey)
-      .forEach((b) => {
-        for (let s = b.slot; s < Math.min(TB_SLOTS, b.slot + b.duration); s++) coveredSlots.add(s);
-      });
+  }
+  blocks
+    .filter((b) => b.date === dateKey)
+    .forEach((b) => {
+      for (let s = b.slot; s < Math.min(TB_SLOTS, b.slot + b.duration); s++) coveredSlots.add(s);
+    });
 
-    for (let slot = 0; slot < TB_SLOTS; slot++) {
-      const slotStartMins = TB_START * 60 + slot * 30;
-      if (slotStartMins < sodMins) continue; // before work started — not untracked
-      const isPast = slotStartMins < nowMins; // slot has started (not necessarily fully elapsed)
-      if (!isPast || coveredSlots.has(slot)) continue;
-      const untracked = document.createElement('div');
-      untracked.className = 'tb-untracked';
-      untracked.style.top = slot * TB_SLOT_H + 1 + 'px';
-      untracked.style.height = TB_SLOT_H - 2 + 'px';
-      untracked.textContent = 'untracked';
-      grid.appendChild(untracked);
-    }
+  for (let slot = 0; slot < TB_SLOTS; slot++) {
+    const slotStartMins = TB_START * 60 + slot * 30;
+    if (slotStartMins < sodMins) continue; // before work started — not untracked
+    const isPast = slotStartMins < nowMins; // slot has started (not necessarily fully elapsed)
+    if (!isPast || coveredSlots.has(slot)) continue;
+    const untracked = document.createElement('div');
+    untracked.className = 'tb-untracked';
+    untracked.style.top = slot * TB_SLOT_H + 1 + 'px';
+    untracked.style.height = TB_SLOT_H - 2 + 'px';
+    untracked.textContent = 'untracked';
+    grid.appendChild(untracked);
   }
 
   // Current time indicator (today only)
