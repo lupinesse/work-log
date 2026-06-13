@@ -45,6 +45,7 @@ export {
 
 export {
   stripJiraPrefix,
+  parseJiraLabel,
   groupEntriesByCategory,
   mergeAdjacentEntries,
   buildBillableSummaryParts,

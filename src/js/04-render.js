@@ -60,11 +60,7 @@ function render() {
   // taskSubHtml wraps fmtDur (defined in 00-pure-fns.js) with Jira-ticket-link logic.
   // Emits structured divs so each line gets its own color token (link, title, value).
   function taskSubHtml(label, ms) {
-    // Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
-    // eslint-disable-next-line security/detect-unsafe-regex
-    const m = label.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/);
-    const ticket = m ? m[1] : null;
-    const name = m ? (m[3] || '').trim() : label;
+    const { ticket, name } = parseJiraLabel(label);
     const keyHtml = ticket
       ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
       : null;
