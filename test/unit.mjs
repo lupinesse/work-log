@@ -31,6 +31,7 @@ const {
   validJiraCsvRow,
   parseRapidTokens,
   stripJiraPrefix,
+  parseJiraLabel,
   groupEntriesByCategory,
   mergeAdjacentEntries,
   buildBillableSummaryParts,
@@ -2025,6 +2026,29 @@ describe('stripJiraPrefix', () => {
   it('does not strip a lowercase pseudo-key', () =>
     assert.equal(stripJiraPrefix('proj-42: keep'), 'proj-42: keep'));
   it('trims surrounding whitespace', () => assert.equal(stripJiraPrefix('  spaced  '), 'spaced'));
+});
+
+// ── parseJiraLabel ────────────────────────────────────────────────────────────
+describe('parseJiraLabel', () => {
+  it('extracts ticket and name from "KEY-123: text"', () =>
+    assert.deepEqual(parseJiraLabel('PROJ-42: Fix login'), {
+      ticket: 'PROJ-42',
+      name: 'Fix login',
+    }));
+  it('extracts ticket and name from "KEY-123 text" (space separator)', () =>
+    assert.deepEqual(parseJiraLabel('ABC-7 Write docs'), { ticket: 'ABC-7', name: 'Write docs' }));
+  it('extracts ticket and name from "KEY-123_text" (underscore separator)', () =>
+    assert.deepEqual(parseJiraLabel('PROJ-1_task'), { ticket: 'PROJ-1', name: 'task' }));
+  it('extracts ticket and name from "KEY-123-text" (dash separator)', () =>
+    assert.deepEqual(parseJiraLabel('PROJ-1-task'), { ticket: 'PROJ-1', name: 'task' }));
+  it('returns ticket only when no name follows', () =>
+    assert.deepEqual(parseJiraLabel('PROJ-42'), { ticket: 'PROJ-42', name: '' }));
+  it('returns null ticket for plain text', () =>
+    assert.deepEqual(parseJiraLabel('Write tests'), { ticket: null, name: 'Write tests' }));
+  it('does not match lowercase pseudo-keys', () =>
+    assert.deepEqual(parseJiraLabel('proj-42: keep'), { ticket: null, name: 'proj-42: keep' }));
+  it('returns empty string for empty input', () =>
+    assert.deepEqual(parseJiraLabel(''), { ticket: null, name: '' }));
 });
 
 // ── groupEntriesByCategory ─────────────────────────────────────────────────────

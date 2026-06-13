@@ -27,6 +27,22 @@ export function stripJiraPrefix(text) {
 }
 
 /**
+ * Parses a task label into its Jira issue key and human-readable name.
+ * Returns `ticket: null` when the label carries no leading Jira key.
+ * @param {string} label - Raw task label, e.g. `'PROJ-42: Fix login'` or `'Write tests'`.
+ * @returns {{ ticket: string|null, name: string }} Parsed parts.
+ * @example
+ * parseJiraLabel('PROJ-42: Fix login') // → { ticket: 'PROJ-42', name: 'Fix login' }
+ * parseJiraLabel('Write tests')        // → { ticket: null, name: 'Write tests' }
+ */
+export function parseJiraLabel(label) {
+  if (!label || typeof label !== 'string') return { ticket: null, name: label ?? '' };
+  const m = label.match(/^([A-Z][A-Z0-9]*-\d+)([\s:_-]+(.*))?$/);
+  if (!m) return { ticket: null, name: label };
+  return { ticket: m[1], name: (m[3] || '').trim() };
+}
+
+/**
  * Groups a day's log entries by category and, within each category, by task
  * (case-insensitively), preserving first-seen order. Accumulates tracked time
  * (where `tsEnd > ts`) per task and per category.
