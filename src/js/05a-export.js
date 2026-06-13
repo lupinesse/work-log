@@ -204,7 +204,7 @@ async function importBackup(file) {
     if (Array.isArray(backup.pomoLog)) {
       localStorage.setItem(STORE_POMO_LOG, JSON.stringify(backup.pomoLog));
     }
-    // STORE_DEV_LOG is defined in 12a-changelog.js
+    // STORE_DEV_LOG is defined in 12b-changelog-data.js
     if (Array.isArray(backup.devLog)) {
       localStorage.setItem(STORE_DEV_LOG, JSON.stringify(backup.devLog));
     }
