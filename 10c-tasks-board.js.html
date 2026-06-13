@@ -26,7 +26,7 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Today's tasks — board DnD, tabs &amp; live strip (split out of 10b-tasks-events.js) ── */
+            <pre class="prettyprint source linenums"><code>/* ── Today's tasks — board DnD, tabs &amp; live strip ── */
 
 /** Shared drag-state for board column DnD (set by dragstart, read by drop). */
 let _boardDragTaskId = null;
@@ -37,6 +37,7 @@ let _boardDragTaskId = null;
  * and starts tracking. Dropping into Done or To Do stops the active timer.
  * @param {string} taskId    - The plan task ID to move.
  * @param {string} newStatus - Target status: 'todo' | 'inprogress' | 'done'.
+ * @returns {void}
  */
 function moveTaskToColumn(taskId, newStatus) {
   const t = planTasks.find((p) => p.id === taskId);
@@ -87,6 +88,7 @@ function moveTaskToColumn(taskId, newStatus) {
  * Makes each rendered board card draggable and wires its dragstart/dragend.
  * Called once per `renderPlan()` cycle after columns are populated.
  * Static column drop-zone listeners are set up once in `initBoardColumnDnD()`.
+ * @returns {void}
  */
 function bindBoardColumnDnD() {
   document.querySelectorAll('.kb-cards > .plan-item').forEach((card) => {
@@ -109,6 +111,7 @@ function bindBoardColumnDnD() {
  * Registers dragover, dragleave, and drop listeners on the three static board
  * column lists. Called exactly once on DOMContentLoaded from `07-lifecycle.js`.
  * Card draggable wiring (re-rendered each cycle) stays in `bindBoardColumnDnD()`.
+ * @returns {void}
  */
 function initBoardColumnDnD() {
   const COLUMN_MAP = {
