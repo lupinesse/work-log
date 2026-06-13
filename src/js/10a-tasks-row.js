@@ -212,8 +212,8 @@ function renderRow(t) {
       const _note = _hn[t.text.toLowerCase().trim()];
       if (_note)
         handoffNoteHtml = `<div class="plan-handoff-note"><span class="plan-handoff-text">↳ ${escHtml(_note)}</span><button class="plan-handoff-dismiss" data-task="${escHtml(t.text.toLowerCase().trim())}" title="dismiss note">×</button></div>`;
-    } catch (e) {
-      // Silently skip — handoff note is display-only; a parse failure just hides it
+    } catch (err) {
+      wlLog.warn('renderRow: failed to parse wl_handoff from localStorage', err);
     }
   }
 
