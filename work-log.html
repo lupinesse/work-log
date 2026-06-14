@@ -46,6 +46,7 @@
 
 <!-- Calendar meeting strip -->
 
+<main id="appMain">
 
 <!-- ── Hero Card — unified timer state (Variant C) ── -->
 <!-- Always present; state modifier class controls which inner panel is visible. -->
@@ -365,7 +366,7 @@
 <div id="distractionSection" style="margin-top:10px"></div>
 
 <div id="parkSection" style="display:none" class="park-section">
-  <div class="park-header" id="parkHeader" role="button" tabindex="0">
+  <div class="park-header" id="parkHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="parkList">
     <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg></span>
     parked thoughts <span class="park-badge" id="parkBadge">0</span>
     <span class="park-toggle" aria-hidden="true">&#9660;</span>
@@ -469,7 +470,7 @@
 
     <div class="refl-group">
       <div class="refl-label">What took longer than expected? <span class="refl-opt">(optional)</span></div>
-      <input class="capture-input" id="reflNote" placeholder="One sentence&hellip;" />
+      <input class="capture-input" id="reflNote" aria-label="What took longer than expected?" placeholder="One sentence&hellip;" />
     </div>
 
     <div class="refl-actions">
@@ -504,7 +505,7 @@
     <div class="sprint-setup-title">&#9655; New sprint</div>
     <div class="refl-label">What will you finish?</div>
     <div class="capture-row">
-      <input class="capture-input" id="sprintIntention" placeholder="Describe the outcome, not the task" autocomplete="off" />
+      <input class="capture-input" id="sprintIntention" aria-label="Sprint intention — what will you finish?" placeholder="Describe the outcome, not the task" autocomplete="off" />
     </div>
     <div class="refl-label" style="margin-top:8px">Duration</div>
     <div class="sprint-durations" id="sprintDurations"></div>
@@ -522,14 +523,14 @@
     <div class="sprint-review-intention" id="sprintReviewIntention"></div>
     <div class="refl-label">Did you finish what you set out to do?</div>
     <div class="sprint-outcomes" id="sprintOutcomes"></div>
-    <input class="capture-input" id="sprintReviewNote" placeholder="What got in the way? (optional)" style="margin:10px 0" />
+    <input class="capture-input" id="sprintReviewNote" aria-label="Sprint review — what got in the way? (optional)" placeholder="What got in the way? (optional)" style="margin:10px 0" />
     <button class="add-btn refl-save" id="sprintReviewSave">Save &amp; log entry</button>
   </div>
 </div>
 
 <!-- Pomodoro timer (collapsible) -->
 <div class="pomo-section" id="pomoSection" role="region" aria-label="Pomodoro timer">
-  <div class="pomo-header" id="pomoHeader" role="button" tabindex="0">
+  <div class="pomo-header" id="pomoHeader" role="button" tabindex="0" aria-expanded="false" aria-controls="pomoBody">
     <span class="section-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
     pomodoro
     <span class="pomo-toggle" aria-hidden="true">&#9660;</span>
@@ -651,11 +652,11 @@
   <div class="plan-body" id="notionLinksBody">
     <div class="notion-form">
       <div class="notion-row">
-        <input class="plan-input notion-url-input" id="notionUrl" placeholder="https://…" autocomplete="off" />
+        <input class="plan-input notion-url-input" id="notionUrl" aria-label="Notion page URL" placeholder="https://…" autocomplete="off" />
         <button class="export-btn" id="notionFetchBtn">fetch title</button>
       </div>
       <div class="notion-row">
-        <input class="plan-input" id="notionName" placeholder="name / title" autocomplete="off" />
+        <input class="plan-input" id="notionName" aria-label="Notion link name or title" placeholder="name / title" autocomplete="off" />
       </div>
       <div class="notion-row-2col">
         <select class="notion-select" id="notionProject" aria-label="Notion project">
@@ -916,5 +917,6 @@
     hour12: false
   }).replace(',', '');
 </script>
+</main>
 </body>
 </html>
