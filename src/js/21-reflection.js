@@ -119,26 +119,31 @@ function renderReflStars(elId, current) {
     star.addEventListener('click', () => selectStar(parseInt(star.dataset.val, 10)));
   });
 
-  // Arrow-key navigation between stars (WCAG SC 2.1.1)
-  el.addEventListener('keydown', (e) => {
-    const stars = [...el.querySelectorAll('.refl-star')];
-    const idx = stars.findIndex((s) => s === document.activeElement);
-    if (idx === -1) return;
-    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const next = stars[Math.min(idx + 1, stars.length - 1)];
-      next.focus();
-      selectStar(parseInt(next.dataset.val, 10));
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      const prev = stars[Math.max(idx - 1, 0)];
-      prev.focus();
-      selectStar(parseInt(prev.dataset.val, 10));
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      selectStar(parseInt(stars[idx].dataset.val, 10));
-    }
-  });
+  // Arrow-key navigation between stars (WCAG SC 2.1.1).
+  // Guard with a flag so the listener is attached only once regardless of
+  // how many times renderReflStars re-renders the widget.
+  if (!el.dataset.kbWired) {
+    el.dataset.kbWired = '1';
+    el.addEventListener('keydown', (e) => {
+      const stars = [...el.querySelectorAll('.refl-star')];
+      const idx = stars.findIndex((s) => s === document.activeElement);
+      if (idx === -1) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = stars[Math.min(idx + 1, stars.length - 1)];
+        next.focus();
+        selectStar(parseInt(next.dataset.val, 10));
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const prev = stars[Math.max(idx - 1, 0)];
+        prev.focus();
+        selectStar(parseInt(prev.dataset.val, 10));
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectStar(parseInt(stars[idx].dataset.val, 10));
+      }
+    });
+  }
 }
 
 /**
