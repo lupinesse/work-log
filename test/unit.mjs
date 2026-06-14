@@ -3939,3 +3939,153 @@ describe('wlLog', () => {
     });
   });
 });
+
+// ── Regression: readOptionalLogForBackup passes err to wlLog.warn ─────────────
+// PR #224 fix: catch (err) body was still passing `e` (undefined) to wlLog.warn,
+// throwing ReferenceError. This test verifies the error object reaches wlLog.warn.
+const exportSrc = readFileSync(join(__dirname, '../src/js/05a-export.js'), 'utf8');
+const pureFnsSrc = loadPureFnsScriptSource();
+
+describe('regression #224: readOptionalLogForBackup passes err to wlLog.warn', () => {
+  function makeExportSandbox(overrides = {}) {
+    const warned = [];
+    const sb = {
+      wlLog: {
+        warn: (...args) => warned.push(args),
+        info: () => {},
+        error: () => {},
+        debug: () => {},
+        config: () => {},
+      },
+      localStorage: { getItem: () => 'not-valid-json', setItem: () => {}, removeItem: () => {} },
+      document: { getElementById: () => null, addEventListener: () => {} },
+      window: { showSaveFilePicker: undefined },
+      entries: [],
+      planTasks: [],
+      categories: [],
+      blocks: [],
+      activeTimer: null,
+      viewDate: new Date(),
+      getDayStart: () => null,
+      viewEntries: () => [],
+      getCat: () => ({ label: 'other', color: '#888780', billable: true }),
+      fmtDurLong: () => '0h',
+      dk: (d) => d.toISOString().slice(0, 10),
+      ...overrides,
+      _warned: warned,
+    };
+    vm.createContext(sb);
+    vm.runInContext(pureFnsSrc + '\n' + exportSrc, sb);
+    return sb;
+  }
+
+  it('calls wlLog.warn with the caught Error, not undefined', () => {
+    const sb = makeExportSandbox();
+    // readOptionalLogForBackup is private; trigger it via exportBackup which calls it
+    // for pomoLog, devLog, and distractions. A corrupt getItem value causes a parse error.
+    // The warning args should include an actual Error, not undefined.
+    vm.runInContext(
+      `
+      try { readOptionalLogForBackup('test_key', 'testLabel'); } catch(_) {}
+      `,
+      sb
+    );
+    assert.ok(sb._warned.length > 0, 'wlLog.warn should have been called');
+    const warnArgs = sb._warned[0];
+    // Before the fix: warnArgs[1] was undefined (bare `e` in catch body)
+    // After the fix:  warnArgs[1] is the SyntaxError from JSON.parse
+    assert.ok(warnArgs[1] !== undefined, 'second wlLog.warn arg must not be undefined');
+    // JSON.parse throws a SyntaxError in the VM context; use constructor.name for cross-context check
+    assert.equal(warnArgs[1].constructor.name, 'SyntaxError');
+  });
+
+  it('returns [] when localStorage contains invalid JSON', () => {
+    const sb = makeExportSandbox();
+    vm.runInContext('results = readOptionalLogForBackup("k", "label");', sb);
+    // Cross-context deepEqual on [] fails; check length instead
+    assert.equal(sb.results.length, 0);
+  });
+});
+
+// ── Regression: initBoardTabs logs warn on localStorage failure ───────────────
+// PR #218 fix: catch blocks in initBoardTabs previously swallowed errors silently.
+// This test verifies wlLog.warn is called when localStorage throws.
+const boardSrc = readFileSync(join(__dirname, '../src/js/10c-tasks-board.js'), 'utf8');
+
+describe('regression #218: initBoardTabs warns on localStorage errors', () => {
+  function makeBoardSandbox(overrides = {}) {
+    const warned = [];
+    const tabs = [];
+    const cols = [];
+    const sb = {
+      wlLog: {
+        warn: (...args) => warned.push(args),
+        info: () => {},
+        error: () => {},
+        debug: () => {},
+      },
+      localStorage: {
+        getItem: () => {
+          throw new Error('storage unavailable');
+        },
+        setItem: () => {
+          throw new Error('quota exceeded');
+        },
+      },
+      planTasks: [],
+      activeTimer: null,
+      entries: [],
+      viewDate: new Date(),
+      dk: (d) => d.toISOString().slice(0, 10),
+      savePlan: () => {},
+      save: () => {},
+      render: () => {},
+      renderPlan: () => {},
+      document: {
+        querySelectorAll: (sel) => {
+          if (sel === '.board-tab') return tabs;
+          if (sel === '.kb-col[data-col]') return cols;
+          return [];
+        },
+        getElementById: () => null,
+        addEventListener: () => {},
+      },
+      ...overrides,
+      _warned: warned,
+    };
+    vm.createContext(sb);
+    vm.runInContext(boardSrc, sb);
+    return sb;
+  }
+
+  it('calls wlLog.warn when localStorage.getItem throws during init', () => {
+    const sb = makeBoardSandbox();
+    vm.runInContext('initBoardTabs();', sb);
+    const getItemWarning = sb._warned.find((w) => w[0].includes('localStorage.getItem'));
+    assert.ok(getItemWarning, 'should warn on localStorage.getItem failure');
+    // Error thrown by outer mock; check it's a non-null object (cross-context instanceof is unreliable)
+    assert.ok(
+      getItemWarning[1] !== null && typeof getItemWarning[1] === 'object',
+      'second arg should be the caught error object'
+    );
+  });
+
+  it('calls wlLog.warn when localStorage.setItem throws during tab activation', () => {
+    const sb = makeBoardSandbox({
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('quota exceeded');
+        },
+      },
+    });
+    vm.runInContext('initBoardTabs();', sb);
+    const setItemWarning = sb._warned.find((w) => w[0].includes('localStorage.setItem'));
+    assert.ok(setItemWarning, 'should warn on localStorage.setItem failure');
+    // Error thrown by outer mock; check it's a non-null object (cross-context instanceof is unreliable)
+    assert.ok(
+      setItemWarning[1] !== null && typeof setItemWarning[1] === 'object',
+      'second arg should be the caught error object'
+    );
+  });
+});

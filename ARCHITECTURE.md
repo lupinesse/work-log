@@ -97,10 +97,10 @@ wl_snapshot        → backup (auto-restore on failure)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
-- `pure-fns-format.js` (193 lines) — String, colour, and duration formatters: `escHtml`, `fmtDurMs`, `fmtDurMsShort`, `safeCssColor`, `fmtAgo`, `dk`
+- `pure-fns-format.js` (193 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
 - `pure-fns-export.js` (301 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
-- `pure-fns-tasks.js` (231 lines) — Task lifecycle and location helpers: `flatSort`, `resolveCarryStatus`, `locationFor`, `nextLocation`, date/time utilities (`getISOWeek`, `weekRange`, `isoDateDiff`, `roundToNearest30`, `fmtAgo`)
-- `pure-fns-validate.js` (275 lines) — Backup schema validation: `validateBackupFile`
+- `pure-fns-tasks.js` (231 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
+- `pure-fns-validate.js` (275 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
 ---
 
@@ -376,7 +376,14 @@ upcoming    → Scheduled for future date
 #### **10a-tasks-render.js** (407 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
-**Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `noteBtnHtml()`, `checkpointBadgeHtml()`
+**Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
+
+---
+
+#### **10a-tasks-row.js** (327 lines) — Per-Row Card HTML
+**Responsibility**: Per-task card HTML builders for the kanban board. Module-level state variables (`editingPlanId`, `_noteOpenIds`, `_cpOpenIds`) live in `10-tasks.js`; callers live in `10a-tasks-render.js`.
+
+**Key Functions**: `statusOpts()`, `prioBtnHtml()`, `notionBtnHtml()`, `noteBtnHtml()`, `noteAreaHtml()`, `billBtnHtml()`, `renderRow()`
 
 ---
 
