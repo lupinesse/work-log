@@ -223,23 +223,31 @@ document.getElementById('analyticsHeader').addEventListener('click', () => {
 });
 
 // Parked thoughts — default collapsed.
-document
-  .getElementById('parkSection')
-  .classList.toggle('collapsed', readCollapseState('parkSection', true));
+(function () {
+  const parkCollapsed = readCollapseState('parkSection', true);
+  document.getElementById('parkSection').classList.toggle('collapsed', parkCollapsed);
+  document.getElementById('parkHeader').setAttribute('aria-expanded', String(!parkCollapsed));
+})();
 document.getElementById('parkHeader').addEventListener('click', () => {
   const section = document.getElementById('parkSection');
   section.classList.toggle('collapsed');
-  writeCollapseState('parkSection', section.classList.contains('collapsed'));
+  const collapsed = section.classList.contains('collapsed');
+  writeCollapseState('parkSection', collapsed);
+  document.getElementById('parkHeader').setAttribute('aria-expanded', String(!collapsed));
 });
 
 // Pomodoro — default collapsed.
-document
-  .getElementById('pomoSection')
-  .classList.toggle('collapsed', readCollapseState('pomoSection', true));
+(function () {
+  const pomoCollapsed = readCollapseState('pomoSection', true);
+  document.getElementById('pomoSection').classList.toggle('collapsed', pomoCollapsed);
+  document.getElementById('pomoHeader').setAttribute('aria-expanded', String(!pomoCollapsed));
+})();
 document.getElementById('pomoHeader').addEventListener('click', () => {
   const section = document.getElementById('pomoSection');
   section.classList.toggle('collapsed');
-  writeCollapseState('pomoSection', section.classList.contains('collapsed'));
+  const collapsed = section.classList.contains('collapsed');
+  writeCollapseState('pomoSection', collapsed);
+  document.getElementById('pomoHeader').setAttribute('aria-expanded', String(!collapsed));
 });
 
 /* ── Event listeners ── */

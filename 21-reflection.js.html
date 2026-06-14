@@ -98,34 +98,80 @@ function openReflection(onComplete) {
   };
 }
 
+const REFL_STAR_LABELS = {
+  reflFocusStars: 'Focus quality',
+  reflEnergyStars: 'Energy level',
+};
+
 /**
- * Renders a 1–5 star row inside `elId`, marking stars up to `current` as active.
+ * Renders a 1–5 star rating widget inside `elId`, marking stars up to `current`
+ * as active. The container gets `role="radiogroup"` and each star gets
+ * `role="radio"` with keyboard-accessible roving tabindex (WCAG 2.1 SC 4.1.2).
  * @param {string} elId - ID of the container element.
  * @param {number} current - Currently selected value (0 = none selected).
  */
 function renderReflStars(elId, current) {
   const el = document.getElementById(elId);
   if (!el) return;
+
+  el.setAttribute('role', 'radiogroup');
+  el.setAttribute('aria-label', REFL_STAR_LABELS[elId] || elId);
+
+  // Roving tabindex: the selected star (or star 1 if none) is in the tab order
+  const focusVal = current || 1;
   el.innerHTML = [1, 2, 3, 4, 5]
     .map(
       (n) =>
-        `&lt;span class="refl-star${n &lt;= current ? ' on' : ''}" data-val="${n}" data-el="${elId}">★&lt;/span>`
+        `&lt;span class="refl-star${n &lt;= current ? ' on' : ''}"
+              role="radio"
+              aria-checked="${n === current ? 'true' : 'false'}"
+              aria-label="${n} star${n > 1 ? 's' : ''}"
+              tabindex="${n === focusVal ? '0' : '-1'}"
+              data-val="${n}" data-el="${elId}">★&lt;/span>`
     )
     .join('');
+
+  function selectStar(val) {
+    if (elId === 'reflFocusStars') {
+      _reflFocus = val;
+      renderReflStars('reflFocusStars', _reflFocus);
+      const hint = document.getElementById('reflFocusHint');
+      if (hint) hint.textContent = FOCUS_LABELS[val] || '';
+    } else {
+      _reflEnergy = val;
+      renderReflStars('reflEnergyStars', _reflEnergy);
+    }
+  }
+
   el.querySelectorAll('.refl-star').forEach((star) => {
-    star.addEventListener('click', () => {
-      const val = parseInt(star.dataset.val, 10);
-      if (star.dataset.el === 'reflFocusStars') {
-        _reflFocus = val;
-        renderReflStars('reflFocusStars', _reflFocus);
-        const hint = document.getElementById('reflFocusHint');
-        if (hint) hint.textContent = FOCUS_LABELS[val] || '';
-      } else {
-        _reflEnergy = val;
-        renderReflStars('reflEnergyStars', _reflEnergy);
+    star.addEventListener('click', () => selectStar(parseInt(star.dataset.val, 10)));
+  });
+
+  // Arrow-key navigation between stars (WCAG SC 2.1.1).
+  // Guard with a flag so the listener is attached only once regardless of
+  // how many times renderReflStars re-renders the widget.
+  if (!el.dataset.kbWired) {
+    el.dataset.kbWired = '1';
+    el.addEventListener('keydown', (e) => {
+      const stars = [...el.querySelectorAll('.refl-star')];
+      const idx = stars.findIndex((s) => s === document.activeElement);
+      if (idx === -1) return;
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = stars[Math.min(idx + 1, stars.length - 1)];
+        next.focus();
+        selectStar(parseInt(next.dataset.val, 10));
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const prev = stars[Math.max(idx - 1, 0)];
+        prev.focus();
+        selectStar(parseInt(prev.dataset.val, 10));
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        selectStar(parseInt(stars[idx].dataset.val, 10));
       }
     });
-  });
+  }
 }
 
 /**
