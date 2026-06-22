@@ -2939,6 +2939,23 @@ async function runTests() {
       )
     );
 
+    // Regression: the tabbed board must fill the full panel width. The base
+    // `.board-cols` grid sets `align-items: start`; the tabbed flex-column
+    // variant must reset it to `stretch`, otherwise the tab bar and the active
+    // lane collapse to content width and left-align instead of filling the panel.
+    const boardFill = await page.evaluate(() => {
+      const widthOf = (el) => (el ? Math.round(el.getBoundingClientRect().width) : 0);
+      const colW = widthOf(document.getElementById('boardCols'));
+      return {
+        colW,
+        tabsFill: colW > 0 && widthOf(document.getElementById('boardTabs')) >= colW - 1,
+        laneFill: colW > 0 && widthOf(document.querySelector('.kb-col.kb-col--active')) >= colW - 1,
+      };
+    });
+    assert('Board panel has non-zero width', boardFill.colW > 0);
+    assert('Tab bar stretches to full board width', boardFill.tabsFill);
+    assert('Active lane stretches to full board width', boardFill.laneFill);
+
     await page.close();
   }
 

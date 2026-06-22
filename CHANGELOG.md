@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Tabbed task board fills the full panel width** — the To Do / In Progress / Done tab bar and the active lane (with its cards) were collapsing to content width and left-aligning, leaving the right side of the panel empty. The tabbed flex-column layout was inheriting `align-items: start` from the base `.board-cols` grid; it now resets to `align-items: stretch` so tabs and lane span the whole width. Regression test added in `smoke-tests.cjs`.
+
 ---
 
 ## [1.9.0] — 2026-06-12
