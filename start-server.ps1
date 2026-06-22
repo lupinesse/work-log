@@ -133,27 +133,26 @@ function Get-TodayMeetings {
                 $calFolder   = $entry.folder
                 $accountKey = $entry.label
                 # Pass 1 — recurring occurrences via Find/FindNext.
-                # Restrict is unreliable when IncludeRecurrences=$true on some Outlook
-                # versions: it matches the master appointment's original start date
-                # (e.g. April) rather than each occurrence's date. Find/FindNext walks
-                # occurrences at their actual start times.
-                #
-                # Root cause of previous "no meetings" bug: MAPI date strings like
-                # "6/9/2026" are locale-sensitive. Finnish Outlook reads M/d/yyyy as
-                # d/M/yyyy, so "6/9/2026" means September 6 (not June 9). The fix:
-                # use "1/1/YYYY" as the Find anchor — January 1 is identical in both
-                # M/d and d/M locales — then compare to today in PowerShell.
+                # Sort+IncludeRecurrences must be set before Find per Outlook COM docs.
+                # If either call fails (COM type library not exposed via IDispatch on some
+                # Exchange/delegate stores), fall back to GetFirst/GetNext scanning all
+                # items — cannot break early when unsorted, but correctly finds today's
+                # non-recurring items; recurring occurrences are handled in Pass 2.
                 try {
                     $items = Add-ComRef ($calFolder.Items)
-                    # Sort must be applied before IncludeRecurrences per Outlook COM docs.
-                    $items.Sort('[Start]')
-                    $items.IncludeRecurrences = $true
+                    $sortOk = $false
+                    try { $items.Sort('[Start]'); $sortOk = $true } catch { $dbg.pass1Error += "Sort: $($_.Exception.Message); " }
+                    $incRecurOk = $false
+                    if ($sortOk) {
+                        try { $items.IncludeRecurrences = $true; $incRecurOk = $true } catch { $dbg.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                    }
                     $useGetNext = $false
-                    $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
+                    $cur = $null
+                    if ($incRecurOk) {
+                        $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
+                    }
                     if ($null -eq $cur) {
-                        # Separator mismatch or truly empty year — fall back to GetFirst
-                        # and iterate from the beginning (slower but reliable).
-                        Write-Host '[cal] Pass 1: year-anchor Find returned null, falling back to GetFirst' -ForegroundColor Yellow
+                        Write-Host '[cal] Pass 1: using GetFirst fallback (Sort/IncludeRecurrences unavailable or Find returned null)' -ForegroundColor Yellow
                         $useGetNext = $true
                         $dbg.pass1UsedGetFirst = $true
                         $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
@@ -161,8 +160,20 @@ function Get-TodayMeetings {
                     while ($cur -ne $null) {
                         $startDate = $null
                         try { $startDate = ([DateTime]$cur.Start).Date } catch {}
-                        if ($startDate -eq $null -or $startDate -gt $today) { break }
-
+                        # When sorted with IncludeRecurrences, break on future dates (early exit).
+                        # When using GetFirst/GetNext (unsorted), skip non-today items instead.
+                        if ($incRecurOk) {
+                            if ($startDate -eq $null -or $startDate -gt $today) { break }
+                        } else {
+                            if ($startDate -ne $today) {
+                                $cur = if ($useGetNext) {
+                                    try { Add-ComRef ($items.GetNext()) } catch { $null }
+                                } else {
+                                    try { Add-ComRef ($items.FindNext()) } catch { $null }
+                                }
+                                continue
+                            }
+                        }
                         if ($startDate -eq $today) {
                             $subject = try { $cur.Subject  } catch { '(no title)' }
                             $key     = "$subject|$($cur.Start)"
@@ -193,13 +204,14 @@ function Get-TodayMeetings {
                     }
                 } catch { $dbg.pass1Error += "$($_.Exception.Message); " }
 
-                # Pass 2 — non-recurring items via Restrict (correct without
-                # IncludeRecurrences). The $seen map deduplicates any overlap.
-                # Uses year-boundary anchors for locale-independence; today's
-                # exact date is checked in PowerShell below.
+                # Pass 2 — non-recurring items and recurring masters via Restrict.
+                # IncludeRecurrences=false is the default; setting it explicitly is
+                # defensive and non-fatal if the property is unavailable.
+                # For recurring masters whose series started before today, GetOccurrence
+                # probes whether the series has an occurrence today.
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
-                    $items2.IncludeRecurrences = $false
+                    try { $items2.IncludeRecurrences = $false } catch { $dbg.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
                     $nextYearAnchor = "1${sep}1${sep}$($today.Year + 1)"
                     $filtered = try {
                         Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor' AND [Start] < '$nextYearAnchor'"))
@@ -210,29 +222,60 @@ function Get-TodayMeetings {
                     foreach ($item in $filtered) {
                         try {
                             $startDate = ([DateTime]$item.Start).Date
-                            if ($startDate -ne $today) { continue }
+                            if ($startDate -eq $today) {
+                                # Non-recurring item or first-ever occurrence starting today
+                                $subject = try { $item.Subject  } catch { '(no title)' }
+                                $key     = "$subject|$($item.Start)"
+                                if ($seen.ContainsKey($key)) { continue }
+                                $seen[$key] = $true
+                                $loc     = try { $item.Location } catch { '' }
+                                $body    = try { $item.Body     } catch { '' }
+                                $joinUrl = $null
+                                if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                                    $joinUrl = $matches[0] -replace '&amp;','&'
+                                }
+                                $results += @{
+                                    subject  = $subject
+                                    start    = ([DateTime]$item.Start).ToString('o')
+                                    end      = ([DateTime]$item.End).ToString('o')
+                                    location = $loc
+                                    joinUrl  = $joinUrl
+                                    account  = $accountKey
+                                }
+                                $dbg.pass2Count++
+                            } elseif ($startDate -lt $today) {
+                                # Recurring master that started before today — probe for today's occurrence.
+                                # GetOccurrence expects the exact start datetime; derive it from the
+                                # master's time-of-day applied to today's date.
+                                $isRec = $false
+                                try { $isRec = [bool]$item.IsRecurring } catch {}
+                                if (-not $isRec) { continue }
+                                try {
+                                    $rp       = $item.GetRecurrencePattern()
+                                    $occStart = $today.Add(([DateTime]$item.Start).TimeOfDay)
+                                    $occ      = $rp.GetOccurrence($occStart)
+                                    $subject  = try { $occ.Subject  } catch { try { $item.Subject  } catch { '(no title)' } }
+                                    $key      = "$subject|$($occ.Start)"
+                                    if ($seen.ContainsKey($key)) { continue }
+                                    $seen[$key] = $true
+                                    $loc  = try { $occ.Location } catch { try { $item.Location } catch { '' } }
+                                    $body = try { $occ.Body     } catch { try { $item.Body     } catch { '' } }
+                                    $joinUrl = $null
+                                    if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
+                                        $joinUrl = $matches[0] -replace '&amp;','&'
+                                    }
+                                    $results += @{
+                                        subject  = $subject
+                                        start    = ([DateTime]$occ.Start).ToString('o')
+                                        end      = ([DateTime]$occ.End).ToString('o')
+                                        location = $loc
+                                        joinUrl  = $joinUrl
+                                        account  = $accountKey
+                                    }
+                                    $dbg.pass2Count++
+                                } catch { } # No occurrence today or COM method unavailable
+                            }
                         } catch { continue }
-
-                        $subject = try { $item.Subject  } catch { '(no title)' }
-                        $key     = "$subject|$($item.Start)"
-                        if ($seen.ContainsKey($key)) { continue }
-                        $seen[$key] = $true
-
-                        $loc     = try { $item.Location } catch { '' }
-                        $body    = try { $item.Body     } catch { '' }
-                        $joinUrl = $null
-                        if (("$loc $body") -match 'https://teams\.microsoft\.com/[^\s"<>]+') {
-                            $joinUrl = $matches[0] -replace '&amp;','&'
-                        }
-                        $results += @{
-                            subject  = $subject
-                            start    = ([DateTime]$item.Start).ToString('o')
-                            end      = ([DateTime]$item.End).ToString('o')
-                            location = $loc
-                            joinUrl  = $joinUrl
-                            account  = $accountKey
-                        }
-                        $dbg.pass2Count++
                     }
                 } catch { $dbg.pass2Error += "$($_.Exception.Message); " }
             }
