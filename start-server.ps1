@@ -273,7 +273,7 @@ function Get-TodayMeetings {
                                         account  = $accountKey
                                     }
                                     $dbg.pass2Count++
-                                } catch { } # No occurrence today or COM method unavailable
+                                } catch { $dbg.pass2Error += "GetOccurrence($([string]$item.Subject)): $($_.Exception.Message); " }
                             }
                         } catch { continue }
                     }
