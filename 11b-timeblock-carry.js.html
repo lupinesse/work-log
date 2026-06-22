@@ -119,10 +119,9 @@ function autoCarryTasks() {
   const unfinished = planTasks.filter(
     (t) => t.date &lt; todayKey &amp;&amp; t.status !== 'done' &amp;&amp; t.status !== 'upcoming'
   );
-  if (!unfinished.length) {
-    localStorage.setItem(carryKey, '1');
-    return;
-  }
+  // Don't set the guard key when nothing needs carrying — if the user later
+  // reopens a task that was done at midnight, the next startup can still carry it.
+  if (!unfinished.length) return;
 
   // Deduplicate by text — keep only the MOST RECENT past version of each task.
   // Without this, an older 'inprogress' copy could be carried instead of a newer 'pending' one.
