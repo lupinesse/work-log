@@ -4089,3 +4089,109 @@ describe('regression #218: initBoardTabs warns on localStorage errors', () => {
     );
   });
 });
+
+// ── Regression: autoCarryTasks must not set guard key when nothing to carry ──
+// PR #227 fix: the guard key was stamped even when all past tasks were done/upcoming,
+// blocking re-carry after the user reopened a task from a past date later that day.
+const carryFileSrc = readFileSync(join(__dirname, '../src/js/11b-timeblock-carry.js'), 'utf8');
+
+describe('regression #227: autoCarryTasks guard key', () => {
+  /**
+   * Creates a minimal VM sandbox for autoCarryTasks tests.
+   * @param {{ today: string, planTasks: object[], guardAlreadySet?: boolean }} opts
+   * @returns {{ sb: object, stored: Map<string, string> }}
+   */
+  function makeCarrySandbox({ today, planTasks: tasks, guardAlreadySet = false }) {
+    const stored = new Map();
+    if (guardAlreadySet) stored.set('wl_carried_' + today, '1');
+
+    const sb = {
+      localStorage: {
+        getItem: (k) => stored.get(k) ?? null,
+        setItem: (k, v) => stored.set(k, v),
+      },
+      wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+      dk: () => today,
+      planTasks: tasks.map((t) => ({ ...t })),
+      categories: [],
+      entries: [],
+      savePlan() {
+        // no-op — side-effect captured via planTasks reference
+      },
+      save: () => {},
+      render: () => {},
+      renderPlan: () => {},
+      renderCompleted: () => {},
+      getCat: (id) => ({ id, label: id, color: '#888780', billable: true }),
+      readCollapseState: () => false,
+      writeCollapseState: () => {},
+      resolveCarryStatus: pureFns.resolveCarryStatus,
+      document: {
+        getElementById: () => ({ addEventListener: () => {}, style: {}, textContent: '' }),
+        addEventListener: () => {},
+      },
+    };
+    vm.createContext(sb);
+    vm.runInContext(carryFileSrc, sb);
+    return { sb, stored };
+  }
+
+  it('does NOT set the guard key when all past tasks are done', () => {
+    const { sb, stored } = makeCarrySandbox({
+      today: '2026-06-18',
+      planTasks: [
+        { id: '1', text: 'Task A', date: '2026-06-17', status: 'done' },
+        { id: '2', text: 'Task B', date: '2026-06-17', status: 'done' },
+      ],
+    });
+    vm.runInContext('autoCarryTasks();', sb);
+    assert.equal(
+      stored.get('wl_carried_2026-06-18'),
+      undefined,
+      'guard key must not be set when nothing was carried'
+    );
+  });
+
+  it('does NOT set the guard key when all past tasks are upcoming', () => {
+    const { sb, stored } = makeCarrySandbox({
+      today: '2026-06-18',
+      planTasks: [{ id: '1', text: 'Future task', date: '2026-06-17', status: 'upcoming' }],
+    });
+    vm.runInContext('autoCarryTasks();', sb);
+    assert.equal(stored.get('wl_carried_2026-06-18'), undefined);
+  });
+
+  it('does NOT set the guard key when planTasks is empty', () => {
+    const { sb, stored } = makeCarrySandbox({ today: '2026-06-18', planTasks: [] });
+    vm.runInContext('autoCarryTasks();', sb);
+    assert.equal(stored.get('wl_carried_2026-06-18'), undefined);
+  });
+
+  it('sets the guard key and carries unfinished tasks when they exist', () => {
+    const { sb, stored } = makeCarrySandbox({
+      today: '2026-06-18',
+      planTasks: [
+        { id: '1', text: 'Carry me', date: '2026-06-17', status: 'inprogress' },
+        { id: '2', text: 'Done already', date: '2026-06-17', status: 'done' },
+      ],
+    });
+    vm.runInContext('autoCarryTasks();', sb);
+    assert.equal(stored.get('wl_carried_2026-06-18'), '1', 'guard key must be set after carry');
+    const todayTask = sb.planTasks.find((t) => t.date === '2026-06-18');
+    assert.ok(todayTask, 'carried task must exist for today');
+    assert.equal(todayTask.text, 'Carry me');
+    assert.equal(todayTask.status, 'inprogress');
+  });
+
+  it('returns early without changes when guard key is already set', () => {
+    const { sb, stored } = makeCarrySandbox({
+      today: '2026-06-18',
+      planTasks: [{ id: '1', text: 'Not carried', date: '2026-06-17', status: 'todo' }],
+      guardAlreadySet: true,
+    });
+    vm.runInContext('autoCarryTasks();', sb);
+    // planTasks length must be unchanged (no new tasks added)
+    assert.equal(sb.planTasks.length, 1, 'no tasks should be added when guard is set');
+    assert.equal(stored.get('wl_carried_2026-06-18'), '1');
+  });
+});
