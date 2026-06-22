@@ -1254,6 +1254,11 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+
+  /* Reset the grid's `align-items: start` (top-aligns columns): in this flex
+     column that property would shrink the tabs and lane to content width and
+     left-align them. `stretch` makes them fill the panel's full width. */
+  align-items: stretch;
 }
 
 .board-cols--tabbed .kb-col__head {
