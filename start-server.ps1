@@ -146,7 +146,7 @@ function Get-TodayMeetings {
                     if ($sortOk) {
                         try { $items.IncludeRecurrences = $true; $incRecurOk = $true } catch { $dbg.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
                     }
-                    $useGetNext = $false
+                    $useGetNext = $false  # overridden to $true in the GetFirst fallback below
                     $cur = $null
                     if ($incRecurOk) {
                         $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
