@@ -63,6 +63,13 @@ export default [
   // Source modules — concatenated into a single browser IIFE at build time.
   // no-undef is disabled: functions defined in one module are legitimately called
   // from another; ESLint cannot see the full shared scope of the concatenated output.
+  // no-unused-vars uses vars:'local' for the same reason — a top-level function or
+  // state variable defined here is frequently consumed only by another module (or by
+  // work-log.html), which per-file linting cannot see, so flagging those globals
+  // produces false positives. Genuinely-dead *local* variables inside functions are
+  // still reported. caughtErrors:'none' allows `catch (err)` fallbacks that do not
+  // inspect the error (paired with the allowEmptyCatch policy below). Cross-file dead
+  // top-level symbols are found with the dead-code skill, not this rule.
   // detect-object-injection is disabled: bracket-notation on internal state arrays
   // (entries, categories, planTasks) is intentional and the data is never from
   // untrusted external input at that point.
@@ -76,7 +83,10 @@ export default [
     },
     rules: {
       'no-undef': 'off',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': [
+        'warn',
+        { vars: 'local', args: 'after-used', argsIgnorePattern: '^_', caughtErrors: 'none' },
+      ],
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],

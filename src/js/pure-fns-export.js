@@ -37,6 +37,7 @@ export function stripJiraPrefix(text) {
  */
 export function parseJiraLabel(label) {
   if (!label || typeof label !== 'string') return { ticket: null, name: label ?? '' };
+  // eslint-disable-next-line security/detect-unsafe-regex -- linear match on a short task label: the [\s:_-]+ and .* groups are adjacent, not nested, so there is no catastrophic backtracking
   const m = label.match(/^([A-Z][A-Z0-9]*-\d+)([\s:_-]+(.*))?$/);
   if (!m) return { ticket: null, name: label };
   return { ticket: m[1], name: (m[3] || '').trim() };

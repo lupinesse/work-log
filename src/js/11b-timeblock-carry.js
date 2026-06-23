@@ -258,7 +258,6 @@ function saveExpiryDates() {
  */
 function renderCompleted() {
   const viewKey = dk(viewDate);
-  const viewTs = new Date(viewKey + 'T12:00:00').getTime();
   // Tasks that are actively inprogress/todo on the current view date
   const activeTodayTexts = new Set(
     planTasks

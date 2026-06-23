@@ -13,6 +13,11 @@
  * Helper functions are exported for unit testing.
  */
 
+/* eslint-disable security/detect-unsafe-regex --
+ * Every regex in this file parses the project's own source lines (export
+ * signatures and JSDoc tags). The input is trusted and bounded, and no pattern
+ * nests quantifiers, so there is no catastrophic-backtracking (ReDoS) risk. */
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

@@ -68,6 +68,7 @@ export const LEAF_MODULES = [
 export function readPureFnsExports() {
   const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
   const declared = [
+    // eslint-disable-next-line security/detect-unsafe-regex -- matches our own pure-fns.js export lines; trusted input, no nested quantifiers
     ...src.matchAll(/^export (?:async\s+)?(?:function|const|let|class) (\w+)/gm),
   ].map((m) => m[1]);
   const reExported = [...src.matchAll(/export\s*\{([^}]*)\}\s*from/g)].flatMap((m) =>
