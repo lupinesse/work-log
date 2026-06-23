@@ -39,6 +39,9 @@ function Test-DebugQuery {
         [string]$Query
     )
     Set-StrictMode -Version Latest
+    # Match debug=1 only as a whole query parameter: preceded by ? or & (the
+    # [?&] class) and followed by another & or end-of-string (the (&|$) group).
+    # This rejects partial values like debug=10 and names like xdebug=1.
     return [bool]($Query -match '[?&]debug=1(&|$)')
 }
 
@@ -72,5 +75,9 @@ function Test-NewComRef {
         $ComObject
     )
     Set-StrictMode -Version Latest
+    # Fail loudly on misuse: a missing tracker list is a programming error, not a
+    # condition to silently absorb. A $null $ComObject is valid input and is simply
+    # reported as not-new, so the caller skips adding it.
+    if ($null -eq $List) { throw 'Test-NewComRef requires a non-null -List.' }
     return [bool]($null -ne $ComObject -and -not $List.Contains($ComObject))
 }

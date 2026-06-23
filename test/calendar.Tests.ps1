@@ -88,6 +88,14 @@ Describe 'Debug query detection (Test-DebugQuery)' {
     It 'does not match unrelated parameters' {
         Test-DebugQuery '?foo=1&bar=2' | Should Be $false
     }
+
+    It 'enables debug when debug=1 appears even alongside a later debug=0' {
+        Test-DebugQuery '?debug=1&debug=0' | Should Be $true
+    }
+
+    It 'does not match a parameter whose name merely ends in debug' {
+        Test-DebugQuery '?xdebug=1' | Should Be $false
+    }
 }
 
 Describe 'Year-anchor locale independence' {
