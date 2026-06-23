@@ -2,6 +2,14 @@ $port = 8080
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $url  = "http://localhost:$port/"
 
+# Shared, dependency-free helpers (HTTP debug-query detector + COM dedup guard).
+# Dot-sourced here for the request handler, and kept as raw text so the calendar
+# runspace can inject the same definitions (see Get-TodayMeetings). This gives
+# server-helpers.ps1 a single, Pester-tested source of truth.
+$serverHelpersPath          = Join-Path $root 'server-helpers.ps1'
+. $serverHelpersPath
+$script:serverHelpersSource = Get-Content -Path $serverHelpersPath -Raw
+
 # Load personal config (not committed to git)
 $NamedayApiToken  = ''
 $AnthropicApiKey  = ''
@@ -36,7 +44,10 @@ function Get-TodayMeetings {
         # .NET GC holds COM references across runspace teardown and Outlook
         # eventually reports "exhausted all shared resources".
         $comRefs = [System.Collections.Generic.List[object]]::new()
-        function Add-ComRef($obj) { if ($null -ne $obj -and -not $comRefs.Contains($obj)) { $comRefs.Add($obj) }; return $obj }
+        # Test-NewComRef is injected into this runspace from server-helpers.ps1
+        # (see the AddScript call below), so the live COM path and the Pester
+        # tests share one dedup guard instead of duplicating the logic.
+        function Add-ComRef($obj) { if (Test-NewComRef $comRefs $obj) { $comRefs.Add($obj) }; return $obj }
 
         $dbg = [ordered]@{
             storeCount      = 0
@@ -304,6 +315,9 @@ function Get-TodayMeetings {
 
     $ps = [PowerShell]::Create()
     $ps.Runspace = $rs
+    # Inject the shared helpers first so Add-ComRef can call Test-NewComRef.
+    # server-helpers.ps1 only declares functions, so it adds nothing to $out.
+    $null = $ps.AddScript($script:serverHelpersSource)
     $null = $ps.AddScript($script)
     $out = $ps.Invoke()
     $ps.Dispose()
@@ -574,7 +588,7 @@ while ($listener.IsListening) {
 
         if ($req.Url.LocalPath -eq '/api/calendar') {
             try {
-                $isDebug = ($req.Url.Query -eq '?debug=1' -or $req.Url.Query -match '[?&]debug=1(&|$)')
+                $isDebug = Test-DebugQuery $req.Url.Query
                 # PowerShell unrolls the single-item Collection[PSObject] on return,
                 # so $result is the wrapper hashtable directly, not a collection.
                 $result = Get-TodayMeetings

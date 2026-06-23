@@ -4,80 +4,97 @@
     Unit tests for the calendar helper logic in start-server.ps1.
 
 .DESCRIPTION
-    Tests the Add-ComRef dedup guard, the ?debug=1 query detection regex,
-    and the locale-independent year-anchor date format used by Get-TodayMeetings.
+    Exercises the real, dependency-free helpers that start-server.ps1 shares with
+    these tests via server-helpers.ps1: the COM dedup guard (Test-NewComRef, used
+    by Add-ComRef) and the ?debug=1 query detector (Test-DebugQuery). Also checks
+    the locale-independent year-anchor date format used by Get-TodayMeetings.
     These tests exercise pure PowerShell logic and do not require Outlook.
 #>
 
-# Helper — builds a fresh (list, Add-ComRef) pair so each Describe gets isolation.
-function New-ComRefTracker {
-    $list = [System.Collections.Generic.List[object]]::new()
-    $fn = {
-        param($obj)
-        if ($null -ne $obj -and -not $list.Contains($obj)) { $list.Add($obj) }
-        return $obj
-    }.GetNewClosure()
-    return @{ Add = $fn; List = $list }
-}
+# Dot-source the same helpers the production server uses, so the dedup guard and
+# debug-query detector are tested as the real functions rather than copies.
+$here     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent $here
+. (Join-Path $repoRoot 'server-helpers.ps1')
 
-Describe 'Add-ComRef dedup guard' {
-    It 'tracks a new object and returns it' {
-        $t = New-ComRefTracker
-        $obj = [object]::new()
-        $result = & $t.Add $obj
-        $result | Should Be $obj
-        $t.List.Count | Should Be 1
+Describe 'Add-ComRef dedup guard (Test-NewComRef)' {
+    # Drives the real guard exactly as Add-ComRef does in start-server.ps1:
+    # append only when Test-NewComRef reports the object as new.
+    function Add-Tracked {
+        param($List, $Obj)
+        if (Test-NewComRef $List $Obj) { $List.Add($Obj) }
+    }
+
+    It 'adds a new object' {
+        $list = [System.Collections.Generic.List[object]]::new()
+        Add-Tracked $list ([object]::new())
+        $list.Count | Should Be 1
     }
 
     It 'does not add the same object twice' {
-        $t = New-ComRefTracker
-        $obj = [object]::new()
-        & $t.Add $obj | Out-Null
-        & $t.Add $obj | Out-Null
-        $t.List.Count | Should Be 1
+        $list = [System.Collections.Generic.List[object]]::new()
+        $obj  = [object]::new()
+        Add-Tracked $list $obj
+        Add-Tracked $list $obj
+        $list.Count | Should Be 1
     }
 
     It 'does not add null' {
-        $t = New-ComRefTracker
-        & $t.Add $null | Out-Null
-        $t.List.Count | Should Be 0
+        $list = [System.Collections.Generic.List[object]]::new()
+        Add-Tracked $list $null
+        $list.Count | Should Be 0
     }
 
     It 'tracks distinct objects separately' {
-        $t = New-ComRefTracker
-        & $t.Add ([object]::new()) | Out-Null
-        & $t.Add ([object]::new()) | Out-Null
-        $t.List.Count | Should Be 2
+        $list = [System.Collections.Generic.List[object]]::new()
+        Add-Tracked $list ([object]::new())
+        Add-Tracked $list ([object]::new())
+        $list.Count | Should Be 2
+    }
+
+    It 'reports an already-tracked object as not new' {
+        $list = [System.Collections.Generic.List[object]]::new()
+        $obj  = [object]::new()
+        $list.Add($obj)
+        Test-NewComRef $list $obj | Should Be $false
     }
 }
 
-Describe 'Debug query detection' {
-    # Pattern from the HTTP handler: detects ?debug=1 or &debug=1 in a query
-    # string, but not debug=10 or similar partial matches.
-    $debugPattern = '[?&]debug=1(&|$)'
+Describe 'Debug query detection (Test-DebugQuery)' {
+    # The handler in start-server.ps1 calls Test-DebugQuery on $req.Url.Query to
+    # decide whether to attach diagnostic payloads. These cases pin its contract:
+    # match ?debug=1 / &debug=1, but never partial values like debug=10.
 
     It 'matches ?debug=1' {
-        ('?debug=1' -match $debugPattern) | Should Be $true
+        Test-DebugQuery '?debug=1' | Should Be $true
     }
 
     It 'matches &debug=1 at end of compound query' {
-        ('?foo=bar&debug=1' -match $debugPattern) | Should Be $true
+        Test-DebugQuery '?foo=bar&debug=1' | Should Be $true
     }
 
     It 'matches debug=1 with a trailing parameter' {
-        ('?debug=1&foo=bar' -match $debugPattern) | Should Be $true
+        Test-DebugQuery '?debug=1&foo=bar' | Should Be $true
     }
 
     It 'does not match debug=10' {
-        ('?debug=10' -match $debugPattern) | Should Be $false
+        Test-DebugQuery '?debug=10' | Should Be $false
     }
 
     It 'does not match an empty query string' {
-        ('' -match $debugPattern) | Should Be $false
+        Test-DebugQuery '' | Should Be $false
     }
 
     It 'does not match unrelated parameters' {
-        ('?foo=1&bar=2' -match $debugPattern) | Should Be $false
+        Test-DebugQuery '?foo=1&bar=2' | Should Be $false
+    }
+
+    It 'enables debug when debug=1 appears even alongside a later debug=0' {
+        Test-DebugQuery '?debug=1&debug=0' | Should Be $true
+    }
+
+    It 'does not match a parameter whose name merely ends in debug' {
+        Test-DebugQuery '?xdebug=1' | Should Be $false
     }
 }
 
