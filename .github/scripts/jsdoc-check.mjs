@@ -13,11 +13,6 @@
  * Helper functions are exported for unit testing.
  */
 
-/* eslint-disable security/detect-unsafe-regex --
- * Every regex in this file parses the project's own source lines (export
- * signatures and JSDoc tags). The input is trusted and bounded, and no pattern
- * nests quantifiers, so there is no catastrophic-backtracking (ReDoS) risk. */
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -199,15 +194,18 @@ function scanFile(filePath, acc) {
     let implicitReturn = false;
 
     // export function / export async function
+    // eslint-disable-next-line security/detect-unsafe-regex -- trusted own-source line; no nested quantifiers
     const mFunc = line.match(/^export\s+(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))/);
     // export class
     const mClass = line.match(/^export\s+class\s+(\w+)/);
     // export const x = function(...) / = async function(...) / = (...) => / = x =>
     // Requires 'function' keyword OR '=>' — excludes plain object/array constants.
     const mConst = line.match(
+      // eslint-disable-next-line security/detect-unsafe-regex -- trusted own-source line; no nested quantifiers
       /^export\s+const\s+(\w+)\s*=\s*(?:async\s+)?(?:function\s*\*?\s*(\([^)]*\))|(\([^)]*\)|\w+)\s*=>)/
     );
     // export default function
+    // eslint-disable-next-line security/detect-unsafe-regex -- trusted own-source line; no nested quantifiers
     const mDefault = line.match(/^export\s+default\s+(?:async\s+)?function\s*(\w*)\s*(\([^)]*\))/);
 
     if (mFunc) {
@@ -248,6 +246,7 @@ function scanFile(filePath, acc) {
     if (descLines.length === 0) issues.push('missing description');
 
     // 2. @param tag for each parameter
+    // eslint-disable-next-line security/detect-unsafe-regex -- trusted own-source JSDoc; no nested quantifiers
     const paramTags = [...block.matchAll(/@param\s+(?:\{[^}]*\}\s+)?(\w+)/g)].map((m) => m[1]);
 
     // Named params must be explicitly covered
