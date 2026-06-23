@@ -385,12 +385,15 @@ async function runTests() {
       'completedAt within 30min of now',
       typeof completedAt === 'number' && Math.abs(completedAt - Date.now()) < 31 * 60 * 1000
     );
+    // #completedSection / .completed-item are the carry done-history list rendered
+    // by 11b-timeblock-carry.js — NOT the kanban board's Done column (the board
+    // force-hides #completedSection and folds done tasks into its own column).
     assert(
-      'Completed tasks section exists',
+      'Carry done-history section (#completedSection) exists',
       await page.evaluate(() => !!document.getElementById('completedSection'))
     );
     assert(
-      'Completed task appears in section',
+      'Done task renders as a .completed-item in carry history',
       await page.evaluate(() => document.querySelectorAll('.completed-item').length >= 1)
     );
     const whenText = await page.evaluate(
