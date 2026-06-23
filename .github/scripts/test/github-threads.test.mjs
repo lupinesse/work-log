@@ -308,9 +308,7 @@ describe('upsertIssueComment', () => {
     const existing = [{ id: 42, body: `${MARKER}\nOld content` }];
     const patched = { id: 42, body: `${MARKER}\nNew content`, html_url: 'https://gh/' };
 
-    let callCount = 0;
     t.mock.method(globalThis, 'fetch', async (url, opts) => {
-      callCount++;
       if (opts?.method === 'GET' || !opts?.method) {
         return makeResponse(existing);
       }

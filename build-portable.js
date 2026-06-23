@@ -54,6 +54,7 @@ const jsParts = [...LEAF_MODULES, ...otherFiles].map((f) => {
     src = src
       .replace(/export\s*\{[^}]*\}\s*from\s*['"][^'"]*['"];?/g, '')
       .replace(/^import\s[^;]*;\s*$/gm, '')
+      // eslint-disable-next-line security/detect-unsafe-regex -- build-time transform of our own module source; trusted input, no nested quantifiers
       .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
   return `// ── ${f} ──\n${src}`;
 });

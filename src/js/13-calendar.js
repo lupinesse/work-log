@@ -310,7 +310,7 @@ function showBridgeBanner(meeting) {
   dismissBtn.onclick = onDismiss;
   bridgeBtn.onclick = async (e) => {
     e.stopPropagation();
-    await buildBridge(meeting, expanded, bridgeBtn, onDismiss);
+    await buildBridge(meeting, expanded, bridgeBtn);
   };
 }
 
@@ -321,10 +321,9 @@ function showBridgeBanner(meeting) {
  * @param {{subject: string}} meeting  - The meeting that just ended.
  * @param {HTMLElement} expandedEl     - Container for the bridge content.
  * @param {HTMLElement} bridgeBtn      - "Build bridge" button (disabled during fetch).
- * @param {Function}    onDismiss      - Callback to dismiss the banner.
  * @returns {Promise<void>}
  */
-async function buildBridge(meeting, expandedEl, bridgeBtn, onDismiss) {
+async function buildBridge(meeting, expandedEl, bridgeBtn) {
   const todayKey = dk(new Date());
   const notDone = planTasks.filter((t) => t.date === todayKey && t.status !== 'done');
   const inProgress = notDone.filter((t) => t.status === 'inprogress');
@@ -345,7 +344,7 @@ async function buildBridge(meeting, expandedEl, bridgeBtn, onDismiss) {
       b.textContent = t.text;
       b.onclick = async () => {
         list.style.display = 'none';
-        await fetchBridge(meeting, t, expandedEl, bridgeBtn, onDismiss);
+        await fetchBridge(meeting, t, expandedEl, bridgeBtn);
       };
       list.appendChild(b);
     });
@@ -359,7 +358,7 @@ async function buildBridge(meeting, expandedEl, bridgeBtn, onDismiss) {
     expandedEl.style.display = 'block';
     return;
   }
-  await fetchBridge(meeting, nextTask, expandedEl, bridgeBtn, onDismiss);
+  await fetchBridge(meeting, nextTask, expandedEl, bridgeBtn);
 }
 
 /**
@@ -370,10 +369,9 @@ async function buildBridge(meeting, expandedEl, bridgeBtn, onDismiss) {
  * @param {{text: string}}    task     - The next plan task to transition to.
  * @param {HTMLElement} expandedEl     - Container for the bridge content.
  * @param {HTMLElement} bridgeBtn      - "Build bridge" button (disabled during fetch).
- * @param {Function}    onDismiss      - Callback to dismiss the banner.
  * @returns {Promise<void>}
  */
-async function fetchBridge(meeting, task, expandedEl, bridgeBtn, onDismiss) {
+async function fetchBridge(meeting, task, expandedEl, bridgeBtn) {
   const meetingSubject = meeting.subject || '(untitled)';
   const taskText = task.text || '(untitled)';
   const prompt = `Meeting just finished: "${meetingSubject}"\nNext task to start: "${taskText}"\n\nProvide exactly 3 concrete physical steps to transition from this meeting to starting the task. Each step specific and actionable. Total time: ~3 min. No preamble, no numbering, no labels, plain text only.`;
