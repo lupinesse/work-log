@@ -98,51 +98,38 @@ Describe 'Debug query detection (Test-DebugQuery)' {
     }
 }
 
-Describe 'Year-anchor locale independence' {
-    # The anchor uses the system locale date separator so MAPI accepts the string,
-    # but day=1 and month=1 are identical under both M/d and d/M orderings,
-    # making the effective date locale-independent.
+Describe 'Year-anchor locale independence (Get-YearAnchor)' {
+    # Get-YearAnchor builds the Jan-1 boundary string MAPI filters use. Day and
+    # month are both 1, so only the year varies and the value is identical under
+    # both d/M and M/d orderings — that is what makes the anchor locale-independent.
 
-    It 'builds the correct anchor string for a given year' {
+    It 'builds 1-sep-1-sep-year using the current culture separator' {
         $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
-        $today = [DateTime]::new(2026, 6, 9)
-        $anchor = "1${sep}1${sep}$($today.Year)"
+        $parts = (Get-YearAnchor -Year 2026) -split [Regex]::Escape($sep)
         # Regardless of separator, day and month parts must both be 1
-        $parts = $anchor -split [Regex]::Escape($sep)
         $parts[0] | Should Be '1'
         $parts[1] | Should Be '1'
         $parts[2] | Should Be '2026'
     }
 
-    It 'next-year anchor is one year ahead' {
+    It 'advances the year by one for the next-year anchor' {
         $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
-        $today = [DateTime]::new(2026, 6, 9)
-        $nextYear = "1${sep}1${sep}$($today.Year + 1)"
-        $parts = $nextYear -split [Regex]::Escape($sep)
-        $parts[2] | Should Be '2027'
+        ((Get-YearAnchor -Year 2027) -split [Regex]::Escape($sep))[2] | Should Be '2027'
     }
 
-    It 'anchor year is correct for every month of the year' {
+    It 'keeps the year part correct for every month of the year' {
         $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
         foreach ($month in 1..12) {
             $day = [DateTime]::new(2026, $month, 15)
-            $anchor = "1${sep}1${sep}$($day.Year)"
-            $parts = $anchor -split [Regex]::Escape($sep)
-            $parts[2] | Should Be '2026'
+            ((Get-YearAnchor -Year $day.Year) -split [Regex]::Escape($sep))[2] | Should Be '2026'
         }
     }
 
-    It 'produces dot-delimited anchor for Finnish locale separator' {
-        $sep    = '.'
-        $today  = [DateTime]::new(2026, 6, 9)
-        $anchor = "1${sep}1${sep}$($today.Year)"
-        $anchor | Should Be '1.1.2026'
+    It 'produces a dot-delimited anchor for the Finnish locale separator' {
+        Get-YearAnchor -Year 2026 -Separator '.' | Should Be '1.1.2026'
     }
 
-    It 'produces slash-delimited anchor for US locale separator' {
-        $sep    = '/'
-        $today  = [DateTime]::new(2026, 6, 9)
-        $anchor = "1${sep}1${sep}$($today.Year)"
-        $anchor | Should Be '1/1/2026'
+    It 'produces a slash-delimited anchor for the US locale separator' {
+        Get-YearAnchor -Year 2026 -Separator '/' | Should Be '1/1/2026'
     }
 }

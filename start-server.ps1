@@ -82,7 +82,7 @@ function Get-TodayMeetings {
             # both d/M and M/d orderings, so the anchor date is locale-independent.
             $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
             $dbg.sep        = $sep
-            $yearAnchor     = "1${sep}1${sep}$($today.Year)"
+            $yearAnchor     = Get-YearAnchor -Year $today.Year -Separator $sep
             $dbg.yearAnchor = $yearAnchor
 
             $seen    = @{}
@@ -223,7 +223,7 @@ function Get-TodayMeetings {
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
                     try { $items2.IncludeRecurrences = $false } catch { $dbg.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
-                    $nextYearAnchor = "1${sep}1${sep}$($today.Year + 1)"
+                    $nextYearAnchor = Get-YearAnchor -Year ($today.Year + 1) -Separator $sep
                     $filtered = try {
                         Add-ComRef ($items2.Restrict("[Start] >= '$yearAnchor' AND [Start] < '$nextYearAnchor'"))
                     } catch {
