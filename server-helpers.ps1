@@ -83,3 +83,41 @@ function Test-NewComRef {
     if ($null -eq $List) { throw 'Test-NewComRef requires a non-null -List.' }
     return [bool]($null -ne $ComObject -and -not $List.Contains($ComObject))
 }
+
+function Get-YearAnchor {
+    <#
+    .SYNOPSIS
+        Builds a locale-independent Jan-1 year-boundary anchor for Outlook MAPI.
+
+    .DESCRIPTION
+        Returns "1{sep}1{sep}{Year}". Day and month are both 1, so the value is
+        identical under d/M and M/d orderings and only the year varies — that is
+        what makes the anchor locale-independent. MAPI Restrict/Find filters parse
+        the string with the system locale, so the separator defaults to the
+        current culture's; Get-TodayMeetings passes the live separator explicitly.
+
+    .PARAMETER Year
+        The four-digit calendar year for the anchor.
+
+    .PARAMETER Separator
+        The date separator to embed. Defaults to the current culture's
+        DateTimeFormat.DateSeparator so live MAPI filters match Outlook's locale;
+        tests pass an explicit separator to assert locale independence.
+
+    .OUTPUTS
+        System.String
+
+    .EXAMPLE
+        Get-YearAnchor 2026 '.'      # -> '1.1.2026'
+
+    .EXAMPLE
+        Get-YearAnchor 2026 '/'      # -> '1/1/2026'
+    #>
+    [OutputType([string])]
+    param(
+        [int]$Year,
+        [string]$Separator = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
+    )
+    Set-StrictMode -Version Latest
+    return "1${Separator}1${Separator}${Year}"
+}
