@@ -35,6 +35,7 @@ function Test-DebugQuery {
     .EXAMPLE
         Test-DebugQuery '?debug=10'       # -> $false
     #>
+    [OutputType([bool])]
     param(
         [string]$Query
     )
@@ -70,6 +71,7 @@ function Test-NewComRef {
         $tracked = [System.Collections.Generic.List[object]]::new()
         Test-NewComRef $tracked $obj      # -> $true the first time, $false after it is added
     #>
+    [OutputType([bool])]
     param(
         [System.Collections.Generic.List[object]]$List,
         $ComObject
