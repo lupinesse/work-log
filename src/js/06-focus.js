@@ -132,21 +132,6 @@ function hideHandoffInput() {
 }
 
 /**
- * Retrieves the stored handoff note for a given entry text.
- * The lookup is case-insensitive and trims whitespace.
- * @param {string} entryText - The entry text to look up.
- * @returns {string|null} The stored note, or null if none exists.
- */
-function getHandoffNote(entryText) {
-  try {
-    const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
-    return notes[entryText.toLowerCase().trim()] || null;
-  } catch (err) {
-    return null;
-  }
-}
-
-/**
  * Persists a handoff note for a given entry text.
  * Pass an empty string or falsy value to delete the stored note.
  * The key is stored case-insensitively.

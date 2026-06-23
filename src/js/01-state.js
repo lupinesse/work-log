@@ -28,7 +28,6 @@ const DEFAULT_CATS = [
   { id: 'break', label: 'break', color: '#BA7517' },
   { id: 'other', label: 'other', color: '#888780' },
 ];
-const DEFAULT_IDS = new Set(DEFAULT_CATS.map((c) => c.id));
 const CUSTOM_PALETTE = [
   '#7B61FF',
   '#E67E22',
@@ -87,7 +86,6 @@ let categories = [...DEFAULT_CATS];
 let chartMode = 'task';
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
-const planDragId = null;
 
 /* ── Load / Save ── */
 // Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,
