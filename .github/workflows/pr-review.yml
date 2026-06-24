@@ -74,7 +74,7 @@ jobs:
 
       - name: Check out repository
         if: steps.size-gate.outputs.should_run == 'true'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Full history so git diff can compare against the base branch
           fetch-depth: 0
