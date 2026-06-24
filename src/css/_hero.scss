@@ -194,23 +194,6 @@
   color: var(--text);
 }
 
-// Blinking colon — toggled by JS via .hero-colon class
-.hero-colon {
-  color: var(--ink-faint);
-  animation: heroTick 1s steps(2, end) infinite;
-}
-
-@keyframes heroTick {
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.35;
-  }
-}
-
 // ── Idle state specifics ──────────────────────────────────────────────────────
 
 .hero-logged-row {

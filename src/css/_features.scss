@@ -261,35 +261,6 @@
   opacity: 1;
 }
 
-.park-capture {
-  display: none;
-  width: 0;
-  opacity: 0;
-  background: rgba(0, 0, 0, 0.25);
-  border: 0.5px solid #378add;
-  border-radius: var(--radius);
-  color: #ffffff;
-  font-family: var(--font);
-  font-size: 12px;
-  padding: 3px 8px;
-  outline: none;
-  flex-shrink: 0;
-  transition:
-    width 0.2s,
-    opacity 0.15s;
-}
-
-.park-capture.show {
-  display: block;
-  width: 180px;
-  opacity: 1;
-}
-
-.park-capture::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-  font-style: italic;
-}
-
 /* ── Parked thoughts section ── */
 .park-section {
   background: var(--bg2);
