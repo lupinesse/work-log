@@ -3,9 +3,9 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.0-r1 |
-| Covers app version | v1.9.0 (main, 2026-06-13) |
-| Last reviewed | 2026-06-13 |
+| Document version | 1.9.0-r2 |
+| Covers app version | v1.9.0+ (main, 2026-06-26) |
+| Last reviewed | 2026-06-26 |
 | Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
 | Status | **Approved** — reflects current implementation |
 
@@ -13,7 +13,7 @@
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (39 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (50 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -23,13 +23,11 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **00-config.js** (104 lines) — App Configuration
+#### **00-config.js** (82 lines) — App Configuration
 **Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
 
 **Key constants**:
-- `DAILY_GOAL_MS` — Target working milliseconds per day (default 7 h 30 min)
 - `AUTO_PAUSE_ON_TAB_SWITCH` — Whether the timer auto-pauses when the tab is hidden (default `true`)
-- `CHART_REFRESH_MS` — Interval for the activity chart refresh (default 15 min)
 - `CAL_ACCOUNT_LABELS` — Map of calendar account keys to display names
 - `DEFAULT_WORK_LOCATION` — Fallback location when none is recorded (default `'remote'`)
 
@@ -37,7 +35,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (194 lines) — Data Store
+#### **01-state.js** (183 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -79,32 +77,32 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **01b-migrate.js** (102 lines) — Data Migration
+#### **01b-migrate.js** (97 lines) — Data Migration
 **Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
 
 **Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
 
 ---
 
-#### **logger.js** (53 lines) — Structured Logger (LEAF MODULE)
+#### **logger.js** (47 lines) — Structured Logger (LEAF MODULE)
 **Responsibility**: `wlLog` — the application's single logging interface. Wraps `console` with level filtering and structured output. Imported as an ES module at the top of `script.js`.
 
 **API**: `wlLog.debug()`, `wlLog.info()`, `wlLog.config()`, `wlLog.warn()`, `wlLog.error()` — each accepts a message string and an optional data object.
 
 ---
 
-#### **pure-fns.js** (55 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (52 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
-- `pure-fns-format.js` (193 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (301 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
-- `pure-fns-tasks.js` (231 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
-- `pure-fns-validate.js` (275 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-format.js` (181 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
+- `pure-fns-export.js` (304 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-tasks.js` (206 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
+- `pure-fns-validate.js` (261 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
 ---
 
-#### **02-utils.js** (340 lines) — Utilities
+#### **02-utils.js** (319 lines) — Utilities
 **Responsibility**: Shared helper functions
 
 **Key Functions**:
@@ -122,7 +120,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (522 lines) — Timer Logic
+#### **03-timer.js** (494 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -142,7 +140,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (690 lines) — Top-Level UI Rendering
+#### **04-render.js** (646 lines) — Top-Level UI Rendering
 **Responsibility**: Orchestrate rendering of all visible sections
 
 **Main Function**:
@@ -209,7 +207,7 @@ Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries
 
 ---
 
-#### **05b-filesystem.js** (178 lines) — File System Access Persistence
+#### **05b-filesystem.js** (171 lines) — File System Access Persistence
 **Responsibility**: Persist the user's chosen save folder and write export files via the browser File System Access API; falls back to a `<a download>` click when FSA is unavailable.
 
 **Key Functions**:
@@ -221,7 +219,7 @@ Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries
 
 ---
 
-#### **06-focus.js** (193 lines) — Focus Mode (Emergency Mode)
+#### **06-focus.js** (168 lines) — Focus Mode (Emergency Mode)
 **Responsibility**: Distraction-free focus interface
 
 **Features**:
@@ -241,7 +239,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **06a-hero.js** (596 lines) — Hero Card State Machine
+#### **06a-hero.js** (512 lines) — Hero Card State Machine
 **Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
 
 **States**:
@@ -262,7 +260,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (359 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (339 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -283,7 +281,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (420 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (382 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -296,7 +294,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (191 lines) — Pomodoro 4-Column Dashboard
+#### **08a-pomo-dashboard.js** (166 lines) — Pomodoro 4-Column Dashboard
 **Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
 
 **Layout columns** (CSS grid in `_pomo.scss`):
@@ -321,7 +319,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (608 lines) — Live Info Widgets
+#### **09-clock-weather.js** (565 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -340,7 +338,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (156 lines) — Task Management
+#### **10-tasks.js** (149 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -373,28 +371,28 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (407 lines) — Task Rendering
+#### **10a-tasks-render.js** (273 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
 
 ---
 
-#### **10a-tasks-row.js** (327 lines) — Per-Row Card HTML
+#### **10a-tasks-row.js** (307 lines) — Per-Row Card HTML
 **Responsibility**: Per-task card HTML builders for the kanban board. Module-level state variables (`editingPlanId`, `_noteOpenIds`, `_cpOpenIds`) live in `10-tasks.js`; callers live in `10a-tasks-render.js`.
 
 **Key Functions**: `statusOpts()`, `prioBtnHtml()`, `notionBtnHtml()`, `noteBtnHtml()`, `noteAreaHtml()`, `billBtnHtml()`, `renderRow()`
 
 ---
 
-#### **10b-tasks-events.js** (362 lines) — Task Event Binding
+#### **10b-tasks-events.js** (341 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
 
 ---
 
-#### **10b-signifiers.js** (89 lines) — Entry Signifiers
+#### **10b-signifiers.js** (83 lines) — Entry Signifiers
 **Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
 
 **Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
@@ -403,26 +401,26 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10c-tasks-board.js** (241 lines) — Kanban Board Drag-and-Drop
+#### **10c-tasks-board.js** (223 lines) — Kanban Board Drag-and-Drop
 **Responsibility**: Board-level drag-and-drop between columns, column tab switching, and the live "N in progress" WIP badge. Extracted from `10b-tasks-events.js` so column logic stays separate from card-level event binding.
 
 **Key Functions**: `moveTaskToColumn()`, `bindBoardColumnDnD()`, `initBoardColumnDnD()`, `initBoardTabs()`, `updateBoardLive()`
 
 ---
 
-#### **10d-tasks-editors.js** (368 lines) — Per-Card Inline Editors
+#### **10d-tasks-editors.js** (355 lines) — Per-Card Inline Editors
 **Responsibility**: Binds the inline comment, note, and checkpoint editors for individual task cards. One function per editor type; called from `10b-tasks-events.js`.
 
 **Key Functions**: `bindPlanCommentEvents(qa)`, `bindPlanNoteEvents(qa)`, `bindPlanCheckpointEvents(qa)`
 
 ---
 
-#### **11-timeblock.js** (327 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (310 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (350 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (390 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11a-timeblock-render.js` (329 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11b-timeblock-carry.js` (363 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -439,7 +437,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (458 lines) — Miscellaneous Features
+#### **12-misc.js** (431 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -456,18 +454,18 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (268 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (253 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
-- `12b-changelog-data.js` (633 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
-- `12c-startup.js` (40 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12b-changelog-data.js` (631 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
+- `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
 ---
 
-#### **13-calendar.js** (529 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -503,7 +501,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (494 lines) — Jira Import
+#### **14-jira.js** (463 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -523,7 +521,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **15-notion.js** (120 lines) — Notion Integration
+#### **15-notion.js** (112 lines) — Notion Integration
 **Responsibility**: Push tasks and log entries to a Notion database via the Notion API.
 
 **Configuration**: Notion token and database IDs in `src/js/00-config.local.js` (gitignored).
@@ -532,7 +530,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (541 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (473 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -541,7 +539,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (606 lines) — Today's Flow Unified Section
+#### **11-timeflow.js** (536 lines) — Today's Flow Unified Section
 **Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
 **Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
@@ -552,7 +550,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **18-dailylog.js** (93 lines) — Daily-log feed builder + note input
+#### **18-dailylog.js** (87 lines) — Daily-log feed builder + note input
 **Responsibility**: Pure data helper for the unified Today's Flow Log view. Builds chronological feed items by merging time entries, log notes, and task status comments for the given day; persists user-typed notes.
 
 **Key functions**: `buildDailyLogItems(dateKey)`, `addLogNote()`
@@ -561,14 +559,14 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** (269 lines) — Monthly Log Heatmap
+#### **19-monthlylog.js** (246 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`
 
 ---
 
-#### **20-migration.js** (210 lines) — End-of-Month Migration
+#### **20-migration.js** (190 lines) — End-of-Month Migration
 **Responsibility**: Modal flow that surfaces every unresolved task for the viewed month and requires an explicit decision: carry forward, schedule (date picker), or drop. Auto-prompts on the last day of the month.
 
 **Key functions**: `openMigration()`, `renderMigrationStep()`, `carryTask(task)`, `scheduleTask(task, dateStr)`, `dropTask(task)`, `initMigration()`
@@ -577,7 +575,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **21-reflection.js** (111 lines) — End-of-Day Reflection
+#### **21-reflection.js** (143 lines) — End-of-Day Reflection
 **Responsibility**: After the end-of-day export, shows a modal for a 1–5 focus-quality rating, a 1–5 energy-level rating, and an optional one-sentence note. Ratings are surfaced as indicator dots on Monthly Log heatmap cells.
 
 **Key functions**: `openReflection(onComplete)`, `renderReflStars(elId, current)`, `getReflectionForDate(dateKey)`
@@ -586,7 +584,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **22-trackers.js** (251 lines) — Custom Time-Goal Trackers
+#### **22-trackers.js** (235 lines) — Custom Time-Goal Trackers
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
 **Key functions**: `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `trackerStreak(tracker)`, `initTrackers()`
@@ -595,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **23-sprints.js** (227 lines) — Sprint Mode
+#### **23-sprints.js** (206 lines) — Sprint Mode
 **Responsibility**: Enhances the Pomodoro with a sprint mode. User declares an intention; at the end a 3-button review (Yes / Partly / No) is shown and the session logged as a time entry with the intention as description and outcome tagged.
 
 **Key functions**: `openSprintSetup()`, `startSprint()`, `showSprintReview()`, `notifyPomodoroEnd()`, `initSprints()`
@@ -604,7 +602,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **24-location.js** (97 lines) — Work Location Tracker
+#### **24-location.js** (91 lines) — Work Location Tracker
 **Responsibility**: Tracks whether the user is working remotely or in the office on each day. Location is stored per-day and shown in the date-nav header in place of the ISO week number.
 
 **Key Functions**: `renderLocation()`, `bindLocationToggle()`
@@ -615,7 +613,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **25-rollingsummary.js** (178 lines) — Rolling Summary
+#### **25-rollingsummary.js** (162 lines) — Rolling Summary
 **Responsibility**: Renders the Rolling Summary tab inside the Today's Flow section. Builds a compact, categorised digest of recent entries (current sprint or last 7 days) grouped by task and epic, showing time totals and a sparkline of daily activity.
 
 **Key export**: `renderRollingSummary()`
