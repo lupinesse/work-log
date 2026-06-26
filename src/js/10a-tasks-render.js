@@ -303,4 +303,5 @@ const EMOJI_COMMON = [
   '🏆',
 ];
 
+// eslint-disable-next-line prefer-const -- reassigned in 11-timeblock.js (cross-file global, concat build model)
 let _emojiPickerPid = null;
