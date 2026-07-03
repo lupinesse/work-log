@@ -53,4 +53,5 @@ export {
   formatGroupedLines,
   buildRollingSummary,
   applyBackupRetention,
+  buildBackupPayload,
 } from './pure-fns-export.js';

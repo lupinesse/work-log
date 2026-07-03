@@ -95,38 +95,37 @@ function readOptionalLogForBackup(storeKey, label) {
 const BACKUP_RETENTION_DAYS = 21;
 
 /**
- * Exports a JSON backup of recent application state: entries from the last
- * {@link BACKUP_RETENTION_DAYS} days, plus categories, plan tasks, time
- * blocks, pomodoro log, dev log, distractions, and hidden quick-pick items.
- * Older entries are excluded to keep the file size stable; they remain in
- * earlier backup files.
- * Triggers a file download or writes to the save folder.
+ * Exports a JSON backup of recent application state: entries, plan tasks, time
+ * blocks, dev log, and distractions from the last {@link BACKUP_RETENTION_DAYS}
+ * days, plus the (undated) categories and hidden quick-pick items and the
+ * source-capped pomodoro log. Every time-series array is trimmed to the
+ * retention window so the file size stays bounded; older records remain in
+ * earlier backup files. Triggers a file download or writes to the save folder.
  */
 function exportBackup() {
-  const { kept: recentEntries, dropped } = applyBackupRetention(
-    entries,
+  const { payload, dropped } = buildBackupPayload(
+    {
+      entries,
+      categories,
+      planTasks,
+      blocks,
+      pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
+      devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),
+      distractions: readOptionalLogForBackup(STORE_DISTRACTIONS, 'distractions'),
+      qpHidden,
+    },
     BACKUP_RETENTION_DAYS,
     Date.now()
   );
-  if (dropped > 0) {
+  const droppedPairs = Object.entries(dropped);
+  if (droppedPairs.length) {
+    const total = droppedPairs.reduce((sum, [, n]) => sum + n, 0);
+    const detail = droppedPairs.map(([label, n]) => `${label}: ${n}`).join(', ');
     wlLog.info(
-      `exportBackup: excluded ${dropped} entr${dropped === 1 ? 'y' : 'ies'} older than ${BACKUP_RETENTION_DAYS} days`
+      `exportBackup: excluded ${total} record${total === 1 ? '' : 's'} older than ${BACKUP_RETENTION_DAYS} days (${detail})`
     );
   }
-  const backup = {
-    version: '1',
-    exported: new Date().toISOString(),
-    retentionDays: BACKUP_RETENTION_DAYS,
-    entries: recentEntries,
-    categories,
-    planTasks,
-    blocks,
-    pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
-    devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),
-    distractions: readOptionalLogForBackup(STORE_DISTRACTIONS, 'distractions'),
-    qpHidden: [...qpHidden],
-  };
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const filename = `work-log-backup-${BACKUP_RETENTION_DAYS}d-${dk(new Date())}.json`;
   writeExportFile('JSON backups', filename, blob);
 }
