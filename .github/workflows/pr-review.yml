@@ -103,12 +103,22 @@ jobs:
         if: steps.size-gate.outputs.should_run == 'true'
         env:
           OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Mapped into env because the `secrets` context is not available in
+          # step `if:` conditions — only `env`/`steps` outputs are. The mint
+          # step below guards on the `app` output this emits.
+          APP_ID: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
         run: |
           if [ -n "$OAUTH_TOKEN" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set — skipping automated review."
+          fi
+          if [ -n "$APP_ID" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLAUDE_REVIEWER_APP_ID is not set — review comment will post as github-actions[bot]."
           fi
 
       - name: Run PR review
@@ -134,7 +144,12 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: always() && steps.key-check.conclusion != 'skipped'
+        # Skip when the reviewer App isn't configured — minting with an empty
+        # client-id hard-errors and fails the whole job. Guarded on the
+        # key-check `app` output (not `secrets` directly, which is unavailable
+        # in `if:`). The comment step below falls back to the workflow token,
+        # so the review still posts (as github-actions[bot]).
+        if: always() && steps.key-check.conclusion != 'skipped' && steps.key-check.outputs.app == 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
@@ -147,9 +162,9 @@ jobs:
         env:
           # App-installation token; comment posts as the "Claude Reviewer" App
           # rather than the generic github-actions[bot]. Falls back to the
-          # automatic workflow token if the mint step failed (bad secret /
-          # uninstalled App) so the review comment still gets posted — the
-          # red mint-step failure in CI is the signal to fix the secret.
+          # automatic workflow token when the mint step is skipped (no
+          # CLAUDE_REVIEWER_APP_ID configured) or fails (bad secret /
+          # uninstalled App), so the review comment still gets posted.
           GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
           # GH_REPO bypasses gh's git-based repo detection; without it, gh
           # calls `git rev-parse` and crashes when no checkout has run yet
