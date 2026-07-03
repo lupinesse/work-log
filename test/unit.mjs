@@ -3917,6 +3917,34 @@ describe('buildBackupPayload', () => {
     assert.deepEqual(dropped, {});
   });
 
+  it('tolerates explicit null values for individual state properties', () => {
+    const state = {
+      entries: null,
+      categories: null,
+      planTasks: null,
+      blocks: null,
+      pomoLog: null,
+      devLog: null,
+      distractions: null,
+      qpHidden: null,
+    };
+    let payload;
+    let dropped;
+    assert.doesNotThrow(() => {
+      ({ payload, dropped } = buildBackupPayload(state, 21, now));
+    });
+    // Every array coerces to an empty array; nothing is dropped.
+    assert.deepEqual(payload.entries, []);
+    assert.deepEqual(payload.categories, []);
+    assert.deepEqual(payload.planTasks, []);
+    assert.deepEqual(payload.blocks, []);
+    assert.deepEqual(payload.pomoLog, []);
+    assert.deepEqual(payload.devLog, []);
+    assert.deepEqual(payload.distractions, []);
+    assert.deepEqual(payload.qpHidden, []);
+    assert.deepEqual(dropped, {});
+  });
+
   it('stamps the export timestamp from the supplied clock', () => {
     const { payload } = buildBackupPayload({}, 21, now);
     assert.equal(payload.exported, new Date(now).toISOString());
