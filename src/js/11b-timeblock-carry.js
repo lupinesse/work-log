@@ -21,25 +21,25 @@
  */
 function patchCarriedTasks() {
   const todayKey = dk(new Date());
-  const todayTasks = planTasks.filter((t) => t.date === todayKey);
-  const pastTasks = planTasks.filter((t) => t.date < todayKey);
+  const todayTasks = planTasks.filter((task) => task.date === todayKey);
+  const pastTasks = planTasks.filter((task) => task.date < todayKey);
 
   // Migration: stamp billable on tasks and categories that predate the feature.
   // Assumption: the app was originally developed for billable contract work, so
   // any task or category without an explicit flag is assumed billable to avoid
   // retroactively understating tracked hours.
-  planTasks.forEach((t) => {
-    if (t.billable === undefined) t.billable = true;
+  planTasks.forEach((task) => {
+    if (task.billable === undefined) task.billable = true;
   });
-  categories.forEach((c) => {
-    if (c.billable === undefined) c.billable = true;
+  categories.forEach((cat) => {
+    if (cat.billable === undefined) cat.billable = true;
   });
 
   // Migration: stamp completedAt on any done task missing it
   let changed = false;
-  planTasks.forEach((t) => {
-    if (t.status === 'done' && !t.completedAt) {
-      t.completedAt = new Date((t.date || todayKey) + 'T00:00:00').getTime();
+  planTasks.forEach((task) => {
+    if (task.status === 'done' && !task.completedAt) {
+      task.completedAt = new Date((task.date || todayKey) + 'T00:00:00').getTime();
       changed = true;
     }
   });
@@ -51,7 +51,7 @@ function patchCarriedTasks() {
 
   todayTasks.forEach((todayTask) => {
     const prev = pastTasks
-      .filter((t) => t.text.toLowerCase() === todayTask.text.toLowerCase())
+      .filter((task) => task.text.toLowerCase() === todayTask.text.toLowerCase())
       .sort((a, b) => b.date.localeCompare(a.date))[0];
     if (!prev) return;
 
@@ -65,7 +65,7 @@ function patchCarriedTasks() {
       prev.statusComments.length &&
       !todayTask.statusComments
     ) {
-      todayTask.statusComments = prev.statusComments.map((c) => ({ ...c }));
+      todayTask.statusComments = prev.statusComments.map((comment) => ({ ...comment }));
     }
     changed = true;
   });
@@ -89,7 +89,7 @@ function autoCarryTasks() {
   // and should never be auto-carried — they will appear naturally on their target date.
   // 'done' tasks are complete and need no carry.
   const unfinished = planTasks.filter(
-    (t) => t.date < todayKey && t.status !== 'done' && t.status !== 'upcoming'
+    (task) => task.date < todayKey && task.status !== 'done' && task.status !== 'upcoming'
   );
   // Don't set the guard key when nothing needs carrying — if the user later
   // reopens a task that was done at midnight, the next startup can still carry it.
@@ -98,10 +98,10 @@ function autoCarryTasks() {
   // Deduplicate by text — keep only the MOST RECENT past version of each task.
   // Without this, an older 'inprogress' copy could be carried instead of a newer 'pending' one.
   const latestByText = {};
-  unfinished.forEach((t) => {
-    const key = t.text.toLowerCase();
-    if (!latestByText[key] || t.date > latestByText[key].date) {
-      latestByText[key] = t;
+  unfinished.forEach((task) => {
+    const key = task.text.toLowerCase();
+    if (!latestByText[key] || task.date > latestByText[key].date) {
+      latestByText[key] = task;
     }
   });
   const toCarry = Object.values(latestByText);
@@ -109,24 +109,24 @@ function autoCarryTasks() {
   // First pass: create new tasks, build old-id → new-id map
   const idMap = {};
   let carried = 0;
-  toCarry.forEach((t) => {
+  toCarry.forEach((task) => {
     const exists = planTasks.some(
-      (e) => e.date === todayKey && e.text.toLowerCase() === t.text.toLowerCase()
+      (existingTask) => existingTask.date === todayKey && existingTask.text.toLowerCase() === task.text.toLowerCase()
     );
     if (!exists) {
       const newId = 'c' + Date.now() + Math.random().toString(36).slice(2);
-      idMap[t.id] = newId;
+      idMap[task.id] = newId;
       planTasks.push({
         id: newId,
-        text: t.text,
-        tag: t.tag,
-        status: t.status, // preserve inprogress/todo/pending/blocked
-        ...(t.statusComments && t.statusComments.length
-          ? { statusComments: t.statusComments.map((c) => ({ ...c })) }
+        text: task.text,
+        tag: task.tag,
+        status: task.status, // preserve inprogress/todo/pending/blocked
+        ...(task.statusComments && task.statusComments.length
+          ? { statusComments: task.statusComments.map((comment) => ({ ...comment })) }
           : {}),
         // Carry checkpoints forward — reset done state for a fresh day
-        ...(t.checkpoints && t.checkpoints.length
-          ? { checkpoints: t.checkpoints.map((c) => ({ ...c, done: false })) }
+        ...(task.checkpoints && task.checkpoints.length
+          ? { checkpoints: task.checkpoints.map((checkpoint) => ({ ...checkpoint, done: false })) }
           : {}),
         date: todayKey,
       });
@@ -188,7 +188,7 @@ function loadExpiryDates() {
     const raw = localStorage.getItem(STORE_EXPIRY);
     if (raw) {
       _expiryDates = JSON.parse(raw)
-        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+        .filter((dateStr) => /^\d{4}-\d{2}-\d{2}$/.test(dateStr))
         .sort();
       return;
     }
@@ -208,7 +208,7 @@ function loadExpiryDates() {
  */
 function getIterationExpiry(completedDay) {
   if (!_expiryDates) loadExpiryDates();
-  return _expiryDates.find((d) => d > completedDay) || null;
+  return _expiryDates.find((dateStr) => dateStr > completedDay) || null;
 }
 
 /**
@@ -232,12 +232,12 @@ function saveExpiryDates() {
   const raw = document.getElementById('expiryTextarea').value;
   const dates = raw
     .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => /^\d{4}-\d{2}-\d{2}$/.test(l));
+    .map((line) => line.trim())
+    .filter((line) => /^\d{4}-\d{2}-\d{2}$/.test(line));
   const invalid = raw
     .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l && !/^\d{4}-\d{2}-\d{2}$/.test(l));
+    .map((line) => line.trim())
+    .filter((line) => line && !/^\d{4}-\d{2}-\d{2}$/.test(line));
   if (invalid.length) {
     const fb = document.getElementById('expiryFeedback');
     fb.style.color = '#f17070';
@@ -261,15 +261,15 @@ function renderCompleted() {
   // Tasks that are actively inprogress/todo on the current view date
   const activeTodayTexts = new Set(
     planTasks
-      .filter((t) => t.date === viewKey && t.status !== 'done')
-      .map((t) => t.text.toLowerCase())
+      .filter((task) => task.date === viewKey && task.status !== 'done')
+      .map((task) => task.text.toLowerCase())
   );
   const done = planTasks
-    .filter((t) => {
-      if (t.status !== 'done') return false;
+    .filter((task) => {
+      if (task.status !== 'done') return false;
       // Don't show completed tasks that have a live version on this date
-      if (activeTodayTexts.has(t.text.toLowerCase())) return false;
-      const completedTs = t.completedAt || new Date((t.date || viewKey) + 'T23:59:00').getTime();
+      if (activeTodayTexts.has(task.text.toLowerCase())) return false;
+      const completedTs = task.completedAt || new Date((task.date || viewKey) + 'T23:59:00').getTime();
       const completedDay = dk(new Date(completedTs));
       const expiryDay = getIterationExpiry(completedDay);
       // Show from completion day until (but not including) the iteration expiry date.
@@ -281,8 +281,8 @@ function renderCompleted() {
 
   // Deduplicate by text — keep only the most recently completed version of each task
   const seen = new Set();
-  const deduped = done.filter((t) => {
-    const key = t.text.toLowerCase();
+  const deduped = done.filter((task) => {
+    const key = task.text.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -300,11 +300,11 @@ function renderCompleted() {
   sec.classList.toggle('collapsed', completedCollapsed);
 
   document.getElementById('completedBody').innerHTML = deduped
-    .map((t) => {
-      const cat = getCat(t.tag || 'other');
+    .map((task) => {
+      const cat = getCat(task.tag || 'other');
       let whenStr = 'date unknown';
-      if (t.completedAt) {
-        const d = new Date(t.completedAt);
+      if (task.completedAt) {
+        const d = new Date(task.completedAt);
         const mo = d.toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' });
         const hh = d.getHours(),
           mm = d.getMinutes();
@@ -312,14 +312,14 @@ function renderCompleted() {
         whenStr = isSentinel
           ? `completed ${mo}`
           : `completed ${mo} at ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-      } else if (t.date) {
-        const d = new Date(t.date + 'T12:00:00');
+      } else if (task.date) {
+        const d = new Date(task.date + 'T12:00:00');
         whenStr = `completed ${d.toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })}`;
       }
       return `<div class="completed-item">
         <span class="plan-status done-st" style="pointer-events:none;flex-shrink:0;font-size:10px;padding:1px 7px">Done</span>
         <span class="completed-dot" style="background:${safeCssColor(cat.color)}"></span>
-        <span class="completed-text">${t.emoji ? escHtml(t.emoji) + ' ' : ''}${jiraTicketHtml(t.text)}</span>
+        <span class="completed-text">${task.emoji ? escHtml(task.emoji) + ' ' : ''}${jiraTicketHtml(task.text)}</span>
         <span class="completed-when">${whenStr}</span>
       </div>`;
     })
@@ -334,20 +334,20 @@ document.getElementById('completedHeader').addEventListener('click', () => {
 // Delegated bill-btn handler — covers plan, pending, completed sections
 document.addEventListener(
   'click',
-  (e) => {
-    const btn = e.target.closest('.bill-btn');
+  (event) => {
+    const btn = event.target.closest('.bill-btn');
     if (!btn) return;
-    e.stopPropagation();
+    event.stopPropagation();
     if (btn.dataset.pid) {
-      const t = planTasks.find((t) => t.id === btn.dataset.pid);
-      if (!t) return;
-      t.billable = t.billable === false ? true : false;
+      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      if (!task) return;
+      task.billable = task.billable === false ? true : false;
       savePlan();
       renderPlan();
       renderCompleted();
     } else if (btn.dataset.etext) {
       // Log entry — save billable directly on the entry, and sync to matching planTasks
-      const entry = entries.find((e) => e.id === btn.dataset.eid);
+      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.eid);
       if (!entry) return;
       // Determine toggle: if currently billable → make non-billable, and vice versa
       const curBill =
@@ -358,8 +358,8 @@ document.addEventListener(
       // Also update matching planTasks so plan rows stay in sync
       const key = entry.text.toLowerCase().trim();
       planTasks
-        .filter((t) => t.text.toLowerCase().trim() === key)
-        .forEach((t) => (t.billable = entry.billable));
+        .filter((task) => task.text.toLowerCase().trim() === key)
+        .forEach((task) => (task.billable = entry.billable));
       save();
       savePlan();
       render();
@@ -371,16 +371,16 @@ document.addEventListener(
 // Delegated prio-btn handler — cycles priority normal → high → low → normal
 document.addEventListener(
   'click',
-  (e) => {
-    const btn = e.target.closest('.prio-btn');
+  (event) => {
+    const btn = event.target.closest('.prio-btn');
     if (!btn || !btn.dataset.pid) return;
-    e.stopPropagation();
-    const t = planTasks.find((t) => t.id === btn.dataset.pid);
-    if (!t) return;
-    const cur = t.priority || 0;
+    event.stopPropagation();
+    const task = planTasks.find((task) => task.id === btn.dataset.pid);
+    if (!task) return;
+    const cur = task.priority || 0;
     const next = cur === 0 ? 1 : cur === 1 ? -1 : 0;
-    if (next === 0) delete t.priority;
-    else t.priority = next;
+    if (next === 0) delete task.priority;
+    else task.priority = next;
     savePlan();
     renderPlan();
   },
