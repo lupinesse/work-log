@@ -67,9 +67,25 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node .github/scripts/format-a11y-report.mjs
 
+      # The `secrets` context is not available in step `if:` conditions, so
+      # map the App ID through `env` here and guard the mint step on this
+      # output. Referencing `secrets` directly in `if:` makes the whole
+      # workflow file invalid (it fails to start any jobs).
+      - name: Check reviewer App is configured
+        id: app-check
+        env:
+          APP_ID: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
+        run: |
+          if [ -n "$APP_ID" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLAUDE_REVIEWER_APP_ID is not set — comment will post as github-actions[bot]."
+          fi
+
       - name: Mint Claude Reviewer App token
         id: claude-token
-        if: secrets.CLAUDE_REVIEWER_APP_ID != ''
+        if: steps.app-check.outputs.app == 'true'
         uses: actions/create-github-app-token@v3
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
