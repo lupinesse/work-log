@@ -21,7 +21,7 @@ let tbDragId = null; // block id when dragging from grid
  */
 function renderTimeblock() {
   const dateKey = dk(viewDate);
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
 
   // Time labels
   const timesEl = document.getElementById('tbTimes');
@@ -82,8 +82,8 @@ function renderTimeblock() {
 
   const meetingNames = new Set(
     blocks
-      .filter((b) => b.date === dateKey && b.type === 'meeting')
-      .map((b) => b.text.toLowerCase())
+      .filter((block) => block.date === dateKey && block.type === 'meeting')
+      .map((block) => block.text.toLowerCase())
   );
 
   // Merge same-task entries with < 30 min gap into a single visual block
@@ -108,30 +108,30 @@ function renderTimeblock() {
   }
 
   const dayAutoEntries = entries.filter(
-    (e) =>
-      e.date === dateKey &&
-      e.id !== liveId &&
-      !meetingNames.has(e.text.replace(/^📅\s*/, '').toLowerCase()) &&
-      !meetingNames.has(e.text.toLowerCase()) &&
-      (e.tsEnd || isToday(viewDate))
+    (entry) =>
+      entry.date === dateKey &&
+      entry.id !== liveId &&
+      !meetingNames.has(entry.text.replace(/^📅\s*/, '').toLowerCase()) &&
+      !meetingNames.has(entry.text.toLowerCase()) &&
+      (entry.tsEnd || isToday(viewDate))
   );
-  mergeAutoEntries(dayAutoEntries).forEach((e) => {
-    const endTs = e._mergedEnd || (isToday(viewDate) ? Date.now() : null);
+  mergeAutoEntries(dayAutoEntries).forEach((entry) => {
+    const endTs = entry._mergedEnd || (isToday(viewDate) ? Date.now() : null);
     if (!endTs) return;
-    const el = autoBlockEl(e.text, e.tag, e.ts, endTs, false);
+    const el = autoBlockEl(entry.text, entry.tag, entry.ts, endTs, false);
     if (el) grid.appendChild(el);
   });
 
   // Live timer block — skip if the active timer is a meeting block (it will pulse instead)
   if (liveId) {
-    const le = entries.find((e) => e.id === liveId);
+    const le = entries.find((entry) => entry.id === liveId);
     const isMeetingBlock =
       le &&
       blocks.some(
-        (b) =>
-          b.date === dateKey &&
-          b.type === 'meeting' &&
-          b.text.toLowerCase() === le.text.toLowerCase()
+        (block) =>
+          block.date === dateKey &&
+          block.type === 'meeting' &&
+          block.text.toLowerCase() === le.text.toLowerCase()
       );
     if (le && le.date === dateKey && !isMeetingBlock) {
       const fakeEnd = activeTimer.paused
@@ -143,14 +143,14 @@ function renderTimeblock() {
   }
 
   // ── Manual planned blocks (render last = on top, dashed border) ──
-  const dayBlocks = blocks.filter((b) => b.date === dateKey);
-  const tbLiveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
-  dayBlocks.forEach((b) => {
-    const cat = getCat(b.tag || 'other');
+  const dayBlocks = blocks.filter((block) => block.date === dateKey);
+  const tbLiveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
+  dayBlocks.forEach((block) => {
+    const cat = getCat(block.tag || 'other');
     const el = document.createElement('div');
     const isDone = planTasks.some(
-      (t) =>
-        t.date === dateKey && t.text.toLowerCase() === b.text.toLowerCase() && t.status === 'done'
+      (task) =>
+        task.date === dateKey && task.text.toLowerCase() === block.text.toLowerCase() && task.status === 'done'
     );
     const cleanLiveText = tbLiveEntry ? tbLiveEntry.text.replace(/^📅\s*/, '').toLowerCase() : '';
     const isMeetingBlock =
@@ -159,53 +159,53 @@ function renderTimeblock() {
       (b.text.toLowerCase() === cleanLiveText ||
         b.text.toLowerCase() === tbLiveEntry.text.toLowerCase());
     el.className = 'tb-block plan' + (isDone ? ' task-done' : '') + (isMeetingBlock ? ' live' : '');
-    el.dataset.bid = b.id;
+    el.dataset.bid = block.id;
     el.draggable = true;
-    el.style.top = b.slot * TB_SLOT_H + 1 + 'px';
-    el.style.height = b.duration * TB_SLOT_H - 3 + 'px';
+    el.style.top = block.slot * TB_SLOT_H + 1 + 'px';
+    el.style.height = block.duration * TB_SLOT_H - 3 + 'px';
     el.style.background = cat.color + '18';
     el.style.borderLeftColor = cat.color;
     el.style.color = cat.color;
 
-    const icon = b.type === 'meeting' ? '📅 ' : '';
-    const emojiPrefix = b.emoji ? escHtml(b.emoji) + ' ' : '';
-    const dur = b.duration * 30;
+    const icon = block.type === 'meeting' ? '📅 ' : '';
+    const emojiPrefix = block.emoji ? escHtml(block.emoji) + ' ' : '';
+    const dur = block.duration * 30;
     const h = Math.floor(dur / 60),
       m = dur % 60;
     const durStr = h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
     el.innerHTML =
-      `<div class="tb-block-name">${emojiPrefix}${icon}${escHtml(b.text)}</div>` +
-      (b.duration > 1 ? `<div class="tb-block-sub">${escHtml(cat.label)} · ${durStr}</div>` : '') +
-      (b.type !== 'meeting'
-        ? `<button class="tb-block-start" data-bid="${b.id}" draggable="false">▶ start</button>`
+      `<div class="tb-block-name">${emojiPrefix}${icon}${escHtml(block.text)}</div>` +
+      (block.duration > 1 ? `<div class="tb-block-sub">${escHtml(cat.label)} · ${durStr}</div>` : '') +
+      (block.type !== 'meeting'
+        ? `<button class="tb-block-start" data-bid="${block.id}" draggable="false">▶ start</button>`
         : '') +
-      `<button class="tb-block-emoji${b.emoji ? ' has-emoji' : ''}" data-bid="${b.id}" title="add emoji" draggable="false">${b.emoji ? escHtml(b.emoji) : '✦'}</button>` +
-      `<button class="tb-block-del" data-bid="${b.id}" draggable="false">&times;</button>`;
+      `<button class="tb-block-emoji${block.emoji ? ' has-emoji' : ''}" data-bid="${block.id}" title="add emoji" draggable="false">${block.emoji ? escHtml(block.emoji) : '✦'}</button>` +
+      `<button class="tb-block-del" data-bid="${block.id}" draggable="false">&times;</button>`;
 
-    el.addEventListener('dragstart', (e) => {
+    el.addEventListener('dragstart', (event) => {
       tbDragSource = 'grid';
-      tbDragId = b.id;
-      e.dataTransfer.effectAllowed = 'move';
+      tbDragId = block.id;
+      event.dataTransfer.effectAllowed = 'move';
     });
     el.addEventListener('dragend', () => {
       tbDragSource = null;
       tbDragId = null;
     });
-    el.querySelector('.tb-block-del').addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      blocks = blocks.filter((bl) => bl.id !== b.id);
+    el.querySelector('.tb-block-del').addEventListener('click', (event) => {
+      event.stopPropagation();
+      blocks = blocks.filter((otherBlock) => otherBlock.id !== block.id);
       saveBlocks();
       renderTimeblock();
     });
     const startBtn = el.querySelector('.tb-block-start');
     if (startBtn)
-      startBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        tbStartBlock(b.id);
+      startBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        tbStartBlock(block.id);
       });
-    el.querySelector('.tb-block-emoji').addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      openBlockEmojiPicker(b.id, ev.currentTarget);
+    el.querySelector('.tb-block-emoji').addEventListener('click', (event) => {
+      event.stopPropagation();
+      openBlockEmojiPicker(block.id, event.currentTarget);
     });
     grid.appendChild(el);
   });
@@ -224,12 +224,12 @@ function renderTimeblock() {
   // Build a set of 30-min slots that have coverage (from entries or planned blocks)
   const coveredSlots = new Set();
   entries
-    .filter((e) => e.date === dateKey && e.tsEnd)
-    .forEach((e) => {
-      const startSlot = timeToSlot(new Date(e.ts).getHours(), new Date(e.ts).getMinutes());
+    .filter((entry) => entry.date === dateKey && entry.tsEnd)
+    .forEach((entry) => {
+      const startSlot = timeToSlot(new Date(entry.ts).getHours(), new Date(entry.ts).getMinutes());
       // If tsEnd is exactly on a 30-min boundary (e.g. 09:30:00), back off 1 minute
       // so we don't accidentally mark the NEXT slot as covered
-      const endD = new Date(e.tsEnd);
+      const endD = new Date(entry.tsEnd);
       const onBoundary = endD.getMinutes() % 30 === 0 && endD.getSeconds() === 0;
       // timeToSlot uses Math.round(m/30), so backing off 1 min (→29) still rounds to slot+1.
       // Instead compute endSlot directly: if on a boundary, the entry ends AT that boundary,
@@ -256,9 +256,9 @@ function renderTimeblock() {
     }
   }
   blocks
-    .filter((b) => b.date === dateKey)
-    .forEach((b) => {
-      for (let s = b.slot; s < Math.min(TB_SLOTS, b.slot + b.duration); s++) coveredSlots.add(s);
+    .filter((block) => block.date === dateKey)
+    .forEach((block) => {
+      for (let s = block.slot; s < Math.min(TB_SLOTS, block.slot + block.duration); s++) coveredSlots.add(s);
     });
 
   for (let slot = 0; slot < TB_SLOTS; slot++) {
@@ -285,41 +285,41 @@ function renderTimeblock() {
 
   // Grid-level drag/drop (works even when blocks overlap slots)
   grid._dragSlot = 0;
-  grid.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+  grid.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
     const rect = grid.getBoundingClientRect();
     const slot = Math.max(
       0,
-      Math.min(TB_SLOTS - 1, Math.floor((e.clientY - rect.top) / TB_SLOT_H))
+      Math.min(TB_SLOTS - 1, Math.floor((event.clientY - rect.top) / TB_SLOT_H))
     );
-    grid.querySelectorAll('.tb-slot.drag-over').forEach((s) => s.classList.remove('drag-over'));
+    grid.querySelectorAll('.tb-slot.drag-over').forEach((slotEl) => slotEl.classList.remove('drag-over'));
     const slotEl = grid.querySelector(`[data-slot="${slot}"]`);
     if (slotEl) slotEl.classList.add('drag-over');
     grid._dragSlot = slot;
   });
-  grid.addEventListener('dragleave', (e) => {
-    if (!grid.contains(e.relatedTarget))
-      grid.querySelectorAll('.tb-slot.drag-over').forEach((s) => s.classList.remove('drag-over'));
+  grid.addEventListener('dragleave', (event) => {
+    if (!grid.contains(event.relatedTarget))
+      grid.querySelectorAll('.tb-slot.drag-over').forEach((slotEl) => slotEl.classList.remove('drag-over'));
   });
-  grid.addEventListener('drop', (e) => {
-    e.preventDefault();
-    grid.querySelectorAll('.tb-slot.drag-over').forEach((s) => s.classList.remove('drag-over'));
+  grid.addEventListener('drop', (event) => {
+    event.preventDefault();
+    grid.querySelectorAll('.tb-slot.drag-over').forEach((slotEl) => slotEl.classList.remove('drag-over'));
     const target = grid._dragSlot;
 
     if (tbDragSource === 'grid' && tbDragId) {
-      const b = blocks.find((bl) => bl.id === tbDragId);
-      if (b) {
-        const newSlot = Math.min(target, TB_SLOTS - b.duration);
+      const draggedBlock = blocks.find((block) => block.id === tbDragId);
+      if (draggedBlock) {
+        const newSlot = Math.min(target, TB_SLOTS - draggedBlock.duration);
         const newStart = TB_START * 60 + newSlot * 30;
-        const newEnd = newStart + b.duration * 30;
-        const hits = tbOverlaps(newStart, newEnd, dateKey, b.id);
+        const newEnd = newStart + draggedBlock.duration * 30;
+        const hits = tbOverlaps(newStart, newEnd, dateKey, draggedBlock.id);
         if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) {
           tbDragSource = null;
           tbDragId = null;
           return;
         }
-        b.slot = newSlot;
+        draggedBlock.slot = newSlot;
         saveBlocks();
         renderTimeblock();
       }

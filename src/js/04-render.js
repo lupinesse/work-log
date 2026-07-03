@@ -37,13 +37,13 @@ function render() {
   /* ── 3. Header stat tiles (distinct tasks today / epics this week / streak) ── */
   const todayKey = dk(new Date());
   document.getElementById('statToday').textContent = new Set(
-    entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase())
+    entries.filter((entry) => entry.date === todayKey).map((entry) => entry.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
     weekStart.setHours(0, 0, 0, 0);
-    return new Set(entries.filter((e) => new Date(e.ts) >= weekStart).map((e) => e.tag || 'other'))
+    return new Set(entries.filter((entry) => new Date(entry.ts) >= weekStart).map((entry) => entry.tag || 'other'))
       .size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
@@ -70,12 +70,12 @@ function render() {
   }
 
   // Today: task with most tracked time
-  const todayTimed = entries.filter((e) => e.date === todayKey && e.tsEnd && e.tsEnd > e.ts);
+  const todayTimed = entries.filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts);
   const todayByTask = {};
-  todayTimed.forEach((e) => {
-    const taskKey = e.text.toLowerCase();
-    if (!todayByTask[taskKey]) todayByTask[taskKey] = { label: e.text, ms: 0 };
-    todayByTask[taskKey].ms += e.tsEnd - e.ts;
+  todayTimed.forEach((entry) => {
+    const taskKey = entry.text.toLowerCase();
+    if (!todayByTask[taskKey]) todayByTask[taskKey] = { label: entry.text, ms: 0 };
+    todayByTask[taskKey].ms += entry.tsEnd - entry.ts;
   });
   const topTask = Object.values(todayByTask).sort((a, b) => b.ms - a.ms)[0];
   const todaySub = document.getElementById('statTodaySub');
@@ -91,13 +91,13 @@ function render() {
   thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
   thisWeekStart.setHours(0, 0, 0, 0);
   const weekTimed = entries.filter(
-    (e) => new Date(e.ts) >= thisWeekStart && e.tsEnd && e.tsEnd > e.ts
+    (entry) => new Date(entry.ts) >= thisWeekStart && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const weekByTask = {};
-  weekTimed.forEach((e) => {
-    const taskKey = e.text.toLowerCase();
-    if (!weekByTask[taskKey]) weekByTask[taskKey] = { label: e.text, ms: 0 };
-    weekByTask[taskKey].ms += e.tsEnd - e.ts;
+  weekTimed.forEach((entry) => {
+    const taskKey = entry.text.toLowerCase();
+    if (!weekByTask[taskKey]) weekByTask[taskKey] = { label: entry.text, ms: 0 };
+    weekByTask[taskKey].ms += entry.tsEnd - entry.ts;
   });
   const topWeekTask = Object.values(weekByTask).sort((a, b) => b.ms - a.ms)[0];
   const weekSub = document.getElementById('statWeekSub');
@@ -113,7 +113,7 @@ function render() {
   {
     const streakCursor = new Date();
     streakCursor.setDate(streakCursor.getDate() - 1);
-    const daysWithEntries = new Set(entries.map((e) => e.date));
+    const daysWithEntries = new Set(entries.map((entry) => entry.date));
     while (daysWithEntries.has(dk(streakCursor))) {
       streakDays.push(dk(streakCursor));
       streakCursor.setDate(streakCursor.getDate() - 1);
@@ -125,8 +125,8 @@ function render() {
       bestMs = 0;
     streakDays.forEach((dateKey2) => {
       const ms = entries
-        .filter((e) => e.date === dateKey2 && e.tsEnd && e.tsEnd > e.ts)
-        .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+        .filter((entry) => entry.date === dateKey2 && entry.tsEnd && entry.tsEnd > entry.ts)
+        .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
       if (ms > bestMs) {
         bestMs = ms;
         bestDay = dateKey2;
@@ -185,60 +185,60 @@ function render() {
   // Build entry row HTML — one <div class="entry"> per log entry; ad-hoc row pinned at bottom
   timelineEl.innerHTML =
     list
-      .map((e) => {
-        const isTiming = activeTimer && activeTimer.entryId === e.id;
+      .map((entry) => {
+        const isTiming = activeTimer && activeTimer.entryId === entry.id;
         const isPaused = isTiming && activeTimer.paused;
-        const color = getCatColor(e.tag);
+        const color = getCatColor(entry.tag);
 
         const endLine = isTiming
           ? isPaused
             ? `<span class="etime-end" style="color:#EF9F27;font-size:10px;">paused</span>`
             : `<span class="etime-end" style="color:#5DCAA5;font-size:10px;">timing…</span>`
-          : e.tsEnd
-            ? `<span class="etime-end">&#8627; ${fmtTime(e.tsEnd)}</span>${durLabel(e.ts, e.tsEnd)}`
+          : entry.tsEnd
+            ? `<span class="etime-end">&#8627; ${fmtTime(entry.tsEnd)}</span>${durLabel(entry.ts, entry.tsEnd)}`
             : `<span class="etime-end" style="color:var(--text3);font-style:italic;font-size:10px;">+ end time</span>`;
 
         const catOpts =
           categories
             .map(
-              (c) =>
-                `<button class="cat-opt${e.tag === c.id ? ' sel' : ''}" data-id="${e.id}" data-cat="${c.id}" style="${e.tag === c.id ? `background:${safeCssColor(c.color)};` : ''}color:${e.tag === c.id ? '#fff' : safeCssColor(c.color)}">${escHtml(c.label)}</button>`
+              (cat) =>
+                `<button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}</button>`
             )
-            .join('') + `<button class="cat-cancel" data-id="${e.id}">cancel</button>`;
+            .join('') + `<button class="cat-cancel" data-id="${entry.id}">cancel</button>`;
 
-        const startVal = toTimeInput(e.ts);
-        const endVal = e.tsEnd ? toTimeInput(e.tsEnd) : '';
+        const startVal = toTimeInput(entry.ts);
+        const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
-        const billableEmoji = isEntryBillable(e) ? '💰' : '💸';
+        const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
         return `
-        <div class="entry${isTiming ? ' is-timing' : ''}${e.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${e.id}">
+        <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
-            <span class="etime-display" data-id="${e.id}">
-              <span class="etime-start">${fmtTime(e.ts)}</span>
+            <span class="etime-display" data-id="${entry.id}">
+              <span class="etime-start">${fmtTime(entry.ts)}</span>
               ${endLine}
             </span>
-            <div class="etime-editor" id="ed-${e.id}">
-              <div class="etime-editor-row"><span class="etime-lbl">start</span><input class="etime-input" type="time" id="ts-${e.id}" value="${startVal}" /></div>
-              <div class="etime-editor-row"><span class="etime-lbl">end</span><input class="etime-input" type="time" id="te-${e.id}" value="${endVal}" placeholder="--:--" /></div>
+            <div class="etime-editor" id="ed-${entry.id}">
+              <div class="etime-editor-row"><span class="etime-lbl">start</span><input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" /></div>
+              <div class="etime-editor-row"><span class="etime-lbl">end</span><input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" /></div>
               <div class="etime-actions">
-                <button class="etime-save" data-id="${e.id}">save</button>
-                <button class="etime-cancel" data-id="${e.id}">cancel</button>
+                <button class="etime-save" data-id="${entry.id}">save</button>
+                <button class="etime-cancel" data-id="${entry.id}">cancel</button>
               </div>
             </div>
           </div>
-          ${sigHtml(e)}
+          ${sigHtml(entry)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${e.id}">${jiraTicketHtml(e.text)}${e._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
-            <button class="etag-btn" data-id="${e.id}">
+            <div class="etext" data-id="${entry.id}">${jiraTicketHtml(entry.text)}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
+            <button class="etag-btn" data-id="${entry.id}">
               <span class="etag-cdot" style="background:${color}"></span>
-              ${escHtml(getCatLabel(e.tag))} &#9660;
+              ${escHtml(getCatLabel(entry.tag))} &#9660;
             </button>
-            <div class="cat-picker" id="cp-${e.id}">${catOpts}</div>
+            <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
           </div>
-          <button class="ebill-btn" data-id="${e.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
-          <button class="erestart" data-id="${e.id}" title="restart with timer">&#9654;</button>
-          <button class="edel" data-id="${e.id}" title="delete">&times;</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
+          <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
         </div>`;
       })
       .join('') + adHocRow;
@@ -267,12 +267,12 @@ function render() {
       render();
     };
     adHocBtn.addEventListener('click', commitAdHoc);
-    adHocInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') commitAdHoc();
+    adHocInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') commitAdHoc();
     });
     // Prevent Space from opening the rapid-log overlay while typing here
-    adHocInput.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') e.stopPropagation();
+    adHocInput.addEventListener('keydown', (event) => {
+      if (event.code === 'Space') event.stopPropagation();
     });
   }
 
@@ -290,7 +290,7 @@ function render() {
   timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id,
-        entry = entries.find((e) => e.id === id);
+        entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
       const newStartTime = document.getElementById('ts-' + id).value;
       const newEndTime = document.getElementById('te-' + id).value;
@@ -323,11 +323,11 @@ function render() {
   });
   timelineEl.querySelectorAll('.cat-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const entry = entries.find((e) => e.id === btn.dataset.id);
+      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
       if (entry) {
         const taskText = entry.text.toLowerCase();
-        entries.forEach((e) => {
-          if (e.text.toLowerCase() === taskText) e.tag = btn.dataset.cat;
+        entries.forEach((sameEntry) => {
+          if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = btn.dataset.cat;
         });
         save();
         render();
@@ -343,7 +343,7 @@ function render() {
   /* billable toggle */
   timelineEl.querySelectorAll('.ebill-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const entry = entries.find((e) => e.id === btn.dataset.id);
+      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
       if (entry) {
         entry.billable = entry.billable === false ? undefined : false;
         save();
@@ -363,7 +363,7 @@ function render() {
         save();
         updateTimerBtn(false);
       }
-      entries = entries.filter((e) => e.id !== id);
+      entries = entries.filter((entry) => entry.id !== id);
       save();
       render();
     });
@@ -372,7 +372,7 @@ function render() {
   /* restart */
   timelineEl.querySelectorAll('.erestart').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const sourceEntry = entries.find((e) => e.id === btn.dataset.id);
+      const sourceEntry = entries.find((entry) => entry.id === btn.dataset.id);
       if (!sourceEntry) return;
       if (activeTimer) stopTimer();
       const newEntry = {
@@ -395,7 +395,7 @@ function render() {
     el.addEventListener('click', () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;
-      const entry = entries.find((e) => e.id === id);
+      const entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
       const origText = entry.text;
       const input = document.createElement('input');
@@ -412,11 +412,11 @@ function render() {
         const newText = input.value.trim();
         if (newText && newText !== origText) {
           const origLower = origText.toLowerCase();
-          entries.forEach((e) => {
-            if (e.text.toLowerCase() === origLower) e.text = newText;
+          entries.forEach((sameEntry) => {
+            if (sameEntry.text.toLowerCase() === origLower) sameEntry.text = newText;
           });
-          planTasks.forEach((t) => {
-            if (t.text.toLowerCase() === origLower) t.text = newText;
+          planTasks.forEach((task) => {
+            if (task.text.toLowerCase() === origLower) task.text = newText;
           });
           save();
           savePlan();
@@ -454,8 +454,8 @@ function renderQuickPick() {
   const qp = document.getElementById('quickPick');
   const seen = new Set();
   // Build deduplicated recent list, then filter out hidden ones
-  const allRecent = [...entries].reverse().filter((e) => {
-    const k = e.text.toLowerCase();
+  const allRecent = [...entries].reverse().filter((entry) => {
+    const k = entry.text.toLowerCase();
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
@@ -464,17 +464,17 @@ function renderQuickPick() {
   const todayKeyQp = dk(new Date());
   const expiredQp = new Set(
     allRecent
-      .filter((e) => {
-        const expiry = getIterationExpiry(e.date || '');
+      .filter((entry) => {
+        const expiry = getIterationExpiry(entry.date || '');
         return expiry && todayKeyQp >= expiry;
       })
-      .map((e) => e.text.toLowerCase())
+      .map((entry) => entry.text.toLowerCase())
   );
   const recent = allRecent
-    .filter((e) => !qpHidden.has(e.text.toLowerCase()) && !expiredQp.has(e.text.toLowerCase()))
+    .filter((entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase()))
     .slice(0, 16);
   // Hidden count is the intersection of qpHidden with task texts actually present in entries
-  const hiddenInUse = allRecent.filter((e) => qpHidden.has(e.text.toLowerCase())).length;
+  const hiddenInUse = allRecent.filter((entry) => qpHidden.has(entry.text.toLowerCase())).length;
 
   if (!recent.length && !hiddenInUse) {
     qp.innerHTML = '';
@@ -482,11 +482,11 @@ function renderQuickPick() {
   }
 
   const itemsHtml = recent
-    .map((e) => {
+    .map((entry) => {
       return (
-        `<button class="qp-item" data-text="${escHtml(e.text)}" data-tag="${e.tag}">` +
-        `<span class="qp-item-text">${escHtml(e.text)}</span>` +
-        `<span class="qp-remove" data-text="${escHtml(e.text)}" title="remove from recent tasks">&times;</span>` +
+        `<button class="qp-item" data-text="${escHtml(entry.text)}" data-tag="${entry.tag}">` +
+        `<span class="qp-item-text">${escHtml(entry.text)}</span>` +
+        `<span class="qp-remove" data-text="${escHtml(entry.text)}" title="remove from recent tasks">&times;</span>` +
         `</button>`
       );
     })
@@ -499,8 +499,8 @@ function renderQuickPick() {
 
   // Click pill body — fill capture input (only if click wasn't on the ✕)
   qp.querySelectorAll('.qp-item').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      if (e.target.closest('.qp-remove')) return;
+    btn.addEventListener('click', (event) => {
+      if (event.target.closest('.qp-remove')) return;
       document.getElementById('captureInput').value = btn.dataset.text;
       selectedTag = btn.dataset.tag;
       renderTagRow();
@@ -508,10 +508,10 @@ function renderQuickPick() {
     });
   });
   // Click ✕ — hide from recent list
-  qp.querySelectorAll('.qp-remove').forEach((x) => {
-    x.addEventListener('click', (e) => {
-      e.stopPropagation();
-      qpHidden.add(x.dataset.text.toLowerCase());
+  qp.querySelectorAll('.qp-remove').forEach((removeBtn) => {
+    removeBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      qpHidden.add(removeBtn.dataset.text.toLowerCase());
       saveQpHidden();
       renderQuickPick();
     });
@@ -539,16 +539,16 @@ function renderChart(list) {
   // Decorate the active timer's entry with a synthetic tsEnd so its accumulated
   // time appears in the chart in (near) real time — not just after the timer stops.
   // Re-runs naturally on every render; a 15-min interval also forces a refresh.
-  const decorated = (list || []).map((e) => {
-    if (activeTimer && e.id === activeTimer.entryId && !e.tsEnd) {
+  const decorated = (list || []).map((entry) => {
+    if (activeTimer && entry.id === activeTimer.entryId && !entry.tsEnd) {
       const liveEnd = activeTimer.paused
-        ? e.ts + (activeTimer.accumulatedMs || 0)
-        : Math.max(Date.now(), activeTimer.startTs || e.ts);
-      return Object.assign({}, e, { tsEnd: liveEnd, _live: true });
+        ? entry.ts + (activeTimer.accumulatedMs || 0)
+        : Math.max(Date.now(), activeTimer.startTs || entry.ts);
+      return Object.assign({}, entry, { tsEnd: liveEnd, _live: true });
     }
-    return e;
+    return entry;
   });
-  const timed = decorated.filter((e) => e.tsEnd && e.tsEnd > e.ts);
+  const timed = decorated.filter((entry) => entry.tsEnd && entry.tsEnd > entry.ts);
 
   const toggleHtml = `<div class="chart-toggle">
       <button class="chart-tog${chartMode === 'task' ? ' active' : ''}" data-mode="task">by task</button>
@@ -557,9 +557,9 @@ function renderChart(list) {
 
   if (!timed.length) {
     el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">time tracked</span>${toggleHtml}</div><div class="chart-body"><div class="chart-empty">add end times to entries to see the chart</div></div></div>`;
-    el.querySelectorAll('.chart-tog').forEach((b) =>
-      b.addEventListener('click', () => {
-        chartMode = b.dataset.mode;
+    el.querySelectorAll('.chart-tog').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        chartMode = btn.dataset.mode;
         renderChart(list);
       })
     );
@@ -576,20 +576,20 @@ function renderChart(list) {
     else billCounts[key].nonBill++;
   }
   if (chartMode === 'task') {
-    timed.forEach((e) => {
-      const key = e.text.toLowerCase();
-      totals[key] = (totals[key] || 0) + Math.max(0, e.tsEnd - e.ts);
-      if (!meta[key]) meta[key] = { label: e.text, color: getCatColor(e.tag) };
-      if (e._live) liveKeys.add(key);
-      tallyBill(key, e);
+    timed.forEach((entry) => {
+      const key = entry.text.toLowerCase();
+      totals[key] = (totals[key] || 0) + Math.max(0, entry.tsEnd - entry.ts);
+      if (!meta[key]) meta[key] = { label: entry.text, color: getCatColor(entry.tag) };
+      if (entry._live) liveKeys.add(key);
+      tallyBill(key, entry);
     });
   } else {
-    timed.forEach((e) => {
-      const key = e.tag || 'other';
-      totals[key] = (totals[key] || 0) + Math.max(0, e.tsEnd - e.ts);
+    timed.forEach((entry) => {
+      const key = entry.tag || 'other';
+      totals[key] = (totals[key] || 0) + Math.max(0, entry.tsEnd - entry.ts);
       if (!meta[key]) meta[key] = { label: getCatLabel(key), color: getCatColor(key) };
-      if (e._live) liveKeys.add(key);
-      tallyBill(key, e);
+      if (entry._live) liveKeys.add(key);
+      tallyBill(key, entry);
     });
   }
   // Per-row billable icon: 💰 if all billable, 💸 if all non-billable, ⚖️ if mixed
@@ -627,13 +627,13 @@ function renderChart(list) {
     .join('');
 
   const totalDur = fmtDur(grandTotal);
-  const billMs = timed.filter((e) => isEntryBillable(e)).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
-  const nonBillMs = timed.reduce((s, e) => s + (e.tsEnd - e.ts), 0) - billMs;
+  const billMs = timed.filter((entry) => isEntryBillable(entry)).reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
   el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
-  el.querySelectorAll('.chart-tog').forEach((b) =>
-    b.addEventListener('click', () => {
-      chartMode = b.dataset.mode;
+  el.querySelectorAll('.chart-tog').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      chartMode = btn.dataset.mode;
       renderChart(list);
     })
   );

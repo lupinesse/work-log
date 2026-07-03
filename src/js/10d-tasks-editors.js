@@ -10,27 +10,27 @@
 function bindPlanCommentEvents(qa) {
   // Accept / skip / edit for status comment
   function saveComment(pid) {
-    const t = planTasks.find((t) => t.id === pid);
-    if (!t) {
+    const task = planTasks.find((task) => task.id === pid);
+    if (!task) {
       _pendingCommentId = null;
       _pendingCommentText = '';
       renderPlan();
       return;
     }
-    if (!t.statusComments) t.statusComments = [];
+    if (!task.statusComments) task.statusComments = [];
     const inp = document.getElementById('pc-inp-' + pid);
     const val = inp ? inp.value.trim() : (_pendingCommentText || '').trim();
-    const entry = [...t.statusComments].reverse().find((c) => c.status === t.status);
+    const entry = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
     if (entry) {
       if (val) {
         entry.comment = val;
       } else {
         // Empty accept behaves as skip — remove the entry so the row
         // collapses to "+ add reason" rather than reopening the input.
-        t.statusComments = t.statusComments.filter((c) => c !== entry);
+        task.statusComments = task.statusComments.filter((comment) => comment !== entry);
       }
     } else if (val) {
-      t.statusComments.push({ status: t.status, comment: val, ts: Date.now() });
+      task.statusComments.push({ status: task.status, comment: val, ts: Date.now() });
     }
     _pendingCommentId = null;
     _pendingCommentText = '';
@@ -42,10 +42,10 @@ function bindPlanCommentEvents(qa) {
   });
   qa('.plan-comment-skip').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const t = planTasks.find((t) => t.id === btn.dataset.pid);
-      if (t && t.statusComments && t.statusComments.length) {
-        const last = t.statusComments[t.statusComments.length - 1];
-        if (!last.comment) t.statusComments.pop();
+      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      if (task && task.statusComments && task.statusComments.length) {
+        const last = task.statusComments[task.statusComments.length - 1];
+        if (!last.comment) task.statusComments.pop();
       }
       _pendingCommentId = null;
       _pendingCommentText = '';
@@ -55,10 +55,10 @@ function bindPlanCommentEvents(qa) {
   });
   qa('.plan-comment-edit').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const t = planTasks.find((t) => t.id === btn.dataset.pid);
+      const task = planTasks.find((task) => task.id === btn.dataset.pid);
       _pendingCommentId = btn.dataset.pid;
-      if (t && t.statusComments) {
-        const ac = [...t.statusComments].reverse().find((c) => c.status === t.status);
+      if (task && task.statusComments) {
+        const ac = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
         _pendingCommentText = ac ? ac.comment || '' : '';
       } else {
         _pendingCommentText = '';
@@ -71,13 +71,13 @@ function bindPlanCommentEvents(qa) {
     inp.addEventListener('input', () => {
       if (inp.dataset.pid === _pendingCommentId) _pendingCommentText = inp.value;
     });
-    inp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') saveComment(inp.dataset.pid);
-      if (e.key === 'Escape') {
-        const t = planTasks.find((t) => t.id === inp.dataset.pid);
-        if (t && t.statusComments && t.statusComments.length) {
-          const last = t.statusComments[t.statusComments.length - 1];
-          if (!last.comment) t.statusComments.pop();
+    inp.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') saveComment(inp.dataset.pid);
+      if (event.key === 'Escape') {
+        const task = planTasks.find((task) => task.id === inp.dataset.pid);
+        if (task && task.statusComments && task.statusComments.length) {
+          const last = task.statusComments[task.statusComments.length - 1];
+          if (!last.comment) task.statusComments.pop();
         }
         _pendingCommentId = null;
         _pendingCommentText = '';
@@ -127,8 +127,8 @@ function bindPlanNoteEvents(qa) {
 
   // Note button — toggle textarea open/closed
   qa('.plan-note-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
       const pid = btn.dataset.pid;
       if (_noteOpenIds.has(pid)) _noteOpenIds.delete(pid);
       else _noteOpenIds.add(pid);
@@ -153,10 +153,10 @@ function bindPlanNoteEvents(qa) {
       const pid = btn.dataset.pid;
       const ta = btn.closest('.plan-note-area').querySelector('.plan-note-input');
       const val = ta.value.trim();
-      const t = planTasks.find((t) => t.id === pid);
-      if (t) {
-        if (val) t.note = val;
-        else delete t.note;
+      const task = planTasks.find((task) => task.id === pid);
+      if (task) {
+        if (val) task.note = val;
+        else delete task.note;
         savePlan();
       }
       _noteOpenIds.delete(pid);
@@ -168,9 +168,9 @@ function bindPlanNoteEvents(qa) {
   qa('.plan-note-del').forEach((btn) => {
     btn.addEventListener('click', () => {
       const pid = btn.dataset.pid;
-      const t = planTasks.find((t) => t.id === pid);
-      if (t) {
-        delete t.note;
+      const task = planTasks.find((task) => task.id === pid);
+      if (task) {
+        delete task.note;
         savePlan();
       }
       _noteOpenIds.delete(pid);
@@ -188,17 +188,17 @@ function bindPlanNoteEvents(qa) {
 
   // Note textarea keyboard shortcuts
   qa('.plan-note-input').forEach((ta) => {
-    ta.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
+    ta.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
         ta.closest('.plan-note-area').querySelector('.plan-note-save').click();
       }
-      if (e.key === 'Escape') {
+      if (event.key === 'Escape') {
         ta.closest('.plan-note-area').querySelector('.plan-note-cancel').click();
       }
     });
-    ta.addEventListener('click', (e) => e.stopPropagation());
+    ta.addEventListener('click', (event) => event.stopPropagation());
   });
 }
 
@@ -212,8 +212,8 @@ function bindPlanNoteEvents(qa) {
 function bindPlanCheckpointEvents(qa) {
   // Checkpoint: toggle open/closed
   qa('.cp-badge').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
       const pid = btn.dataset.pid;
       if (_cpOpenIds.has(pid)) _cpOpenIds.delete(pid);
       else _cpOpenIds.add(pid);
@@ -230,13 +230,13 @@ function bindPlanCheckpointEvents(qa) {
 
   // Checkpoint: toggle done (three-state: false → 'partial' → true → false)
   qa('.cp-check').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const t = planTasks.find((t) => t.id === el.dataset.pid);
-      if (!t || !t.checkpoints) return;
+    el.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const task = planTasks.find((task) => task.id === el.dataset.pid);
+      if (!task || !task.checkpoints) return;
       const idx = parseInt(el.dataset.cpidx);
-      const cur = t.checkpoints[idx].done;
-      t.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
+      const cur = task.checkpoints[idx].done;
+      task.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
       savePlan();
       renderPlan();
     });
@@ -244,18 +244,18 @@ function bindPlanCheckpointEvents(qa) {
 
   // Checkpoint: toggle done via label click; double-click to edit
   qa('.cp-label').forEach((lbl) => {
-    lbl.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const t = planTasks.find((t) => t.id === lbl.dataset.pid);
-      if (!t || !t.checkpoints) return;
+    lbl.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const task = planTasks.find((task) => task.id === lbl.dataset.pid);
+      if (!task || !task.checkpoints) return;
       const idx = parseInt(lbl.dataset.cpidx);
-      const cur = t.checkpoints[idx].done;
-      t.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
+      const cur = task.checkpoints[idx].done;
+      task.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
       savePlan();
       renderPlan();
     });
-    lbl.addEventListener('dblclick', (e) => {
-      e.stopPropagation();
+    lbl.addEventListener('dblclick', (event) => {
+      event.stopPropagation();
       _cpEditId = lbl.dataset.pid;
       _cpEditIdx = parseInt(lbl.dataset.cpidx);
       renderPlan();
@@ -275,36 +275,36 @@ function bindPlanCheckpointEvents(qa) {
   qa('.cp-edit-input').forEach((inp) => {
     const save = () => {
       const val = inp.value.trim();
-      const t = planTasks.find((t) => t.id === inp.dataset.pid);
-      if (t && t.checkpoints && val) t.checkpoints[parseInt(inp.dataset.cpidx)].text = val;
+      const task = planTasks.find((task) => task.id === inp.dataset.pid);
+      if (task && task.checkpoints && val) task.checkpoints[parseInt(inp.dataset.cpidx)].text = val;
       _cpEditId = null;
       _cpEditIdx = null;
       savePlan();
       renderPlan();
     };
-    inp.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter') {
-        e.preventDefault();
+    inp.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
         save();
       }
-      if (e.key === 'Escape') {
+      if (event.key === 'Escape') {
         _cpEditId = null;
         _cpEditIdx = null;
         renderPlan();
       }
     });
     inp.addEventListener('blur', save);
-    inp.addEventListener('click', (e) => e.stopPropagation());
+    inp.addEventListener('click', (event) => event.stopPropagation());
   });
 
   // Checkpoint: delete
   qa('.cp-del-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const t = planTasks.find((t) => t.id === btn.dataset.pid);
-      if (!t || !t.checkpoints) return;
-      t.checkpoints.splice(parseInt(btn.dataset.cpidx), 1);
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      if (!task || !task.checkpoints) return;
+      task.checkpoints.splice(parseInt(btn.dataset.cpidx), 1);
       savePlan();
       renderPlan();
     });
@@ -312,14 +312,14 @@ function bindPlanCheckpointEvents(qa) {
 
   // Checkpoint: add on Enter
   qa('.cp-add-input').forEach((inp) => {
-    inp.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
+    inp.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
       const val = inp.value.trim();
       if (!val) return;
-      const t = planTasks.find((t) => t.id === inp.dataset.pid);
-      if (!t) return;
-      if (!Array.isArray(t.checkpoints)) t.checkpoints = [];
-      t.checkpoints.push({
+      const task = planTasks.find((task) => task.id === inp.dataset.pid);
+      if (!task) return;
+      if (!Array.isArray(task.checkpoints)) task.checkpoints = [];
+      task.checkpoints.push({
         id: 'cp' + Date.now() + Math.random().toString(36).slice(2),
         text: val,
         done: false,
@@ -332,36 +332,36 @@ function bindPlanCheckpointEvents(qa) {
         if (next) next.focus();
       }, 0);
     });
-    inp.addEventListener('click', (e) => e.stopPropagation());
+    inp.addEventListener('click', (event) => event.stopPropagation());
   });
 
   // Checkpoint: drag-to-reorder
   let _cpDragPid = null,
     _cpDragIdx = null;
   qa('.cp-row').forEach((row) => {
-    row.addEventListener('dragstart', (e) => {
+    row.addEventListener('dragstart', (event) => {
       _cpDragPid = row.dataset.pid;
       _cpDragIdx = parseInt(row.dataset.cpidx);
-      e.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.effectAllowed = 'move';
     });
-    row.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
+    row.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
       document
         .querySelectorAll('.cp-row.cp-drag-over')
-        .forEach((r) => r.classList.remove('cp-drag-over'));
+        .forEach((row) => row.classList.remove('cp-drag-over'));
       row.classList.add('cp-drag-over');
     });
     row.addEventListener('dragleave', () => row.classList.remove('cp-drag-over'));
-    row.addEventListener('drop', (e) => {
-      e.preventDefault();
+    row.addEventListener('drop', (event) => {
+      event.preventDefault();
       row.classList.remove('cp-drag-over');
       const targetIdx = parseInt(row.dataset.cpidx);
       if (_cpDragPid !== row.dataset.pid || _cpDragIdx === null || _cpDragIdx === targetIdx) return;
-      const t = planTasks.find((t) => t.id === _cpDragPid);
-      if (!t || !t.checkpoints) return;
-      const moved = t.checkpoints.splice(_cpDragIdx, 1)[0];
-      t.checkpoints.splice(targetIdx, 0, moved);
+      const task = planTasks.find((task) => task.id === _cpDragPid);
+      if (!task || !task.checkpoints) return;
+      const moved = task.checkpoints.splice(_cpDragIdx, 1)[0];
+      task.checkpoints.splice(targetIdx, 0, moved);
       savePlan();
       renderPlan();
       _cpDragIdx = null;
