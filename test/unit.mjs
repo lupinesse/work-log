@@ -44,6 +44,7 @@ const {
   buildRollingSummary,
   filterNewBackupEntries,
   applyBackupRetention,
+  buildBackupPayload,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -3826,6 +3827,106 @@ describe('applyBackupRetention', () => {
     const copy = [...entries];
     applyBackupRetention(entries, 90, now);
     assert.deepEqual(entries, copy);
+  });
+});
+
+// ── buildBackupPayload ────────────────────────────────────────────────────────
+describe('buildBackupPayload', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const now = new Date('2026-06-09T12:00:00Z').getTime();
+
+  /** A dated record `daysAgo` before `now`, tagged with `id` for identity checks. */
+  function rec(id, daysAgo) {
+    return { id, date: dk(new Date(now - daysAgo * DAY_MS)) };
+  }
+
+  it('trims every time-series array to the retention window', () => {
+    const state = {
+      entries: [rec('e-new', 5), rec('e-old', 40)],
+      planTasks: [rec('t-new', 5), rec('t-old', 40)],
+      blocks: [rec('b-new', 5), rec('b-old', 40)],
+      devLog: [rec('d-new', 5), rec('d-old', 40)],
+      distractions: [rec('x-new', 5), rec('x-old', 40)],
+    };
+    const { payload } = buildBackupPayload(state, 21, now);
+    assert.deepEqual(
+      payload.entries.map((r) => r.id),
+      ['e-new']
+    );
+    assert.deepEqual(
+      payload.planTasks.map((r) => r.id),
+      ['t-new']
+    );
+    assert.deepEqual(
+      payload.blocks.map((r) => r.id),
+      ['b-new']
+    );
+    assert.deepEqual(
+      payload.devLog.map((r) => r.id),
+      ['d-new']
+    );
+    assert.deepEqual(
+      payload.distractions.map((r) => r.id),
+      ['x-new']
+    );
+  });
+
+  it('keeps categories, qpHidden, and pomoLog whole (not date-filtered)', () => {
+    const state = {
+      categories: [{ id: 'c1' }, { id: 'c2' }],
+      qpHidden: ['a', 'b', 'c'],
+      // pomoLog is capped at source, so old-dated records must survive here
+      pomoLog: [rec('p-old', 400)],
+    };
+    const { payload } = buildBackupPayload(state, 21, now);
+    assert.equal(payload.categories.length, 2);
+    assert.deepEqual(payload.qpHidden, ['a', 'b', 'c']);
+    assert.equal(payload.pomoLog.length, 1);
+  });
+
+  it('reports per-array dropped counts, omitting arrays that dropped nothing', () => {
+    const state = {
+      entries: [rec('e-new', 5)],
+      planTasks: [rec('t-old', 40), rec('t-old2', 50)],
+      blocks: [rec('b-old', 40)],
+    };
+    const { dropped } = buildBackupPayload(state, 21, now);
+    assert.equal(dropped.entries, undefined);
+    assert.equal(dropped.planTasks, 2);
+    assert.equal(dropped.blocks, 1);
+  });
+
+  it('keeps future-dated records (e.g. upcoming tasks) inside the window', () => {
+    const state = { planTasks: [rec('t-future', -7)] };
+    const { payload, dropped } = buildBackupPayload(state, 21, now);
+    assert.deepEqual(
+      payload.planTasks.map((r) => r.id),
+      ['t-future']
+    );
+    assert.equal(dropped.planTasks, undefined);
+  });
+
+  it('tolerates missing arrays without throwing', () => {
+    const { payload, dropped } = buildBackupPayload({}, 21, now);
+    assert.deepEqual(payload.entries, []);
+    assert.deepEqual(payload.planTasks, []);
+    assert.deepEqual(payload.categories, []);
+    assert.deepEqual(payload.qpHidden, []);
+    assert.equal(payload.version, '1');
+    assert.equal(payload.retentionDays, 21);
+    assert.deepEqual(dropped, {});
+  });
+
+  it('stamps the export timestamp from the supplied clock', () => {
+    const { payload } = buildBackupPayload({}, 21, now);
+    assert.equal(payload.exported, new Date(now).toISOString());
+  });
+
+  it('does not mutate the supplied qpHidden array', () => {
+    const qpHidden = ['a', 'b'];
+    const { payload } = buildBackupPayload({ qpHidden }, 21, now);
+    payload.qpHidden.push('c');
+    assert.deepEqual(qpHidden, ['a', 'b']);
   });
 });
 

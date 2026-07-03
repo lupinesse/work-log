@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **JSON backups no longer grow without bound** — the 21-day retention window was only applied to `entries`, while `planTasks`, `blocks`, `devLog`, and `distractions` were bundled in full. Those arrays grow every day (carried tasks, per-day time blocks, appended distraction/dev-log records), so the `work-log-backup-21d-*.json` file kept getting bigger despite its name. All five time-series arrays are now trimmed to the same window; `categories`, `qpHidden`, and the source-capped `pomoLog` are still kept whole. Retention now runs through a pure, unit-tested `buildBackupPayload()` in `pure-fns.js` (7 new tests), and the per-array count of excluded records is logged at export time.
 - **Tabbed task board fills the full panel width** — the To Do / In Progress / Done tab bar and the active lane (with its cards) were collapsing to content width and left-aligning, leaving the right side of the panel empty. The tabbed flex-column layout was inheriting `align-items: start` from the base `.board-cols` grid; it now resets to `align-items: stretch` so tabs and lane span the whole width. Regression test added in `smoke-tests.cjs`.
 
 ---
