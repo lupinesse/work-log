@@ -191,21 +191,21 @@ function renderTimeblock() {
       tbDragSource = null;
       tbDragId = null;
     });
-    el.querySelector('.tb-block-del').addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      blocks = blocks.filter((bl) => bl.id !== block.id);
+    el.querySelector('.tb-block-del').addEventListener('click', (event) => {
+      event.stopPropagation();
+      blocks = blocks.filter((otherBlock) => otherBlock.id !== block.id);
       saveBlocks();
       renderTimeblock();
     });
     const startBtn = el.querySelector('.tb-block-start');
     if (startBtn)
-      startBtn.addEventListener('click', (ev) => {
-        ev.stopPropagation();
+      startBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
         tbStartBlock(block.id);
       });
-    el.querySelector('.tb-block-emoji').addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      openBlockEmojiPicker(block.id, ev.currentTarget);
+    el.querySelector('.tb-block-emoji').addEventListener('click', (event) => {
+      event.stopPropagation();
+      openBlockEmojiPicker(block.id, event.currentTarget);
     });
     grid.appendChild(el);
   });
@@ -308,18 +308,18 @@ function renderTimeblock() {
     const target = grid._dragSlot;
 
     if (tbDragSource === 'grid' && tbDragId) {
-      const b = blocks.find((bl) => bl.id === tbDragId);
-      if (b) {
-        const newSlot = Math.min(target, TB_SLOTS - b.duration);
+      const draggedBlock = blocks.find((block) => block.id === tbDragId);
+      if (draggedBlock) {
+        const newSlot = Math.min(target, TB_SLOTS - draggedBlock.duration);
         const newStart = TB_START * 60 + newSlot * 30;
-        const newEnd = newStart + b.duration * 30;
-        const hits = tbOverlaps(newStart, newEnd, dateKey, b.id);
+        const newEnd = newStart + draggedBlock.duration * 30;
+        const hits = tbOverlaps(newStart, newEnd, dateKey, draggedBlock.id);
         if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) {
           tbDragSource = null;
           tbDragId = null;
           return;
         }
-        b.slot = newSlot;
+        draggedBlock.slot = newSlot;
         saveBlocks();
         renderTimeblock();
       }
