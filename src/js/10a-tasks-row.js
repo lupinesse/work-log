@@ -10,7 +10,7 @@
  */
 function statusOpts(cur) {
   return ['todo', 'inprogress', 'upcoming', 'pending', 'blocked', 'done']
-    .map((s) => {
+    .map((status) => {
       const labels = {
         todo: 'To do',
         inprogress: 'In progress',
@@ -19,7 +19,7 @@ function statusOpts(cur) {
         blocked: 'Blocked',
         done: 'Done',
       };
-      return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
+      return `<option value="${status}"${cur === status ? ' selected' : ''}>${labels[status]}</option>`;
     })
     .join('');
 }
@@ -112,7 +112,7 @@ function billBtnHtml(t, status) {
  */
 function renderRow(t) {
   const viewKey = dk(viewDate);
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   const liveText = liveEntry ? liveEntry.text.toLowerCase() : null;
 
   const status = t.status || 'todo';
@@ -134,8 +134,8 @@ function renderRow(t) {
     [...categories]
       .sort((a, b) => a.label.localeCompare(b.label))
       .map(
-        (c) =>
-          `<button class="cat-opt${t.tag === c.id ? ' sel' : ''}" data-pid="${t.id}" data-cat="${c.id}" style="${t.tag === c.id ? `background:${safeCssColor(c.color)};color:#fff;border-color:transparent` : `color:${safeCssColor(c.color)}`}">${escHtml(c.label)}</button>`
+        (category) =>
+          `<button class="cat-opt${t.tag === category.id ? ' sel' : ''}" data-pid="${t.id}" data-cat="${category.id}" style="${t.tag === category.id ? `background:${safeCssColor(category.color)};color:#fff;border-color:transparent` : `color:${safeCssColor(category.color)}`}">${escHtml(category.label)}</button>`
       )
       .join('') +
     `<button class="cat-cancel" data-pid="${t.id}">cancel</button>` +
@@ -154,14 +154,16 @@ function renderRow(t) {
   if (status === 'pending' || status === 'blocked') {
     const inFlight = _pendingCommentId === t.id;
     const activeComment = t.statusComments
-      ? [...t.statusComments].reverse().find((c) => c.status === status)
+      ? [...t.statusComments].reverse().find((comment) => comment.status === status)
       : null;
     const showInput = inFlight || (activeComment && !activeComment.comment);
 
     // Timestamp — use activeComment.ts or any matching statusComment.ts
     const tsSource =
       activeComment ||
-      (t.statusComments ? [...t.statusComments].reverse().find((c) => c.status === status) : null);
+      (t.statusComments
+        ? [...t.statusComments].reverse().find((comment) => comment.status === status)
+        : null);
     if (tsSource && tsSource.ts) {
       const td = new Date(tsSource.ts);
       const hh = String(td.getHours()).padStart(2, '0');
@@ -219,7 +221,7 @@ function renderRow(t) {
 
   // Checkpoint badge + expandable area
   const cps = Array.isArray(t.checkpoints) ? t.checkpoints : [];
-  const cpDone = cps.filter((c) => c.done).length;
+  const cpDone = cps.filter((checkpoint) => checkpoint.done).length;
   const cpTotal = cps.length;
   const cpOpen = _cpOpenIds.has(t.id);
   let cpBadgeClass = 'cp-badge';
@@ -286,7 +288,8 @@ function renderRow(t) {
   }
 
   const childCount = planTasks.filter(
-    (c) => c.parentId === t.id && c.date === viewKey && c.status !== 'done'
+    (childTask) =>
+      childTask.parentId === t.id && childTask.date === viewKey && childTask.status !== 'done'
   ).length;
   const childBadge = childCount > 0 ? `<span class="plan-child-badge">${childCount}</span>` : '';
   const isChild = !!t.parentId;

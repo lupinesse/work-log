@@ -47,7 +47,7 @@ function drawPomoSegments() {
   const gap = pomoGap(N);
   const svg = document.getElementById('pomoSvg');
   const hole = document.getElementById('pomoHole');
-  svg.querySelectorAll('.pomo-seg').forEach((e) => e.remove());
+  svg.querySelectorAll('.pomo-seg').forEach((segment) => segment.remove());
 
   for (let i = 0; i < N; i++) {
     const a1 = (i / N) * 2 * Math.PI + gap;
@@ -87,7 +87,7 @@ function initPomo(mins) {
   pomoRunning = false;
   document
     .querySelectorAll('.pomo-dur')
-    .forEach((b) => b.classList.toggle('active', +b.dataset.min === mins));
+    .forEach((btn) => btn.classList.toggle('active', +btn.dataset.min === mins));
   updatePomoDisplay();
 }
 
@@ -140,7 +140,7 @@ function pomoDone() {
   t.classList.add('done');
   setTimeout(() => t.classList.remove('done'), 2400);
   // Log the session
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   const log = pomoGetLog();
   log.unshift({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
   localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
@@ -365,7 +365,7 @@ function pomoTapOut() {
   pomoRunning = false;
   const partialMins = Math.max(1, Math.ceil((pomoTotal - pomoLeft) / 60));
   pomoLeft = 0;
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   const log = pomoGetLog();
   log.unshift({ ts: Date.now(), mins: partialMins, task: liveEntry ? liveEntry.text : null });
   localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
