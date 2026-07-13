@@ -8,8 +8,8 @@
 function mergeDevLog() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-    const storedIds = new Set(stored.map((e) => e.id));
-    const newEntries = DEV_CHANGES.filter((e) => !storedIds.has(e.id));
+    const storedIds = new Set(stored.map((change) => change.id));
+    const newEntries = DEV_CHANGES.filter((change) => !storedIds.has(change.id));
     if (newEntries.length) {
       const merged = [...stored, ...newEntries].sort((a, b) => a.id.localeCompare(b.id));
       localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
@@ -47,11 +47,15 @@ function openEodModal() {
 
   // Notes for tomorrow — only tasks that were actually worked on today
   const workedToday = new Set(
-    entries.filter((e) => e.date === todayKey).map((e) => e.text.toLowerCase().trim())
+    entries
+      .filter((entry) => entry.date === todayKey)
+      .map((entry) => entry.text.toLowerCase().trim())
   );
   const unfinishedTasks = planTasks.filter(
-    (t) =>
-      t.date === todayKey && t.status !== 'done' && workedToday.has(t.text.toLowerCase().trim())
+    (task) =>
+      task.date === todayKey &&
+      task.status !== 'done' &&
+      workedToday.has(task.text.toLowerCase().trim())
   );
   let handoffNotes = {};
   try {
@@ -70,12 +74,12 @@ function openEodModal() {
     };
     taskNotesEl.innerHTML = unfinishedTasks
       .map(
-        (t) =>
+        (task) =>
           `<div class="eod-task-note-row">
-          <span class="eod-task-note-label" title="${escHtml(t.text)}">${t.emoji ? escHtml(t.emoji) + ' ' : ''}${escHtml(t.text)}</span>
-          <span class="eod-task-note-status ${t.status || 'todo'}">${statusLabel[t.status || 'todo'] || t.status}</span>
-          <input class="eod-task-note-input" data-task="${escHtml(t.text.toLowerCase().trim())}"
-            value="${escHtml(handoffNotes[t.text.toLowerCase().trim()] || '')}"
+          <span class="eod-task-note-label" title="${escHtml(task.text)}">${task.emoji ? escHtml(task.emoji) + ' ' : ''}${escHtml(task.text)}</span>
+          <span class="eod-task-note-status ${task.status || 'todo'}">${statusLabel[task.status || 'todo'] || task.status}</span>
+          <input class="eod-task-note-input" data-task="${escHtml(task.text.toLowerCase().trim())}"
+            value="${escHtml(handoffNotes[task.text.toLowerCase().trim()] || '')}"
             placeholder="where to continue…" />
         </div>`
       )
@@ -91,15 +95,15 @@ function openEodModal() {
   } catch (err) {
     wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
   }
-  const todayChanges = allLog.filter((e) => e.date === todayKey);
+  const todayChanges = allLog.filter((change) => change.date === todayKey);
   const changesEl = document.getElementById('eodChanges');
   if (todayChanges.length) {
     changesEl.innerHTML = todayChanges
       .map(
-        (e) =>
+        (change) =>
           `<div class="eod-change">
-          <span class="eod-change-desc">${escHtml(e.desc)}</span>
-          <span class="eod-change-areas">${e.areas.length ? 'Test ' + e.areas.join(', ') : '—'}</span>
+          <span class="eod-change-desc">${escHtml(change.desc)}</span>
+          <span class="eod-change-areas">${change.areas.length ? 'Test ' + change.areas.join(', ') : '—'}</span>
         </div>`
       )
       .join('');
@@ -108,15 +112,17 @@ function openEodModal() {
   }
 
   // Affected test areas (deduplicated)
-  const affectedAreas = [...new Set(todayChanges.flatMap((e) => e.areas))].sort((a, b) => a - b);
+  const affectedAreas = [...new Set(todayChanges.flatMap((change) => change.areas))].sort(
+    (a, b) => a - b
+  );
   const areasEl = document.getElementById('eodTestAreas');
   if (affectedAreas.length) {
     areasEl.innerHTML = affectedAreas
       .map(
-        (n) =>
+        (areaNum) =>
           `<div class="eod-test-area">
-          <span class="eod-test-num">#${n}</span>
-          <span>${escHtml(TEST_AREA_NAMES[n] || 'Unknown')}</span>
+          <span class="eod-test-num">#${areaNum}</span>
+          <span>${escHtml(TEST_AREA_NAMES[areaNum] || 'Unknown')}</span>
         </div>`
       )
       .join('');
@@ -131,11 +137,12 @@ function openEodModal() {
       '',
       'Changes implemented:',
       ...todayChanges.map(
-        (e) => `  - ${e.desc}${e.areas.length ? ' (Test ' + e.areas.join(', ') + ')' : ''}`
+        (change) =>
+          `  - ${change.desc}${change.areas.length ? ' (Test ' + change.areas.join(', ') + ')' : ''}`
       ),
       '',
       'Test areas to review:',
-      ...affectedAreas.map((n) => `  - Test ${n}: ${TEST_AREA_NAMES[n]}`),
+      ...affectedAreas.map((areaNum) => `  - Test ${areaNum}: ${TEST_AREA_NAMES[areaNum]}`),
     ];
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
       const btn = document.getElementById('eodCopyBtn');
@@ -179,15 +186,15 @@ document.getElementById('expirySave').addEventListener('click', saveExpiryDates)
 document.getElementById('expiryCancel').addEventListener('click', () => {
   document.getElementById('expiryOverlay').classList.remove('show');
 });
-document.getElementById('expiryOverlay').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('expiryOverlay'))
+document.getElementById('expiryOverlay').addEventListener('click', (event) => {
+  if (event.target === document.getElementById('expiryOverlay'))
     document.getElementById('expiryOverlay').classList.remove('show');
 });
-document.getElementById('expiryTextarea').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.stopPropagation();
+document.getElementById('expiryTextarea').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.stopPropagation();
   } // allow newlines
-  if (e.key === 'Escape') document.getElementById('expiryOverlay').classList.remove('show');
+  if (event.key === 'Escape') document.getElementById('expiryOverlay').classList.remove('show');
 });
 
 document.getElementById('eodClose').addEventListener('click', () => {
@@ -259,8 +266,8 @@ function triggerPortableDeploy() {
     setToast('wl-toast-err', `⚠ Portable deploy failed: ${msg}`, 8000);
   })();
 }
-document.getElementById('eodOverlay').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('eodOverlay')) {
+document.getElementById('eodOverlay').addEventListener('click', (event) => {
+  if (event.target === document.getElementById('eodOverlay')) {
     saveEodHandoffNotes();
     document.getElementById('eodOverlay').classList.remove('show');
     renderPlan();

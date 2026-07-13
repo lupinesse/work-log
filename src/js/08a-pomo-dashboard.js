@@ -23,7 +23,7 @@ const POMO_RIBBON_DOT_COUNT = 5;
  * @returns {number}
  */
 function pomoSessionsOnDate(log, dateKey) {
-  return log.filter((e) => dk(new Date(e.ts)) === dateKey).length;
+  return log.filter((session) => dk(new Date(session.ts)) === dateKey).length;
 }
 
 /**
@@ -65,7 +65,7 @@ function renderPomoSparkline() {
 
   const log = pomoGetLog();
   const days = pomoBuildDateRange();
-  const counts = days.map((d) => pomoSessionsOnDate(log, d));
+  const counts = days.map((dateKey) => pomoSessionsOnDate(log, dateKey));
   const maxCount = Math.max(...counts, 1); // guard against all-zero
 
   const dpr = window.devicePixelRatio || 1;
@@ -139,8 +139,8 @@ function renderPomoRibbon() {
 
     // Tally sessions per calendar day across the full log
     const perDay = {};
-    log.forEach((e) => {
-      const d = dk(new Date(e.ts));
+    log.forEach((session) => {
+      const d = dk(new Date(session.ts));
       perDay[d] = (perDay[d] || 0) + 1;
     });
 
@@ -172,7 +172,7 @@ function renderPomoRibbon() {
 function updatePomoTaskLabel() {
   const el = document.getElementById('pomoTaskLabel');
   if (!el) return;
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   el.textContent = liveEntry ? liveEntry.text : '';
 }
 

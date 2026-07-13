@@ -274,7 +274,7 @@ async function mergeBackupEntries(file) {
     return;
   }
 
-  const dates = [...new Set(incoming.map((e) => e.date).filter(Boolean))].sort();
+  const dates = [...new Set(incoming.map((entry) => entry.date).filter(Boolean))].sort();
   const exportedAt = backup.exported ? new Date(backup.exported).toLocaleString() : 'unknown date';
 
   const confirmed = window.confirm(
