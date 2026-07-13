@@ -258,7 +258,7 @@ export function buildRollingSummary(dateKeys, opts) {
   const { entries, getDayStartTs, getDayEodTs, getLocationEmoji } = opts;
   return dateKeys.map((dateKey) => {
     const dayEntries = entries.filter(
-      (e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled'
+      (entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled'
     );
     const totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 

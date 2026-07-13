@@ -35,8 +35,8 @@ async function callClaudeWithNotion(prompt, opts = {}) {
   }
   const data = await res.json();
   return (data.content || [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
     .join('')
     .trim();
 }
@@ -74,7 +74,7 @@ async function addTaskToNotion(task) {
  * @param {string} url    - Notion page URL returned by the API.
  */
 function saveTaskNotionUrl(taskId, url) {
-  const t = planTasks.find((t) => t.id === taskId);
+  const t = planTasks.find((task) => task.id === taskId);
   if (!t) return;
   t.notionUrl = url;
   savePlan();
@@ -84,11 +84,11 @@ function saveTaskNotionUrl(taskId, url) {
 // Delegated click handler for the per-task Notion button
 document.addEventListener(
   'click',
-  (e) => {
-    const btn = e.target.closest('.notion-task-btn');
+  (event) => {
+    const btn = event.target.closest('.notion-task-btn');
     if (!btn || !btn.dataset.pid) return;
-    e.stopPropagation();
-    const t = planTasks.find((x) => x.id === btn.dataset.pid);
+    event.stopPropagation();
+    const t = planTasks.find((task) => task.id === btn.dataset.pid);
     if (!t) return;
     // If already sent, open the Notion page
     if (t.notionUrl) {
