@@ -314,22 +314,39 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (565 lines) — Live Info Widgets
-**Responsibility**: Display current time, weather, moon phase, nameday
+#### **09-clock-weather.js** (82 lines) — Live Clock
+**Responsibility**: The live clock tick (date/time/ISO week header), midnight-
+rollover detection (carries unfinished plan tasks, re-renders), and the
+`jiraTicketHtml()` Jira-link helper (an orphan utility that has lived here
+since before the module split below — not a clock/weather/almanac concern
+itself, flagged for a future move to a shared-helpers module).
 
-**Data Sources**:
-- **Time**: Browser `Date` object
-- **Weather**: OpenWeather API (Helsinki)
-- **Moon**: Astronomical calculations
-- **Nameday**: nimipaivat.fi API
-- **Flag Days**: Hardcoded Finnish flag days
+**Rendering**: Ticks every 10 seconds via `setInterval`
+
+---
+
+#### **09a-weather.js** (116 lines) — Weather
+**Responsibility**: Open-Meteo weather fetch/render — current conditions,
+rain-probability window, sunrise/sunset/day-length. Split out of
+`09-clock-weather.js` as a self-contained fetch+render concern; keeps its own
+config-fetch bootstrap and 10-minute refresh interval.
+
+**Fallbacks**: Weather fetch fails → "unavailable"
+
+---
+
+#### **09b-almanac.js** (370 lines) — Almanac (Moon, Nameday, Flag Days)
+**Responsibility**: "What's notable about today" — Finnish nameday API fetch,
+moveable-feast flag-day calculation with a hardcoded fallback list, and moon
+phase/zodiac (pure astronomical calculation, no API). Split out of
+`09-clock-weather.js`; also carries the app-bootstrap tail (nameday/calendar/
+moon/flag-day/tracker-count/session-button/folder-status/chime-setting calls)
+that was already positioned at the end of the original file to run after all
+of `src/js/`'s state is loaded.
 
 **Fallbacks**:
-- Weather fails → "unavailable"
 - Nameday API fails → hardcoded fallback list
 - Moon calculations always work (no API)
-
-**Rendering**: Updates every 1 minute, refreshes weather every 10 minutes
 
 ---
 
@@ -682,7 +699,7 @@ renderEntries()                          renderPlan()
                                             (ring timer)
 
 External APIs:
-├→ 09-clock-weather.js (OpenWeather, nimipaivat.fi)
+├→ 09a-weather.js (Open-Meteo), 09b-almanac.js (nimipaivat.fi)
 ├→ 13-calendar.js (Outlook PowerShell server)
 └→ 14-jira.js (User pastes CSV)
 ```
@@ -779,7 +796,7 @@ localStorage.setItem('wl_entries_v1', JSON.stringify(entries));
 5. **Tests**: Add test case to `smoke-tests.js`
 
 ### Adding an External API
-Example: Weather API fetch in `09-clock-weather.js`
+Example: Weather API fetch in `09a-weather.js`
 ```javascript
 async function fetchWeather() {
   try {
