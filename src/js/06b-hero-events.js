@@ -49,7 +49,7 @@ function _heroHandleStart() {
  */
 function _heroStartFromChip(text, tag) {
   // Find the most recent matching entry; re-use it rather than creating a duplicate
-  const existing = [...entries].reverse().find((entry) => entry.text === text);
+  const existing = [...entries].reverse().find((existingEntry) => existingEntry.text === text);
   if (existing && !existing.tsEnd) {
     // Entry already has no end — start timer on it
     if (activeTimer) stopTimer();

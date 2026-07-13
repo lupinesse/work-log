@@ -181,7 +181,7 @@ function renderTagRow() {
   const delBtn = document.getElementById('catDelBtn');
   if (delBtn)
     delBtn.addEventListener('click', () => {
-      categories = categories.filter((cat) => cat.id !== selectedTag);
+      categories = categories.filter((category) => category.id !== selectedTag);
       selectedTag = 'work';
       save();
       renderTagRow();
@@ -223,7 +223,7 @@ function renderTagRow() {
         renderTagRow();
         return;
       }
-      if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+      if (categories.find((category) => category.label.toLowerCase() === label.toLowerCase())) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;

@@ -104,8 +104,8 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js`, unchanged |
 | No credentials in code | ✅ Pass | Unchanged from 2026-06-26 |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings, verified locally this pass |
-| Commits tagged at significant stages | ✅ Pass | `v1.9.1` tags this delta — see CHANGELOG.md |
-| ARCHITECTURE.md design certificate | ✅ Pass | `v1.9.0-r2`, no architecturally significant change since — dependency and tooling fixes only |
+| Commits tagged at significant stages | ⚠️ Pending | `CHANGELOG.md` has a `[1.9.1]` entry, but no `v1.9.1` git tag exists yet (`git tag -l` still shows `v1.9.0` as latest) — tagging happens after this PR merges to `main`, matching how `v1.9.0` was tagged. |
+| ARCHITECTURE.md design certificate | ⚠️ Pending re-review | Still `v1.9.0-r2`. This delta includes 5 architecturally significant module splits (`04-render.js`, `09-clock-weather.js`, `11-timeflow.js`, `06a-hero.js`, `13-calendar.js` each split into smaller sibling files) — the certificate's `Approved` status and `Reviewed by` field intentionally were not bumped here, since that requires the human author's own re-review, not something to claim on their behalf. |
 
 ### Stakeholder acceptance
 
