@@ -32,8 +32,11 @@ function saveTrackers() {
 function trackerDayStatus(tracker, dateKey) {
   const ms = entries
     .filter(
-      (e) =>
-        e.date === dateKey && tracker.tags.includes(e.tag) && e.tsEnd && e.signifier !== 'cancelled'
+      (entry) =>
+        entry.date === dateKey &&
+        tracker.tags.includes(entry.tag) &&
+        entry.tsEnd &&
+        entry.signifier !== 'cancelled'
     )
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
   const mins = ms / 60000;
@@ -88,28 +91,36 @@ function renderTrackers() {
   });
 
   el.innerHTML = trackers
-    .map((t) => {
-      const streak = trackerStreak(t);
+    .map((tracker) => {
+      const streak = trackerStreak(tracker);
       const cells = days
         .map((dateKey) => {
-          const status = trackerDayStatus(t, dateKey);
+          const status = trackerDayStatus(tracker, dateKey);
           const bg =
-            status === 'hit' ? t.color : status === 'partial' ? t.color + '55' : 'var(--bg3)';
+            status === 'hit'
+              ? tracker.color
+              : status === 'partial'
+                ? tracker.color + '55'
+                : 'var(--bg3)';
           return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}"></div>`;
         })
         .join('');
-      const hitCount = days.filter((d) => trackerDayStatus(t, d) === 'hit').length;
+      const hitCount = days.filter(
+        (dateKey) => trackerDayStatus(tracker, dateKey) === 'hit'
+      ).length;
       const targetLabel =
-        t.targetMinutes >= 60 ? `${t.targetMinutes / 60}h/day` : `${t.targetMinutes}m/day`;
+        tracker.targetMinutes >= 60
+          ? `${tracker.targetMinutes / 60}h/day`
+          : `${tracker.targetMinutes}m/day`;
 
       return `
       <div class="tracker-card">
         <div class="tracker-card-head">
-          <span class="edot" style="background:${safeCssColor(t.color)}"></span>
-          <span class="tracker-name">${escHtml(t.name)}</span>
+          <span class="edot" style="background:${safeCssColor(tracker.color)}"></span>
+          <span class="tracker-name">${escHtml(tracker.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
           ${streak ? `<span class="tracker-streak">ðŸ”¥ ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
-          <button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">âœ•</button>
+          <button class="tracker-delete" data-id="${escHtml(tracker.id)}" aria-label="Delete tracker">âœ•</button>
         </div>
         <div class="tr-grid">${cells}</div>
         <div class="tracker-footer"><span>${hitCount}/28 days hit</span></div>
@@ -119,7 +130,7 @@ function renderTrackers() {
 
   document.querySelectorAll('.tracker-delete').forEach((btn) => {
     btn.addEventListener('click', () => {
-      trackers = trackers.filter((t) => t.id !== btn.dataset.id);
+      trackers = trackers.filter((tracker) => tracker.id !== btn.dataset.id);
       saveTrackers();
       renderTrackers();
     });
@@ -157,10 +168,10 @@ function openTrackerForm() {
         <div class="tr-form-tags" id="trFormTags">
           ${categories
             .map(
-              (c) =>
+              (category) =>
                 `<label class="tr-tag-check">
-              <input type="checkbox" value="${escHtml(c.id)}" />
-              <span class="qp-chip" style="border-color:${safeCssColor(c.color)}44;color:${safeCssColor(c.color)};background:${safeCssColor(c.color)}11">${escHtml(c.label)}</span>
+              <input type="checkbox" value="${escHtml(category.id)}" />
+              <span class="qp-chip" style="border-color:${safeCssColor(category.color)}44;color:${safeCssColor(category.color)};background:${safeCssColor(category.color)}11">${escHtml(category.label)}</span>
             </label>`
             )
             .join('')}
@@ -180,9 +191,9 @@ function openTrackerForm() {
   document.getElementById('trFormCancel').addEventListener('click', closeTrackerForm);
   document.getElementById('trFormSave').addEventListener('click', saveTrackerForm);
   document.getElementById('trFormName').focus();
-  document.getElementById('trFormName').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') saveTrackerForm();
-    if (e.key === 'Escape') closeTrackerForm();
+  document.getElementById('trFormName').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') saveTrackerForm();
+    if (event.key === 'Escape') closeTrackerForm();
   });
 }
 
