@@ -64,5 +64,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Format check
+        run: npm run format:check
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs

@@ -111,7 +111,9 @@ function autoCarryTasks() {
   let carried = 0;
   toCarry.forEach((task) => {
     const exists = planTasks.some(
-      (existingTask) => existingTask.date === todayKey && existingTask.text.toLowerCase() === task.text.toLowerCase()
+      (existingTask) =>
+        existingTask.date === todayKey &&
+        existingTask.text.toLowerCase() === task.text.toLowerCase()
     );
     if (!exists) {
       const newId = 'c' + Date.now() + Math.random().toString(36).slice(2);
@@ -269,7 +271,8 @@ function renderCompleted() {
       if (task.status !== 'done') return false;
       // Don't show completed tasks that have a live version on this date
       if (activeTodayTexts.has(task.text.toLowerCase())) return false;
-      const completedTs = task.completedAt || new Date((task.date || viewKey) + 'T23:59:00').getTime();
+      const completedTs =
+        task.completedAt || new Date((task.date || viewKey) + 'T23:59:00').getTime();
       const completedDay = dk(new Date(completedTs));
       const expiryDay = getIterationExpiry(completedDay);
       // Show from completion day until (but not including) the iteration expiry date.

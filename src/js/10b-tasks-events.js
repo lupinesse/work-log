@@ -35,7 +35,9 @@ function bindPlanEvents(lists) {
       const picker = document.getElementById('pcp-' + pid);
       const isOpen = picker.classList.contains('open');
       lists.forEach((listEl) =>
-        listEl.querySelectorAll('.plan-cat-picker.open').forEach((picker) => picker.classList.remove('open'))
+        listEl
+          .querySelectorAll('.plan-cat-picker.open')
+          .forEach((picker) => picker.classList.remove('open'))
       );
       if (!isOpen) picker.classList.add('open');
     });
@@ -92,7 +94,8 @@ function bindPlanEvents(lists) {
   });
   qa('.pcat-add-input').forEach((inp) => {
     inp.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
+      if (event.key === 'Enter')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
       if (event.key === 'Escape')
         inp.closest('.pcat-add-form').querySelector('.pcat-add-cancel2').click();
     });
@@ -138,7 +141,9 @@ function bindPlanEvents(lists) {
         planTasks
           .filter(
             (planTask) =>
-              planTask.id !== task.id && planTask.text.toLowerCase() === task.text.toLowerCase() && planTask.status !== 'done'
+              planTask.id !== task.id &&
+              planTask.text.toLowerCase() === task.text.toLowerCase() &&
+              planTask.status !== 'done'
           )
           .forEach((planTask) => {
             planTask.status = 'done';
@@ -149,8 +154,13 @@ function bindPlanEvents(lists) {
       if (newStatus === 'done' && task.parentId) {
         const parent = planTasks.find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status !== 'done') {
-          const siblings = planTasks.filter((child) => child.parentId === parent.id && child.date === task.date);
-          if (siblings.length > 0 && siblings.every((sibling) => sibling.status === 'done' || sibling.id === task.id)) {
+          const siblings = planTasks.filter(
+            (child) => child.parentId === parent.id && child.date === task.date
+          );
+          if (
+            siblings.length > 0 &&
+            siblings.every((sibling) => sibling.status === 'done' || sibling.id === task.id)
+          ) {
             parent.status = 'done';
             if (!parent.completedAt) parent.completedAt = Date.now();
           }

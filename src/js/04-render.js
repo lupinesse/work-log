@@ -43,8 +43,11 @@ function render() {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
     weekStart.setHours(0, 0, 0, 0);
-    return new Set(entries.filter((entry) => new Date(entry.ts) >= weekStart).map((entry) => entry.tag || 'other'))
-      .size;
+    return new Set(
+      entries
+        .filter((entry) => new Date(entry.ts) >= weekStart)
+        .map((entry) => entry.tag || 'other')
+    ).size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
@@ -70,7 +73,9 @@ function render() {
   }
 
   // Today: task with most tracked time
-  const todayTimed = entries.filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts);
+  const todayTimed = entries.filter(
+    (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
+  );
   const todayByTask = {};
   todayTimed.forEach((entry) => {
     const taskKey = entry.text.toLowerCase();
@@ -471,7 +476,9 @@ function renderQuickPick() {
       .map((entry) => entry.text.toLowerCase())
   );
   const recent = allRecent
-    .filter((entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase()))
+    .filter(
+      (entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase())
+    )
     .slice(0, 16);
   // Hidden count is the intersection of qpHidden with task texts actually present in entries
   const hiddenInUse = allRecent.filter((entry) => qpHidden.has(entry.text.toLowerCase())).length;
@@ -627,7 +634,9 @@ function renderChart(list) {
     .join('');
 
   const totalDur = fmtDur(grandTotal);
-  const billMs = timed.filter((entry) => isEntryBillable(entry)).reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  const billMs = timed
+    .filter((entry) => isEntryBillable(entry))
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
   el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;

@@ -20,7 +20,9 @@ function bindPlanCommentEvents(qa) {
     if (!task.statusComments) task.statusComments = [];
     const inp = document.getElementById('pc-inp-' + pid);
     const val = inp ? inp.value.trim() : (_pendingCommentText || '').trim();
-    const entry = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
+    const entry = [...task.statusComments]
+      .reverse()
+      .find((comment) => comment.status === task.status);
     if (entry) {
       if (val) {
         entry.comment = val;
@@ -58,7 +60,9 @@ function bindPlanCommentEvents(qa) {
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
       _pendingCommentId = btn.dataset.pid;
       if (task && task.statusComments) {
-        const ac = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
+        const ac = [...task.statusComments]
+          .reverse()
+          .find((comment) => comment.status === task.status);
         _pendingCommentText = ac ? ac.comment || '' : '';
       } else {
         _pendingCommentText = '';
