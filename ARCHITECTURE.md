@@ -460,7 +460,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (351 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -493,6 +493,17 @@ Tries 3 lookup strategies:
 1. Exact match on key
 2. Email domain match (x@acme.com → acme)
 3. Substring match (contains "acme")
+
+---
+
+#### **13a-calendar-bridge.js** (151 lines) — Post-Meeting Transition Bridge
+**Responsibility**: Detects a just-ended meeting and offers to build a physical
+transition to the next task — the "Feature 3" bridge banner. Split out of
+`13-calendar.js` as a self-contained feature: dedup tracking (`getSeenEnded`/
+`setSeenEnded`/`getMeetingKey`), the banner UI (`showBridgeBanner`), next-task
+selection (`buildBridge`), and the Claude API call for transition steps
+(`fetchBridge`). No top-level eager execution of its own — everything runs
+from calls inside `13-calendar.js`'s polling interval.
 
 ---
 
