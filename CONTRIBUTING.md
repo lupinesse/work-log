@@ -372,6 +372,18 @@ The following standards apply to all contributions. They reflect the processes t
 - The PR description must reference the issue and confirm each acceptance criterion is met
 - Self-review is acceptable; use the PR checklist in `.github/PULL_REQUEST_TEMPLATE.md`
 
+### Community review
+This is primarily a solo, AI-paired project, but the repository is public and MIT-licensed, and
+outside review is genuinely welcome, not just tolerated:
+- **Open a PR** for a bug fix or feature — it doesn't need to be perfect; the automated
+  ChatGPT/Claude review dialogue (`CLAUDE.md` Step 5b) and the human maintainer will review it.
+- **Open an issue** using the Bug report or Feature request template even if you don't plan to
+  submit code — a second pair of eyes on the reproduction steps or the proposed acceptance
+  criteria is itself a form of review, and is credited the same as a code contribution.
+- **Comment on an open PR or issue** — questioning an assumption, an edge case, or an acceptance
+  criterion before it merges is exactly the kind of review this checklist wants, and doesn't
+  require write access to the repository.
+
 ### Accessibility
 - New UI elements must be keyboard-reachable and have a visible focus state
 - Interactive elements need descriptive labels (`aria-label` or visible text) for screen readers
