@@ -98,7 +98,7 @@ function _heroFillIdle() {
 
   // Total logged today (ms → "Xh Ym" or "Xm")
   const totalMs = entries
-    .filter((e) => e.date === todayKey && e.tsEnd && e.tsEnd > e.ts)
+    .filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts)
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 
   const loggedEl = document.getElementById('heroLoggedToday');
@@ -108,7 +108,7 @@ function _heroFillIdle() {
   const lastEl = document.getElementById('heroIdleLastSession');
   if (lastEl) {
     const last = [...entries]
-      .filter((e) => e.date === todayKey && e.tsEnd)
+      .filter((entry) => entry.date === todayKey && entry.tsEnd)
       .sort((a, b) => b.tsEnd - a.tsEnd)[0];
     lastEl.textContent = last ? `last session ended ${fmtTime(last.tsEnd)}` : '';
   }
@@ -128,11 +128,11 @@ function _heroRenderRecentChips() {
   const seen = new Set();
   /** @type {Array<{text: string, tag: string}>} */
   const recent = [];
-  [...entries].reverse().forEach((e) => {
-    const k = e.text.toLowerCase();
+  [...entries].reverse().forEach((entry) => {
+    const k = entry.text.toLowerCase();
     if (!seen.has(k)) {
       seen.add(k);
-      recent.push(e);
+      recent.push(entry);
     }
   });
 
@@ -143,16 +143,16 @@ function _heroRenderRecentChips() {
   }
 
   el.innerHTML = chips
-    .map((e) => {
-      const cat = getCat(e.tag);
-      const isLast = chips[0] === e;
+    .map((entry) => {
+      const cat = getCat(entry.tag);
+      const isLast = chips[0] === entry;
       return (
         `<li>` +
         `<button class="hero-chip"` +
-        ` data-text="${escHtml(e.text)}" data-tag="${escHtml(e.tag)}"` +
-        ` aria-label="Start tracking: ${escHtml(e.text)}">` +
+        ` data-text="${escHtml(entry.text)}" data-tag="${escHtml(entry.tag)}"` +
+        ` aria-label="Start tracking: ${escHtml(entry.text)}">` +
         `<span class="hero-chip-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
-        `<span class="hero-chip-text">${escHtml(e.text)}</span>` +
+        `<span class="hero-chip-text">${escHtml(entry.text)}</span>` +
         (isLast ? `<span class="hero-chip-last" aria-hidden="true">← last</span>` : '') +
         `</button>` +
         `</li>`
@@ -172,7 +172,7 @@ function _heroRenderRecentChips() {
 /** Updates the running panel: category dot + task title + started-at sub-line. */
 function _heroFillRunning() {
   if (!activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
 
   _heroSetCategory('heroTaskCategory', entry.tag, true);
@@ -195,7 +195,7 @@ function _heroFillRunning() {
 /** Updates the paused panel with the frozen clock and task details. */
 function _heroFillPaused() {
   if (!activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
 
   _heroSetCategory('heroPausedCategory', entry.tag, true);
@@ -239,7 +239,9 @@ function _heroFillStopped() {
   if (sessEl) {
     const count = _heroSessionCount(entry);
     const todayMs = entries
-      .filter((e) => e.date === entry.date && e.tsEnd && e.tsEnd > e.ts)
+      .filter(
+        (logEntry) => logEntry.date === entry.date && logEntry.tsEnd && logEntry.tsEnd > logEntry.ts
+      )
       .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
     sessEl.textContent =
       count > 1
@@ -337,7 +339,7 @@ function _heroHandleStart() {
  */
 function _heroStartFromChip(text, tag) {
   // Find the most recent matching entry; re-use it rather than creating a duplicate
-  const existing = [...entries].reverse().find((e) => e.text === text);
+  const existing = [...entries].reverse().find((entry) => entry.text === text);
   if (existing && !existing.tsEnd) {
     // Entry already has no end — start timer on it
     if (activeTimer) stopTimer();
@@ -370,7 +372,7 @@ function _heroHandleUndo() {
   _heroCancelStoppedTimer();
 
   if (entry) {
-    entries = entries.filter((e) => e.id !== entry.id);
+    entries = entries.filter((logEntry) => logEntry.id !== entry.id);
     save();
   }
 
@@ -406,12 +408,12 @@ function _heroSetCategory(elId, tag, interactive = false) {
   const panelId = `${elId}-panel`;
   const itemsHtml = categories
     .map(
-      (c) =>
-        `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(c.id)}"` +
-        ` aria-label="${escHtml(c.label)}">` +
-        `<span class="hero-cat-item-dot" style="background:${safeCssColor(c.color)}" aria-hidden="true"></span>` +
-        escHtml(c.label) +
-        (c.id === tag
+      (category) =>
+        `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(category.id)}"` +
+        ` aria-label="${escHtml(category.label)}">` +
+        `<span class="hero-cat-item-dot" style="background:${safeCssColor(category.color)}" aria-hidden="true"></span>` +
+        escHtml(category.label) +
+        (category.id === tag
           ? `<span class="hero-cat-item-check" aria-hidden="true">&#10003;</span>`
           : '') +
         `</button>`
@@ -459,9 +461,9 @@ function _heroBindCatPicker(wrap) {
     panel.style.display !== 'none' ? closePanel() : openPanel();
   });
 
-  btn.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
+  btn.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
       openPanel();
     }
   });
@@ -472,19 +474,19 @@ function _heroBindCatPicker(wrap) {
       _heroCatSelect(item.dataset.tag);
       closePanel();
     });
-    item.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
+    item.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
         _heroCatSelect(item.dataset.tag);
         closePanel();
-      } else if (e.key === 'Escape') {
+      } else if (event.key === 'Escape') {
         closePanel();
         btn.focus();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault();
         if (items[idx + 1]) items[idx + 1].focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
         if (items[idx - 1]) items[idx - 1].focus();
       }
     });
@@ -497,7 +499,7 @@ function _heroBindCatPicker(wrap) {
  */
 function _heroCatSelect(newTag) {
   if (!activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
   entry.tag = newTag;
   save();
@@ -513,7 +515,7 @@ function _heroCatSelect(newTag) {
  */
 function _heroLastNoteText(entryId) {
   const latest = logNotes
-    .filter((n) => n.type === 'session-note' && n.entryId === entryId)
+    .filter((note) => note.type === 'session-note' && note.entryId === entryId)
     .sort((a, b) => b.ts - a.ts)[0];
   if (!latest) return '';
   return `↳ last note ${fmtAgo(latest.ts)}`;
@@ -527,7 +529,9 @@ function _heroLastNoteText(entryId) {
 function _heroSessionCount(entry) {
   const key = entry.text.toLowerCase();
   const todayKey = entry.date || dk(new Date());
-  return entries.filter((e) => e.date === todayKey && e.text.toLowerCase() === key).length;
+  return entries.filter(
+    (logEntry) => logEntry.date === todayKey && logEntry.text.toLowerCase() === key
+  ).length;
 }
 
 // ── Initialisation ────────────────────────────────────────────────────────────
@@ -539,10 +543,10 @@ function _heroSessionCount(entry) {
 function initHero() {
   // Start tracking
   document.getElementById('heroStartBtn')?.addEventListener('click', _heroHandleStart);
-  document.getElementById('heroComposerInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') _heroHandleStart();
+  document.getElementById('heroComposerInput')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') _heroHandleStart();
     // Prevent Space from opening the rapid-log overlay while typing here
-    if (e.code === 'Space') e.stopPropagation();
+    if (event.code === 'Space') event.stopPropagation();
   });
 
   // Break from idle
@@ -580,13 +584,13 @@ function initHero() {
   });
 
   // Close any open category picker when clicking outside a .hero-cat-wrap
-  document.addEventListener('mousedown', (e) => {
-    if (!e.target.closest('.hero-cat-wrap')) {
-      document.querySelectorAll('.hero-cat-panel').forEach((p) => {
-        p.style.display = 'none';
+  document.addEventListener('mousedown', (event) => {
+    if (!event.target.closest('.hero-cat-wrap')) {
+      document.querySelectorAll('.hero-cat-panel').forEach((panel) => {
+        panel.style.display = 'none';
       });
-      document.querySelectorAll('.hero-task-cat-btn[aria-expanded="true"]').forEach((b) => {
-        b.setAttribute('aria-expanded', 'false');
+      document.querySelectorAll('.hero-task-cat-btn[aria-expanded="true"]').forEach((btn) => {
+        btn.setAttribute('aria-expanded', 'false');
       });
     }
   });

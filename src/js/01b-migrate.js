@@ -79,14 +79,14 @@ function migrateEntryDatesToLocal() {
     const all = JSON.parse(raw);
     if (!Array.isArray(all)) return;
     let changed = 0;
-    const fixed = all.map((e) => {
-      if (typeof e.ts !== 'number' || typeof e.date !== 'string') return e;
-      const localDate = dk(new Date(e.ts)); // dk() now returns local date
-      if (e.date !== localDate) {
+    const fixed = all.map((entry) => {
+      if (typeof entry.ts !== 'number' || typeof entry.date !== 'string') return entry;
+      const localDate = dk(new Date(entry.ts)); // dk() now returns local date
+      if (entry.date !== localDate) {
         changed++;
-        return { ...e, date: localDate };
+        return { ...entry, date: localDate };
       }
-      return e;
+      return entry;
     });
     if (changed > 0) {
       localStorage.setItem('wl_entries_v1', JSON.stringify(fixed));

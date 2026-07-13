@@ -102,10 +102,10 @@ export function parseRapidTokens(raw, cats, now) {
     const catArr = cats || [];
     // Exact id match → label match → id-prefix match → label-prefix match
     const resolved =
-      catArr.find((c) => c.id.toLowerCase() === lower) ||
-      catArr.find((c) => c.label.toLowerCase() === lower) ||
-      catArr.find((c) => c.id.toLowerCase().startsWith(lower)) ||
-      catArr.find((c) => c.label.toLowerCase().startsWith(lower)) ||
+      catArr.find((cat) => cat.id.toLowerCase() === lower) ||
+      catArr.find((cat) => cat.label.toLowerCase() === lower) ||
+      catArr.find((cat) => cat.id.toLowerCase().startsWith(lower)) ||
+      catArr.find((cat) => cat.label.toLowerCase().startsWith(lower)) ||
       null;
     if (resolved) {
       tag = resolved.id;
