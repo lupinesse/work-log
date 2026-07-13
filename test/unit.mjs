@@ -2900,6 +2900,259 @@ describe('updateHeaderTracking', () => {
   });
 });
 
+// ── 09a-weather.js — weatherEmoji ─────────────────────────────────────────────
+// Extract just the weatherEmoji function to avoid running fetchWeather() and
+// the top-level fetch()/setInterval() calls that fire when the file loads.
+
+const weatherSrc = readFileSync(join(__dirname, '../src/js/09a-weather.js'), 'utf8');
+
+const weatherEmojiFuncSrc = (() => {
+  const fnIdx = weatherSrc.indexOf('function weatherEmoji(code)');
+  if (fnIdx === -1) throw new Error('weatherEmoji not found in 09a-weather.js');
+  const docStart = weatherSrc.lastIndexOf('/**', fnIdx);
+  const blockEnd = weatherSrc.indexOf('\nfunction fetchWeather', fnIdx);
+  return weatherSrc.slice(docStart, blockEnd > -1 ? blockEnd : undefined);
+})();
+
+function loadWeatherEmojiSandbox() {
+  const sb = {};
+  vm.createContext(sb);
+  vm.runInContext(weatherEmojiFuncSrc, sb);
+  return sb;
+}
+
+describe('weatherEmoji', () => {
+  const cases = [
+    [0, '☀️'],
+    [1, '🌤️'],
+    [2, '⛅'],
+    [3, '☁️'],
+    [48, '🌫️'],
+    [55, '🌦️'],
+    [65, '🌧️'],
+    [75, '❄️'],
+    [82, '🌧️'],
+    [86, '🌨️'],
+    [95, '⛈️'],
+    [99, '⛈️'],
+  ];
+  for (const [code, expected] of cases) {
+    it(`maps WMO code ${code} to ${expected}`, () => {
+      const sb = loadWeatherEmojiSandbox();
+      assert.equal(sb.weatherEmoji(code), expected);
+    });
+  }
+});
+
+// ── 09b-almanac.js — getMoonData / flag-day date helpers ─────────────────────
+// Extract everything before the top-level fetchNameday()/fetchCalendarEvents()/
+// renderMoon() calls that fire when the real file loads, so the sandbox only
+// sees function and constant declarations.
+
+const almanacSrc = readFileSync(join(__dirname, '../src/js/09b-almanac.js'), 'utf8');
+
+const almanacPureSrc = (() => {
+  const callsIdx = almanacSrc.indexOf('\nfetchNameday();');
+  if (callsIdx === -1) throw new Error('fetchNameday() call not found in 09b-almanac.js');
+  return almanacSrc.slice(0, callsIdx);
+})();
+
+function loadAlmanacSandbox() {
+  const sb = {};
+  vm.createContext(sb);
+  vm.runInContext(almanacPureSrc, sb);
+  return sb;
+}
+
+describe('getMoonData', () => {
+  it('returns illumination as a percentage between 0 and 100', () => {
+    const sb = loadAlmanacSandbox();
+    for (const date of [new Date('2026-01-01'), new Date('2026-06-15'), new Date('2026-12-31')]) {
+      const { illum } = sb.getMoonData(date);
+      assert.ok(illum >= 0 && illum <= 100, `illum ${illum} out of range for ${date}`);
+    }
+  });
+
+  it('reports a near-new moon as low illumination with the New Moon phase', () => {
+    // 2000-01-06 ~18:14 UTC was a new moon, close to the algorithm's J2000 epoch.
+    const sb = loadAlmanacSandbox();
+    const { emoji, phase, illum } = sb.getMoonData(new Date('2000-01-06T18:14:00Z'));
+    assert.equal(emoji, '🌑');
+    assert.equal(phase, 'New Moon');
+    assert.ok(illum < 5, `expected near-zero illumination, got ${illum}`);
+  });
+
+  it('returns a valid two-element zodiac sign', () => {
+    const sb = loadAlmanacSandbox();
+    const ZODIAC_SYMBOLS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+    const { sign } = sb.getMoonData(new Date('2026-03-15'));
+    assert.equal(sign.length, 2);
+    assert.ok(ZODIAC_SYMBOLS.includes(sign[0]), `unexpected zodiac symbol ${sign[0]}`);
+  });
+});
+
+describe('nthWeekday / lastWeekday / nearestWeekday / fmtMD', () => {
+  it("finds the 2nd Sunday of May (Mother's Day, 2026)", () => {
+    const sb = loadAlmanacSandbox();
+    const d = sb.nthWeekday(2026, 5, 0, 2);
+    assert.equal(d.getDay(), 0);
+    assert.equal(sb.fmtMD(d), '05-10');
+  });
+
+  it('finds the last Saturday of August (Finnish Nature Day, 2026)', () => {
+    const sb = loadAlmanacSandbox();
+    const d = sb.lastWeekday(2026, 8, 6);
+    assert.equal(d.getDay(), 6);
+    assert.equal(d.getMonth(), 7); // August (0-indexed)
+  });
+
+  it('finds the nearest Saturday on or after a given date', () => {
+    const sb = loadAlmanacSandbox();
+    const d = sb.nearestWeekday(new Date(2026, 5, 20), 6);
+    assert.equal(d.getDay(), 6);
+    assert.ok(d.getTime() >= new Date(2026, 5, 20).getTime());
+  });
+
+  it('formats a date as zero-padded MM-DD', () => {
+    const sb = loadAlmanacSandbox();
+    assert.equal(sb.fmtMD(new Date(2026, 0, 4)), '01-04');
+  });
+});
+
+describe('getFlagDays', () => {
+  it('includes the fixed Finnish flag days', () => {
+    const sb = loadAlmanacSandbox();
+    const days = sb.getFlagDays(2026);
+    assert.equal(days['01-01'], "New Year's Day");
+    assert.equal(days['12-06'], 'Finnish Independence Day');
+  });
+
+  it('computes Midsummer as a Saturday between Jun 20–26', () => {
+    const sb = loadAlmanacSandbox();
+    const days = sb.getFlagDays(2026);
+    const midsummerMD = Object.keys(days).find((md) => days[md] === 'Midsummer / Finnish Flag Day');
+    assert.ok(midsummerMD, 'Midsummer entry missing');
+    const [month, day] = midsummerMD.split('-').map(Number);
+    assert.equal(month, 6);
+    assert.ok(day >= 20 && day <= 26);
+    assert.equal(new Date(2026, month - 1, day).getDay(), 6);
+  });
+});
+
+// ── 04b-render-time-helpers.js — toTimeInput / applyTime / durLabel ─────────
+
+const renderTimeHelpersSrc = readFileSync(
+  join(__dirname, '../src/js/04b-render-time-helpers.js'),
+  'utf8'
+);
+
+function loadRenderTimeHelpersSandbox() {
+  const sb = {
+    document: { querySelectorAll: () => [] },
+  };
+  vm.createContext(sb);
+  vm.runInContext(renderTimeHelpersSrc, sb);
+  return sb;
+}
+
+describe('toTimeInput', () => {
+  it('formats a timestamp as zero-padded HH:MM', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    const ts = new Date(2026, 0, 1, 9, 5).getTime();
+    assert.equal(sb.toTimeInput(ts), '09:05');
+  });
+});
+
+describe('applyTime', () => {
+  it('replaces the hours/minutes of a base timestamp', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    const base = new Date(2026, 0, 1, 8, 0, 0, 0).getTime();
+    const result = sb.applyTime(base, '14:30');
+    const d = new Date(result);
+    assert.equal(d.getHours(), 14);
+    assert.equal(d.getMinutes(), 30);
+    assert.equal(d.getFullYear(), 2026);
+    assert.equal(d.getMonth(), 0);
+    assert.equal(d.getDate(), 1);
+  });
+});
+
+describe('durLabel', () => {
+  it('returns an empty string for zero or negative duration', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    assert.equal(sb.durLabel(1000, 1000), '');
+    assert.equal(sb.durLabel(2000, 1000), '');
+  });
+
+  it('formats minutes-only durations', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    const start = 0;
+    const end = 45 * 60000;
+    assert.equal(sb.durLabel(start, end), '<span class="etime-dur">45m</span>');
+  });
+
+  it('formats hour-and-minute durations', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    const start = 0;
+    const end = (90 + 15) * 60000; // 1h 45m
+    assert.equal(sb.durLabel(start, end), '<span class="etime-dur">1h 45m</span>');
+  });
+
+  it('formats whole-hour durations without a minutes segment', () => {
+    const sb = loadRenderTimeHelpersSandbox();
+    const start = 0;
+    const end = 120 * 60000; // 2h
+    assert.equal(sb.durLabel(start, end), '<span class="etime-dur">2h</span>');
+  });
+});
+
+// ── 13a-calendar-bridge.js — getSeenEnded / setSeenEnded / getMeetingKey ─────
+
+const calendarBridgeSrc = readFileSync(join(__dirname, '../src/js/13a-calendar-bridge.js'), 'utf8');
+
+function loadCalendarBridgeSandbox(store = {}) {
+  const sb = {
+    localStorage: {
+      getItem: (k) => (k in store ? store[k] : null),
+      setItem: (k, v) => {
+        store[k] = v;
+      },
+    },
+  };
+  vm.createContext(sb);
+  vm.runInContext(calendarBridgeSrc, sb);
+  return sb;
+}
+
+describe('getSeenEnded / setSeenEnded', () => {
+  it('returns an empty set when nothing has been stored', () => {
+    const sb = loadCalendarBridgeSandbox();
+    assert.deepEqual([...sb.getSeenEnded()], []);
+  });
+
+  it('round-trips a set of meeting keys through localStorage', () => {
+    const sb = loadCalendarBridgeSandbox();
+    sb.setSeenEnded(new Set(['Standup|2026-07-13T09:00', 'Retro|2026-07-13T15:00']));
+    const seen = sb.getSeenEnded();
+    assert.ok(seen.has('Standup|2026-07-13T09:00'));
+    assert.ok(seen.has('Retro|2026-07-13T15:00'));
+    assert.equal(seen.size, 2);
+  });
+
+  it('falls back to an empty set on corrupt stored JSON', () => {
+    const sb = loadCalendarBridgeSandbox({ wl_seen_ended_v1: 'not-valid-json' });
+    assert.deepEqual([...sb.getSeenEnded()], []);
+  });
+});
+
+describe('getMeetingKey', () => {
+  it('joins subject and start time with a pipe', () => {
+    const sb = loadCalendarBridgeSandbox();
+    const key = sb.getMeetingKey({ subject: 'Standup', start: '2026-07-13T09:00' });
+    assert.equal(key, 'Standup|2026-07-13T09:00');
+  });
+});
+
 // ── auto-pause visibilitychange ──────────────────────────────────────────────
 // Extracts the handler body from 07-lifecycle.js and runs it in isolation with
 // mock globals so we can verify the guard conditions without a browser.
