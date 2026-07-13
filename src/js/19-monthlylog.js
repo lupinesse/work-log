@@ -24,7 +24,7 @@ function mlDaysInMonth(y, m) {
 function mlHoursForDay(dateKey) {
   return (
     entries
-      .filter((e) => e.date === dateKey && e.signifier !== 'cancelled' && e.tsEnd)
+      .filter((entry) => entry.date === dateKey && entry.signifier !== 'cancelled' && entry.tsEnd)
       .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
   );
 }
@@ -92,7 +92,7 @@ function renderMonthlyCalendar(calEl, year, month) {
       <button class="ml-nav-btn" id="mlNext">→</button>
     </div>
     <div class="ml-grid">
-      ${dayLabels.map((d) => `<div class="ml-day-lbl">${d}</div>`).join('')}
+      ${dayLabels.map((dayLabel) => `<div class="ml-day-lbl">${dayLabel}</div>`).join('')}
       ${emptyCells}
       ${dayCells}
     </div>
@@ -155,14 +155,14 @@ function renderMonthlyCalendar(calEl, year, month) {
  */
 function calcMonthSummaryStats(allEntries, monthPrefix, isBillable) {
   const monthEntries = allEntries.filter(
-    (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
+    (entry) => entry.date.startsWith(monthPrefix) && entry.tsEnd && entry.signifier !== 'cancelled'
   );
   const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
   const billableMs = monthEntries.filter(isBillable).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
 
   const tagTotals = {};
-  monthEntries.forEach((e) => {
-    tagTotals[e.tag] = (tagTotals[e.tag] || 0) + (e.tsEnd - e.ts);
+  monthEntries.forEach((entry) => {
+    tagTotals[entry.tag] = (tagTotals[entry.tag] || 0) + (entry.tsEnd - entry.ts);
   });
   const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
 
@@ -182,11 +182,11 @@ function calcMonthSummaryStats(allEntries, monthPrefix, isBillable) {
  * @returns {{ open: number, done: number, migrated: number }}
  */
 function calcMonthTaskCounts(allTasks, monthPrefix) {
-  const monthTasks = allTasks.filter((t) => t.date.startsWith(monthPrefix));
+  const monthTasks = allTasks.filter((task) => task.date.startsWith(monthPrefix));
   return {
-    open: monthTasks.filter((t) => t.status !== 'done').length,
-    done: monthTasks.filter((t) => t.status === 'done').length,
-    migrated: monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length,
+    open: monthTasks.filter((task) => task.status !== 'done').length,
+    done: monthTasks.filter((task) => task.status === 'done').length,
+    migrated: monthTasks.filter((task) => task.signifier === 'migrated' || task._migrated).length,
   };
 }
 

@@ -34,7 +34,7 @@ function openMigration() {
   const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
 
   _migItems = planTasks.filter(
-    (t) => t.date.startsWith(prefix) && t.status !== 'done' && !t._migrated
+    (task) => task.date.startsWith(prefix) && task.status !== 'done' && !task._migrated
   );
   _migIdx = 0;
 
