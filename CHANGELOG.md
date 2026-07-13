@@ -2,9 +2,15 @@
 
 ## Unreleased
 
+---
+
+## [1.9.1] — 2026-07-13
+
 ### Fixed
 - **JSON backups no longer grow without bound** — the 21-day retention window was only applied to `entries`, while `planTasks`, `blocks`, `devLog`, and `distractions` were bundled in full. Those arrays grow every day (carried tasks, per-day time blocks, appended distraction/dev-log records), so the `work-log-backup-21d-*.json` file kept getting bigger despite its name. All five time-series arrays are now trimmed to the same window; `categories`, `qpHidden`, and the source-capped `pomoLog` are still kept whole. Retention now runs through a pure, unit-tested `buildBackupPayload()` in `pure-fns.js` (7 new tests), and the per-array count of excluded records is logged at export time.
 - **Tabbed task board fills the full panel width** — the To Do / In Progress / Done tab bar and the active lane (with its cards) were collapsing to content width and left-aligning, leaving the right side of the panel empty. The tabbed flex-column layout was inheriting `align-items: start` from the base `.board-cols` grid; it now resets to `align-items: stretch` so tabs and lane span the whole width. Regression test added in `smoke-tests.cjs`.
+- **Commit-msg hook no longer crashes** — `@commitlint/config-conventional` was bumped to `^21.2.0` (#251), which resolved an ESM-only `conventional-changelog-conventionalcommits@^10.0.0` with no CommonJS `exports` condition; every commit crashed the Husky `commit-msg` hook with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Pinned back to the last known-good exact version (`21.0.2`).
+- **Prettier formatting drift on 5 files** reformatted, and `npm run format:check` is now part of `ci.yml`'s `lint` job so this class of drift fails CI instead of accumulating silently.
 
 ---
 

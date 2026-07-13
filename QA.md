@@ -93,6 +93,20 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Commits tagged at significant stages | ✅ Pass | All releases v1.0.0–v1.8.9 have annotated git tags |
 | ARCHITECTURE.md design certificate | ✅ Pass | Updated to `Covers app version: v1.8.9`, `Last reviewed: 2026-05-29` |
 
+### v1.9.0+ delta (as of 2026-07-13)
+
+| Checklist item | Status | Evidence |
+|---|---|---|
+| Core functionality unit tested | ✅ Pass | `test/unit.mjs` — **474 tests across 74 suites**, 0 failures (up from 466/73; #255 added 7 tests for `buildBackupPayload()`) |
+| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **322 `assert()` calls** (static count; the sandboxed review environment's pinned Playwright browser build doesn't match the one this repo requires, so the suite could not be executed live this pass — see `docs/qa-reports/qa-review-2026-07-13.md`). Up from 320 at 2026-06-26 (#238 added a regression test for the tabbed-board width fix). |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` — **171 tests across 32 suites**, 0 failures, unchanged |
+| Total test count | ✅ Pass | **967 tests** (474 unit + 322 smoke + 171 CI-scripts); up from 957 at 2026-06-26 |
+| Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js`, unchanged |
+| No credentials in code | ✅ Pass | Unchanged from 2026-06-26 |
+| All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings, verified locally this pass |
+| Commits tagged at significant stages | ✅ Pass | `v1.9.1` tags this delta — see CHANGELOG.md |
+| ARCHITECTURE.md design certificate | ✅ Pass | `v1.9.0-r2`, no architecturally significant change since — dependency and tooling fixes only |
+
 ### Stakeholder acceptance
 
 | Field | Value |
