@@ -1513,11 +1513,20 @@ describe('calcMonthTaskCounts', () => {
 
 // ── Today's Flow — findLargestGap / view preference ───────────────────────────
 
-const timeflowSrc = readFileSync(join(__dirname, '../src/js/11-timeflow.js'), 'utf8');
+// 11-timeflow.js was split into 11-timeflow.js (view-state orchestrator),
+// 11c-timeflow-header.js (day strip / gap reminder / section header), and
+// 11d-timeflow-flowview.js (Flow-tab render + note editor) — concatenated
+// here in the same order build.js uses so the sandbox sees every function
+// under test (findLargestGap/stripPct/etc. from 11c, partitionSessionNotes/
+// buildSessionNotesHtml from 11d).
+const timeflowSrc = ['11-timeflow.js', '11c-timeflow-header.js', '11d-timeflow-flowview.js']
+  .map((f) => readFileSync(join(__dirname, '../src/js/' + f), 'utf8'))
+  .join('\n');
 
 /**
- * Creates a vm sandbox with the minimal globals that 11-timeflow.js needs
- * for the pure-logic functions (findLargestGap, getFlowView, setFlowView).
+ * Creates a vm sandbox with the minimal globals that 11-timeflow.js and its
+ * siblings need for the pure-logic functions (findLargestGap, getFlowView,
+ * setFlowView, stripPct, partitionSessionNotes, etc.).
  * @param {object} overrides
  */
 function loadTimeflowSandbox(overrides = {}) {

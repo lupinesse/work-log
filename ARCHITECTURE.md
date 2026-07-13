@@ -571,14 +571,28 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (536 lines) — Today's Flow Unified Section
-**Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
+#### **11-timeflow.js** (142 lines) — Today's Flow: View-State Orchestrator
+**Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering Flow / Log / Blocks / Month / Summary views. Owns which view is active and dispatches to the right render function; the section chrome and Flow tab itself live in the two sibling files below.
 
-**Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
+**Key functions**: `renderTodayFlow()` (orchestrator), `getFlowView()` / `setFlowView()`, `focusTabAt()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
 
-**localStorage key**: `wl_flow_view` (`'flow' | 'log' | 'blocks'`, default `'flow'`).
+**localStorage key**: `wl_flow_view` (`'flow' | 'log' | 'blocks' | 'month' | 'summary'`, default `'flow'`).
 
 **ARIA**: The segmented control uses `role="tablist"` with `role="tab"` buttons, `aria-selected`, `aria-controls`, and roving `tabindex`. Arrow/Home/End keys navigate. Panes use `role="tabpanel"` with `tabindex="0"`.
+
+---
+
+#### **11c-timeflow-header.js** (196 lines) — Today's Flow: Header, Day Strip, Gap Reminder
+**Responsibility**: The "summary chrome" rendered above the active view pane — day-overview strip (hour ticks + entry footprints + live cursor), gap-reminder banner (largest untracked gap ≥ 15 min today), and the section header (tracked/billable totals + segmented control markup). Split out of `11-timeflow.js` as pure read-and-render helpers.
+
+**Key functions**: `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `stripPct()`, `tsToMins()`, `fmtHm()`.
+
+---
+
+#### **11d-timeflow-flowview.js** (217 lines) — Today's Flow: Flow Tab + Note Editor
+**Responsibility**: The Flow tab's own render (chronological cards with duration-scaled accent strips) and its inline session/task note-editing widget. Split out of `11-timeflow.js` as a self-contained mini feature.
+
+**Key functions**: `renderFlowView(dateKey)`, `partitionSessionNotes()`, `buildSessionNotesHtml()`, `buildFlowTaskNoteHtml()`, `bindFlowNoteEvents()`.
 
 ---
 
