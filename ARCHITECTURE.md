@@ -140,26 +140,11 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (646 lines) — Top-Level UI Rendering
+#### **04-render.js** (425 lines) — Top-Level UI Rendering
 **Responsibility**: Orchestrate rendering of all visible sections
 
 **Main Function**:
-- `render()` — Master render function called after every state change
-
-**Sections Rendered**:
-```
-render() → {
-  renderStats()              // Top bar: today's counts
-  renderEntries()            // Entries timeline
-  renderPlan()               // Today's tasks section
-  renderCompleted()          // Recently completed tasks
-  renderParked()             // Parked thoughts
-  renderChart()              // Activity chart
-  renderNowNext()            // Timer display
-  renderCalStrip()           // Calendar meetings
-  // ... others
-}
-```
+- `render()` — Master render function called after every state change; builds the timeline row HTML and binds all of its inline event handlers (time editor, category picker, billable toggle, delete, restart, rename), then delegates to `renderPlan()`, `renderCompleted()`, `renderTodayFlow()`, `renderTrackers()`, and `04a-render-widgets.js`'s `renderQuickPick()`/`renderChart()`.
 
 **Rendering Pattern**:
 1. Gather data from state
@@ -168,6 +153,16 @@ render() → {
 4. Attach event listeners
 
 **No Virtual DOM**: Direct DOM manipulation for simplicity
+
+---
+
+#### **04a-render-widgets.js** (187 lines) — Secondary Render Panels
+**Responsibility**: `renderQuickPick()` (recent-tasks quick-pick bar) and `renderChart()` (time-tracking bar chart). Both are self-contained panel renderers invoked at the tail of `render()`, extracted so `04-render.js` stays focused on the entry timeline itself.
+
+---
+
+#### **04b-render-time-helpers.js** (44 lines) — Inline Time-Editor Helpers
+**Responsibility**: Small, single-purpose helpers used only by the entry timeline's inline time editor — `closeAllEditors()`, `toTimeInput()`, `applyTime()`, `durLabel()`. Extracted from `04-render.js` as pure, easily testable formatting/DOM utilities.
 
 ---
 
