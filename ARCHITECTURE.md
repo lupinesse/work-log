@@ -234,7 +234,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **06a-hero.js** (512 lines) — Hero Card State Machine
+#### **06a-hero.js** (274 lines) — Hero Card State Machine
 **Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
 
 **States**:
@@ -249,9 +249,18 @@ parkedThoughts     → List of captured thoughts
 - `renderHeroCard()` — Full re-render; called after any state change.
 - `heroUpdateClock()` — Updates the running clock label every tick (called from `tickTimer`).
 - `heroEnterStopped()` — Transitions to stopped state; called by `stopTimer()`.
-- `initHero()` — Binds button events; called once from `DOMContentLoaded`.
 
 **Compat**: Legacy IDs (`#timerStop`, `#timerPause`, `#emergencyBtn`, etc.) are preserved as hidden stubs so `06-focus.js` and other modules need no changes.
+
+---
+
+#### **06b-hero-events.js** (143 lines) — Hero Card Action Handlers
+**Responsibility**: Responds to Hero Card user actions (composer submit, recent-chip click, undo/done buttons) and `initHero()` — binds all Hero Card button/keyboard events once from `DOMContentLoaded`. Split out of `06a-hero.js`; shares that module's `_hero*` state via the concatenated script scope.
+
+---
+
+#### **06c-hero-category.js** (113 lines) — Hero Card Category Picker
+**Responsibility**: The category quick-switch dropdown shown on the running/paused panels — builds the picker markup, binds open/close/keyboard-navigation/select behaviour, and persists the selection. Split out of `06a-hero.js` as a self-contained interaction widget.
 
 ---
 
