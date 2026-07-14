@@ -3426,6 +3426,144 @@ describe('jiraRenderTasks', () => {
   });
 });
 
+// ── renderTagRow — colour-picker sanitisation ────────────────────────────────
+// renderTagRow (02-utils.js) renders a native <input type="color"> and wires
+// its input/change handlers straight from the picker's DOM value into the
+// preview dot's style and the stored cat.color. CodeQL flagged js/xss-through-dom
+// (high) on that path; the fix routes every read through safeCssColor at both
+// the source (picker value) and the innerHTML sink. These are the regression
+// tests for that fix — each fails if the safeCssColor barrier is removed.
+
+/**
+ * Builds a minimal fake DOM element that records event listeners by type and
+ * backs innerHTML/style/value with plain fields, for VM-sandbox rendering tests.
+ * @returns {object} A stub element usable by renderTagRow.
+ */
+function makeStubEl() {
+  let html = '';
+  const listeners = {};
+  return {
+    _listeners: listeners,
+    style: {},
+    dataset: {},
+    value: '',
+    classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
+    focus() {},
+    select() {},
+    addEventListener(type, fn) {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(fn);
+    },
+    get innerHTML() {
+      return html;
+    },
+    set innerHTML(value) {
+      html = value;
+    },
+  };
+}
+
+/**
+ * Creates a VM sandbox with pure-fns.js and 02-utils.js loaded, exposing an
+ * element registry so tests can read captured innerHTML/style and fire the
+ * colour-picker's event listeners.
+ * @param {object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {{ sandbox: object, els: Object<string, object> }}
+ */
+function loadUtilsSandbox(overrides = {}) {
+  const pureSrc = loadPureFnsScriptSource();
+  const utilsSrc = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
+
+  const els = {};
+  const getEl = (id) => {
+    if (!els[id]) els[id] = makeStubEl();
+    return els[id];
+  };
+
+  const sandbox = {
+    document: { getElementById: getEl },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    alert: () => {},
+    categories: [],
+    selectedTag: 'work',
+    planTasks: [],
+    save: () => {},
+    savePlan: () => {},
+    render: () => {},
+    renderTimeblock: () => {},
+    renderCompleted: () => {},
+    renderPlan: () => {},
+    nextDistinctColor: () => '#123456',
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(utilsSrc, sandbox);
+  return { sandbox, els };
+}
+
+describe('renderTagRow — colour-picker sanitisation', () => {
+  const MALICIOUS = 'red; background:url(x)';
+  const FALLBACK = '#888780';
+
+  it('sanitises the picker value before storing it on the category (change handler)', () => {
+    const { sandbox, els } = loadUtilsSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#4a90e2' }],
+      selectedTag: 'work',
+    });
+    sandbox.renderTagRow();
+    const changeHandlers = els.catQuickColorPick._listeners.change || [];
+    assert.ok(changeHandlers.length > 0, 'a change listener must be registered on the picker');
+
+    els.catQuickColorPick.value = MALICIOUS;
+    changeHandlers[0]();
+
+    const stored = sandbox.categories.find((cat) => cat.id === 'work').color;
+    assert.equal(stored, FALLBACK, 'malicious picker value must be sanitised to the fallback');
+    assert.ok(!stored.includes('url('), 'raw malicious value must not be stored on cat.color');
+  });
+
+  it('sanitises the picker value before writing the preview dot style (input handler)', () => {
+    const { sandbox, els } = loadUtilsSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#4a90e2' }],
+      selectedTag: 'work',
+    });
+    sandbox.renderTagRow();
+    const inputHandlers = els.catQuickColorPick._listeners.input || [];
+    assert.ok(inputHandlers.length > 0, 'an input listener must be registered on the picker');
+
+    els.catQuickColorPick.value = MALICIOUS;
+    inputHandlers[0]();
+
+    assert.equal(els.catDotPreview.style.background, FALLBACK);
+  });
+
+  it('never emits a raw malicious stored colour into the rendered markup', () => {
+    const { sandbox, els } = loadUtilsSandbox({
+      categories: [{ id: 'work', label: 'Work', color: MALICIOUS }],
+      selectedTag: 'work',
+    });
+    sandbox.renderTagRow();
+    const html = els.tagRow.innerHTML;
+    assert.ok(!html.includes(MALICIOUS), 'raw malicious colour must not appear in innerHTML');
+    assert.ok(html.includes(FALLBACK), 'safeCssColor fallback must be rendered instead');
+  });
+
+  it('passes a valid hex picker value through unchanged (change handler)', () => {
+    const { sandbox, els } = loadUtilsSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#4a90e2' }],
+      selectedTag: 'work',
+    });
+    sandbox.renderTagRow();
+    els.catQuickColorPick.value = '#0d9488';
+    (els.catQuickColorPick._listeners.change || [])[0]();
+    assert.equal(sandbox.categories.find((cat) => cat.id === 'work').color, '#0d9488');
+  });
+});
+
 // ── buildDailyLogItems — session-note partitioning ───────────────────────────
 
 const dailylogSrc = readFileSync(join(__dirname, '../src/js/18-dailylog.js'), 'utf8');
