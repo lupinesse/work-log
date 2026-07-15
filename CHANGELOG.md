@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Security
+- **CodeQL now models `safeCssColor()` as an html-injection barrier** — a repo-local CodeQL model pack (`.github/codeql/models/`) declares `safeCssColor`'s return value as a `barrierModel`, and `codeql.yml` loads it via a new `codeql-config.yml` (which also carries the `security-extended` suite that previously lived in the workflow's `queries` input). `safeCssColor` only ever returns a hex triplet, an `hsl()` triplet, or the constant `#888780` fallback, so its output cannot carry HTML meta-characters — but CodeQL could not infer that, because the build concatenates `src/js/*.js` into one classic script (callers reference it as a free global) and `getCat()` applies it behind an object spread. Without this model, any nearby edit to `02-utils.js` risks CodeQL re-flagging the same `getCat().color` → `innerHTML` flow as a new `js/xss-through-dom` alert — which is what happened on PR #315's unrelated lambda-parameter rename. This model pack was originally written on the closed/superseded PR #265 (commit `34b509d`, 2026-07-16) but never reached `main`; ported here at the root cause instead of dismissing the alert per-PR.
+
 ---
 
 ## [1.9.2] — 2026-08-14
