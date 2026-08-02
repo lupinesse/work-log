@@ -272,6 +272,46 @@ export function mergeNoteMaps(a, b) {
   return merged;
 }
 
+/* ── Gap report ── */
+
+// Utility entries logged via logUtilEntry() in 03-timer.js — never carry
+// documentation, so they'd just be noise in the gap report.
+const GAP_REPORT_UTILITY_TEXTS = new Set(['☕ Break', '🥪 Lunch', '📅 Meeting']);
+
+/**
+ * Finds finished, non-cancelled work entries within `[weekStart, weekEnd)`
+ * that have neither a proof link nor a note — candidates for the
+ * end-of-week gap report. Uses the same "finished and not cancelled" filter
+ * as every other report/aggregation in this codebase ({@link buildRollingSummary},
+ * `findLargestGap` in `11-timeflow.js`, `exportTxt`'s billable summary), plus
+ * excludes break/lunch/meeting utility entries which never need documentation.
+ *
+ * @param {Array<Object>} entries - All log entries.
+ * @param {number} weekStart - Inclusive week-start timestamp in ms (e.g. Monday 00:00).
+ * @param {number} weekEnd - Exclusive week-end timestamp in ms (e.g. the following Monday 00:00).
+ * @returns {Array<Object>} Matching entries, sorted by `ts` ascending.
+ * @example
+ * findGapReportEntries(
+ *   [{ id: '1', text: 'Fix login', ts: 100, tsEnd: 200, date: '2026-06-01' }],
+ *   0, 1000
+ * )
+ * // → [{ id: '1', text: 'Fix login', ts: 100, tsEnd: 200, date: '2026-06-01' }]
+ */
+export function findGapReportEntries(entries, weekStart, weekEnd) {
+  return (entries || [])
+    .filter(
+      (entry) =>
+        entry.tsEnd &&
+        entry.signifier !== 'cancelled' &&
+        entry.ts >= weekStart &&
+        entry.ts < weekEnd &&
+        !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        !(entry.link && entry.link.trim()) &&
+        !(entry.note && entry.note.trim())
+    )
+    .sort((a, b) => a.ts - b.ts);
+}
+
 /**
  * Renders the grouped-by-category structure into indented text lines: one line
  * per category (with its total), each followed by its indented task lines and,

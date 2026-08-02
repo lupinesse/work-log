@@ -19,6 +19,7 @@ const {
   fmtDurLong,
   fmtAgo,
   isLongRunningTimer,
+  mondayOfWeek,
   roundToNearest30,
   validEntry,
   validCategory,
@@ -49,6 +50,7 @@ const {
   filterNewBackupEntries,
   applyBackupRetention,
   buildBackupPayload,
+  findGapReportEntries,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -213,6 +215,27 @@ describe('isLongRunningTimer', () => {
     assert.equal(isLongRunningTimer(30 * 60_000, 30), false);
     assert.equal(isLongRunningTimer(31 * 60_000, 30), true);
   });
+});
+
+// ── mondayOfWeek ──────────────────────────────────────────────────────────────
+describe('mondayOfWeek', () => {
+  it('returns that same day at 00:00 when given a Monday', () => {
+    const monday = localMs(2026, 6, 1, 9, 30); // 2026-06-01 is a Monday
+    assert.equal(mondayOfWeek(monday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it("returns the week's Monday when given a mid-week day", () => {
+    const wednesday = localMs(2026, 6, 3, 14, 30); // 2026-06-03 is a Wednesday
+    assert.equal(mondayOfWeek(wednesday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it('returns the preceding Monday when given a Sunday', () => {
+    const sunday = localMs(2026, 6, 7, 23, 59); // 2026-06-07 is a Sunday
+    assert.equal(mondayOfWeek(sunday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it('defaults to Date.now() when omitted (smoke test — returns a number)', () =>
+    assert.equal(typeof mondayOfWeek(), 'number'));
 });
 
 // ── roundToNearest30 ──────────────────────────────────────────────────────────
@@ -2497,6 +2520,105 @@ describe('mergeNoteMaps', () => {
     mergeNoteMaps(a, b);
     assert.deepEqual(a, { x: 'task note' });
     assert.deepEqual(b, { x: 'entry note' });
+  });
+});
+
+// ── findGapReportEntries ───────────────────────────────────────────────────────
+describe('findGapReportEntries', () => {
+  const WEEK_START = localMs(2026, 6, 1); // Monday
+  const WEEK_END = localMs(2026, 6, 8); // following Monday
+  const base = {
+    id: '1',
+    text: 'Fix login',
+    ts: localMs(2026, 6, 3, 10, 0),
+    tsEnd: localMs(2026, 6, 3, 11, 0),
+    date: '2026-06-03',
+  };
+
+  it('includes a finished entry with neither a link nor a note', () => {
+    assert.deepEqual(findGapReportEntries([base], WEEK_START, WEEK_END), [base]);
+  });
+
+  it('excludes an entry with only a link', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, link: 'https://confluence/123' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an entry with only a note', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, note: 'did the thing' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an entry with both a link and a note', () => {
+    assert.deepEqual(
+      findGapReportEntries(
+        [{ ...base, link: 'PROJ-1', note: 'did the thing' }],
+        WEEK_START,
+        WEEK_END
+      ),
+      []
+    );
+  });
+
+  it('excludes an entry whose link/note is whitespace-only', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, link: '   ', note: '  ' }], WEEK_START, WEEK_END),
+      [{ ...base, link: '   ', note: '  ' }]
+    );
+  });
+
+  it('excludes a cancelled entry', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, signifier: 'cancelled' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an unfinished entry (no tsEnd)', () => {
+    const running = { ...base };
+    delete running.tsEnd;
+    assert.deepEqual(findGapReportEntries([running], WEEK_START, WEEK_END), []);
+  });
+
+  for (const text of ['☕ Break', '🥪 Lunch', '📅 Meeting']) {
+    it(`excludes a "${text}" utility entry`, () => {
+      assert.deepEqual(findGapReportEntries([{ ...base, text }], WEEK_START, WEEK_END), []);
+    });
+  }
+
+  it('excludes entries before weekStart', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, ts: WEEK_START - 1 }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes entries at or after weekEnd', () => {
+    assert.deepEqual(findGapReportEntries([{ ...base, ts: WEEK_END }], WEEK_START, WEEK_END), []);
+  });
+
+  it('includes an entry exactly at weekStart', () => {
+    assert.deepEqual(findGapReportEntries([{ ...base, ts: WEEK_START }], WEEK_START, WEEK_END), [
+      { ...base, ts: WEEK_START },
+    ]);
+  });
+
+  it('sorts matching entries by ts ascending', () => {
+    const later = { ...base, id: '2', ts: base.ts + 3600000, tsEnd: base.tsEnd + 3600000 };
+    const result = findGapReportEntries([later, base], WEEK_START, WEEK_END);
+    assert.deepEqual(
+      result.map((e) => e.id),
+      ['1', '2']
+    );
+  });
+
+  it('returns an empty array for an empty or missing entries array', () => {
+    assert.deepEqual(findGapReportEntries([], WEEK_START, WEEK_END), []);
+    assert.deepEqual(findGapReportEntries(undefined, WEEK_START, WEEK_END), []);
   });
 });
 

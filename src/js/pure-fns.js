@@ -19,6 +19,7 @@ export {
   fmtAgo,
   fmtDurLong,
   isLongRunningTimer,
+  mondayOfWeek,
   roundToNearest30,
 } from './pure-fns-format.js';
 
@@ -58,4 +59,5 @@ export {
   buildRollingSummary,
   applyBackupRetention,
   buildBackupPayload,
+  findGapReportEntries,
 } from './pure-fns-export.js';
