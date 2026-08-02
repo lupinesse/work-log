@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 13-calendar.js</title>
+    <title>JSDoc: Source: 12c-gapreport.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 13-calendar.js</h1>
+    <h1 class="page-title">Source: 12c-gapreport.js</h1>
 
     
 
@@ -26,531 +26,131 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Calendar (Outlook COM via local server) ── */
+            <pre class="prettyprint source linenums"><code>/**
+ * @file 12c-gapreport.js — End-of-week gap report.
+ *
+ * Lists this calendar week's (Mon–Sun) finished, non-cancelled log entries
+ * that have neither a proof link nor a note, via the pure
+ * findGapReportEntries() (pure-fns.js), so the user can catch missing
+ * documentation themselves before a weekly report is due. Clicking a flagged
+ * entry jumps straight to it in the Log view with its proof-link/note editor
+ * already open — see buildEntryMetaHtml()/bindEntryMetaEvents() in
+ * 04-render.js for the editor itself (added alongside the entry.link/note
+ * fields this report reads).
+ */
 
-// CAL_ACCOUNT_LABELS is defined in 00-config.js
-let _calMeetingsCache = null;
+// Element that had focus when the report was opened, restored on close —
+// same convention as the EOD/expiry modal focus management in 12-misc.js.
+let _gapReportTrigger = null;
 
 /**
- * Resolves a human-readable account label for an Outlook calendar account.
- * The PowerShell server sends the raw `DisplayName` which may be an email
- * address, a display name, or free-form company text. Tries three strategies
- * in order: exact match, email domain extraction, and substring match.
- * @param {string|null} account - Raw Outlook account identifier.
- * @returns {string|null} Display label (e.g. "LähiTapiola"), or null if unknown.
+ * Builds one gap-report row: date label, task text (with any leading Jira
+ * key linkified), and a "+ fix" button that jumps to the entry.
+ * @param {Object} entry - A flagged log entry (from findGapReportEntries()).
+ * @returns {string} HTML string.
  */
-function calAccountLabel(account) {
-  if (!account) return null;
-  const raw = String(account);
-  const lower = raw.toLowerCase();
-
-  // 1. Exact match (case-insensitive)
-  for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
-    if (key.toLowerCase() === lower) return CAL_ACCOUNT_LABELS[key];
-  }
-  // 2. Email-style: extract second-level domain (e.g. "x@gofore.com" → "gofore")
-  const emailMatch = lower.match(/@([^.@\s]+)\./);
-  if (emailMatch &amp;&amp; CAL_ACCOUNT_LABELS[emailMatch[1]]) return CAL_ACCOUNT_LABELS[emailMatch[1]];
-  // 3. Substring match (e.g. "Gofore Mailbox" contains "gofore")
-  for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
-    if (lower.includes(key.toLowerCase())) return CAL_ACCOUNT_LABELS[key];
-  }
-  return null;
+function buildGapReportRowHtml(entry) {
+  return `&lt;div class="gap-report-row">
+      &lt;span class="gap-report-date">${fmtDateLabel(entry.date)}&lt;/span>
+      &lt;span class="gap-report-text">${jiraTicketHtml(entry.text)}&lt;/span>
+      &lt;button type="button" class="gap-report-fix" data-id="${entry.id}" data-date="${entry.date}">+ fix&lt;/button>
+    &lt;/div>`;
 }
 
 /**
- * Renders the calendar meetings strip for today.
- * Sorts meetings by start time, marks past meetings grey/italic, pulses
- * ongoing meetings, and provides ▶ start and ✕ hide buttons per meeting.
- * @param {Array&lt;Object>} meetings - Array of meeting objects from the PS server.
+ * Opens the gap report: this calendar week's entries missing both a proof
+ * link and a note. Builds the list fresh from current `entries` state every
+ * time it's opened, so it always reflects the latest data.
  */
-function renderCalStrip(meetings) {
-  const section = document.getElementById('calSection');
-  const el = document.getElementById('calMeetings');
-  const countEl = document.getElementById('calCount');
-  if (!section || !el) return;
-  // Sort by start time regardless of calendar source
-  if (Array.isArray(meetings))
-    meetings = [...meetings].sort((a, b) => new Date(a.start) - new Date(b.start));
+function openGapReportOverlay() {
+  const overlay = document.getElementById('gapReportOverlay');
+  if (!overlay) return;
 
-  if (!meetings || meetings.length === 0) {
-    section.style.display = '';
-    el.innerHTML = '&lt;div class="cal-empty">No meetings today&lt;/div>';
-    if (countEl) countEl.textContent = '';
-    return;
+  _gapReportTrigger = document.activeElement;
+
+  const weekStart = mondayOfWeek();
+  const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
+  const flagged = findGapReportEntries(entries, weekStart, weekEnd);
+
+  const subtitleEl = document.getElementById('gapReportSubtitle');
+  const listEl = document.getElementById('gapReportList');
+  if (subtitleEl) {
+    subtitleEl.textContent = flagged.length
+      ? `${flagged.length} ${flagged.length === 1 ? 'entry needs' : 'entries need'} a proof link or a note this week`
+      : 'All caught up 🎉 — every entry this week has a proof link or a note.';
+  }
+  if (listEl) {
+    listEl.innerHTML = flagged.length
+      ? flagged.map(buildGapReportRowHtml).join('')
+      : '&lt;div class="gap-report-empty">Nothing to fix.&lt;/div>';
   }
 
-  const now = new Date();
-  const fmtTime = (d) =>
-    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
-  if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
+  overlay.classList.add('show');
+  setTimeout(() => {
+    const first = overlay.querySelector('button, [tabindex]:not([tabindex="-1"])');
+    if (first) first.focus();
+  }, 50);
+}
 
-  // Populate the collapsed-state next-meeting summary
-  const nextInfoEl = document.getElementById('calNextInfo');
-  if (nextInfoEl) {
-    const nextMeeting = meetings.find((ev) => new Date(ev.end) > now);
-    if (nextMeeting) {
-      const start = new Date(nextMeeting.start);
-      const timeStr = fmtTime(start);
-      const maxLen = 28;
-      const subject = nextMeeting.subject || '';
-      const title = subject.length > maxLen ? subject.slice(0, maxLen) + '…' : subject;
-      nextInfoEl.textContent = `${timeStr} · ${title}`;
-    } else {
-      nextInfoEl.textContent = '';
-    }
+/** Restores focus to whatever triggered the report, then clears it. */
+function restoreGapReportFocus() {
+  if (_gapReportTrigger) {
+    _gapReportTrigger.focus();
+    _gapReportTrigger = null;
   }
+}
 
-  el.innerHTML = meetings
-    .map((ev, idx) => {
-      const start = new Date(ev.start);
-      const end = new Date(ev.end);
-      const isPast = end &lt; now;
-      const isNow = start &lt;= now &amp;&amp; end > now;
-      const cls = isNow ? 'now' : isPast ? 'past' : '';
-      const dur = `&lt;span class="cal-meeting-dur">${fmtDur(end - start)}&lt;/span>`;
-      const join = ev.joinUrl
-        ? `&lt;a class="cal-meeting-join" href="${escHtml(ev.joinUrl)}" target="_blank" rel="noopener">Join&lt;/a>`
-        : '';
-      const label = calAccountLabel(ev.account);
-      const acct = label ? `&lt;span class="cal-account-label">[${escHtml(label)}]&lt;/span>` : '';
-      const taskBtn = `&lt;button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">▶ start&lt;/button>`;
-      const deleteBtn = `&lt;button class="cal-delete-btn" data-meeting-idx="${idx}" title="Hide this meeting">✕&lt;/button>`;
-      return `&lt;div class="cal-meeting ${cls}">
-        &lt;span class="cal-meeting-time">${fmtTime(start)}&lt;/span>
-        &lt;span class="cal-meeting-title">${escHtml(ev.subject)}&lt;/span>
-        ${acct} ${dur} ${join} ${taskBtn} ${deleteBtn}
-      &lt;/div>`;
-    })
-    .join('');
+/** Hides the gap-report overlay and restores focus to its trigger. */
+function closeGapReportOverlay() {
+  const overlay = document.getElementById('gapReportOverlay');
+  if (overlay) overlay.classList.remove('show');
+  restoreGapReportFocus();
+}
 
-  // Wire up "▶ start" buttons
-  el.querySelectorAll('.cal-task-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const subject = btn.dataset.subject;
-      const todayKey = dk(new Date());
-      // Meetings always default to the "meeting" category. Try the default id first,
-      // then any category whose label matches; fall back to selectedTag if absent.
-      const meetingCat =
-        categories.find((c) => c.id === 'meeting') ||
-        categories.find((c) => (c.label || '').toLowerCase() === 'meeting') ||
-        null;
-      const meetingTag = meetingCat ? meetingCat.id : selectedTag;
-      const exists = planTasks.find(
-        (t) => t.date === todayKey &amp;&amp; t.text.toLowerCase() === subject.toLowerCase()
-      );
-      if (!exists) {
-        planTasks.push({
-          id: Date.now() + '',
-          text: subject,
-          status: 'todo',
-          date: todayKey,
-          tag: meetingTag,
-        });
-        savePlan();
-      }
-      if (activeTimer) stopTimer();
-      const entry = {
-        id: Date.now() + '',
-        text: subject,
-        tag: meetingTag,
-        ts: safeRoundedStart(),
-        date: todayKey,
-      };
-      entries.push(entry);
-      const task = planTasks.find(
-        (t) => t.date === todayKey &amp;&amp; t.text.toLowerCase() === subject.toLowerCase()
-      );
-      if (task &amp;&amp; task.status === 'todo') {
-        task.status = 'inprogress';
-        savePlan();
-      }
-      viewDate = new Date();
-      save();
-      startTimer(entry.id);
-      render();
-    });
+/**
+ * Jumps from the gap report straight to a flagged entry: closes the report,
+ * switches the viewed day and the Today's Flow tab to that entry's Log view,
+ * opens its proof-link/note editor, and scrolls the row into view. This is
+ * the "find it yourself, fix it yourself" action the report exists for.
+ * @param {string} entryId - ID of the entry to jump to.
+ * @param {string} entryDate - The entry's date (YYYY-MM-DD).
+ */
+function jumpToGapReportEntry(entryId, entryDate) {
+  const overlay = document.getElementById('gapReportOverlay');
+  if (overlay) overlay.classList.remove('show');
+  _gapReportTrigger = null; // navigating away — nothing to restore focus to
+
+  viewDate = new Date(entryDate + 'T12:00:00');
+  setFlowView('log');
+  _entryMetaEditId = entryId;
+  render();
+
+  setTimeout(() => {
+    const row = document.querySelector(`.entry[data-id="${entryId}"]`);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById('emli-' + entryId)?.focus();
+  }, 0);
+}
+
+const gapReportBtn = document.getElementById('gapReportBtn');
+const gapReportOverlay = document.getElementById('gapReportOverlay');
+const gapReportClose = document.getElementById('gapReportClose');
+const gapReportList = document.getElementById('gapReportList');
+
+if (gapReportBtn) gapReportBtn.addEventListener('click', openGapReportOverlay);
+if (gapReportClose) gapReportClose.addEventListener('click', closeGapReportOverlay);
+if (gapReportOverlay) {
+  gapReportOverlay.addEventListener('click', (e) => {
+    if (e.target === gapReportOverlay) closeGapReportOverlay();
   });
-
-  // Wire up delete buttons
-  const todayKey = dk(new Date());
-  const hiddenMeetings = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (err) {
-      return [];
-    }
-  })();
-
-  el.querySelectorAll('.cal-delete-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.meetingIdx);
-      const meeting = meetings[idx];
-      if (meeting) {
-        // Add to hidden list
-        if (!hiddenMeetings.includes(meeting.subject)) {
-          hiddenMeetings.push(meeting.subject);
-          localStorage.setItem('wl_hidden_meetings_' + todayKey, JSON.stringify(hiddenMeetings));
-        }
-        // Remove from display
-        btn.closest('.cal-meeting').style.opacity = '0.5';
-        btn.closest('.cal-meeting').style.textDecoration = 'line-through';
-        btn.disabled = true;
-        btn.textContent = '✓';
-      }
-    });
+  gapReportOverlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeGapReportOverlay();
   });
-
-  section.style.display = '';
-  // Restore stored collapse state the first time the section is shown.
-  // The flag prevents re-applying on subsequent re-renders.
-  if (!section._collapseRestored) {
-    section._collapseRestored = true;
-    section.classList.toggle('collapsed', readCollapseState('calSection', false));
-  }
-
-  // Collapsible header
-  const hdr = document.getElementById('calHeader');
-  if (hdr &amp;&amp; !hdr._calBound) {
-    hdr._calBound = true;
-    hdr.addEventListener('click', () => {
-      section.classList.toggle('collapsed');
-      writeCollapseState('calSection', section.classList.contains('collapsed'));
-    });
-  }
 }
-
-/**
- * Fetches today's meetings from the local PowerShell proxy (`/api/calendar`),
- * caches the result, filters out user-hidden meetings, and calls
- * {@link renderCalStrip}. Logs a warning and shows a fallback message on error.
- * @returns {Promise&lt;void>}
- */
-async function fetchAndRenderCalendar() {
-  try {
-    const res = await fetch('/api/calendar');
-    if (!res.ok) throw new Error(`Server ${res.status}`);
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    if (!Array.isArray(data)) {
-      wlLog.warn('fetchAndRenderCalendar: response is not an array — skipping render', data);
-      return;
-    }
-    const invalidMeetings = data.filter((m) => !validCalendarMeeting(m));
-    if (invalidMeetings.length) {
-      wlLog.warn(
-        `fetchAndRenderCalendar: dropped ${invalidMeetings.length} malformed meeting(s)`,
-        invalidMeetings
-      );
-    }
-    const validMeetings = data.filter(validCalendarMeeting);
-    _calMeetingsCache = validMeetings;
-
-    // Filter out hidden meetings for today
-    const todayKey = dk(new Date());
-    const hiddenMeetings = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-      } catch (err) {
-        return [];
-      }
-    })();
-    const filteredData = validMeetings.filter((m) => !hiddenMeetings.includes(m.subject));
-
-    renderCalStrip(filteredData);
-  } catch (err) {
-    console.warn('[wl] Calendar unavailable:', err.message);
-    const el = document.getElementById('calMeetings');
-    if (el)
-      el.innerHTML = `&lt;div class="cal-empty" title="${escHtml(err.message)}">📅 Calendar unavailable — restart server with Outlook open&lt;/div>`;
-    const sec = document.getElementById('calSection');
-    if (sec) sec.style.display = '';
-  }
-}
-
-// ── Transition bridge (Feature 3) ──
-const STORE_SEEN_ENDED = 'wl_seen_ended_v1';
-
-/**
- * Returns the set of meeting keys (`subject|start`) that have already triggered
- * a bridge banner in this session, loaded from localStorage.
- * @returns {Set&lt;string>}
- */
-function getSeenEnded() {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(STORE_SEEN_ENDED) || '[]'));
-  } catch (err) {
-    return new Set();
-  }
-}
-/**
- * Persists the set of seen-ended meeting keys to localStorage.
- * @param {Set&lt;string>} s - Updated set to persist.
- */
-function setSeenEnded(s) {
-  localStorage.setItem(STORE_SEEN_ENDED, JSON.stringify([...s]));
-}
-
-/**
- * Returns a stable string key for a meeting used to deduplicate bridge banners.
- * @param {{subject: string, start: string}} m - Meeting object.
- * @returns {string}
- */
-function getMeetingKey(m) {
-  return `${m.subject}|${m.start}`;
-}
-
-const bannerQueue = [];
-let bannerShowing = false;
-
-/**
- * Shows the post-meeting bridge banner for the given meeting.
- * Queues the meeting if another banner is already visible.
- * @param {{subject: string, start: string, end: string}} meeting - The ended meeting.
- */
-function showBridgeBanner(meeting) {
-  if (bannerShowing) {
-    bannerQueue.push(meeting);
-    return;
-  }
-  bannerShowing = true;
-  const banner = document.getElementById('newdayBanner');
-  const msg = document.getElementById('newdayMsg');
-  const expanded = document.getElementById('newdayExpanded');
-  const bridgeBtn = document.getElementById('newdayBridgeBtn');
-  const dismissBtn = document.getElementById('newdayDismiss');
-  if (!banner || !msg) {
-    bannerShowing = false;
-    return;
-  }
-
-  msg.textContent = `Just finished "${meeting.subject || '(untitled)'}" — build a bridge to your next thing?`;
-  expanded.innerHTML = '';
-  expanded.style.display = 'none';
-  banner.classList.add('show');
-
-  const onDismiss = () => {
-    banner.classList.remove('show');
-    bannerShowing = false;
-    if (bannerQueue.length) showBridgeBanner(bannerQueue.shift());
-  };
-  dismissBtn.onclick = onDismiss;
-  bridgeBtn.onclick = async (e) => {
-    e.stopPropagation();
-    await buildBridge(meeting, expanded, bridgeBtn);
-  };
-}
-
-/**
- * Determines the next task to transition to and delegates to {@link fetchBridge}.
- * If multiple tasks are in-flight the user picks from a list; a single in-progress
- * task is auto-selected; the only remaining task is auto-selected.
- * @param {{subject: string}} meeting  - The meeting that just ended.
- * @param {HTMLElement} expandedEl     - Container for the bridge content.
- * @param {HTMLElement} bridgeBtn      - "Build bridge" button (disabled during fetch).
- * @returns {Promise&lt;void>}
- */
-async function buildBridge(meeting, expandedEl, bridgeBtn) {
-  const todayKey = dk(new Date());
-  const notDone = planTasks.filter((t) => t.date === todayKey &amp;&amp; t.status !== 'done');
-  const inProgress = notDone.filter((t) => t.status === 'inprogress');
-
-  let nextTask = null;
-  if (inProgress.length) {
-    nextTask = inProgress[0];
-  } else if (notDone.length === 1) {
-    nextTask = notDone[0];
-  } else if (notDone.length > 1) {
-    expandedEl.innerHTML = '&lt;div style="font-size:11px;margin-bottom:6px">Pick next task:&lt;/div>';
-    const list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:4px';
-    notDone.forEach((t) => {
-      const b = document.createElement('button');
-      b.style.cssText =
-        'font-size:11px;padding:4px 8px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;text-align:left;color:var(--text2)';
-      b.textContent = t.text;
-      b.onclick = async () => {
-        list.style.display = 'none';
-        await fetchBridge(meeting, t, expandedEl, bridgeBtn);
-      };
-      list.appendChild(b);
-    });
-    expandedEl.appendChild(list);
-    expandedEl.style.display = 'block';
-    return;
-  }
-
-  if (!nextTask) {
-    expandedEl.textContent = 'No next task found for today.';
-    expandedEl.style.display = 'block';
-    return;
-  }
-  await fetchBridge(meeting, nextTask, expandedEl, bridgeBtn);
-}
-
-/**
- * Calls the Claude API via `/api/ai` to generate 3 concrete physical steps for
- * transitioning from the ended meeting to the next task. Displays the result in
- * `expandedEl`; falls back to copying the prompt to the clipboard on API error.
- * @param {{subject: string}} meeting  - The meeting that just ended.
- * @param {{text: string}}    task     - The next plan task to transition to.
- * @param {HTMLElement} expandedEl     - Container for the bridge content.
- * @param {HTMLElement} bridgeBtn      - "Build bridge" button (disabled during fetch).
- * @returns {Promise&lt;void>}
- */
-async function fetchBridge(meeting, task, expandedEl, bridgeBtn) {
-  const meetingSubject = meeting.subject || '(untitled)';
-  const taskText = task.text || '(untitled)';
-  const prompt = `Meeting just finished: "${meetingSubject}"\nNext task to start: "${taskText}"\n\nProvide exactly 3 concrete physical steps to transition from this meeting to starting the task. Each step specific and actionable. Total time: ~3 min. No preamble, no numbering, no labels, plain text only.`;
-
-  expandedEl.innerHTML = '&lt;div style="font-size:11px;color:var(--text3)">thinking…&lt;/div>';
-  expandedEl.style.display = 'block';
-  bridgeBtn.disabled = true;
-
-  try {
-    const response = await fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        system:
-          'You help ADHD users switch between tasks smoothly. Reply with exactly 3 concrete physical steps, no preamble, no numbering, no labels. Plain text separated by line breaks.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-    const data = await response.json();
-    const bridgeText = data.content?.[0]?.text || '';
-    if (!bridgeText) throw new Error('No content in response');
-    expandedEl.textContent = bridgeText;
-  } catch (err) {
-    navigator.clipboard.writeText(prompt).catch(() => {});
-    expandedEl.innerHTML =
-      '&lt;span style="color:var(--red,#e74c3c)">AI unavailable — prompt copied to clipboard. (Set AnthropicApiKey in config.local.ps1)&lt;/span>';
-  }
-  bridgeBtn.disabled = false;
-}
-
-// Fetch from server every 10 minutes; re-render from cache every minute
-// so past/now/upcoming states update without hammering the server
-fetchAndRenderCalendar();
-setInterval(fetchAndRenderCalendar, 10 * 60 * 1000);
-setInterval(() => {
-  if (!_calMeetingsCache) return;
-  const todayKey = dk(new Date());
-  const hiddenMeetings = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (err) {
-      return [];
-    }
-  })();
-  const filteredData = _calMeetingsCache.filter((m) => !hiddenMeetings.includes(m.subject));
-  renderCalStrip(filteredData);
-
-  // Detect newly-ended meetings and offer a bridge
-  const seen = getSeenEnded();
-  const now = new Date();
-  filteredData.forEach((m) => {
-    const key = getMeetingKey(m);
-    const endTime = new Date(m.end);
-    if (endTime > now || seen.has(key)) return;
-    seen.add(key);
-    const nextTooSoon = filteredData.some((other) => {
-      const diff = (new Date(other.start) - endTime) / 60000;
-      return diff > 0 &amp;&amp; diff &lt; 10;
-    });
-    if (!nextTooSoon) showBridgeBanner(m);
-  });
-  setSeenEnded(seen);
-}, 60 * 1000);
-
-loadParked();
-renderParked();
-
-// Test harness — only active when ?test=1 in URL
-if (new URLSearchParams(window.location.search).get('test') === '1') {
-  window.__wl = {
-    roundToNearest30,
-    dk,
-    getISOWeek,
-    totalISOWeeks,
-    entries,
-    categories,
-    planTasks,
-    blocks,
-    activeTimer: () => activeTimer,
-    load,
-    save,
-    savePlan,
-    loadPlan,
-    loadParked,
-    autoCarryTasks,
-    patchCarriedTasks,
-    render,
-    renderPlan,
-    renderCompleted,
-    renderCalStrip,
-    renderParked,
-    openEodModal,
-    parkedThoughts,
-    startTimer,
-    stopTimer,
-    pauseTimer,
-    getCat,
-    escHtml,
-    renderDistractionCount,
-    getIterationExpiry,
-    loadExpiryDates,
-    exportTxt,
-    exportBackup,
-    importBackup,
-    validateBackupFile,
-    getHook,
-    saveHook,
-    _showBridgeBanner: showBridgeBanner,
-    getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes, trackers }),
-    cycleSignifier,
-    isEntryBillable,
-    addLogNote,
-    openReflection,
-    getReflectionForDate,
-    openSprintSetup,
-    getSprintLog: () => sprintLog,
-    renderTrackers,
-    trackerDayStatus,
-    saveTrackers,
-    getTrackers: () => trackers,
-    renderMonthlyLog,
-    mlHoursForDay,
-    openMigration,
-    getMigrationRecord,
-    setFlowView,
-    getFlowView,
-    renderTodayFlow,
-    initTodayFlow,
-    findLargestGap,
-    // Pomodoro — exposed for smoke tests
-    initPomo,
-    startPomo,
-    pausePomo,
-    pomoAddTime,
-    pomoTapOut,
-    // Header tracking — exposed for smoke tests
-    updateHeaderTracking,
-  };
-  // Live viewDate getter/setter so tests can change the view date
-  // and renderCompleted re-runs automatically
-  Object.defineProperty(window.__wl, 'viewDate', {
-    get: () => viewDate,
-    set: (v) => {
-      viewDate = v instanceof Date ? v : new Date(v);
-      renderCompleted();
-    },
-    enumerable: true,
-    configurable: true,
+if (gapReportList) {
+  gapReportList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.gap-report-fix');
+    if (btn) jumpToGapReportEntry(btn.dataset.id, btn.dataset.date);
   });
 }
 </code></pre>
