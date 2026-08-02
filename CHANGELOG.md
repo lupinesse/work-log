@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Task notes exported to the timesheet** — `exportTxt()` now appends each task's plan note as an indented `note:` line under that task's entry in the `.txt` export, so context you jot on an in-progress task (via the existing 📝 note button) travels with the day's timesheet instead of staying trapped in the board. Matching is by date + case-insensitive task text (the same convention the app already uses to link a tracked entry back to its plan row — there is no shared `taskId`). New pure `buildTaskNoteMap()` in `pure-fns-export.js`, wired into `formatGroupedLines()`'s existing `taskNotes` parameter; 9 new unit tests.
+
 ### Fixed
 - **JSON backups no longer grow without bound** — the 21-day retention window was only applied to `entries`, while `planTasks`, `blocks`, `devLog`, and `distractions` were bundled in full. Those arrays grow every day (carried tasks, per-day time blocks, appended distraction/dev-log records), so the `work-log-backup-21d-*.json` file kept getting bigger despite its name. All five time-series arrays are now trimmed to the same window; `categories`, `qpHidden`, and the source-capped `pomoLog` are still kept whole. Retention now runs through a pure, unit-tested `buildBackupPayload()` in `pure-fns.js` (7 new tests), and the per-array count of excluded records is logged at export time.
 - **Tabbed task board fills the full panel width** — the To Do / In Progress / Done tab bar and the active lane (with its cards) were collapsing to content width and left-aligning, leaving the right side of the panel empty. The tabbed flex-column layout was inheriting `align-items: start` from the base `.board-cols` grid; it now resets to `align-items: stretch` so tabs and lane span the whole width. Regression test added in `smoke-tests.cjs`.

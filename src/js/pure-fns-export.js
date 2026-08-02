@@ -195,8 +195,40 @@ export function computeDayBounds(dayEntries, timedEntries, opts) {
 }
 
 /**
+ * Builds a lookup of task notes for a single day, keyed by lowercased task
+ * text so it lines up with the task keys produced by
+ * {@link groupEntriesByCategory}. Only tasks dated `dateKey` with a non-blank
+ * `note` are included.
+ *
+ * Task/entry linkage is by date + case-insensitive text match — the same
+ * convention `addEntry` and `flatSort` already use to find a task's plan row —
+ * because plan tasks and log entries share no `taskId` field.
+ *
+ * @param {Array<Object>} planTasks - All plan/board tasks.
+ * @param {string} dateKey - The exported day's date key (YYYY-MM-DD).
+ * @returns {Object<string, string>} Map of lowercased task text to trimmed note.
+ * @example
+ * buildTaskNoteMap(
+ *   [{ text: 'Fix login', date: '2026-06-04', note: 'waiting on staging creds' }],
+ *   '2026-06-04'
+ * )
+ * // → { 'fix login': 'waiting on staging creds' }
+ */
+export function buildTaskNoteMap(planTasks, dateKey) {
+  const notes = {};
+  (planTasks || []).forEach((task) => {
+    if (task.date !== dateKey) return;
+    const note = task.note && task.note.trim();
+    if (!note) return;
+    notes[task.text.toLowerCase()] = note;
+  });
+  return notes;
+}
+
+/**
  * Renders the grouped-by-category structure into indented text lines: one line
- * per category (with its total), each followed by its indented task lines.
+ * per category (with its total), each followed by its indented task lines and,
+ * when the task carries a note, one or more further-indented `note:` lines.
  *
  * Pure: the duration formatter and category-label resolver are injected so this
  * function has no dependency on global state and can be unit-tested directly.
@@ -205,9 +237,11 @@ export function computeDayBounds(dayEntries, timedEntries, opts) {
  * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
  * @param {function(number): string} fmtDuration  - Formats a duration in ms (e.g. `fmtDurLong`).
  * @param {function(string): string} getCatLabel - Resolves a category key to its label.
+ * @param {Object<string, string>} [taskNotes] - Map of lowercased task text to note,
+ *   as produced by {@link buildTaskNoteMap}. Omitted tasks render with no note line.
  * @returns {string[]} The body lines for the export file.
  */
-export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
+export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel, taskNotes = {}) {
   const lines = [];
   catOrder.forEach((catKey) => {
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
@@ -217,6 +251,14 @@ export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabe
       const { label, totalMs: taskMs, hasTime } = tasks[taskKey];
       const taskTimeStr = hasTime ? fmtDuration(taskMs) : '--';
       lines.push(`    ${taskTimeStr} - ${label}`);
+      const note = taskNotes[taskKey];
+      if (note) {
+        note
+          .split('\n')
+          .map((noteLine) => noteLine.trim())
+          .filter(Boolean)
+          .forEach((noteLine) => lines.push(`        note: ${noteLine}`));
+      }
     });
   });
   return lines;
