@@ -38,6 +38,7 @@ function openEodModal() {
   const today = new Date();
   if (!getEodTs(today)) localStorage.setItem(eodKey(today), String(Date.now()));
   renderEodBtn();
+  renderEodReminder();
   // Note: portable deploy is triggered by the "Done — close" button, NOT here,
   // so the JSON + .txt have time to flush to disk before the build script reads them.
   document.getElementById('eodExportStatus').innerHTML =
