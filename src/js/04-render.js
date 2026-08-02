@@ -135,6 +135,7 @@ function render() {
   // whenever the date changes.
   renderSodBtn();
   renderEodBtn();
+  renderEodReminder();
 
   /* ── 2. Timer bar ── */
   if (!activeTimer) {

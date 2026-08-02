@@ -432,6 +432,11 @@
        aria-label="Select JSON backup file to merge entries from" />
 
 <div class="export-section">
+  <div class="eod-reminder" id="eodReminderBanner" role="status" style="display:none">
+    <span class="eod-reminder__msg" id="eodReminderMsg"></span>
+    <button type="button" class="eod-reminder__action" id="eodReminderActionBtn">🌙 end the day</button>
+    <button type="button" class="eod-reminder__dismiss" id="eodReminderDismissBtn" aria-label="dismiss">&times;</button>
+  </div>
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px;align-items:center">

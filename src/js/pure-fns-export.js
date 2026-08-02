@@ -195,6 +195,39 @@ export function computeDayBounds(dayEntries, timedEntries, opts) {
 }
 
 /**
+ * Returns true if today's workday looks like it may be over and hasn't been
+ * exported yet: the day was started, has at least one entry, hasn't already
+ * been ended, and `workdayHours` have passed since it started. Used to show
+ * a reminder nudging the user toward "end the day" (which triggers the real
+ * export) — this function only decides whether to nudge, it never exports
+ * or ends the day itself.
+ *
+ * Pure: all environmental inputs (day-start/day-end timestamps, whether
+ * today has entries, the current time) are injected via `opts` so the
+ * function can be unit-tested without touching localStorage or Date.now(),
+ * matching {@link computeDayBounds}'s style.
+ *
+ * @param {Object} opts
+ * @param {number|null} opts.sodTs - Today's day-start timestamp (ms), or null if not started.
+ * @param {number|null} opts.eodTs - Today's day-end timestamp (ms), or null if not yet ended.
+ * @param {boolean} opts.hasEntriesToday - Whether at least one entry exists for today.
+ * @param {number} opts.now - Current time in ms.
+ * @param {number} [opts.workdayHours=8] - Hours after day-start to consider the day likely over.
+ * @returns {boolean} True if the reminder should be shown.
+ * @example
+ * isWorkdayLikelyOver({ sodTs: 1000, eodTs: null, hasEntriesToday: true, now: 1000 + 8 * 3600000 })
+ * // → true (exactly 8h after day-start)
+ * isWorkdayLikelyOver({ sodTs: 1000, eodTs: null, hasEntriesToday: true, now: 1000 + 7 * 3600000 })
+ * // → false (only 7h in)
+ * isWorkdayLikelyOver({ sodTs: null, eodTs: null, hasEntriesToday: true, now: 999999 })
+ * // → false (day never started)
+ */
+export function isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now, workdayHours = 8 }) {
+  if (!sodTs || eodTs || !hasEntriesToday) return false;
+  return now >= sodTs + workdayHours * 60 * 60 * 1000;
+}
+
+/**
  * Builds a lookup of task notes for a single day, keyed by lowercased task
  * text so it lines up with the task keys produced by
  * {@link groupEntriesByCategory}. Only tasks dated `dateKey` with a non-blank
