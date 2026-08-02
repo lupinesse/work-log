@@ -3,10 +3,10 @@
 /**
  * Exports the currently viewed day's log as a plaintext file.
  * Groups entries by category and task, includes a header with day start/end
- * times and tracked time totals, appends any plan-task note as an indented
- * line under its task, and finishes with a pasteable billable summary.
- * Writes to the user's chosen save folder via the File System Access API,
- * or falls back to a browser download.
+ * times and tracked time totals, appends any plan-task note and/or per-entry
+ * notes as indented lines under their task, and finishes with a pasteable
+ * billable summary. Writes to the user's chosen save folder via the File
+ * System Access API, or falls back to a browser download.
  */
 function exportTxt() {
   const dayEntries = viewEntries().slice().reverse();
@@ -33,7 +33,10 @@ function exportTxt() {
   // Body: tracked time grouped by category, then task (first-seen order),
   // with each task's plan note (if any) appended as an indented "note:" line.
   const { catOrder, catGrouped } = groupEntriesByCategory(dayEntries);
-  const taskNotes = buildTaskNoteMap(planTasks, dateStr);
+  const taskNotes = mergeNoteMaps(
+    buildTaskNoteMap(planTasks, dateStr),
+    buildEntryNoteMap(dayEntries)
+  );
   const lines = formatGroupedLines(catOrder, catGrouped, fmtDurLong, getCatLabel, taskNotes);
 
   // Billable / non-billable breakdown

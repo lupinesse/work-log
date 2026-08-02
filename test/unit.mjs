@@ -37,6 +37,8 @@ const {
   buildBillableSummaryParts,
   computeDayBounds,
   buildTaskNoteMap,
+  buildEntryNoteMap,
+  mergeNoteMaps,
   formatGroupedLines,
   resolveCarryStatus,
   locationFor,
@@ -276,6 +278,13 @@ describe('validEntry', () => {
   it('tsEnd is optional — entry still valid without it', () => assert.ok(validEntry(base)));
   it('tsEnd present — entry still valid', () =>
     assert.ok(validEntry({ ...base, tsEnd: 9999999999 })));
+  it('link is optional — entry still valid without it', () => assert.ok(validEntry(base)));
+  it('accepts a string link', () =>
+    assert.ok(validEntry({ ...base, link: 'https://confluence/PROJ/pages/123' })));
+  it('rejects a numeric link', () => assert.equal(validEntry({ ...base, link: 123 }), false));
+  it('note is optional — entry still valid without it', () => assert.ok(validEntry(base)));
+  it('accepts a string note', () => assert.ok(validEntry({ ...base, note: 'wrote the report' })));
+  it('rejects a numeric note', () => assert.equal(validEntry({ ...base, note: 7 }), false));
 });
 
 // ── validCategory ─────────────────────────────────────────────────────────────
@@ -2403,6 +2412,74 @@ describe('buildTaskNoteMap', () => {
   it('returns an empty object for an empty or missing planTasks array', () => {
     assert.deepEqual(buildTaskNoteMap([], '2026-06-04'), {});
     assert.deepEqual(buildTaskNoteMap(undefined, '2026-06-04'), {});
+  });
+});
+
+// ── buildEntryNoteMap ─────────────────────────────────────────────────────────
+describe('buildEntryNoteMap', () => {
+  it('maps an entry note by lowercased task text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', note: 'reproduced in staging' }];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'reproduced in staging' });
+  });
+
+  it('excludes entries with no note, an empty note, or a whitespace-only note', () => {
+    const dayEntries = [
+      { id: '1', text: 'A' },
+      { id: '2', text: 'B', note: '' },
+      { id: '3', text: 'C', note: '   ' },
+    ];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), {});
+  });
+
+  it('trims the note text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', note: '  spaced  ' }];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'spaced' });
+  });
+
+  it('joins notes from multiple entries sharing the same task text with a newline', () => {
+    const dayEntries = [
+      { id: '1', text: 'Fix Login', note: 'first pass' },
+      { id: '2', text: 'fix login', note: 'second pass' },
+    ];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'first pass\nsecond pass' });
+  });
+
+  it('returns an empty object for an empty or missing entries array', () => {
+    assert.deepEqual(buildEntryNoteMap([]), {});
+    assert.deepEqual(buildEntryNoteMap(undefined), {});
+  });
+});
+
+// ── mergeNoteMaps ─────────────────────────────────────────────────────────────
+describe('mergeNoteMaps', () => {
+  it('combines notes for the same key with a newline, `a` first', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'from task' }, { x: 'from entry' }), {
+      x: 'from task\nfrom entry',
+    });
+  });
+
+  it('keeps keys unique to either map', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, { y: 'entry note' }), {
+      x: 'task note',
+      y: 'entry note',
+    });
+  });
+
+  it('returns a copy of `a` when `b` is empty or missing', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, {}), { x: 'task note' });
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, undefined), { x: 'task note' });
+  });
+
+  it('returns `b` when `a` is empty', () => {
+    assert.deepEqual(mergeNoteMaps({}, { x: 'entry note' }), { x: 'entry note' });
+  });
+
+  it('does not mutate either input map', () => {
+    const a = { x: 'task note' };
+    const b = { x: 'entry note' };
+    mergeNoteMaps(a, b);
+    assert.deepEqual(a, { x: 'task note' });
+    assert.deepEqual(b, { x: 'entry note' });
   });
 });
 

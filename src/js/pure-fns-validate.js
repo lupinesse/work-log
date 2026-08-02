@@ -19,6 +19,7 @@
  * validEntry(null)                           // → false
  * validEntry({ id: 1, text: 'x', ts: 0, date: '2026-05-25' }) // → false (numeric id)
  * validEntry({ id: '1', text: 'x', ts: 0, date: '25-05-2026' }) // → false (wrong date format)
+ * validEntry({ id: '1', text: 'x', ts: 0, date: '2026-05-25', link: 42 }) // → false (non-string link)
  */
 export function validEntry(e) {
   return !!(
@@ -27,7 +28,9 @@ export function validEntry(e) {
     typeof e.text === 'string' &&
     typeof e.ts === 'number' &&
     typeof e.date === 'string' &&
-    /^\d{4}-\d{2}-\d{2}$/.test(e.date)
+    /^\d{4}-\d{2}-\d{2}$/.test(e.date) &&
+    (e.link === undefined || typeof e.link === 'string') &&
+    (e.note === undefined || typeof e.note === 'string')
   );
 }
 

@@ -51,6 +51,8 @@ export {
   buildBillableSummaryParts,
   computeDayBounds,
   buildTaskNoteMap,
+  buildEntryNoteMap,
+  mergeNoteMaps,
   formatGroupedLines,
   buildRollingSummary,
   applyBackupRetention,
