@@ -523,3 +523,120 @@
   color: var(--text2);
   margin-left: 4px;
 }
+
+/* Entry proof-link / note indicator + inline editor */
+.emeta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emeta-inds {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.emeta-link-view {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.emeta-btn {
+  font-size: 12px;
+  padding: 1px 6px;
+  border: 0.5px solid var(--border2);
+  border-radius: 99px;
+  background: none;
+  cursor: pointer;
+  color: var(--text3);
+  line-height: 1.5;
+  font-family: var(--font);
+}
+
+.emeta-btn:hover {
+  color: var(--text2);
+  border-color: var(--text3);
+}
+
+.emeta-ind {
+  margin-right: 2px;
+}
+
+.emeta-editor {
+  width: 100%;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.emeta-lbl {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 3px;
+}
+
+.emeta-link-input,
+.emeta-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 12px;
+  padding: 5px 7px;
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.emeta-note-input {
+  resize: vertical;
+}
+
+.emeta-link-input:focus,
+.emeta-note-input:focus {
+  outline: none;
+  border-color: var(--info-text);
+}
+
+.emeta-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.emeta-actions button {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 0.5px solid var(--border2);
+  background: none;
+  cursor: pointer;
+  color: var(--text2);
+  font-family: var(--font);
+}
+
+.emeta-actions button:hover {
+  background: var(--bg2);
+}
+
+.emeta-save {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border-color: transparent;
+}
+
+.emeta-save:hover {
+  opacity: 0.85;
+}
+
+.emeta-del {
+  color: var(--danger, #c62828);
+}
+
+.emeta-del:hover {
+  background: #fdecea;
+  border-color: transparent;
+}

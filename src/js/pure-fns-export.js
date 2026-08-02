@@ -226,6 +226,53 @@ export function buildTaskNoteMap(planTasks, dateKey) {
 }
 
 /**
+ * Builds a lookup of entry-level notes for a single day, keyed by lowercased
+ * task text so it lines up with {@link buildTaskNoteMap} and the task keys
+ * produced by {@link groupEntriesByCategory}. Entry notes are written at the
+ * time the work happens (unlike a plan task's note, which describes the task
+ * in general), so multiple entries sharing a task text each contribute their
+ * own note line rather than overwriting one another.
+ *
+ * @param {Array<Object>} dayEntries - Entries for the exported day.
+ * @returns {Object<string, string>} Map of lowercased task text to
+ *   newline-joined notes, one line per entry that carries a note.
+ * @example
+ * buildEntryNoteMap([{ text: 'Fix login', note: 'reproduced in staging' }])
+ * // → { 'fix login': 'reproduced in staging' }
+ */
+export function buildEntryNoteMap(dayEntries) {
+  const notes = {};
+  (dayEntries || []).forEach((entry) => {
+    const note = entry.note && entry.note.trim();
+    if (!note) return;
+    const key = entry.text.toLowerCase();
+    notes[key] = notes[key] ? `${notes[key]}\n${note}` : note;
+  });
+  return notes;
+}
+
+/**
+ * Combines two task-keyed note maps — e.g. plan-task notes and entry notes —
+ * into one, concatenating notes for the same key with a newline so both
+ * survive as separate `note:` lines in the exported text (see
+ * {@link formatGroupedLines}, which splits each map value on `\n`).
+ *
+ * @param {Object<string, string>} a - First note map (rendered first).
+ * @param {Object<string, string>} b - Second note map, appended after `a`.
+ * @returns {Object<string, string>} Combined map.
+ * @example
+ * mergeNoteMaps({ x: 'from task' }, { x: 'from entry' })
+ * // → { x: 'from task\nfrom entry' }
+ */
+export function mergeNoteMaps(a, b) {
+  const merged = { ...a };
+  Object.entries(b || {}).forEach(([key, note]) => {
+    merged[key] = merged[key] ? `${merged[key]}\n${note}` : note;
+  });
+  return merged;
+}
+
+/**
  * Renders the grouped-by-category structure into indented text lines: one line
  * per category (with its total), each followed by its indented task lines and,
  * when the task carries a note, one or more further-indented `note:` lines.

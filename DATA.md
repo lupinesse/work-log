@@ -19,6 +19,8 @@ Each key is documented below with its data type, shape, and lifetime.
 | `date` | string | ISO date `YYYY-MM-DD` of the entry's start day |
 | `billable` | boolean? | Override; absent = inherit from plan task or category |
 | `signifier` | string? | One of `'event'` \| `'flagged'` \| `'migrated'` \| `'cancelled'` \| `'overtime'`; absent = no signifier |
+| `link` | string? | Proof link — the concrete artefact this entry's work touched (Confluence page id, Zephyr case/cycle key, filename, or a full URL). Auto-linkified in the UI when it starts with `http(s)://`; absent = none set |
+| `note` | string? | One-line "what I did," written at the time of the entry. Exported alongside any plan-task note under the same task in the `.txt` export; absent = none set |
 | `_uncategorised` | boolean? | `true` when logged via Rapid Logging without selecting a category |
 | `_sprintDuration` | number? | Planned sprint duration in minutes; set only on entries created by Sprint mode |
 | `_sprintOutcome` | string? | Sprint review result: `'yes'` \| `'partly'` \| `'no'`; set after sprint review |

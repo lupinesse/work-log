@@ -1,5 +1,116 @@
 /* ── Render ── */
 
+// Entry whose proof-link/note editor is currently open (`entry.id`), or null
+// when none is open. Survives render() since the editor panel's open/closed
+// state can't live in the DOM — render() rebuilds #timeline's innerHTML from
+// `entries` on every call, same as `_flowNoteEditId` in 11-timeflow.js.
+let _entryMetaEditId = null;
+
+/**
+ * Builds the proof-link / note indicator and inline editor for a log entry.
+ * Read-only state shows a 🔗 and/or 📝 indicator (title = full value) plus a
+ * toggle button; editing state additionally shows the link/note inputs. Both
+ * fields are optional and independent — either can be filled in on its own.
+ * @param {{ id: string, link: (string|undefined), note: (string|undefined) }} entry - The log entry.
+ * @param {boolean} isEditing - Whether this entry's link/note panel is open.
+ * @returns {string} HTML string.
+ */
+function buildEntryMetaHtml(entry, isEditing) {
+  const hasLink = !!(entry.link && entry.link.trim());
+  const hasNote = !!(entry.note && entry.note.trim());
+  const linkIndicator = hasLink
+    ? /^https?:\/\//i.test(entry.link.trim())
+      ? `<a class="emeta-ind emeta-link-view" href="${escHtml(entry.link.trim())}" target="_blank" rel="noopener" title="${escHtml(entry.link)}" onclick="event.stopPropagation()">🔗</a>`
+      : `<span class="emeta-ind" title="${escHtml(entry.link)}">🔗</span>`
+    : '';
+  const noteIndicator = hasNote
+    ? `<span class="emeta-ind" title="${escHtml(entry.note)}">📝</span>`
+    : '';
+  // Indicators render as siblings of the toggle button, not inside it — an
+  // <a> nested in a <button> is invalid HTML and the anchor's own click
+  // handler would be unreachable behind the button's.
+  const indicators =
+    linkIndicator || noteIndicator
+      ? `<span class="emeta-inds">${linkIndicator}${noteIndicator}</span>`
+      : '';
+  const label = hasLink || hasNote ? 'edit proof link / note' : 'add proof link / note';
+  const toggle = `<button class="emeta-btn" data-id="${entry.id}" title="${label}" aria-label="${label}">${hasLink || hasNote ? '✎' : '📎'}</button>`;
+  if (!isEditing) return `<div class="emeta">${indicators}${toggle}</div>`;
+  return `<div class="emeta">
+      ${indicators}${toggle}
+      <div class="emeta-editor open" id="em-${entry.id}">
+        <label class="emeta-lbl" for="emli-${entry.id}">proof link</label>
+        <input class="emeta-link-input" type="text" id="emli-${entry.id}" data-id="${entry.id}"
+               value="${escHtml(entry.link || '')}"
+               placeholder="Confluence page id, Zephyr key, filename…" />
+        <label class="emeta-lbl" for="emno-${entry.id}">note</label>
+        <textarea class="emeta-note-input" id="emno-${entry.id}" data-id="${entry.id}" rows="2"
+                  placeholder="what did you do?">${escHtml(entry.note || '')}</textarea>
+        <div class="emeta-actions">
+          <button class="emeta-save" data-id="${entry.id}">save</button>
+          ${hasLink || hasNote ? `<button class="emeta-del" data-id="${entry.id}">clear</button>` : ''}
+          <button class="emeta-cancel" data-id="${entry.id}">cancel</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Binds open/save/clear/cancel events for each entry's proof-link/note
+ * editor. Re-attached after every render() call since #timeline's innerHTML
+ * is fully replaced each time, same pattern as the other entry-row bindings
+ * in render() (time editor, category picker, billable toggle).
+ * @param {HTMLElement} timelineEl - The #timeline element.
+ */
+function bindEntryMetaEvents(timelineEl) {
+  timelineEl.querySelectorAll('.emeta-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _entryMetaEditId = _entryMetaEditId === id ? null : id;
+      render();
+      if (_entryMetaEditId === id) {
+        setTimeout(() => document.getElementById('emli-' + id)?.focus(), 0);
+      }
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        const linkVal = document.getElementById('emli-' + id).value.trim();
+        const noteVal = document.getElementById('emno-' + id).value.trim();
+        if (linkVal) entry.link = linkVal;
+        else delete entry.link;
+        if (noteVal) entry.note = noteVal;
+        else delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-del').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        delete entry.link;
+        delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+}
+
 /**
  * Full application re-render: updates the date label, timer bar, stat counters,
  * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
@@ -43,8 +154,11 @@ function render() {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
     weekStart.setHours(0, 0, 0, 0);
-    return new Set(entries.filter((entry) => new Date(entry.ts) >= weekStart).map((entry) => entry.tag || 'other'))
-      .size;
+    return new Set(
+      entries
+        .filter((entry) => new Date(entry.ts) >= weekStart)
+        .map((entry) => entry.tag || 'other')
+    ).size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
@@ -70,7 +184,9 @@ function render() {
   }
 
   // Today: task with most tracked time
-  const todayTimed = entries.filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts);
+  const todayTimed = entries.filter(
+    (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
+  );
   const todayByTask = {};
   todayTimed.forEach((entry) => {
     const taskKey = entry.text.toLowerCase();
@@ -235,6 +351,7 @@ function render() {
               ${escHtml(getCatLabel(entry.tag))} &#9660;
             </button>
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
+            ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
           <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
@@ -277,6 +394,7 @@ function render() {
   }
 
   bindSignifierClicks();
+  bindEntryMetaEvents(timelineEl);
 
   /* time editor */
   timelineEl.querySelectorAll('.etime-display').forEach((el) => {
@@ -471,7 +589,9 @@ function renderQuickPick() {
       .map((entry) => entry.text.toLowerCase())
   );
   const recent = allRecent
-    .filter((entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase()))
+    .filter(
+      (entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase())
+    )
     .slice(0, 16);
   // Hidden count is the intersection of qpHidden with task texts actually present in entries
   const hiddenInUse = allRecent.filter((entry) => qpHidden.has(entry.text.toLowerCase())).length;
@@ -627,7 +747,9 @@ function renderChart(list) {
     .join('');
 
   const totalDur = fmtDur(grandTotal);
-  const billMs = timed.filter((entry) => isEntryBillable(entry)).reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  const billMs = timed
+    .filter((entry) => isEntryBillable(entry))
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
   el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
