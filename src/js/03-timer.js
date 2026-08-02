@@ -588,8 +588,9 @@ function initBannerControls() {
   if (meetingBtn) meetingBtn.addEventListener('click', () => logUtilEntry('meeting'));
 
   // ── Long-running-timer warning: stop/dismiss, delegated from the stable
-  // #heroLongRunningWarn container so renderLongRunningWarning() can freely
-  // rewrite its innerHTML on every tick without losing these listeners.
+  // #heroLongRunningWarn container so renderLongRunningWarning() can rebuild
+  // its innerHTML (whenever the displayed label changes) without losing
+  // these listeners.
   const longRunWarnEl = document.getElementById('heroLongRunningWarn');
   if (longRunWarnEl) {
     longRunWarnEl.addEventListener('click', (e) => {
