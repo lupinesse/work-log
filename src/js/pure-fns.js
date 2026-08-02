@@ -52,6 +52,7 @@ export {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  isWorkdayLikelyOver,
   buildTaskNoteMap,
   buildEntryNoteMap,
   mergeNoteMaps,

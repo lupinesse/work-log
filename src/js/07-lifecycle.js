@@ -139,6 +139,53 @@ function renderEodBtn() {
   }
 }
 
+/* ── End of day reminder ── */
+
+// Date key (YYYY-MM-DD) for which the reminder was last dismissed, or null.
+// Resets naturally each new day since it's compared against today's key —
+// same simplicity as the wipWarnDismissed flag in 10a-tasks-render.js.
+let _eodReminderDismissedDate = null;
+
+/**
+ * Shows or hides the end-of-day export reminder banner. A nudge, not an
+ * automatic export — the app never writes a file without an explicit click,
+ * so this only ever asks. Always evaluated against *today*, regardless of
+ * which day is currently in view (`viewDate`), since the reminder is about
+ * the actual current workday.
+ */
+function renderEodReminder() {
+  const banner = document.getElementById('eodReminderBanner');
+  if (!banner) return;
+  const today = new Date();
+  const todayKey = dk(today);
+  const sodTs = getDayStart(today);
+  const eodTs = getEodTs(today);
+  const hasEntriesToday = entries.some((e) => e.date === todayKey);
+  const shouldShow =
+    _eodReminderDismissedDate !== todayKey &&
+    isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now: Date.now() });
+  if (!shouldShow) {
+    banner.style.display = 'none';
+    return;
+  }
+  const hours = Math.floor((Date.now() - sodTs) / 3600000);
+  const msgEl = document.getElementById('eodReminderMsg');
+  if (msgEl) {
+    msgEl.textContent = `It's been ${hours}h since you started — looks like your day might be over.`;
+  }
+  banner.style.display = '';
+}
+
+document.getElementById('eodReminderActionBtn')?.addEventListener('click', () => {
+  // Reuse the real "end the day" button's click flow verbatim (confirm() gate
+  // → openEodModal() → exportTxt()/exportBackup()) — no export logic duplicated here.
+  document.getElementById('eodBtn').click();
+});
+document.getElementById('eodReminderDismissBtn')?.addEventListener('click', () => {
+  _eodReminderDismissedDate = dk(new Date());
+  renderEodReminder();
+});
+
 /* ── Pomodoro weekly clear ── */
 
 /**
@@ -335,6 +382,10 @@ function saveSnapshot() {
 
 saveSnapshot();
 setInterval(saveSnapshot, 30 * 60 * 1000);
+
+// Re-check the end-of-day reminder every 5 minutes so it can appear while the
+// user is idle at their desk, without needing some other render() trigger.
+setInterval(renderEodReminder, 5 * 60 * 1000);
 
 // Auto-pause when the user switches away (controlled by AUTO_PAUSE_ON_TAB_SWITCH in 00-config.js)
 document.addEventListener('visibilitychange', () => {

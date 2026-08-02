@@ -38,6 +38,7 @@ const {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  isWorkdayLikelyOver,
   buildTaskNoteMap,
   buildEntryNoteMap,
   mergeNoteMaps,
@@ -2323,6 +2324,46 @@ describe('computeDayBounds', () => {
     const { dayStartTs, dayEndTs } = computeDayBounds([], [], base);
     assert.equal(dayStartTs, null);
     assert.equal(dayEndTs, null);
+  });
+});
+
+// ── isWorkdayLikelyOver ────────────────────────────────────────────────────────
+describe('isWorkdayLikelyOver', () => {
+  const HOUR = 3600000;
+  // sodTs is deliberately non-zero: 0 is falsy in JS, and a day-start of
+  // exactly the Unix epoch is not a real input (getDayStart() only ever
+  // returns null or a real Date.now()-based timestamp) — same convention
+  // computeDayBounds() relies on for its own truthy-checked inputs.
+  const SOD = 1_000_000;
+  const base = { sodTs: SOD, eodTs: null, hasEntriesToday: true, now: SOD + 8 * HOUR };
+
+  it('returns false when the day was never started', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, sodTs: null }), false);
+  });
+
+  it('returns false when the day has already been ended', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, eodTs: SOD + 5 * HOUR }), false);
+  });
+
+  it('returns false when there are no entries today', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, hasEntriesToday: false }), false);
+  });
+
+  it('returns false before the default 8h threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 7 * HOUR }), false);
+  });
+
+  it('returns true exactly at the default 8h threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 8 * HOUR }), true);
+  });
+
+  it('returns true well past the threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 10 * HOUR }), true);
+  });
+
+  it('respects a custom workdayHours', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 5 * HOUR, workdayHours: 6 }), false);
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 6 * HOUR, workdayHours: 6 }), true);
   });
 });
 
