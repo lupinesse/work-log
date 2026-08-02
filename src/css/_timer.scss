@@ -619,3 +619,73 @@
   color: var(--text);
   background: var(--bg3);
 }
+
+/* Long-running-timer safety warning — same amber-alert language as .wip-warn */
+.hero-longrun-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-top: 6px;
+  border-radius: var(--radius);
+  background: #fef3c7;
+  border: 0.5px solid #fde68a;
+  font-size: 12px;
+  color: #92400e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero-longrun-warn {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+  }
+}
+
+.hero-longrun-warn__msg {
+  flex: 1;
+}
+
+.hero-longrun-warn__stop {
+  background: none;
+  border: 0.5px solid #b45309;
+  border-radius: var(--radius);
+  padding: 2px 9px;
+  font-size: 11px;
+  color: #92400e;
+  cursor: pointer;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+.hero-longrun-warn__stop:hover {
+  background: rgba(180, 83, 9, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero-longrun-warn__stop {
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+
+  .hero-longrun-warn__stop:hover {
+    background: rgba(251, 191, 36, 0.12);
+  }
+}
+
+.hero-longrun-warn__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: #b45309;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero-longrun-warn__dismiss {
+    color: #fbbf24;
+  }
+}

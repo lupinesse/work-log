@@ -152,6 +152,23 @@ export function fmtDurLong(ms) {
   return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
 }
 
+/**
+ * Returns true if a timer's elapsed time has crossed a long-running safety
+ * threshold. Pure boundary check, extracted so the threshold logic is
+ * unit-testable without mocking the DOM or the timer interval.
+ * @param {number} elapsedMs - Elapsed timer time in milliseconds.
+ * @param {number} [thresholdMins=240] - Threshold in minutes (default 4h).
+ * @returns {boolean} True once `elapsedMs` exceeds the threshold.
+ * @example
+ * isLongRunningTimer(3 * 60 * 60 * 1000)          // → false (3h)
+ * isLongRunningTimer(4 * 60 * 60 * 1000)           // → false (exactly 4h)
+ * isLongRunningTimer(4 * 60 * 60 * 1000 + 1)       // → true  (just past 4h)
+ * isLongRunningTimer(31 * 60 * 1000, 30)           // → true  (custom 30 min threshold)
+ */
+export function isLongRunningTimer(elapsedMs, thresholdMins = 240) {
+  return elapsedMs > thresholdMins * 60 * 1000;
+}
+
 /* ── Billing time rounding ── */
 
 /**
