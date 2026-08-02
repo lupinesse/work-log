@@ -151,13 +151,9 @@ function render() {
     entries.filter((entry) => entry.date === todayKey).map((entry) => entry.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = mondayOfWeek();
     return new Set(
-      entries
-        .filter((entry) => new Date(entry.ts) >= weekStart)
-        .map((entry) => entry.tag || 'other')
+      entries.filter((entry) => entry.ts >= weekStart).map((entry) => entry.tag || 'other')
     ).size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();

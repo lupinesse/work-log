@@ -437,6 +437,7 @@
     <div style="display:flex;gap:8px;align-items:center">
       <button class="expiry-btn" id="mergeBackupBtn" title="Merge entries from a backup made on another machine">⇣ merge backup</button>
       <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
+      <button class="expiry-btn" id="gapReportBtn" aria-haspopup="dialog" title="Entries missing a proof link or note this week">🔍 gap report</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
   </div>
@@ -500,6 +501,18 @@
     <button class="eod-copy-btn" id="eodCopyBtn">📋 copy to clipboard</button>
     <div class="eod-footer">
       <button class="eod-close" id="eodClose">Done — close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gap report modal — entries missing a proof link or note this week -->
+<div class="gap-report-overlay" id="gapReportOverlay" role="dialog" aria-modal="true" aria-labelledby="gapReportTitle">
+  <div class="gap-report-modal">
+    <div class="gap-report-title" id="gapReportTitle">🔍 Gap report</div>
+    <div class="gap-report-subtitle" id="gapReportSubtitle"></div>
+    <div class="gap-report-list" id="gapReportList"></div>
+    <div class="gap-report-footer">
+      <button class="eod-close" id="gapReportClose">close</button>
     </div>
   </div>
 </div>
