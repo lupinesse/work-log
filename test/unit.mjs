@@ -36,6 +36,7 @@ const {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  buildTaskNoteMap,
   formatGroupedLines,
   resolveCarryStatus,
   locationFor,
@@ -2310,6 +2311,99 @@ describe('formatGroupedLines', () => {
 
   it('returns no lines for an empty category order', () =>
     assert.equal(formatGroupedLines([], {}, fmt, label).length, 0));
+
+  it('appends a note line under a task that has a matching entry in taskNotes', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, { a: 'waiting on review' });
+    assert.deepEqual(
+      [...lines],
+      ['1000ms - [work]', '    1000ms - Task A', '        note: waiting on review']
+    );
+  });
+
+  it('renders one note line per non-blank line of a multi-line note', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, {
+      a: 'first point\n\n  second point  ',
+    });
+    assert.deepEqual(
+      [...lines],
+      [
+        '1000ms - [work]',
+        '    1000ms - Task A',
+        '        note: first point',
+        '        note: second point',
+      ]
+    );
+  });
+
+  it('omits the note line for tasks absent from taskNotes', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, { b: 'unrelated note' });
+    assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
+  });
+
+  it('defaults to no notes when taskNotes is omitted', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label);
+    assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
+  });
+});
+
+// ── buildTaskNoteMap ───────────────────────────────────────────────────────────
+describe('buildTaskNoteMap', () => {
+  it('maps a task note by lowercased text for tasks dated the given day', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-04', note: 'ticket PROJ-9' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), { 'fix login': 'ticket PROJ-9' });
+  });
+
+  it('excludes tasks dated a different day', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-03', note: 'ticket PROJ-9' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), {});
+  });
+
+  it('excludes tasks with no note, an empty note, or a whitespace-only note', () => {
+    const planTasks = [
+      { id: '1', text: 'A', date: '2026-06-04' },
+      { id: '2', text: 'B', date: '2026-06-04', note: '' },
+      { id: '3', text: 'C', date: '2026-06-04', note: '   ' },
+    ];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), {});
+  });
+
+  it('trims the note text', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-04', note: '  spaced  ' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), { 'fix login': 'spaced' });
+  });
+
+  it('returns an empty object for an empty or missing planTasks array', () => {
+    assert.deepEqual(buildTaskNoteMap([], '2026-06-04'), {});
+    assert.deepEqual(buildTaskNoteMap(undefined, '2026-06-04'), {});
+  });
 });
 
 // ── 07-lifecycle.js — readCollapseState / writeCollapseState ─────────────────

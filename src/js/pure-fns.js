@@ -50,6 +50,7 @@ export {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  buildTaskNoteMap,
   formatGroupedLines,
   buildRollingSummary,
   applyBackupRetention,
