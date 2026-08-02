@@ -127,12 +127,19 @@ let _faviconState = null; // track last state to avoid redundant redraws
 // Long-running-timer safety warning
 const LONG_RUNNING_MINS = 240; // 4h — see renderLongRunningWarning()
 let _longRunningWarnDismissed = false; // reset on startTimer(); survives pause/resume
+let _longRunningWarnLabel = null; // last-rendered "Xh Ym" label, so ticks that don't change it skip the DOM rebuild
 
 /**
  * Shows or hides the long-running-timer warning banner in the Hero Card's
  * running panel. Purely visual — never stops or modifies the timer itself;
  * the user must click "stop timer" for that. Stays hidden for the rest of
  * this timer session once dismissed (reset by the next startTimer() call).
+ *
+ * Called every second from tickTimer(); rebuilds the banner's innerHTML only
+ * when the displayed "Xh Ym" label actually changes (once a minute), not on
+ * every tick. The container is `role="alert"`, so a per-second DOM rewrite
+ * would make screen readers re-announce it every second — this keeps
+ * announcements to once per minute, matching the visible text change.
  * @param {number} elapsedMs - Elapsed timer time in milliseconds.
  */
 function renderLongRunningWarning(elapsedMs) {
@@ -141,13 +148,17 @@ function renderLongRunningWarning(elapsedMs) {
   const show = !_longRunningWarnDismissed && isLongRunningTimer(elapsedMs, LONG_RUNNING_MINS);
   if (!show) {
     el.style.display = 'none';
+    _longRunningWarnLabel = null;
     return;
   }
   const hours = Math.floor(elapsedMs / 3600000);
   const mins = Math.floor((elapsedMs % 3600000) / 60000);
+  const label = `${hours}h ${mins}m`;
   el.style.display = '';
+  if (label === _longRunningWarnLabel) return;
+  _longRunningWarnLabel = label;
   el.innerHTML =
-    `<span class="hero-longrun-warn__msg">⚠ Timer has been running for ${hours}h ${mins}m — still working?</span>` +
+    `<span class="hero-longrun-warn__msg">⚠ Timer has been running for ${label} — still working?</span>` +
     `<button type="button" class="hero-longrun-warn__stop" id="heroLongRunningStopBtn">stop timer</button>` +
     `<button type="button" class="hero-longrun-warn__dismiss" id="heroLongRunningDismissBtn" aria-label="dismiss">&times;</button>`;
 }
