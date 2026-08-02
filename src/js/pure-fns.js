@@ -18,6 +18,7 @@ export {
   fmtDur,
   fmtAgo,
   fmtDurLong,
+  isLongRunningTimer,
   roundToNearest30,
 } from './pure-fns-format.js';
 

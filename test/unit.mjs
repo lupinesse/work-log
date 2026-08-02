@@ -18,6 +18,7 @@ const {
   fmtDur,
   fmtDurLong,
   fmtAgo,
+  isLongRunningTimer,
   roundToNearest30,
   validEntry,
   validCategory,
@@ -196,6 +197,22 @@ describe('fmtAgo', () => {
     assert.equal(fmtAgo(NOW - 89 * 60_000, NOW), '1h ago'));
   it('defaults now to Date.now() when omitted (smoke test — result is a string)', () =>
     assert.equal(typeof fmtAgo(Date.now() - 5_000), 'string'));
+});
+
+// ── isLongRunningTimer ────────────────────────────────────────────────────────
+describe('isLongRunningTimer', () => {
+  it('returns false under the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(239 * 60_000), false));
+  it('returns false at exactly the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(240 * 60_000), false));
+  it('returns true just past the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(240 * 60_000 + 1), true));
+  it('returns false for 0 ms elapsed', () => assert.equal(isLongRunningTimer(0), false));
+  it('respects a custom threshold', () => {
+    assert.equal(isLongRunningTimer(29 * 60_000, 30), false);
+    assert.equal(isLongRunningTimer(30 * 60_000, 30), false);
+    assert.equal(isLongRunningTimer(31 * 60_000, 30), true);
+  });
 });
 
 // ── roundToNearest30 ──────────────────────────────────────────────────────────

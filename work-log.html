@@ -137,6 +137,11 @@
              placeholder="park a distraction… (↵ saves to Parked Thoughts)" autocomplete="off"/>
       <span class="hero-note-hint" aria-hidden="true">↵</span>
     </div>
+    <!-- Long-running-timer safety warning — appears once elapsed time crosses
+         LONG_RUNNING_MINS (03-timer.js). Content is fully rebuilt by
+         renderLongRunningWarning() on every tick; the stop/dismiss buttons
+         are bound once via event delegation on this stable container. -->
+    <div class="hero-longrun-warn" id="heroLongRunningWarn" style="display:none" role="alert"></div>
   </div>
 
   <!-- ③ PAUSED — timer on hold -->
