@@ -9,6 +9,8 @@
 | Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map and line counts only, per the 2026-08-03 QA review; not a full architectural re-review) |
 | Status | **Approved** — reflects current implementation |
 
+Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
+
 ---
 
 ## Overview
