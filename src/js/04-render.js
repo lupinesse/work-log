@@ -391,7 +391,7 @@ function render() {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
           <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
         </div>`;
@@ -726,9 +726,9 @@ function renderChart(list) {
     const c = billCounts[key];
     if (!c) return '';
     if (c.bill && c.nonBill)
-      return '<span class="chart-bill" title="mixed billable/non-billable">⚖️</span>';
+      return '<span class="chart-bill" title="mixed billable/internal">⚖️</span>';
     if (c.bill) return '<span class="chart-bill" title="billable">💰</span>';
-    if (c.nonBill) return '<span class="chart-bill" title="non-billable">💸</span>';
+    if (c.nonBill) return '<span class="chart-bill" title="internal">💸</span>';
     return '';
   }
 
@@ -761,7 +761,7 @@ function renderChart(list) {
     .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
+  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 internal: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
   el.querySelectorAll('.chart-tog').forEach((btn) =>
     btn.addEventListener('click', () => {
       chartMode = btn.dataset.mode;
