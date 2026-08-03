@@ -112,6 +112,44 @@ function bindEntryMetaEvents(timelineEl) {
 }
 
 /**
+ * Binds click/Enter handlers for the ad-hoc inline log row (`#tlAdHocBtn` /
+ * `#tlAdHocInput`). Called from render() on both the empty-state branch and
+ * the normal entry-list branch, since #timeline's innerHTML — and the row
+ * inside it — is fully replaced on every render() call. Both branches must
+ * call this, or the row exists in the DOM but silently does nothing.
+ */
+function bindAdHocRow() {
+  const adHocBtn = document.getElementById('tlAdHocBtn');
+  const adHocInput = document.getElementById('tlAdHocInput');
+  if (!adHocBtn || !adHocInput) return;
+  const commitAdHoc = () => {
+    const text = adHocInput.value.trim();
+    if (!text) {
+      adHocInput.focus();
+      return;
+    }
+    const entry = {
+      id: Date.now() + '',
+      text,
+      tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+    };
+    entries.push(entry);
+    save();
+    render();
+  };
+  adHocBtn.addEventListener('click', commitAdHoc);
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') commitAdHoc();
+  });
+  // Prevent Space from opening the rapid-log overlay while typing here
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') event.stopPropagation();
+  });
+}
+
+/**
  * Full application re-render: updates the date label, timer bar, stat counters,
  * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
  * time-block view. Call whenever persistent state changes.
@@ -286,6 +324,7 @@ function render() {
         : 'nothing was logged on this day.') +
       '</div>' +
       adHocRow;
+    bindAdHocRow();
     const chartEl = document.getElementById('chart');
     if (chartEl) chartEl.innerHTML = '';
     renderQuickPick();
@@ -360,37 +399,7 @@ function render() {
 
   /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
 
-  /* Ad-hoc log row */
-  const adHocBtn = document.getElementById('tlAdHocBtn');
-  const adHocInput = document.getElementById('tlAdHocInput');
-  if (adHocBtn && adHocInput) {
-    const commitAdHoc = () => {
-      const text = adHocInput.value.trim();
-      if (!text) {
-        adHocInput.focus();
-        return;
-      }
-      const entry = {
-        id: Date.now() + '',
-        text,
-        tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
-      entries.push(entry);
-      save();
-      render();
-    };
-    adHocBtn.addEventListener('click', commitAdHoc);
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') commitAdHoc();
-    });
-    // Prevent Space from opening the rapid-log overlay while typing here
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.code === 'Space') event.stopPropagation();
-    });
-  }
-
+  bindAdHocRow();
   bindSignifierClicks();
   bindEntryMetaEvents(timelineEl);
 

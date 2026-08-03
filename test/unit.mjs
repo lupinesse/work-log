@@ -4732,3 +4732,161 @@ describe('regression #227: autoCarryTasks guard key', () => {
     assert.equal(stored.get('wl_carried_2026-06-18'), '1');
   });
 });
+
+// ── Regression: the ad-hoc "+ log" row must work on a zero-entry day ──────────
+// render() used to bind #tlAdHocBtn / #tlAdHocInput only in the branch taken
+// when the day already has logged entries. The empty-state branch (the very
+// first entry of a fresh day, or navigating to a day with nothing logged) set
+// the same markup into #timeline but returned before the bindings ran, so the
+// "+ log" button silently did nothing. Fixed by extracting the binding into
+// bindAdHocRow() and calling it from both branches.
+const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+
+describe('regression: ad-hoc log row binds even when render() takes the empty-state branch', () => {
+  /**
+   * Creates a mock DOM element supporting the subset of the Element API that
+   * 04-render.js touches: style/classList/dataset stubs, an addEventListener
+   * that records handlers by event type (so tests can invoke them directly),
+   * and a querySelectorAll that returns no nodes (the non-empty render branch
+   * is never exercised by these tests).
+   * @returns {object} Mock element.
+   */
+  function makeMockElement() {
+    return {
+      _listeners: {},
+      style: {},
+      classList: {
+        add() {},
+        remove() {},
+        contains() {
+          return false;
+        },
+      },
+      dataset: {},
+      textContent: '',
+      innerHTML: '',
+      value: '',
+      disabled: false,
+      addEventListener(type, handler) {
+        (this._listeners[type] = this._listeners[type] || []).push(handler);
+      },
+      focus() {},
+      querySelectorAll() {
+        return [];
+      },
+    };
+  }
+
+  /**
+   * Builds a vm sandbox with 04-render.js loaded and every cross-file global
+   * it calls (renderHeroCard, renderPlan, etc. — each defined in a different
+   * concatenated source file in the real build) stubbed as a no-op, same
+   * pattern as loadTimeflowSandbox above. `entries` and `document` are real,
+   * mutable objects so the ad-hoc commit flow can be observed end to end.
+   * @param {object} overrides
+   */
+  function makeRenderSandbox(overrides = {}) {
+    const elements = {};
+    const getElementById = (id) => (elements[id] ??= makeMockElement());
+    const sb = {
+      entries: [],
+      viewDate: new Date('2026-05-29T12:00:00'),
+      selectedTag: null,
+      categories: [{ id: 'other', label: 'Other', color: '#888' }],
+      activeTimer: null,
+      isToday: () => true,
+      viewEntries: () => sb.entries,
+      dk: (d) => d.toISOString().slice(0, 10),
+      fmtLabel: () => 'label',
+      mondayOfWeek: () => 0,
+      calcStreak: () => 0,
+      parseJiraLabel: (label) => ({ ticket: null, name: label }),
+      escHtml: (s) => s,
+      fmtDur: (ms) => String(ms),
+      safeRoundedStart: () => Date.now(),
+      save: () => {},
+      renderHeroCard: () => {},
+      renderLocation: () => {},
+      renderSodBtn: () => {},
+      renderEodBtn: () => {},
+      renderEodReminder: () => {},
+      updateTimerBar: () => {},
+      updateTimerBtn: () => {},
+      renderQuickPick: () => {},
+      renderPlan: () => {},
+      renderPlanReviewReminder: () => {},
+      renderCompleted: () => {},
+      renderTodayFlow: () => {},
+      renderTrackers: () => {},
+      document: {
+        getElementById,
+        querySelectorAll: () => [],
+      },
+      ...overrides,
+      _elements: elements,
+    };
+    vm.createContext(sb);
+    vm.runInContext(renderSrc, sb);
+    return sb;
+  }
+
+  it('binds a click handler on #tlAdHocBtn when the viewed day has zero entries', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+
+    const btn = sb._elements['tlAdHocBtn'];
+    const clickHandlers = (btn && btn._listeners.click) || [];
+    assert.equal(
+      clickHandlers.length,
+      1,
+      'render() must call bindAdHocRow() on the empty-state branch, not just the entry-list branch'
+    );
+  });
+
+  it('committing the ad-hoc row on a zero-entry day adds the entry', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+
+    // Swap the real render() for a spy before triggering the click, so the
+    // commit flow's own render() call (which would take the non-empty
+    // branch, requiring a much larger DOM/entry-row stub surface) doesn't
+    // need to be modelled here — this test only asserts the commit itself.
+    sb.render = () => {
+      sb._rerenderCount = (sb._rerenderCount || 0) + 1;
+    };
+
+    const input = sb._elements['tlAdHocInput'];
+    const btn = sb._elements['tlAdHocBtn'];
+    input.value = 'new task';
+    btn._listeners.click[0]();
+
+    assert.equal(sb.entries.length, 1, 'clicking + log should commit the ad-hoc entry');
+    assert.equal(sb.entries[0].text, 'new task');
+    assert.equal(sb._rerenderCount, 1, 'commitAdHoc should re-render after saving');
+  });
+
+  it('pressing Enter in #tlAdHocInput also commits the entry on a zero-entry day', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+    sb.render = () => {};
+
+    const input = sb._elements['tlAdHocInput'];
+    input.value = 'entered via keyboard';
+    const keydownHandlers = input._listeners.keydown || [];
+    keydownHandlers.forEach((handler) => handler({ key: 'Enter', code: 'Enter' }));
+
+    assert.equal(sb.entries.length, 1);
+    assert.equal(sb.entries[0].text, 'entered via keyboard');
+  });
+
+  it('does not throw and leaves entries untouched when the input is empty', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+    sb.render = () => {};
+
+    const btn = sb._elements['tlAdHocBtn'];
+    btn._listeners.click[0]();
+
+    assert.equal(sb.entries.length, 0);
+  });
+});
