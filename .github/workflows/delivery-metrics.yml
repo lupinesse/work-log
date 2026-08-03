@@ -15,7 +15,7 @@ jobs:
     permissions:
       contents: write
       issues: read
-      pull-requests: read
+      pull-requests: write
 
     steps:
       - name: Check out repository
@@ -64,14 +64,31 @@ jobs:
             "$WEEK" "$OPENED" "$CLOSED" "$PRS" "$RATIO" \
             >> docs/delivery-metrics.md
 
-      - name: Commit metrics
+      - name: Commit metrics and open a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "delivery-metrics-bot"
           git config user.email "delivery-metrics-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain docs/delivery-metrics.md)" ]; then
-            git add docs/delivery-metrics.md
-            git commit -m "Add weekly delivery metrics"
-            git push origin HEAD
-          else
+          if [ -z "$(git status --porcelain docs/delivery-metrics.md)" ]; then
             echo "No changes to commit."
+            exit 0
+          fi
+
+          # main is protected — a required-status-check push here is always
+          # rejected (GH013), so land the update via a branch + PR instead.
+          WEEK=$(date +%Y-%m-%d)
+          BRANCH="claude/delivery-metrics-$WEEK"
+          git checkout -B "$BRANCH"
+          git add docs/delivery-metrics.md
+          git commit -m "docs: delivery metrics $WEEK"
+          git push -f origin "$BRANCH"
+
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')" ]; then
+            gh pr create \
+              --title "Delivery metrics $WEEK" \
+              --body "Automated weekly Say/Do ratio update. See \`docs/delivery-metrics.md\`." \
+              --base main --head "$BRANCH" --draft
+          else
+            echo "PR already open for $BRANCH — nothing further to do."
           fi
