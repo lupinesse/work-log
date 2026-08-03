@@ -240,13 +240,7 @@ function renderTrackRecent() {
       const src = entries.find((e) => e.id === chip.dataset.eid);
       if (!src) return;
       if (activeTimer) stopTimer();
-      const entry = {
-        id: Date.now() + '',
-        text: src.text,
-        tag: src.tag,
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
+      const entry = createRestartedEntry(src.text, src.tag);
       entries.push(entry);
       save();
       startTimer(entry.id);

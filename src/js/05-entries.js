@@ -34,6 +34,56 @@ function addEntry(withTimer) {
   inp.focus();
 }
 
+/* ── Restart with timer ── */
+
+/**
+ * Finds the most recently created log entry with the same text (case-
+ * insensitive, trimmed) as `text`. Used to carry proof-link/note context
+ * forward when a task or entry is restarted with a fresh timer.
+ * @param {string} text - The entry/task text to match against.
+ * @returns {(Object|undefined)} The most recent matching entry, or undefined if none exists.
+ */
+function findMostRecentEntryForText(text) {
+  const key = text.toLowerCase().trim();
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].text.toLowerCase().trim() === key) return entries[i];
+  }
+  return undefined;
+}
+
+/**
+ * Builds a fresh log entry that continues previously logged work on `text`,
+ * used by every "restart with timer" entry point (the log's ▶ restart button,
+ * the kanban board's ▸ track button, and the "+ track recent" chips) so they
+ * behave consistently.
+ *
+ * If a prior entry with the same text exists, its proof link is carried over
+ * automatically. Its note is deliberately not copied onto the new entry
+ * directly — a note written for an earlier session may no longer describe
+ * this one — instead `_entryMetaEditId` and `_pendingNoteConfirm` (both in
+ * 04-render.js) are set so the new entry's proof-link/note editor opens with
+ * a "same note as last time?" prompt for the user to confirm or clear.
+ * @param {string} text - Entry text.
+ * @param {string} tag - Category id.
+ * @returns {Object} A new entry object, not yet pushed to `entries`.
+ */
+function createRestartedEntry(text, tag) {
+  const entry = {
+    id: Date.now() + '',
+    text,
+    tag,
+    ts: safeRoundedStart(),
+    date: dk(new Date()),
+  };
+  const prior = findMostRecentEntryForText(text);
+  if (prior && prior.link && prior.link.trim()) entry.link = prior.link.trim();
+  if (prior && prior.note && prior.note.trim()) {
+    _entryMetaEditId = entry.id;
+    _pendingNoteConfirm = { id: entry.id, note: prior.note.trim() };
+  }
+  return entry;
+}
+
 /* ── Billable rule ── */
 
 /**

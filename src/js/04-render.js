@@ -6,11 +6,21 @@
 // `entries` on every call, same as `_flowNoteEditId` in 11-timeflow.js.
 let _entryMetaEditId = null;
 
+// Pending "same note as last time?" confirmation for a just-restarted entry
+// (see createRestartedEntry in 05-entries.js): `{ id, note }` for the entry
+// awaiting a yes/no answer, or null when nothing is pending. Cleared by any
+// meta-editor action (save/clear/cancel/yes/no) so it never resurfaces on a
+// later, unrelated edit of the same entry.
+let _pendingNoteConfirm = null;
+
 /**
  * Builds the proof-link / note indicator and inline editor for a log entry.
  * Read-only state shows a 🔗 and/or 📝 indicator (title = full value) plus a
  * toggle button; editing state additionally shows the link/note inputs. Both
  * fields are optional and independent — either can be filled in on its own.
+ * When this entry has a pending restart confirmation (`_pendingNoteConfirm`,
+ * set by createRestartedEntry in 05-entries.js), the editor also shows a
+ * "same note as last time?" banner above the inputs.
  * @param {{ id: string, link: (string|undefined), note: (string|undefined) }} entry - The log entry.
  * @param {boolean} isEditing - Whether this entry's link/note panel is open.
  * @returns {string} HTML string.
@@ -36,9 +46,22 @@ function buildEntryMetaHtml(entry, isEditing) {
   const label = hasLink || hasNote ? 'edit proof link / note' : 'add proof link / note';
   const toggle = `<button class="emeta-btn" data-id="${entry.id}" title="${label}" aria-label="${label}">${hasLink || hasNote ? '✎' : '📎'}</button>`;
   if (!isEditing) return `<div class="emeta">${indicators}${toggle}</div>`;
+  const pendingNote =
+    _pendingNoteConfirm && _pendingNoteConfirm.id === entry.id ? _pendingNoteConfirm.note : '';
+  const restartConfirmHtml = pendingNote
+    ? `<div class="emeta-restart-confirm">
+        <div class="emeta-restart-q">Same note as last time?</div>
+        <div class="emeta-restart-prev">"${escHtml(pendingNote)}"</div>
+        <div class="emeta-restart-actions">
+          <button class="emeta-restart-yes" data-id="${entry.id}">Yes, keep it</button>
+          <button class="emeta-restart-no" data-id="${entry.id}">No, clear</button>
+        </div>
+      </div>`
+    : '';
   return `<div class="emeta">
       ${indicators}${toggle}
       <div class="emeta-editor open" id="em-${entry.id}">
+        ${restartConfirmHtml}
         <label class="emeta-lbl" for="emli-${entry.id}">proof link</label>
         <input class="emeta-link-input" type="text" id="emli-${entry.id}" data-id="${entry.id}"
                value="${escHtml(entry.link || '')}"
@@ -87,9 +110,11 @@ function buildEntryCatPickerHtml(entry, categoryList) {
 
 /**
  * Binds open/save/clear/cancel events for each entry's proof-link/note
- * editor. Re-attached after every render() call since #timeline's innerHTML
- * is fully replaced each time, same pattern as the other entry-row bindings
- * in render() (time editor, category picker, billable toggle).
+ * editor, plus the yes/no handlers for its restart note-confirmation banner
+ * (see createRestartedEntry in 05-entries.js). Re-attached after every
+ * render() call since #timeline's innerHTML is fully replaced each time,
+ * same pattern as the other entry-row bindings in render() (time editor,
+ * category picker, billable toggle).
  * @param {HTMLElement} timelineEl - The #timeline element.
  */
 function bindEntryMetaEvents(timelineEl) {
@@ -97,6 +122,7 @@ function bindEntryMetaEvents(timelineEl) {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       _entryMetaEditId = _entryMetaEditId === id ? null : id;
+      _pendingNoteConfirm = null;
       render();
       if (_entryMetaEditId === id) {
         setTimeout(() => document.getElementById('emli-' + id)?.focus(), 0);
@@ -117,6 +143,7 @@ function bindEntryMetaEvents(timelineEl) {
         save();
       }
       _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
       render();
     });
   });
@@ -130,13 +157,37 @@ function bindEntryMetaEvents(timelineEl) {
         save();
       }
       _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
       render();
     });
   });
   timelineEl.querySelectorAll('.emeta-cancel').forEach((btn) => {
     btn.addEventListener('click', () => {
       _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
       render();
+    });
+  });
+  /* restart note-confirmation: "same note as last time?" */
+  timelineEl.querySelectorAll('.emeta-restart-yes').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry && _pendingNoteConfirm && _pendingNoteConfirm.id === id) {
+        entry.note = _pendingNoteConfirm.note;
+        save();
+      }
+      _pendingNoteConfirm = null;
+      render();
+      setTimeout(() => document.getElementById('emno-' + id)?.focus(), 0);
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-restart-no').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _pendingNoteConfirm = null;
+      render();
+      setTimeout(() => document.getElementById('emno-' + id)?.focus(), 0);
     });
   });
 }
@@ -577,13 +628,7 @@ function render() {
       const sourceEntry = entries.find((entry) => entry.id === btn.dataset.id);
       if (!sourceEntry) return;
       if (activeTimer) stopTimer();
-      const newEntry = {
-        id: Date.now() + '',
-        text: sourceEntry.text,
-        tag: sourceEntry.tag,
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
+      const newEntry = createRestartedEntry(sourceEntry.text, sourceEntry.tag);
       entries.push(newEntry);
       viewDate = new Date();
       save();

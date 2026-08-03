@@ -287,13 +287,7 @@ function bindPlanEvents(lists) {
       const text = btn.dataset.text;
       const tag = task ? task.tag || 'other' : selectedTag;
       if (activeTimer) stopTimer();
-      const entry = {
-        id: Date.now() + '',
-        text,
-        tag,
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
+      const entry = createRestartedEntry(text, tag);
       entries.push(entry);
       promoteMatchingTaskToInProgress(text);
       ensureDayStarted();

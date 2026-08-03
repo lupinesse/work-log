@@ -640,3 +640,56 @@
   background: #fdecea;
   border-color: transparent;
 }
+
+/* "Same note as last time?" restart confirmation banner */
+.emeta-restart-confirm {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--info-text);
+  border-radius: var(--radius);
+  background: var(--info-bg);
+}
+
+.emeta-restart-q {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text2);
+}
+
+.emeta-restart-prev {
+  font-size: 11px;
+  color: var(--text3);
+  font-style: italic;
+  overflow-wrap: break-word;
+}
+
+.emeta-restart-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.emeta-restart-yes,
+.emeta-restart-no {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 0.5px solid var(--border2);
+  background: none;
+  cursor: pointer;
+  color: var(--text2);
+  font-family: var(--font);
+}
+
+.emeta-restart-yes {
+  background: var(--bg);
+  color: var(--info-text);
+  font-weight: 600;
+}
+
+.emeta-restart-yes:hover,
+.emeta-restart-no:hover {
+  opacity: 0.85;
+}
