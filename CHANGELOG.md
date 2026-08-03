@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+---
+
+## [1.9.1] — 2026-08-03
+
 ### Changed
 - **Non-billable relabeled as "internal"** — the billable/non-billable boolean already covered the distinction that mattered (client-billable vs. not), so rather than add a redundant third field, "non-billable" is now labelled "internal" everywhere it appears: the entry-row toggle, the task-row toggle, the category-manager button, and the export summary line. The underlying `billable` boolean and its entry → task → category inheritance (`isEntryBillable()` in `05-entries.js`) are unchanged.
 

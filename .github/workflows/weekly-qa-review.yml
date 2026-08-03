@@ -10,7 +10,8 @@ jobs:
   qa-review:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # needed to commit the report back to the repo
+      contents: write      # needed to commit the report back to the repo
+      pull-requests: write # needed to open the report PR
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -35,14 +36,32 @@ jobs:
                            "Bash(ls:*)" "Bash(find:*)" "Bash(cat:*)" \
                            "Bash(head:*)" "Bash(test:*)" "Bash(wc:*)"
 
-      - name: Commit the report
+      - name: Commit the report and open a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "qa-review-bot"
           git config user.email "qa-review-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain docs/qa-reports/)" ]; then
-            git add docs/qa-reports/
-            git commit -m "Add weekly QA review report"
-            git push
-          else
+          if [ -z "$(git status --porcelain docs/qa-reports/)" ]; then
             echo "No new report to commit."
+            exit 0
+          fi
+
+          # main is protected — a required-status-check push here is always
+          # rejected (GH013), so land the report via a branch + PR instead.
+          DATE=$(date +%Y-%m-%d)
+          BRANCH="claude/qa-review-$DATE"
+          git checkout -B "$BRANCH"
+          git add docs/qa-reports/
+          git commit -m "docs: weekly QA report $DATE"
+          git push -f origin "$BRANCH"
+
+          if gh pr list --head "$BRANCH" --state open --json number \
+               | node .github/scripts/check-pr-exists.mjs; then
+            echo "PR already open for $BRANCH — nothing further to do."
+          else
+            gh pr create \
+              --title "Weekly QA report $DATE" \
+              --body "Automated weekly QA review. See \`docs/qa-reports/qa-review-$DATE.md\`." \
+              --base main --head "$BRANCH" --draft
           fi

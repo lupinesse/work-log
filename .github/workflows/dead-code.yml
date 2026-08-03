@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Check out repository
@@ -59,14 +60,32 @@ jobs:
             --allowedTools "Read" "Grep" "Glob" "Write" \
                            "Bash(cat:*)" "Bash(wc:*)"
 
-      - name: Commit the report
+      - name: Commit the report and open a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "dead-code-bot"
           git config user.email "dead-code-bot@users.noreply.github.com"
-          if [ -n "$(git status --porcelain docs/dead-code-reports/)" ]; then
-            git add docs/dead-code-reports/
-            git commit -m "Add weekly dead code report"
-            git push
-          else
+          if [ -z "$(git status --porcelain docs/dead-code-reports/)" ]; then
             echo "No new report to commit."
+            exit 0
+          fi
+
+          # main is protected — a required-status-check push here is always
+          # rejected (GH013), so land the report via a branch + PR instead.
+          DATE=$(date +%Y-%m-%d)
+          BRANCH="claude/dead-code-report-$DATE"
+          git checkout -B "$BRANCH"
+          git add docs/dead-code-reports/
+          git commit -m "docs: dead-code sweep $DATE"
+          git push -f origin "$BRANCH"
+
+          if gh pr list --head "$BRANCH" --state open --json number \
+               | node .github/scripts/check-pr-exists.mjs; then
+            echo "PR already open for $BRANCH — nothing further to do."
+          else
+            gh pr create \
+              --title "Dead code report $DATE" \
+              --body "Automated weekly dead-code sweep. See \`docs/dead-code-reports/dead-code-$DATE.md\`." \
+              --base main --head "$BRANCH" --draft
           fi

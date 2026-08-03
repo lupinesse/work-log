@@ -3,17 +3,19 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.0-r2 |
-| Covers app version | v1.9.0+ (main, 2026-06-26) |
-| Last reviewed | 2026-06-26 |
-| Reviewed by | Jenni Järvinen (author) + Claude Sonnet 4.6 (AI pair reviewer) |
+| Document version | 1.9.0-r3 |
+| Covers app version | v1.9.0+ (main, 2026-08-03) |
+| Last reviewed | 2026-08-03 |
+| Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map and line counts only, per the 2026-08-03 QA review; not a full architectural re-review) |
 | Status | **Approved** — reflects current implementation |
+
+Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ---
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (49 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (50 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -35,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (183 lines) — Data Store
+#### **01-state.js** (202 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -91,14 +93,14 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (52 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (62 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
-- `pure-fns-format.js` (181 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (304 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
-- `pure-fns-tasks.js` (206 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
-- `pure-fns-validate.js` (261 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
+- `pure-fns-export.js` (520 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
+- `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
 ---
 
@@ -120,7 +122,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (494 lines) — Timer Logic
+#### **03-timer.js** (572 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -140,7 +142,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (646 lines) — Top-Level UI Rendering
+#### **04-render.js** (848 lines) — Top-Level UI Rendering
 **Responsibility**: Orchestrate rendering of all visible sections
 
 **Main Function**:
@@ -239,7 +241,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **06a-hero.js** (512 lines) — Hero Card State Machine
+#### **06a-hero.js** (515 lines) — Hero Card State Machine
 **Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
 
 **States**:
@@ -260,7 +262,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (339 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (385 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -338,7 +340,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (149 lines) — Task Management
+#### **10-tasks.js** (170 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -385,7 +387,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (341 lines) — Task Event Binding
+#### **10b-tasks-events.js** (340 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -412,6 +414,13 @@ upcoming    → Scheduled for future date
 **Responsibility**: Binds the inline comment, note, and checkpoint editors for individual task cards. One function per editor type; called from `10b-tasks-events.js`.
 
 **Key Functions**: `bindPlanCommentEvents(qa)`, `bindPlanNoteEvents(qa)`, `bindPlanCheckpointEvents(qa)`
+
+---
+
+#### **10e-weeklyplan-review.js** (173 lines) — Weekly Plan Review Checklist
+**Responsibility**: Surfaces plan tasks marked `upcoming` whose date falls within the current ISO week as a dismissible banner once a new week begins, so tasks planned ahead that turned out to already be finished elsewhere get caught before they silently resurface. Opens a checklist with "✓ done" / "✕ drop" actions per row; the app has no live Jira connection, so this only ever prompts — it never auto-detects completion.
+
+**Key Functions**: `renderPlanReviewReminder()`, `openPlanReviewOverlay()`, `markPlanReviewedThisWeek()`, `currentPlanReviewWeekKey()`
 
 ---
 
@@ -454,12 +463,13 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (253 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (254 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
 - `12b-changelog-data.js` (631 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
 - `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12c-gapreport.js` (113 lines) — End-of-week gap report: lists this week's finished, non-cancelled entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
@@ -530,7 +540,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (473 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (474 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`

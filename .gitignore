@@ -10,6 +10,7 @@ docs/*
 !docs/qa-reports/
 !docs/dead-code-reports/
 !docs/ab-tests/
+!docs/delivery-metrics.md
 .portable-dest
 .DS_Store
 *.local
