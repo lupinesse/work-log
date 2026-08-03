@@ -462,6 +462,9 @@ export function buildWeeklyTicketSummary(entries, weekStart, weekEnd) {
   const ticketOrder = Object.keys(grouped)
     .filter((key) => key !== WEEKLY_REPORT_NO_TICKET_KEY)
     .sort((a, b) => grouped[b].totalMs - grouped[a].totalMs);
+  // The no-ticket bucket is a catch-all grouping, not a reportable ticket —
+  // it always sorts last regardless of its total time, even if that time
+  // exceeds a real ticket's.
   if (grouped[WEEKLY_REPORT_NO_TICKET_KEY]) ticketOrder.push(WEEKLY_REPORT_NO_TICKET_KEY);
 
   return { ticketOrder, grouped };
