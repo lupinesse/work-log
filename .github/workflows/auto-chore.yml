@@ -1,0 +1,147 @@
+name: Auto-start chore issues
+
+# Triggers when the 'chore' label is applied to an issue. Claude reads the
+# issue, implements the smallest safe change on a fresh branch, and verifies
+# it with build/lint/test. If a commit exists afterwards, the workflow
+# pushes the branch and opens a PR that closes the issue — the PR then goes
+# through the normal chatgpt-pr-review / pr-review pipeline like any other
+# PR. If Claude judges the issue unsafe to automate, it comments on the
+# issue instead and no PR is opened.
+#
+# Required secrets:
+#   CLAUDE_CODE_OAUTH_TOKEN — set in Settings > Secrets and variables > Actions
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  auto-chore:
+    if: github.event.label.name == 'chore'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the new branch
+      issues: write         # comment on the issue with the outcome
+      pull-requests: write  # open the PR
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Guard — skip if this issue already has a branch or PR
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          EXISTING_BRANCH=$(git ls-remote --heads origin "chore/issue-${ISSUE_NUMBER}-*" | wc -l)
+          EXISTING_PR=$(gh pr list --repo "${{ github.repository }}" --state all \
+            --search "Closes #${ISSUE_NUMBER} in:body" --json number --jq 'length')
+          if [ "$EXISTING_BRANCH" -gt 0 ] || [ "$EXISTING_PR" -gt 0 ]; then
+            echo "Issue #${ISSUE_NUMBER} already has a branch or PR — skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create chore branch
+        if: steps.guard.outputs.skip != 'true'
+        id: branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40)
+          BRANCH="chore/issue-${ISSUE_NUMBER}-${SLUG}"
+          git checkout -b "$BRANCH"
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Install Playwright browsers
+        if: steps.guard.outputs.skip != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Claude Code
+        if: steps.guard.outputs.skip != 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Run Claude on the issue
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ github.token }}
+          GIT_AUTHOR_NAME: "Claude Code"
+          GIT_AUTHOR_EMAIL: "noreply@anthropic.com"
+          GIT_COMMITTER_NAME: "Claude Code"
+          GIT_COMMITTER_EMAIL: "noreply@anthropic.com"
+        run: |
+          claude -p "/chore-start" \
+            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
+                           "Bash(npm run build)" \
+                           "Bash(npm run lint)" \
+                           "Bash(npm test)" \
+                           "Bash(git add:*)" \
+                           "Bash(git commit:*)" \
+                           "Bash(git log:*)" \
+                           "Bash(git diff:*)" \
+                           "Bash(git status:*)" \
+                           "Bash(gh issue view:*)" \
+                           "Bash(gh issue comment:*)" \
+                           "Bash(cat:*)" \
+                           "Bash(wc:*)" \
+            > chore-output.txt 2>&1 || true
+          echo "Claude run complete ($(wc -l < chore-output.txt) output lines)"
+
+      - name: Push branch and open PR (if Claude committed)
+        if: steps.guard.outputs.skip != 'true'
+        id: push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          NEW=$(git log --oneline "origin/main..HEAD" | wc -l)
+          if [ "$NEW" -gt 0 ]; then
+            git push -u origin "HEAD:$BRANCH"
+            PR_URL=$(gh pr create \
+              --title "chore: ${ISSUE_TITLE}" \
+              --body "Closes #${ISSUE_NUMBER} — implemented automatically from the \`chore\` label." \
+              --label chore \
+              --head "$BRANCH" \
+              --base main)
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on the issue with the outcome
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${{ steps.push.outputs.pushed }}" = "true" ]; then
+            BODY="🤖 **Auto-chore started** — opened ${{ steps.push.outputs.pr_url }}. It goes through the normal PR review pipeline before it can merge."
+          else
+            BODY="⚠️ **Auto-chore did not open a PR** — Claude judged this unsafe to automate, or hit an error. Check for a comment above from Claude, or see the run log: ${RUN_URL}"
+          fi
+          gh issue comment "$ISSUE_NUMBER" --body "$BODY"
