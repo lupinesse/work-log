@@ -4890,3 +4890,59 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
     assert.equal(sb.entries.length, 0);
   });
 });
+
+// ── Regression: "non-billable" relabeled as "internal" ────────────────────────
+// This was a pure UI-copy change (no field/logic change — see isEntryBillable()
+// in 05-entries.js) spread across five template strings in four files. A
+// behavioural test covers the one genuinely pure function among them
+// (billBtnHtml); the other four are copy embedded deep inside stateful,
+// heavily-dependency-injected functions (render(), renderChart(), exportTxt(),
+// renderTagRow()) where a full behavioural harness would cost far more than
+// the copy-revert risk it guards against, so those are covered by a direct
+// source-text assertion instead — cheap, and it tests the actual shipped
+// artifact rather than a re-implementation of it.
+describe('regression: non-billable relabeled as "internal"', () => {
+  const tasksRowSrc = readFileSync(join(__dirname, '../src/js/10a-tasks-row.js'), 'utf8');
+
+  function loadTasksRowSandbox() {
+    const sb = {};
+    vm.createContext(sb);
+    vm.runInContext(tasksRowSrc, sb);
+    return sb;
+  }
+
+  it('billBtnHtml titles a billable task row "mark internal"', () => {
+    const sb = loadTasksRowSandbox();
+    const html = sb.billBtnHtml({ id: '1', billable: true }, 'inprogress');
+    assert.match(html, /title="mark internal"/);
+    assert.doesNotMatch(html, /non-billable/);
+  });
+
+  it('billBtnHtml titles an internal (billable:false) task row "mark billable"', () => {
+    const sb = loadTasksRowSandbox();
+    const html = sb.billBtnHtml({ id: '1', billable: false }, 'inprogress');
+    assert.match(html, /title="mark billable"/);
+  });
+
+  it('the entry-row toggle, category-manager button, chart legend, and export summary all say "internal", not "non-billable"', () => {
+    // Checks the specific literals this PR changed — NOT a blanket absence of
+    // "non-billable" in these files, since 02-utils.js still legitimately uses
+    // that word in developer comments describing the underlying boolean
+    // (e.g. "Non-billable entries keep their exact timestamps…"), which is
+    // accurate and was intentionally left as-is; only the UI-facing copy moved.
+    const utilsSrcCheck = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
+    const renderSrcCheck = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+    const exportSrcCheck = readFileSync(join(__dirname, '../src/js/05a-export.js'), 'utf8');
+
+    assert.match(utilsSrcCheck, /💸 internal/);
+    assert.doesNotMatch(utilsSrcCheck, /💸 non-billable/);
+
+    assert.match(renderSrcCheck, /title="toggle billable\/internal"/);
+    assert.match(renderSrcCheck, /title="mixed billable\/internal"/);
+    assert.match(renderSrcCheck, /title="internal">💸/);
+    assert.doesNotMatch(renderSrcCheck, /title="[^"]*non-billable/);
+
+    assert.match(exportSrcCheck, /💸 Internal:/);
+    assert.doesNotMatch(exportSrcCheck, /💸 Non-billable/);
+  });
+});
