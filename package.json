@@ -46,7 +46,9 @@
     ]
   },
   "overrides": {
-    "conventional-changelog-conventionalcommits": "9.3.1"
+    "@commitlint/config-conventional": {
+      "conventional-changelog-conventionalcommits": "9.3.1"
+    }
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
