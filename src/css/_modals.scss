@@ -493,6 +493,54 @@
   border-top: 0.5px solid var(--border);
 }
 
+/* Weekly report draft modal — reuses .eod-overlay/.eod-modal/etc. for the
+   dialog shell; only the report body and copy row are new. */
+.weekly-report-text {
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  font-size: 12px;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 12px;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 4px 0 12px;
+}
+
+.weekly-report-copy-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weekly-report-copy-btn {
+  margin: 8px 10px 0;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  background: var(--bg3);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.weekly-report-copy-btn:hover {
+  background: var(--bg4, var(--bg3));
+  border-color: var(--border, var(--bg3));
+}
+
+.weekly-report-copy-btn:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 2px;
+}
+
+.weekly-report-copy-feedback {
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  color: var(--live);
+  min-height: 1.3em;
+}
+
 /* End-of-day export reminder — same dismissible-alert language as .wip-warn */
 .eod-reminder {
   display: flex;
