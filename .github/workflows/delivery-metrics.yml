@@ -21,6 +21,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
       - name: Calculate Say/Do ratio
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -84,11 +89,12 @@ jobs:
           git commit -m "docs: delivery metrics $WEEK"
           git push -f origin "$BRANCH"
 
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')" ]; then
+          if gh pr list --head "$BRANCH" --state open --json number \
+               | node .github/scripts/check-pr-exists.mjs; then
+            echo "PR already open for $BRANCH — nothing further to do."
+          else
             gh pr create \
               --title "Delivery metrics $WEEK" \
               --body "Automated weekly Say/Do ratio update. See \`docs/delivery-metrics.md\`." \
               --base main --head "$BRANCH" --draft
-          else
-            echo "PR already open for $BRANCH — nothing further to do."
           fi

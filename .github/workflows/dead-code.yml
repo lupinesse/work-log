@@ -80,11 +80,12 @@ jobs:
           git commit -m "docs: dead-code sweep $DATE"
           git push -f origin "$BRANCH"
 
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')" ]; then
+          if gh pr list --head "$BRANCH" --state open --json number \
+               | node .github/scripts/check-pr-exists.mjs; then
+            echo "PR already open for $BRANCH — nothing further to do."
+          else
             gh pr create \
               --title "Dead code report $DATE" \
               --body "Automated weekly dead-code sweep. See \`docs/dead-code-reports/dead-code-$DATE.md\`." \
               --base main --head "$BRANCH" --draft
-          else
-            echo "PR already open for $BRANCH — nothing further to do."
           fi
