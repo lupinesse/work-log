@@ -110,9 +110,11 @@ function buildEntryCatPickerHtml(entry, categoryList) {
 
 /**
  * Binds open/save/clear/cancel events for each entry's proof-link/note
- * editor. Re-attached after every render() call since #timeline's innerHTML
- * is fully replaced each time, same pattern as the other entry-row bindings
- * in render() (time editor, category picker, billable toggle).
+ * editor, plus the yes/no handlers for its restart note-confirmation banner
+ * (see createRestartedEntry in 05-entries.js). Re-attached after every
+ * render() call since #timeline's innerHTML is fully replaced each time,
+ * same pattern as the other entry-row bindings in render() (time editor,
+ * category picker, billable toggle).
  * @param {HTMLElement} timelineEl - The #timeline element.
  */
 function bindEntryMetaEvents(timelineEl) {
