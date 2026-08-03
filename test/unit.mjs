@@ -3103,6 +3103,27 @@ describe('formatWeeklyTicketSummaryText', () => {
     ]);
   });
 
+  // Regression: a bare-ticket entry (no description after the ticket key,
+  // e.g. logged as just "PROJ-42") produces an empty label from
+  // parseJiraLabel() — this must not render as a dangling "- " with no name.
+  it('omits the trailing dash when a name bullet has an empty label (bare ticket entry)', () => {
+    const grouped = {
+      'PROJ-1': {
+        totalMs: 5400000,
+        nameOrder: [''],
+        names: {
+          '': { label: '', totalMs: 5400000 },
+        },
+        notes: [],
+        links: [],
+      },
+    };
+    assert.deepEqual(formatWeeklyTicketSummaryText(['PROJ-1'], grouped, fmtDuration), [
+      'PROJ-1 — 90m',
+      '    90m',
+    ]);
+  });
+
   it('renders note:/link: lines only when present', () => {
     const grouped = {
       'PROJ-1': {

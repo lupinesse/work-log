@@ -491,7 +491,7 @@ export function formatWeeklyTicketSummaryText(ticketOrder, grouped, fmtDuration)
     lines.push(`${ticketLabel} — ${fmtDuration(totalMs)}`);
     nameOrder.forEach((nameKey) => {
       const { label, totalMs: nameMs } = names[nameKey];
-      lines.push(`    ${fmtDuration(nameMs)} - ${label}`);
+      lines.push(label ? `    ${fmtDuration(nameMs)} - ${label}` : `    ${fmtDuration(nameMs)}`);
     });
     notes.forEach((note) => lines.push(`    note: ${note}`));
     links.forEach((link) => lines.push(`    link: ${link}`));
