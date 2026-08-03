@@ -86,6 +86,31 @@ function buildEntryCatPickerHtml(entry, categoryList) {
 }
 
 /**
+ * Tags every log entry sharing the given entry's (case-insensitive) text
+ * with a newly created epic — the same "entries with identical text stay in
+ * sync" convention already used by the picker's existing category buttons
+ * (see the `.cat-opt` handler below). Extracted so the tag-backfill can be
+ * unit-tested without a DOM.
+ * @param {Array<{id: string, text: string, tag: (string|undefined)}>} entryList - All log entries.
+ * @param {string} entryId - id of the entry that was clicked to create the epic.
+ * @param {string} epicId - id of the newly created epic category.
+ * @returns {number} Count of entries that were tagged; 0 if entryId matched nothing.
+ */
+function applyEpicToMatchingEntries(entryList, entryId, epicId) {
+  const clickedEntry = entryList.find((logEntry) => logEntry.id === entryId);
+  if (!clickedEntry) return 0;
+  const matchText = clickedEntry.text.toLowerCase();
+  let taggedCount = 0;
+  entryList.forEach((sameEntry) => {
+    if (sameEntry.text.toLowerCase() === matchText) {
+      sameEntry.tag = epicId;
+      taggedCount += 1;
+    }
+  });
+  return taggedCount;
+}
+
+/**
  * Binds open/save/clear/cancel events for each entry's proof-link/note
  * editor. Re-attached after every render() call since #timeline's innerHTML
  * is fully replaced each time, same pattern as the other entry-row bindings
@@ -497,19 +522,19 @@ function render() {
         input.focus();
         return;
       }
-      if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
-        input.style.borderColor = '#C62828';
+      if (categories.some((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+        input.classList.add('pcat-add-input--error');
         input.focus();
         return;
       }
+      input.classList.remove('pcat-add-input--error');
       const color = nextDistinctColor();
       const id = 'cat_' + Date.now();
       categories.push({ id, label, color });
-      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
-      if (entry) {
-        const taskText = entry.text.toLowerCase();
-        entries.forEach((sameEntry) => {
-          if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = id;
+      const taggedCount = applyEpicToMatchingEntries(entries, btn.dataset.id, id);
+      if (taggedCount === 0) {
+        wlLog.warn('pcat-add-ok: no entry found to tag with the new epic', {
+          entryId: btn.dataset.id,
         });
       }
       save();

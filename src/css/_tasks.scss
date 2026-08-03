@@ -598,6 +598,10 @@
   min-width: 0;
 }
 
+.pcat-add-input--error {
+  border-color: var(--danger, #c62828);
+}
+
 .pcat-add-ok {
   font-size: 13px;
   background: none;

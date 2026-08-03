@@ -3591,6 +3591,48 @@ describe('buildEntryCatPickerHtml', () => {
   });
 });
 
+// ── applyEpicToMatchingEntries — new-epic tag backfill ───────────────────────
+// Regression coverage for the state mutation inside the entry picker's
+// "+ new epic" click handler: tagging must apply to every entry sharing the
+// clicked entry's text (matching the existing `.cat-opt` convention), not
+// just the clicked entry itself, and must no-op safely when the entry id
+// can't be found.
+
+describe('applyEpicToMatchingEntries', () => {
+  const entryList = () => [
+    { id: 'e1', text: 'Write report', tag: 'work' },
+    { id: 'e2', text: 'write report', tag: 'work' },
+    { id: 'e3', text: 'Unrelated task', tag: 'work' },
+  ];
+
+  it('tags the clicked entry and every case-insensitive text match', () => {
+    const sandbox = loadRenderSandbox();
+    const entries = entryList();
+    const count = sandbox.applyEpicToMatchingEntries(entries, 'e1', 'cat_new');
+    assert.equal(count, 2);
+    assert.equal(entries[0].tag, 'cat_new');
+    assert.equal(entries[1].tag, 'cat_new');
+  });
+
+  it('does not tag entries with different text', () => {
+    const sandbox = loadRenderSandbox();
+    const entries = entryList();
+    sandbox.applyEpicToMatchingEntries(entries, 'e1', 'cat_new');
+    assert.equal(entries[2].tag, 'work');
+  });
+
+  it('returns 0 and mutates nothing when the entry id is not found', () => {
+    const sandbox = loadRenderSandbox();
+    const entries = entryList();
+    const count = sandbox.applyEpicToMatchingEntries(entries, 'missing', 'cat_new');
+    assert.equal(count, 0);
+    assert.deepEqual(
+      entries.map((entry) => entry.tag),
+      ['work', 'work', 'work']
+    );
+  });
+});
+
 // ── buildDailyLogItems — session-note partitioning ───────────────────────────
 
 const dailylogSrc = readFileSync(join(__dirname, '../src/js/18-dailylog.js'), 'utf8');
