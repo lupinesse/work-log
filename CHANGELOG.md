@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **CI now guards commitlint against dependency skew** — the `commit-msg` hook is the only thing enforcing Conventional Commits and it runs solely on contributors' machines, so when #251 bumped `@commitlint/config-conventional` without a matching `@commitlint/cli`, *every* local `git commit` failed with `ERR_PACKAGE_PATH_NOT_EXPORTED` and nothing noticed for weeks (QA 2026-08-03, priority 3). #290 pinned the transitive dependency; this adds the missing guard. A new `npm run test:commitlint` runs commitlint against one conforming and one non-conforming sample message, asserting that the preset still loads *and* that rules are still enforced — a preset that loads but matches nothing would otherwise wave any message through. Wired into the `lint` job in `ci.yml`, so the breakage now fails a required check instead of surfacing on someone's next clean checkout. Deliberately does not lint the PR's real commit messages: the point is detecting dependency breakage, not policing contributors. Pure `interpretSelfTest()`, `isPresetResolutionFailure()` and `selectCommitlintBinPath()` in `.github/scripts/lib/commitlint-selftest.mjs`, 36 unit tests.
+
 ---
 
 ## [1.9.1] — 2026-08-03

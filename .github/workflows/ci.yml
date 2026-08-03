@@ -64,5 +64,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The commit-msg hook only ever runs on contributors' machines, so a
+      # dependency skew that breaks commitlint is otherwise invisible until
+      # someone's next clean checkout (see QA 2026-08-03, priority 3).
+      - name: Commitlint self-test (dependency-skew guard)
+        run: npm run test:commitlint
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
