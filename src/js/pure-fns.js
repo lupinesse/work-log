@@ -40,6 +40,7 @@ export {
 export {
   parseRapidTokens,
   resolveCarryStatus,
+  findWeeklyPlanReviewTasks,
   WORK_LOCATIONS,
   locationFor,
   nextLocation,

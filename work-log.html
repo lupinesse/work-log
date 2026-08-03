@@ -319,6 +319,11 @@
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="plan-body">
+    <div class="plan-review-reminder" id="planReviewBanner" role="status" style="display:none">
+      <span class="plan-review-reminder__msg" id="planReviewMsg"></span>
+      <button type="button" class="plan-review-reminder__action" id="planReviewActionBtn">review</button>
+      <button type="button" class="plan-review-reminder__dismiss" id="planReviewDismissBtn" aria-label="dismiss">&times;</button>
+    </div>
     <div class="plan-add-row" id="planAddRow">
       <input class="plan-input" id="planInput" aria-label="Add a task" placeholder="add a task or paste a Jira ticket…" autocomplete="off" />
       <button class="plan-add-btn" id="planAddBtn">+ add</button>
@@ -518,6 +523,18 @@
     <div class="gap-report-list" id="gapReportList"></div>
     <div class="gap-report-footer">
       <button class="eod-close" id="gapReportClose">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly plan review checklist — 'upcoming' tasks dated within the current week -->
+<div class="plan-review-overlay" id="planReviewOverlay" role="dialog" aria-modal="true" aria-labelledby="planReviewTitle">
+  <div class="plan-review-modal">
+    <div class="plan-review-title" id="planReviewTitle">📋 This week's plan</div>
+    <div class="plan-review-subtitle" id="planReviewSubtitle"></div>
+    <div class="plan-review-list" id="planReviewList"></div>
+    <div class="plan-review-footer">
+      <button class="eod-close" id="planReviewClose">close</button>
     </div>
   </div>
 </div>
