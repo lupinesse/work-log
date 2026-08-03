@@ -117,6 +117,7 @@ function bindEntryMetaEvents(timelineEl) {
  * the normal entry-list branch, since #timeline's innerHTML — and the row
  * inside it — is fully replaced on every render() call. Both branches must
  * call this, or the row exists in the DOM but silently does nothing.
+ * @returns {void}
  */
 function bindAdHocRow() {
   const adHocBtn = document.getElementById('tlAdHocBtn');
