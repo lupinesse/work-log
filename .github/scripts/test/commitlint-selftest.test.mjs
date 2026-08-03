@@ -29,7 +29,10 @@ import {
 const run = (exitCode, output = '') => ({ exitCode, output });
 
 /**
- * Whether a message opens with a Conventional Commits type prefix.
+ * Test helper — whether a message opens with a Conventional Commits type prefix.
+ *
+ * Local to this file on purpose: it exists only to pin the sample constants,
+ * and the production code has no need to classify messages itself.
  *
  * Written as a split rather than a regex: the natural pattern for this
  * (`^[a-z]+(\(...\))?!?: `) nests a quantifier inside an optional group, which
@@ -91,7 +94,7 @@ describe('interpretSelfTest — healthy commitlint', () => {
     assert.deepStrictEqual(result.failures, []);
   });
 
-  test('accepts any non-zero rejection code, not just 1', () => {
+  test('treats any non-zero exit as a valid rejection, not just 1', () => {
     const result = interpretSelfTest(HEALTHY.conforming, run(9, '✖ found 2 problems'));
     assert.strictEqual(result.ok, true);
   });

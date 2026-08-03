@@ -91,7 +91,12 @@ function runCommitlint(message) {
     encoding: 'utf8',
   });
 
-  if (result.error) throw result.error;
+  if (result.error) {
+    throw new Error(
+      `failed to spawn commitlint (${process.execPath} ${cliPath}) — ${result.error.message}`,
+      { cause: result.error }
+    );
+  }
 
   return {
     exitCode: result.status,
