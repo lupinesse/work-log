@@ -26,6 +26,7 @@ jobs:
       contents: write       # push the new branch
       issues: write         # comment on the issue with the outcome
       pull-requests: write  # open the PR
+      workflows: write      # allow pushes that touch .github/workflows/* — chores can legitimately edit CI config
 
     steps:
       - name: Check out main
@@ -141,7 +142,7 @@ jobs:
           fi
 
       - name: Comment on the issue with the outcome
-        if: steps.guard.outputs.skip != 'true'
+        if: steps.guard.outputs.skip != 'true' && !cancelled()
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -149,6 +150,8 @@ jobs:
         run: |
           if [ "${{ steps.push.outputs.pushed }}" = "true" ]; then
             BODY="🤖 **Auto-chore started** — opened ${{ steps.push.outputs.pr_url }}. It goes through the normal PR review pipeline before it can merge."
+          elif [ "${{ steps.push.conclusion }}" = "failure" ]; then
+            BODY="🔴 **Auto-chore implemented a fix but failed to push it or open the PR** — Claude committed a change, but pushing the branch or creating the PR itself errored (permissions, network, etc.). Nothing was lost — the commit only exists on the run's ephemeral checkout, so this needs a manual retry. See the run log: ${RUN_URL}"
           elif [ "${{ steps.claude.outputs.exit_code }}" != "0" ]; then
             BODY="🔴 **Auto-chore failed to run** — the Claude CLI itself errored (exit ${{ steps.claude.outputs.exit_code }}), it did not just decline the change. This run is marked failed on the Actions dashboard. See the run log: ${RUN_URL}"
           else
