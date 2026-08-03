@@ -17,6 +17,16 @@
 let _planReviewTrigger = null;
 
 /**
+ * Returns the current ISO-week key (e.g. '2026-W32'), matching the format
+ * checkPomoWeeklyClear() already uses in 07-lifecycle.js.
+ * @returns {string}
+ */
+function currentPlanReviewWeekKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2, '0')}`;
+}
+
+/**
  * Returns this ISO week's [startKey, endKey) as YYYY-MM-DD date-string
  * bounds, using the existing mondayOfWeek()/dk() helpers.
  * @returns {{weekStartKey: string, weekEndKey: string}}
@@ -109,9 +119,8 @@ function closePlanReviewOverlay() {
 function renderPlanReviewReminder() {
   const banner = document.getElementById('planReviewBanner');
   if (!banner) return;
-  const today = new Date();
-  const currentWeekKey = `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2, '0')}`;
-  const alreadyReviewed = localStorage.getItem('wl_plan_review_week') === currentWeekKey;
+  const alreadyReviewed =
+    localStorage.getItem('wl_plan_review_week') === currentPlanReviewWeekKey();
   const { weekStartKey, weekEndKey } = planReviewWeekBounds();
   const upcoming = findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey);
   if (alreadyReviewed || !upcoming.length) {
@@ -133,9 +142,7 @@ function renderPlanReviewReminder() {
  * long-running-timer and end-of-day-export reminders.
  */
 function markPlanReviewedThisWeek() {
-  const today = new Date();
-  const currentWeekKey = `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2, '0')}`;
-  localStorage.setItem('wl_plan_review_week', currentWeekKey);
+  localStorage.setItem('wl_plan_review_week', currentPlanReviewWeekKey());
   renderPlanReviewReminder();
 }
 
