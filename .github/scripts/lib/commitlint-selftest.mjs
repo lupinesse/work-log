@@ -71,6 +71,26 @@ export function isPresetResolutionFailure(output) {
 }
 
 /**
+ * Pick the CLI entry path out of a package's `bin` field.
+ *
+ * npm allows `bin` to be either a bare string (single binary) or a map of
+ * name → path; both forms appear in the wild, and @commitlint/cli has used the
+ * map form. Kept here rather than inline in the runner so the shapes that
+ * *don't* yield a path are unit-testable without mocking module resolution.
+ *
+ * @param {string|Record<string, string>|undefined|null} binField - A package.json
+ *   `bin` value.
+ * @returns {string|null} The entry path with any leading `./` stripped, ready to
+ *   append to the package name for `require.resolve`; null if the field
+ *   declares no usable commitlint entry.
+ */
+export function selectCommitlintBinPath(binField) {
+  const binPath = typeof binField === 'string' ? binField : binField?.commitlint;
+  if (typeof binPath !== 'string' || binPath.trim() === '') return null;
+  return binPath.replace(/^\.\//, '');
+}
+
+/**
  * Interpret the two sample runs into a pass/fail verdict.
  *
  * Two independent things must hold, and they fail in different ways:
@@ -105,6 +125,15 @@ export function interpretSelfTest(conformingRun, nonConformingRun) {
       `a non-conforming message was accepted: "${NON_CONFORMING_SAMPLE}". ` +
         `commitlint ran but is enforcing no rules, so the commit-msg hook would ` +
         `let any message through.`
+    );
+  } else if (nonConformingRun.exitCode === null) {
+    // Any non-zero exit means "rejected", which is what we want here — but a
+    // signalled process (OOM, timeout) also reads as non-zero while proving
+    // nothing. Treated as its own failure so a crash cannot pass as a rejection.
+    failures.push(
+      `commitlint was killed by a signal while linting the non-conforming sample, ` +
+        `so it never reported a verdict. This check cannot confirm rules are enforced.\n` +
+        indent(nonConformingRun.output)
     );
   }
 

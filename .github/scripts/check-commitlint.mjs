@@ -17,6 +17,7 @@ import {
   CONFORMING_SAMPLE,
   NON_CONFORMING_SAMPLE,
   interpretSelfTest,
+  selectCommitlintBinPath,
 } from './lib/commitlint-selftest.mjs';
 
 const require = createRequire(import.meta.url);
@@ -44,7 +45,7 @@ function resolveCommitlintCli() {
     );
   }
 
-  const binPath = typeof binField === 'string' ? binField : binField?.commitlint;
+  const binPath = selectCommitlintBinPath(binField);
   if (!binPath) {
     throw new Error(
       '@commitlint/cli is installed but declares no `commitlint` bin entry — ' +
@@ -53,7 +54,7 @@ function resolveCommitlintCli() {
   }
 
   try {
-    return require.resolve(`@commitlint/cli/${binPath.replace(/^\.\//, '')}`);
+    return require.resolve(`@commitlint/cli/${binPath}`);
   } catch (err) {
     throw new Error(
       `@commitlint/cli is installed but its bin entry (${binPath}) is not importable — ` +

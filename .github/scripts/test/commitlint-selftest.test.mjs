@@ -17,6 +17,7 @@ import {
   NON_CONFORMING_SAMPLE,
   isPresetResolutionFailure,
   interpretSelfTest,
+  selectCommitlintBinPath,
 } from '../lib/commitlint-selftest.mjs';
 
 /**
@@ -162,6 +163,52 @@ describe('interpretSelfTest — signalled process', () => {
     const result = interpretSelfTest(run(null, 'Killed'), HEALTHY.nonConforming);
     assert.strictEqual(result.ok, false);
   });
+
+  // A signalled run exits non-zero, which on the non-conforming side looks
+  // identical to "correctly rejected" — so a crash would read as a pass. This
+  // is the asymmetry raised in review of 5835b33.
+  test('does not let a killed non-conforming run pass as a rejection', () => {
+    const result = interpretSelfTest(HEALTHY.conforming, run(null, 'Killed'));
+    assert.strictEqual(result.ok, false);
+    assert.match(result.failures[0], /killed by a signal/);
+  });
+
+  test('says the verdict is unproven rather than blaming the rules', () => {
+    const [failure] = interpretSelfTest(HEALTHY.conforming, run(null, 'Killed')).failures;
+    assert.doesNotMatch(failure, /enforcing no rules/);
+  });
+});
+
+// ─────────────────────── selectCommitlintBinPath ───────────────────────
+
+describe('selectCommitlintBinPath', () => {
+  test('reads the commitlint entry from a bin map', () => {
+    assert.strictEqual(selectCommitlintBinPath({ commitlint: './cli.js' }), 'cli.js');
+  });
+
+  test('accepts a bare string bin field', () => {
+    assert.strictEqual(selectCommitlintBinPath('./cli.js'), 'cli.js');
+  });
+
+  test('leaves a path without a leading ./ untouched', () => {
+    assert.strictEqual(selectCommitlintBinPath({ commitlint: 'lib/cli.js' }), 'lib/cli.js');
+  });
+
+  const noEntry = [
+    ['undefined', undefined],
+    ['null', null],
+    ['an empty map', {}],
+    ['a map naming a different binary', { commitlintx: './cli.js' }],
+    ['a non-string entry', { commitlint: 42 }],
+    ['an empty string', ''],
+    ['a whitespace-only entry', { commitlint: '   ' }],
+  ];
+
+  for (const [description, binField] of noEntry) {
+    test(`returns null for ${description}`, () => {
+      assert.strictEqual(selectCommitlintBinPath(binField), null);
+    });
+  }
 });
 
 describe('interpretSelfTest — output formatting', () => {
