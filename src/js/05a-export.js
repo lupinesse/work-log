@@ -54,7 +54,7 @@ function exportTxt() {
   }
   if (totalTrackedMs > 0) {
     header.push(
-      `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Non-billable: ${fmtDurLong(nonBillableMs)}`
+      `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Internal: ${fmtDurLong(nonBillableMs)}`
     );
   }
   header.push('---');

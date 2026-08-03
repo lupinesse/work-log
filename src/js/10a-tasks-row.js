@@ -98,7 +98,7 @@ function billBtnHtml(t, status) {
   // is preserved on the task object and reappears when status returns to active.
   if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
   const icon = t.billable === false ? '💸' : '💰';
-  const title = t.billable === false ? 'mark billable' : 'mark non-billable';
+  const title = t.billable === false ? 'mark billable' : 'mark internal';
   return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
 }
 
