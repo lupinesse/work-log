@@ -175,7 +175,7 @@ jobs:
 
       - name: Set up Node.js
         if: always() && steps.gate.outputs.should_run == 'true'
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -227,7 +227,7 @@ jobs:
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -262,7 +262,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
@@ -342,7 +342,7 @@ jobs:
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '24'
 
