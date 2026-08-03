@@ -3659,6 +3659,22 @@ describe('createCategory', () => {
     assert.equal(sandbox.createCategory('WORK'), null);
     assert.equal(sandbox.categories.length, 1);
   });
+
+  it('warns via wlLog when rejecting a duplicate label', () => {
+    const warnCalls = [];
+    const sandbox = loadStateSandbox({
+      wlLog: {
+        warn: (...args) => warnCalls.push(args),
+        error: () => {},
+        info: () => {},
+        debug: () => {},
+      },
+    });
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    sandbox.createCategory('WORK');
+    assert.equal(warnCalls.length, 1);
+    assert.match(warnCalls[0][0], /createCategory/);
+  });
 });
 
 // ── buildDailyLogItems — session-note partitioning ───────────────────────────

@@ -81,7 +81,10 @@ function nextDistinctColor() {
 function createCategory(rawLabel) {
   const label = String(rawLabel).trim();
   if (!label) return null;
-  if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) return null;
+  if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+    wlLog.warn('createCategory: rejected duplicate label', { label });
+    return null;
+  }
   const category = { id: 'cat_' + Date.now(), label, color: nextDistinctColor() };
   categories.push(category);
   return category;
