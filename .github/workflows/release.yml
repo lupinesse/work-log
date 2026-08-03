@@ -26,34 +26,17 @@ jobs:
         with:
           fetch-depth: 0  # needed so the full CHANGELOG history is available
 
-      - name: Extract release notes from CHANGELOG
-        id: notes
-        run: |
-          TAG="${GITHUB_REF_NAME}" # e.g. vX.Y.Z
-          VERSION="${TAG#v}" # e.g. X.Y.Z
-          PREFIX="## [${VERSION}]" # matches "## [X.Y.Z] — <date>"
-
-          # Pull the block that starts at the "## [<VERSION>] — ..." heading
-          # and ends at the next "## " heading or a "---" horizontal rule,
-          # whichever comes first. index() is a plain substring check, so no
-          # version digit/dot needs regex-escaping.
-          awk -v prefix="$PREFIX" '
-            index($0, prefix) == 1 { found=1; next }
-            found && /^---$/ { exit }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md > release-notes.md
-
-          # Trim leading/trailing blank lines
-          sed -i '/./,$!d' release-notes.md
-          sed -i -e :a -e '/^\s*$/{$d;N;ba}' release-notes.md
-
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        run: |
+          TAG="${GITHUB_REF_NAME}" # e.g. vX.Y.Z
+          node .github/scripts/render-release-notes.mjs "$TAG" > release-notes.md
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Append config defaults to release notes
         run: node scripts/config-snapshot.cjs >> release-notes.md
