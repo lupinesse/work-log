@@ -312,6 +312,7 @@ function _heroHandleStart() {
       date: dk(new Date()),
     };
     entries.push(entry);
+    promoteMatchingTaskToInProgress(text);
     save();
     if (activeTimer) stopTimer();
     // Cancel any stopped-confirmation window so the new running state renders immediately.
@@ -340,6 +341,7 @@ function _heroStartFromChip(text, tag) {
   const existing = [...entries].reverse().find((e) => e.text === text);
   if (existing && !existing.tsEnd) {
     // Entry already has no end — start timer on it
+    promoteMatchingTaskToInProgress(text);
     if (activeTimer) stopTimer();
     _heroCancelStoppedTimer();
     startTimer(existing.id);
@@ -354,6 +356,7 @@ function _heroStartFromChip(text, tag) {
     date: dk(new Date()),
   };
   entries.push(entry);
+  promoteMatchingTaskToInProgress(text);
   save();
   if (activeTimer) stopTimer();
   _heroCancelStoppedTimer();

@@ -133,6 +133,28 @@ function addPlanTask() {
   inp.focus();
 }
 
+/**
+ * Promotes today's plan task matching `text` to "in progress", if one
+ * exists and is still in a promotable state. Called whenever a timer starts
+ * on text that might correspond to an existing board card — the hero
+ * composer, a recent chip, the log capture input, and the board's own
+ * "track" button all funnel through this so the Kanban board stays in sync
+ * no matter which control was used to start tracking.
+ * @param {string} text - The entry text a timer was just started on.
+ * @returns {void}
+ */
+function promoteMatchingTaskToInProgress(text) {
+  const task = findPromotableTask(planTasks, text, dk(new Date()));
+  if (!task) return;
+  task.status = 'inprogress';
+  delete task.completedAt;
+  if (task.parentId) {
+    const parent = planTasks.find((planTask) => planTask.id === task.parentId);
+    if (parent && parent.status === 'todo') parent.status = 'inprogress';
+  }
+  savePlan();
+}
+
 // Event listeners bound at parse time — safe because script runs after DOM is built.
 document.getElementById('planAddBtn').addEventListener('click', addPlanTask);
 document.getElementById('planInput').addEventListener('keydown', (event) => {

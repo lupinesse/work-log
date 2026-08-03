@@ -48,7 +48,7 @@ function renderTagRow() {
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
         <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
-        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 non-billable' : '💰 billable'}</button>`;
+        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>`;
   }
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.

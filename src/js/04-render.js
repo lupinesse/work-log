@@ -142,6 +142,45 @@ function bindEntryMetaEvents(timelineEl) {
 }
 
 /**
+ * Binds click/Enter handlers for the ad-hoc inline log row (`#tlAdHocBtn` /
+ * `#tlAdHocInput`). Called from render() on both the empty-state branch and
+ * the normal entry-list branch, since #timeline's innerHTML — and the row
+ * inside it — is fully replaced on every render() call. Both branches must
+ * call this, or the row exists in the DOM but silently does nothing.
+ * @returns {void}
+ */
+function bindAdHocRow() {
+  const adHocBtn = document.getElementById('tlAdHocBtn');
+  const adHocInput = document.getElementById('tlAdHocInput');
+  if (!adHocBtn || !adHocInput) return;
+  const commitAdHoc = () => {
+    const text = adHocInput.value.trim();
+    if (!text) {
+      adHocInput.focus();
+      return;
+    }
+    const entry = {
+      id: Date.now() + '',
+      text,
+      tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+    };
+    entries.push(entry);
+    save();
+    render();
+  };
+  adHocBtn.addEventListener('click', commitAdHoc);
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') commitAdHoc();
+  });
+  // Prevent Space from opening the rapid-log overlay while typing here
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') event.stopPropagation();
+  });
+}
+
+/**
  * Full application re-render: updates the date label, timer bar, stat counters,
  * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
  * time-block view. Call whenever persistent state changes.
@@ -316,6 +355,7 @@ function render() {
         : 'nothing was logged on this day.') +
       '</div>' +
       adHocRow;
+    bindAdHocRow();
     const chartEl = document.getElementById('chart');
     if (chartEl) chartEl.innerHTML = '';
     renderQuickPick();
@@ -375,7 +415,7 @@ function render() {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
           <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
         </div>`;
@@ -384,37 +424,7 @@ function render() {
 
   /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
 
-  /* Ad-hoc log row */
-  const adHocBtn = document.getElementById('tlAdHocBtn');
-  const adHocInput = document.getElementById('tlAdHocInput');
-  if (adHocBtn && adHocInput) {
-    const commitAdHoc = () => {
-      const text = adHocInput.value.trim();
-      if (!text) {
-        adHocInput.focus();
-        return;
-      }
-      const entry = {
-        id: Date.now() + '',
-        text,
-        tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
-      entries.push(entry);
-      save();
-      render();
-    };
-    adHocBtn.addEventListener('click', commitAdHoc);
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') commitAdHoc();
-    });
-    // Prevent Space from opening the rapid-log overlay while typing here
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.code === 'Space') event.stopPropagation();
-    });
-  }
-
+  bindAdHocRow();
   bindSignifierClicks();
   bindEntryMetaEvents(timelineEl);
 
@@ -792,9 +802,9 @@ function renderChart(list) {
     const c = billCounts[key];
     if (!c) return '';
     if (c.bill && c.nonBill)
-      return '<span class="chart-bill" title="mixed billable/non-billable">⚖️</span>';
+      return '<span class="chart-bill" title="mixed billable/internal">⚖️</span>';
     if (c.bill) return '<span class="chart-bill" title="billable">💰</span>';
-    if (c.nonBill) return '<span class="chart-bill" title="non-billable">💸</span>';
+    if (c.nonBill) return '<span class="chart-bill" title="internal">💸</span>';
     return '';
   }
 
@@ -827,7 +837,7 @@ function renderChart(list) {
     .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
+  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 internal: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
   el.querySelectorAll('.chart-tog').forEach((btn) =>
     btn.addEventListener('click', () => {
       chartMode = btn.dataset.mode;

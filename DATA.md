@@ -17,7 +17,7 @@ Each key is documented below with its data type, shape, and lifetime.
 | `ts` | number | Start timestamp (ms, rounded to nearest 30 min for billable) |
 | `tsEnd` | number? | End timestamp (ms); absent while timer is running |
 | `date` | string | ISO date `YYYY-MM-DD` of the entry's start day |
-| `billable` | boolean? | Override; absent = inherit from plan task or category |
+| `billable` | boolean? | Override; absent = inherit from plan task or category. `false` is labelled "internal" in the UI — there is no separate internal/personal field, the field name predates that label |
 | `signifier` | string? | One of `'event'` \| `'flagged'` \| `'migrated'` \| `'cancelled'` \| `'overtime'`; absent = no signifier |
 | `link` | string? | Proof link — the concrete artefact this entry's work touched (Confluence page id, Zephyr case/cycle key, filename, or a full URL). Auto-linkified in the UI when it starts with `http(s)://`; absent = none set |
 | `note` | string? | One-line "what I did," written at the time of the entry. Exported alongside any plan-task note under the same task in the `.txt` export; absent = none set |
