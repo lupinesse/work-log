@@ -18,6 +18,8 @@ const {
   fmtDur,
   fmtDurLong,
   fmtAgo,
+  isLongRunningTimer,
+  mondayOfWeek,
   roundToNearest30,
   validEntry,
   validCategory,
@@ -36,8 +38,14 @@ const {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  isWorkdayLikelyOver,
+  buildTaskNoteMap,
+  buildEntryNoteMap,
+  mergeNoteMaps,
   formatGroupedLines,
   resolveCarryStatus,
+  findWeeklyPlanReviewTasks,
+  findPromotableTask,
   locationFor,
   nextLocation,
   WORK_LOCATIONS,
@@ -45,6 +53,7 @@ const {
   filterNewBackupEntries,
   applyBackupRetention,
   buildBackupPayload,
+  findGapReportEntries,
 } = pureFns;
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -195,6 +204,43 @@ describe('fmtAgo', () => {
     assert.equal(typeof fmtAgo(Date.now() - 5_000), 'string'));
 });
 
+// ── isLongRunningTimer ────────────────────────────────────────────────────────
+describe('isLongRunningTimer', () => {
+  it('returns false under the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(239 * 60_000), false));
+  it('returns false at exactly the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(240 * 60_000), false));
+  it('returns true just past the default 240 min threshold', () =>
+    assert.equal(isLongRunningTimer(240 * 60_000 + 1), true));
+  it('returns false for 0 ms elapsed', () => assert.equal(isLongRunningTimer(0), false));
+  it('respects a custom threshold', () => {
+    assert.equal(isLongRunningTimer(29 * 60_000, 30), false);
+    assert.equal(isLongRunningTimer(30 * 60_000, 30), false);
+    assert.equal(isLongRunningTimer(31 * 60_000, 30), true);
+  });
+});
+
+// ── mondayOfWeek ──────────────────────────────────────────────────────────────
+describe('mondayOfWeek', () => {
+  it('returns that same day at 00:00 when given a Monday', () => {
+    const monday = localMs(2026, 6, 1, 9, 30); // 2026-06-01 is a Monday
+    assert.equal(mondayOfWeek(monday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it("returns the week's Monday when given a mid-week day", () => {
+    const wednesday = localMs(2026, 6, 3, 14, 30); // 2026-06-03 is a Wednesday
+    assert.equal(mondayOfWeek(wednesday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it('returns the preceding Monday when given a Sunday', () => {
+    const sunday = localMs(2026, 6, 7, 23, 59); // 2026-06-07 is a Sunday
+    assert.equal(mondayOfWeek(sunday), localMs(2026, 6, 1, 0, 0, 0));
+  });
+
+  it('defaults to Date.now() when omitted (smoke test — returns a number)', () =>
+    assert.equal(typeof mondayOfWeek(), 'number'));
+});
+
 // ── roundToNearest30 ──────────────────────────────────────────────────────────
 describe('roundToNearest30', () => {
   /**
@@ -275,6 +321,13 @@ describe('validEntry', () => {
   it('tsEnd is optional — entry still valid without it', () => assert.ok(validEntry(base)));
   it('tsEnd present — entry still valid', () =>
     assert.ok(validEntry({ ...base, tsEnd: 9999999999 })));
+  it('link is optional — entry still valid without it', () => assert.ok(validEntry(base)));
+  it('accepts a string link', () =>
+    assert.ok(validEntry({ ...base, link: 'https://confluence/PROJ/pages/123' })));
+  it('rejects a numeric link', () => assert.equal(validEntry({ ...base, link: 123 }), false));
+  it('note is optional — entry still valid without it', () => assert.ok(validEntry(base)));
+  it('accepts a string note', () => assert.ok(validEntry({ ...base, note: 'wrote the report' })));
+  it('rejects a numeric note', () => assert.equal(validEntry({ ...base, note: 7 }), false));
 });
 
 // ── validCategory ─────────────────────────────────────────────────────────────
@@ -1365,6 +1418,202 @@ describe('_qcTaskListHtml', () => {
   });
 });
 
+// ── _qcActivateRow — plan task promotion (regression) ────────────────────────
+// Bug: starting a "to do" plan task from the quick-capture list created a log
+// entry and started the timer, but never promoted the matching planTasks row
+// to "inprogress", so the card never moved on the Kanban board. Verifies the
+// caller now delegates to the shared promoteMatchingTaskToInProgress helper
+// (10-tasks.js) — a spy here catches a caller that stops invoking it, which a
+// pure-function test of the helper alone would not.
+describe('_qcActivateRow', () => {
+  it('promotes the matching plan task when starting a "to do" row', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('plan:t1', 'Ship feature', 'work', false);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('promotes the matching plan task when resuming an existing log entry', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      entries: [{ id: 'e1', text: 'Ship feature', tag: 'work', ts: 1 }],
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('e1', 'Ship feature', 'work', false);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('does nothing when the clicked row is already the active timer', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('e1', 'Ship feature', 'work', true);
+    assert.deepEqual(calls, []);
+  });
+});
+
+// ── Hero composer — plan task promotion (regression) ─────────────────────────
+// Same bug as above, reached via the primary "WHAT'S NEXT?" start box and its
+// recent-chip shortcuts (06a-hero.js) instead of the quick-capture overlay.
+
+/**
+ * Loads 06a-hero.js into a VM sandbox. All of the file's DOM binding happens
+ * inside initHero() (called separately, not at parse time), so the module
+ * evaluates safely with a minimal document stub. `_composerInput` is exposed
+ * on the sandbox so tests can set the typed text before calling _heroHandleStart.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadHeroSandbox(overrides = {}) {
+  const pureSrc = loadPureFnsScriptSource();
+  const heroSrc = readFileSync(join(__dirname, '../src/js/06a-hero.js'), 'utf8');
+  const composerInput = { value: '' };
+  const elements = { heroComposerInput: composerInput };
+
+  const sandbox = {
+    document: {
+      getElementById: (id) => elements[id] || null,
+      addEventListener: () => {},
+    },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    activeTimer: null,
+    entries: [],
+    planTasks: [],
+    categories: [{ id: 'other', label: 'Other', color: '#888780' }],
+    selectedTag: 'other',
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    safeRoundedStart: () => Date.now(),
+    promoteMatchingTaskToInProgress: () => {},
+    ...overrides,
+  };
+  sandbox._composerInput = composerInput;
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(heroSrc, sandbox);
+  return sandbox;
+}
+
+describe('_heroHandleStart', () => {
+  it('promotes a matching plan task when starting tracking from typed text', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._composerInput.value = 'Write report';
+    sandbox._heroHandleStart();
+    assert.deepEqual(calls, ['Write report']);
+  });
+
+  it('does not attempt promotion when the composer input is empty', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._composerInput.value = '   ';
+    sandbox._heroHandleStart();
+    assert.deepEqual(calls, []);
+  });
+});
+
+describe('_heroStartFromChip', () => {
+  it('promotes a matching plan task when reusing an open entry', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      entries: [{ id: 'e1', text: 'Recent task', tag: 'other', ts: 1 }],
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._heroStartFromChip('Recent task', 'other');
+    assert.deepEqual(calls, ['Recent task']);
+  });
+
+  it('promotes a matching plan task when creating a fresh entry', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._heroStartFromChip('New task', 'other');
+    assert.deepEqual(calls, ['New task']);
+  });
+});
+
+// ── addEntry — plan task promotion (regression) ───────────────────────────────
+// Same bug, reached via the Log view's own capture input (05-entries.js) —
+// the fourth and last "start tracking" entry point.
+
+/**
+ * Loads 05-entries.js into a VM sandbox. `captureInput` is exposed on the
+ * sandbox so tests can set the typed text before calling addEntry().
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadEntriesSandbox(overrides = {}) {
+  const entriesSrc = readFileSync(join(__dirname, '../src/js/05-entries.js'), 'utf8');
+  const captureInput = { value: '', focus: () => {} };
+  const elements = { captureInput };
+
+  const sandbox = {
+    document: { getElementById: (id) => elements[id] || null },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    activeTimer: null,
+    entries: [],
+    selectedTag: 'other',
+    viewDate: new Date(),
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    dk: () => '2026-06-04',
+    safeRoundedStart: () => Date.now(),
+    promoteMatchingTaskToInProgress: () => {},
+    ...overrides,
+  };
+  sandbox._captureInput = captureInput;
+  vm.createContext(sandbox);
+  vm.runInContext(entriesSrc, sandbox);
+  return sandbox;
+}
+
+describe('addEntry', () => {
+  it('promotes a matching plan task when starting the timer on a new entry', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('does not attempt promotion when logging without starting the timer', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(false);
+    assert.deepEqual(calls, []);
+  });
+
+  it('does not attempt promotion when the capture input is empty', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = '   ';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, []);
+  });
+});
+
 // ── calcMonthSummaryStats and calcMonthTaskCounts ────────────────────────────
 // Pure helpers extracted from 19-monthlylog.js so the data-derivation step
 // is independently testable without DOM. The render functions are thin
@@ -2276,6 +2525,46 @@ describe('computeDayBounds', () => {
   });
 });
 
+// ── isWorkdayLikelyOver ────────────────────────────────────────────────────────
+describe('isWorkdayLikelyOver', () => {
+  const HOUR = 3600000;
+  // sodTs is deliberately non-zero: 0 is falsy in JS, and a day-start of
+  // exactly the Unix epoch is not a real input (getDayStart() only ever
+  // returns null or a real Date.now()-based timestamp) — same convention
+  // computeDayBounds() relies on for its own truthy-checked inputs.
+  const SOD = 1_000_000;
+  const base = { sodTs: SOD, eodTs: null, hasEntriesToday: true, now: SOD + 8 * HOUR };
+
+  it('returns false when the day was never started', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, sodTs: null }), false);
+  });
+
+  it('returns false when the day has already been ended', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, eodTs: SOD + 5 * HOUR }), false);
+  });
+
+  it('returns false when there are no entries today', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, hasEntriesToday: false }), false);
+  });
+
+  it('returns false before the default 8h threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 7 * HOUR }), false);
+  });
+
+  it('returns true exactly at the default 8h threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 8 * HOUR }), true);
+  });
+
+  it('returns true well past the threshold', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 10 * HOUR }), true);
+  });
+
+  it('respects a custom workdayHours', () => {
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 5 * HOUR, workdayHours: 6 }), false);
+    assert.equal(isWorkdayLikelyOver({ ...base, now: SOD + 6 * HOUR, workdayHours: 6 }), true);
+  });
+});
+
 // ── formatGroupedLines ─────────────────────────────────────────────────────────
 describe('formatGroupedLines', () => {
   const fmt = (ms) => `${ms}ms`;
@@ -2310,6 +2599,266 @@ describe('formatGroupedLines', () => {
 
   it('returns no lines for an empty category order', () =>
     assert.equal(formatGroupedLines([], {}, fmt, label).length, 0));
+
+  it('appends a note line under a task that has a matching entry in taskNotes', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, { a: 'waiting on review' });
+    assert.deepEqual(
+      [...lines],
+      ['1000ms - [work]', '    1000ms - Task A', '        note: waiting on review']
+    );
+  });
+
+  it('renders one note line per non-blank line of a multi-line note', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, {
+      a: 'first point\n\n  second point  ',
+    });
+    assert.deepEqual(
+      [...lines],
+      [
+        '1000ms - [work]',
+        '    1000ms - Task A',
+        '        note: first point',
+        '        note: second point',
+      ]
+    );
+  });
+
+  it('omits the note line for tasks absent from taskNotes', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, { b: 'unrelated note' });
+    assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
+  });
+
+  it('defaults to no notes when taskNotes is omitted', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label);
+    assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
+  });
+});
+
+// ── buildTaskNoteMap ───────────────────────────────────────────────────────────
+describe('buildTaskNoteMap', () => {
+  it('maps a task note by lowercased text for tasks dated the given day', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-04', note: 'ticket PROJ-9' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), { 'fix login': 'ticket PROJ-9' });
+  });
+
+  it('excludes tasks dated a different day', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-03', note: 'ticket PROJ-9' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), {});
+  });
+
+  it('excludes tasks with no note, an empty note, or a whitespace-only note', () => {
+    const planTasks = [
+      { id: '1', text: 'A', date: '2026-06-04' },
+      { id: '2', text: 'B', date: '2026-06-04', note: '' },
+      { id: '3', text: 'C', date: '2026-06-04', note: '   ' },
+    ];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), {});
+  });
+
+  it('trims the note text', () => {
+    const planTasks = [{ id: '1', text: 'Fix Login', date: '2026-06-04', note: '  spaced  ' }];
+    assert.deepEqual(buildTaskNoteMap(planTasks, '2026-06-04'), { 'fix login': 'spaced' });
+  });
+
+  it('returns an empty object for an empty or missing planTasks array', () => {
+    assert.deepEqual(buildTaskNoteMap([], '2026-06-04'), {});
+    assert.deepEqual(buildTaskNoteMap(undefined, '2026-06-04'), {});
+  });
+});
+
+// ── buildEntryNoteMap ─────────────────────────────────────────────────────────
+describe('buildEntryNoteMap', () => {
+  it('maps an entry note by lowercased task text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', note: 'reproduced in staging' }];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'reproduced in staging' });
+  });
+
+  it('excludes entries with no note, an empty note, or a whitespace-only note', () => {
+    const dayEntries = [
+      { id: '1', text: 'A' },
+      { id: '2', text: 'B', note: '' },
+      { id: '3', text: 'C', note: '   ' },
+    ];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), {});
+  });
+
+  it('trims the note text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', note: '  spaced  ' }];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'spaced' });
+  });
+
+  it('joins notes from multiple entries sharing the same task text with a newline', () => {
+    const dayEntries = [
+      { id: '1', text: 'Fix Login', note: 'first pass' },
+      { id: '2', text: 'fix login', note: 'second pass' },
+    ];
+    assert.deepEqual(buildEntryNoteMap(dayEntries), { 'fix login': 'first pass\nsecond pass' });
+  });
+
+  it('returns an empty object for an empty or missing entries array', () => {
+    assert.deepEqual(buildEntryNoteMap([]), {});
+    assert.deepEqual(buildEntryNoteMap(undefined), {});
+  });
+});
+
+// ── mergeNoteMaps ─────────────────────────────────────────────────────────────
+describe('mergeNoteMaps', () => {
+  it('combines notes for the same key with a newline, `a` first', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'from task' }, { x: 'from entry' }), {
+      x: 'from task\nfrom entry',
+    });
+  });
+
+  it('keeps keys unique to either map', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, { y: 'entry note' }), {
+      x: 'task note',
+      y: 'entry note',
+    });
+  });
+
+  it('returns a copy of `a` when `b` is empty or missing', () => {
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, {}), { x: 'task note' });
+    assert.deepEqual(mergeNoteMaps({ x: 'task note' }, undefined), { x: 'task note' });
+  });
+
+  it('returns `b` when `a` is empty', () => {
+    assert.deepEqual(mergeNoteMaps({}, { x: 'entry note' }), { x: 'entry note' });
+  });
+
+  it('does not mutate either input map', () => {
+    const a = { x: 'task note' };
+    const b = { x: 'entry note' };
+    mergeNoteMaps(a, b);
+    assert.deepEqual(a, { x: 'task note' });
+    assert.deepEqual(b, { x: 'entry note' });
+  });
+});
+
+// ── findGapReportEntries ───────────────────────────────────────────────────────
+describe('findGapReportEntries', () => {
+  const WEEK_START = localMs(2026, 6, 1); // Monday
+  const WEEK_END = localMs(2026, 6, 8); // following Monday
+  const base = {
+    id: '1',
+    text: 'Fix login',
+    ts: localMs(2026, 6, 3, 10, 0),
+    tsEnd: localMs(2026, 6, 3, 11, 0),
+    date: '2026-06-03',
+  };
+
+  it('includes a finished entry with neither a link nor a note', () => {
+    assert.deepEqual(findGapReportEntries([base], WEEK_START, WEEK_END), [base]);
+  });
+
+  it('excludes an entry with only a link', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, link: 'https://confluence/123' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an entry with only a note', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, note: 'did the thing' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an entry with both a link and a note', () => {
+    assert.deepEqual(
+      findGapReportEntries(
+        [{ ...base, link: 'PROJ-1', note: 'did the thing' }],
+        WEEK_START,
+        WEEK_END
+      ),
+      []
+    );
+  });
+
+  it('excludes an entry whose link/note is whitespace-only', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, link: '   ', note: '  ' }], WEEK_START, WEEK_END),
+      [{ ...base, link: '   ', note: '  ' }]
+    );
+  });
+
+  it('excludes a cancelled entry', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, signifier: 'cancelled' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an unfinished entry (no tsEnd)', () => {
+    const running = { ...base };
+    delete running.tsEnd;
+    assert.deepEqual(findGapReportEntries([running], WEEK_START, WEEK_END), []);
+  });
+
+  for (const text of ['☕ Break', '🥪 Lunch', '📅 Meeting']) {
+    it(`excludes a "${text}" utility entry`, () => {
+      assert.deepEqual(findGapReportEntries([{ ...base, text }], WEEK_START, WEEK_END), []);
+    });
+  }
+
+  it('excludes entries before weekStart', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, ts: WEEK_START - 1 }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes entries at or after weekEnd', () => {
+    assert.deepEqual(findGapReportEntries([{ ...base, ts: WEEK_END }], WEEK_START, WEEK_END), []);
+  });
+
+  it('includes an entry exactly at weekStart', () => {
+    assert.deepEqual(findGapReportEntries([{ ...base, ts: WEEK_START }], WEEK_START, WEEK_END), [
+      { ...base, ts: WEEK_START },
+    ]);
+  });
+
+  it('sorts matching entries by ts ascending', () => {
+    const later = { ...base, id: '2', ts: base.ts + 3600000, tsEnd: base.tsEnd + 3600000 };
+    const result = findGapReportEntries([later, base], WEEK_START, WEEK_END);
+    assert.deepEqual(
+      result.map((e) => e.id),
+      ['1', '2']
+    );
+  });
+
+  it('returns an empty array for an empty or missing entries array', () => {
+    assert.deepEqual(findGapReportEntries([], WEEK_START, WEEK_END), []);
+    assert.deepEqual(findGapReportEntries(undefined, WEEK_START, WEEK_END), []);
+  });
 });
 
 // ── 07-lifecycle.js — readCollapseState / writeCollapseState ─────────────────
@@ -3164,6 +3713,167 @@ describe('jiraRenderTasks', () => {
   });
 });
 
+// ── buildEntryCatPickerHtml — log-entry category picker ─────────────────────
+// Regression coverage for the log entry's category picker having no way to
+// create a new epic (only the task board's picker had a "+ new epic"
+// control). buildEntryCatPickerHtml is the pure HTML builder extracted from
+// render() so this can be tested without standing up the full DOM.
+
+/**
+ * Creates a VM sandbox with pure-fns.js and 04-render.js loaded, exposing
+ * buildEntryCatPickerHtml for direct testing.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadRenderSandbox(overrides = {}) {
+  const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+  const pureSrc = loadPureFnsScriptSource();
+
+  const sandbox = {
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(renderSrc, sandbox);
+  return sandbox;
+}
+
+describe('buildEntryCatPickerHtml', () => {
+  const categoryList = [
+    { id: 'work', label: 'Work', color: '#4a90e2' },
+    { id: 'meeting', label: 'Meeting', color: '#e67e22' },
+  ];
+
+  it('renders a "+ new epic" control so a new epic can be created from a log entry', () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'work' }, categoryList);
+    assert.ok(html.includes('pcat-add-btn'), 'must render the + new epic button');
+    assert.ok(html.includes('+ new epic'));
+    assert.ok(html.includes('pcat-add-input'), 'must render the inline name input');
+    assert.ok(html.includes('pcat-add-ok'), 'must render the save control');
+  });
+
+  it("renders one button per category, marking the entry's current tag selected", () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'meeting' }, categoryList);
+    assert.ok(html.includes('>Work<'));
+    assert.ok(html.includes('>Meeting<'));
+    const meetingBtn = html.match(
+      /<button class="cat-opt[^"]*" data-id="e1" data-cat="meeting"[^>]*>/
+    )[0];
+    assert.ok(meetingBtn.includes('sel'));
+  });
+
+  it('escapes a malicious category label via escHtml', () => {
+    const sandbox = loadRenderSandbox();
+    const malicious = [{ id: 'x', label: '<img src=x onerror=alert(1)>', color: '#4a90e2' }];
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'x' }, malicious);
+    assert.ok(!html.includes('<img src=x onerror=alert(1)>'));
+    assert.ok(html.includes('&lt;img'));
+  });
+
+  it('sanitises a malicious category color via safeCssColor', () => {
+    const sandbox = loadRenderSandbox();
+    const malicious = [{ id: 'x', label: 'Evil', color: 'red; background:url(x)' }];
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'x' }, malicious);
+    assert.ok(!html.includes('red; background:url(x)'));
+  });
+
+  it("uses an ecaf- prefixed form id, distinct from the board picker's pcaf- id", () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'work' }, categoryList);
+    assert.ok(html.includes('id="ecaf-e1"'));
+  });
+});
+
+// ── createCategory — shared "+ new epic" creator ─────────────────────────────
+// Extracted out of the near-identical duplicated logic that used to live
+// separately in the board's and the log entry's "+ new epic" click handlers
+// (10b-tasks-events.js, 04-render.js) — both now call this one function.
+
+/**
+ * Creates a VM sandbox with 01-state.js loaded, exposing createCategory and
+ * nextDistinctColor for direct testing.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadStateSandbox(overrides = {}) {
+  // categories is declared with `let` at module scope, which the vm module
+  // keeps in a lexical record separate from the sandbox global object —
+  // setting sandbox.categories after the fact wouldn't be visible to
+  // createCategory()/nextDistinctColor(). Promote to `var` so it's a real
+  // global property tests can seed (same fix as loadJiraSandbox above).
+  const stateSrc = readFileSync(join(__dirname, '../src/js/01-state.js'), 'utf8').replace(
+    /^let categories = \[\.\.\.DEFAULT_CATS\];$/m,
+    'var categories = [...DEFAULT_CATS];'
+  );
+
+  const sandbox = {
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(stateSrc, sandbox);
+  return sandbox;
+}
+
+describe('createCategory', () => {
+  it('creates and appends a category with a distinct colour', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    const result = sandbox.createCategory('New Epic');
+    assert.ok(result);
+    assert.equal(result.label, 'New Epic');
+    assert.ok(result.id.startsWith('cat_'));
+    assert.ok(result.color);
+    assert.equal(sandbox.categories.length, 2);
+    assert.ok(sandbox.categories.includes(result));
+  });
+
+  it('trims the raw label before creating', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [];
+    const result = sandbox.createCategory('  Spaced Epic  ');
+    assert.equal(result.label, 'Spaced Epic');
+  });
+
+  it('returns null and does not append for an empty/whitespace-only label', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    assert.equal(sandbox.createCategory('   '), null);
+    assert.equal(sandbox.categories.length, 1);
+  });
+
+  it('returns null and does not append a case-insensitive duplicate label', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    assert.equal(sandbox.createCategory('WORK'), null);
+    assert.equal(sandbox.categories.length, 1);
+  });
+
+  it('warns via wlLog when rejecting a duplicate label', () => {
+    const warnCalls = [];
+    const sandbox = loadStateSandbox({
+      wlLog: {
+        warn: (...args) => warnCalls.push(args),
+        error: () => {},
+        info: () => {},
+        debug: () => {},
+      },
+    });
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    sandbox.createCategory('WORK');
+    assert.equal(warnCalls.length, 1);
+    assert.match(warnCalls[0][0], /createCategory/);
+  });
+});
+
 // ── buildDailyLogItems — session-note partitioning ───────────────────────────
 
 const dailylogSrc = readFileSync(join(__dirname, '../src/js/18-dailylog.js'), 'utf8');
@@ -3422,6 +4132,217 @@ describe('resolveCarryStatus', () => {
 
   it('returns null when today is upcoming', () =>
     assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
+});
+
+// ── findWeeklyPlanReviewTasks ──────────────────────────────────────────────────
+describe('findWeeklyPlanReviewTasks', () => {
+  const WEEK_START = '2026-06-01'; // Monday
+  const WEEK_END = '2026-06-08'; // following Monday
+  const base = { id: '1', text: 'PROJ-1: Fix login', status: 'upcoming', date: '2026-06-03' };
+
+  it('includes an upcoming task dated inside the window', () => {
+    assert.deepEqual(findWeeklyPlanReviewTasks([base], WEEK_START, WEEK_END), [base]);
+  });
+
+  for (const status of ['todo', 'inprogress', 'pending', 'blocked', 'done']) {
+    it(`excludes a "${status}" task even when dated inside the window`, () => {
+      assert.deepEqual(findWeeklyPlanReviewTasks([{ ...base, status }], WEEK_START, WEEK_END), []);
+    });
+  }
+
+  it('excludes an upcoming task dated before the window', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: '2026-05-31' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an upcoming task dated exactly at the window end (exclusive)', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: WEEK_END }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('includes an upcoming task dated exactly at the window start (inclusive)', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: WEEK_START }], WEEK_START, WEEK_END),
+      [{ ...base, date: WEEK_START }]
+    );
+  });
+
+  it('sorts matching tasks by date ascending', () => {
+    const later = { ...base, id: '2', date: '2026-06-05' };
+    const earlier = { ...base, id: '3', date: '2026-06-02' };
+    const result = findWeeklyPlanReviewTasks([later, base, earlier], WEEK_START, WEEK_END);
+    assert.deepEqual(
+      result.map((t) => t.id),
+      ['3', '1', '2']
+    );
+  });
+
+  it('returns an empty array for an empty or missing planTasks array', () => {
+    assert.deepEqual(findWeeklyPlanReviewTasks([], WEEK_START, WEEK_END), []);
+    assert.deepEqual(findWeeklyPlanReviewTasks(undefined, WEEK_START, WEEK_END), []);
+  });
+});
+
+// ── findPromotableTask ────────────────────────────────────────────────────────
+// Regression coverage for a bug where tasks added directly on the board (as
+// opposed to Jira imports) never showed as "In progress": starting a timer
+// via the hero composer, a recent chip, or the quick-capture list created a
+// log entry but never updated the matching planTasks row's status, so the
+// card stayed in the To Do column. findPromotableTask is the shared lookup
+// every "start tracking" entry point now calls through.
+describe('findPromotableTask', () => {
+  const TODAY = '2026-06-04';
+  const task = (overrides) => ({
+    id: 't1',
+    text: 'Fix login',
+    date: TODAY,
+    status: 'todo',
+    ...overrides,
+  });
+
+  it('finds a todo task with matching date and text', () => {
+    const t = task();
+    assert.equal(findPromotableTask([t], 'Fix login', TODAY), t);
+  });
+
+  it('finds an upcoming task with matching date and text', () => {
+    const t = task({ status: 'upcoming' });
+    assert.equal(findPromotableTask([t], 'Fix login', TODAY), t);
+  });
+
+  it('matches case-insensitively', () => {
+    const t = task();
+    assert.equal(findPromotableTask([t], 'FIX LOGIN', TODAY), t);
+  });
+
+  it('returns null when no task matches the text', () => {
+    assert.equal(findPromotableTask([task()], 'Something else', TODAY), null);
+  });
+
+  it('returns null when the matching task is dated a different day', () => {
+    assert.equal(findPromotableTask([task({ date: '2026-06-03' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is already inprogress', () => {
+    assert.equal(findPromotableTask([task({ status: 'inprogress' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is done', () => {
+    assert.equal(findPromotableTask([task({ status: 'done' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is pending or blocked', () => {
+    assert.equal(findPromotableTask([task({ status: 'pending' })], 'Fix login', TODAY), null);
+    assert.equal(findPromotableTask([task({ status: 'blocked' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null for an empty or missing planTasks array', () => {
+    assert.equal(findPromotableTask([], 'Fix login', TODAY), null);
+    assert.equal(findPromotableTask(undefined, 'Fix login', TODAY), null);
+  });
+});
+
+// ── promoteMatchingTaskToInProgress ───────────────────────────────────────────
+// The mutation wrapper (10-tasks.js) that every "start tracking" entry point
+// now calls through. Exercises the actual status flip, completedAt clearing,
+// and parent-task promotion that findPromotableTask's tests can't cover since
+// that helper only decides which task to promote, without mutating it.
+
+/**
+ * Loads 10-tasks.js into a VM sandbox so promoteMatchingTaskToInProgress can
+ * be called directly. The file declares `planTasks` as a top-level `let`
+ * (not a plain sandbox property), so a lexical binding inside the loaded
+ * script — not a global object property — holds the array; direct
+ * `sandbox.planTasks = …` assignment from outside would not be visible to
+ * functions defined in the script. `_setPlanTasks`/`_getPlanTasks` injector
+ * functions (defined in the same context, after the file loads) bridge that
+ * gap. Several top-level statements call `document.getElementById(id).addEventListener(...)`
+ * without a null-check, so getElementById must return a dummy element for
+ * every id, not null.
+ * @returns {Object} The populated sandbox, with _setPlanTasks/_getPlanTasks helpers.
+ */
+function loadTasksSandbox() {
+  const pureSrc = loadPureFnsScriptSource();
+  const tasksSrc = readFileSync(join(__dirname, '../src/js/10-tasks.js'), 'utf8');
+  const dummyEl = () => ({
+    addEventListener: () => {},
+    classList: { toggle: () => {}, add: () => {}, remove: () => {}, contains: () => false },
+  });
+
+  const sandbox = {
+    document: { getElementById: () => dummyEl(), addEventListener: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    readCollapseState: () => false,
+    writeCollapseState: () => {},
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(tasksSrc, sandbox);
+  vm.runInContext(
+    'function _setPlanTasks(arr) { planTasks = arr; } function _getPlanTasks() { return planTasks; }',
+    sandbox
+  );
+  return sandbox;
+}
+
+describe('promoteMatchingTaskToInProgress', () => {
+  const TODAY = dk(new Date());
+
+  it('promotes a matching todo task to inprogress and clears completedAt', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 't1', text: 'Ship feature', date: TODAY, status: 'todo', completedAt: 12345 },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'inprogress');
+    assert.equal(task.completedAt, undefined);
+  });
+
+  it('promotes the parent task when a todo subtask is promoted', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 'parent', text: 'Epic', date: TODAY, status: 'todo' },
+      { id: 'child', text: 'Subtask', date: TODAY, status: 'todo', parentId: 'parent' },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Subtask');
+    const [parent, child] = sandbox._getPlanTasks();
+    assert.equal(child.status, 'inprogress');
+    assert.equal(parent.status, 'inprogress');
+  });
+
+  it('does not demote a parent that is already past todo', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 'parent', text: 'Epic', date: TODAY, status: 'pending' },
+      { id: 'child', text: 'Subtask', date: TODAY, status: 'todo', parentId: 'parent' },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Subtask');
+    const [parent] = sandbox._getPlanTasks();
+    assert.equal(parent.status, 'pending');
+  });
+
+  it('is a no-op when no plan task matches the text', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([{ id: 't1', text: 'Other task', date: TODAY, status: 'todo' }]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'todo');
+  });
+
+  it('is a no-op when the matching task is already inprogress', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([{ id: 't1', text: 'Ship feature', date: TODAY, status: 'inprogress' }]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'inprogress');
+  });
 });
 
 // ── work location ─────────────────────────────────────────────────────────────
@@ -4325,5 +5246,219 @@ describe('regression #227: autoCarryTasks guard key', () => {
     // planTasks length must be unchanged (no new tasks added)
     assert.equal(sb.planTasks.length, 1, 'no tasks should be added when guard is set');
     assert.equal(stored.get('wl_carried_2026-06-18'), '1');
+  });
+});
+
+// ── Regression: the ad-hoc "+ log" row must work on a zero-entry day ──────────
+// render() used to bind #tlAdHocBtn / #tlAdHocInput only in the branch taken
+// when the day already has logged entries. The empty-state branch (the very
+// first entry of a fresh day, or navigating to a day with nothing logged) set
+// the same markup into #timeline but returned before the bindings ran, so the
+// "+ log" button silently did nothing. Fixed by extracting the binding into
+// bindAdHocRow() and calling it from both branches.
+const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+
+describe('regression: ad-hoc log row binds even when render() takes the empty-state branch', () => {
+  /**
+   * Creates a mock DOM element supporting the subset of the Element API that
+   * 04-render.js touches: style/classList/dataset stubs, an addEventListener
+   * that records handlers by event type (so tests can invoke them directly),
+   * and a querySelectorAll that returns no nodes (the non-empty render branch
+   * is never exercised by these tests).
+   * @returns {object} Mock element.
+   */
+  function makeMockElement() {
+    return {
+      _listeners: {},
+      style: {},
+      classList: {
+        add() {},
+        remove() {},
+        contains() {
+          return false;
+        },
+      },
+      dataset: {},
+      textContent: '',
+      innerHTML: '',
+      value: '',
+      disabled: false,
+      addEventListener(type, handler) {
+        (this._listeners[type] = this._listeners[type] || []).push(handler);
+      },
+      focus() {},
+      querySelectorAll() {
+        return [];
+      },
+    };
+  }
+
+  /**
+   * Builds a vm sandbox with 04-render.js loaded and every cross-file global
+   * it calls (renderHeroCard, renderPlan, etc. — each defined in a different
+   * concatenated source file in the real build) stubbed as a no-op, same
+   * pattern as loadTimeflowSandbox above. `entries` and `document` are real,
+   * mutable objects so the ad-hoc commit flow can be observed end to end.
+   * @param {object} overrides
+   */
+  function makeRenderSandbox(overrides = {}) {
+    const elements = {};
+    const getElementById = (id) => (elements[id] ??= makeMockElement());
+    const sb = {
+      entries: [],
+      viewDate: new Date('2026-05-29T12:00:00'),
+      selectedTag: null,
+      categories: [{ id: 'other', label: 'Other', color: '#888' }],
+      activeTimer: null,
+      isToday: () => true,
+      viewEntries: () => sb.entries,
+      dk: (d) => d.toISOString().slice(0, 10),
+      fmtLabel: () => 'label',
+      mondayOfWeek: () => 0,
+      calcStreak: () => 0,
+      parseJiraLabel: (label) => ({ ticket: null, name: label }),
+      escHtml: (s) => s,
+      fmtDur: (ms) => String(ms),
+      safeRoundedStart: () => Date.now(),
+      save: () => {},
+      renderHeroCard: () => {},
+      renderLocation: () => {},
+      renderSodBtn: () => {},
+      renderEodBtn: () => {},
+      renderEodReminder: () => {},
+      updateTimerBar: () => {},
+      updateTimerBtn: () => {},
+      renderQuickPick: () => {},
+      renderPlan: () => {},
+      renderPlanReviewReminder: () => {},
+      renderCompleted: () => {},
+      renderTodayFlow: () => {},
+      renderTrackers: () => {},
+      document: {
+        getElementById,
+        querySelectorAll: () => [],
+      },
+      ...overrides,
+      _elements: elements,
+    };
+    vm.createContext(sb);
+    vm.runInContext(renderSrc, sb);
+    return sb;
+  }
+
+  it('binds a click handler on #tlAdHocBtn when the viewed day has zero entries', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+
+    const btn = sb._elements['tlAdHocBtn'];
+    const clickHandlers = (btn && btn._listeners.click) || [];
+    assert.equal(
+      clickHandlers.length,
+      1,
+      'render() must call bindAdHocRow() on the empty-state branch, not just the entry-list branch'
+    );
+  });
+
+  it('committing the ad-hoc row on a zero-entry day adds the entry', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+
+    // Swap the real render() for a spy before triggering the click, so the
+    // commit flow's own render() call (which would take the non-empty
+    // branch, requiring a much larger DOM/entry-row stub surface) doesn't
+    // need to be modelled here — this test only asserts the commit itself.
+    sb.render = () => {
+      sb._rerenderCount = (sb._rerenderCount || 0) + 1;
+    };
+
+    const input = sb._elements['tlAdHocInput'];
+    const btn = sb._elements['tlAdHocBtn'];
+    input.value = 'new task';
+    btn._listeners.click[0]();
+
+    assert.equal(sb.entries.length, 1, 'clicking + log should commit the ad-hoc entry');
+    assert.equal(sb.entries[0].text, 'new task');
+    assert.equal(sb._rerenderCount, 1, 'commitAdHoc should re-render after saving');
+  });
+
+  it('pressing Enter in #tlAdHocInput also commits the entry on a zero-entry day', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+    sb.render = () => {};
+
+    const input = sb._elements['tlAdHocInput'];
+    input.value = 'entered via keyboard';
+    const keydownHandlers = input._listeners.keydown || [];
+    keydownHandlers.forEach((handler) => handler({ key: 'Enter', code: 'Enter' }));
+
+    assert.equal(sb.entries.length, 1);
+    assert.equal(sb.entries[0].text, 'entered via keyboard');
+  });
+
+  it('does not throw and leaves entries untouched when the input is empty', () => {
+    const sb = makeRenderSandbox();
+    vm.runInContext('render();', sb);
+    sb.render = () => {};
+
+    const btn = sb._elements['tlAdHocBtn'];
+    btn._listeners.click[0]();
+
+    assert.equal(sb.entries.length, 0);
+  });
+});
+
+// ── Regression: "non-billable" relabeled as "internal" ────────────────────────
+// This was a pure UI-copy change (no field/logic change — see isEntryBillable()
+// in 05-entries.js) spread across five template strings in four files. A
+// behavioural test covers the one genuinely pure function among them
+// (billBtnHtml); the other four are copy embedded deep inside stateful,
+// heavily-dependency-injected functions (render(), renderChart(), exportTxt(),
+// renderTagRow()) where a full behavioural harness would cost far more than
+// the copy-revert risk it guards against, so those are covered by a direct
+// source-text assertion instead — cheap, and it tests the actual shipped
+// artifact rather than a re-implementation of it.
+describe('regression: non-billable relabeled as "internal"', () => {
+  const tasksRowSrc = readFileSync(join(__dirname, '../src/js/10a-tasks-row.js'), 'utf8');
+
+  function loadTasksRowSandbox() {
+    const sb = {};
+    vm.createContext(sb);
+    vm.runInContext(tasksRowSrc, sb);
+    return sb;
+  }
+
+  it('billBtnHtml titles a billable task row "mark internal"', () => {
+    const sb = loadTasksRowSandbox();
+    const html = sb.billBtnHtml({ id: '1', billable: true }, 'inprogress');
+    assert.match(html, /title="mark internal"/);
+    assert.doesNotMatch(html, /non-billable/);
+  });
+
+  it('billBtnHtml titles an internal (billable:false) task row "mark billable"', () => {
+    const sb = loadTasksRowSandbox();
+    const html = sb.billBtnHtml({ id: '1', billable: false }, 'inprogress');
+    assert.match(html, /title="mark billable"/);
+  });
+
+  it('the entry-row toggle, category-manager button, chart legend, and export summary all say "internal", not "non-billable"', () => {
+    // Checks the specific literals this PR changed — NOT a blanket absence of
+    // "non-billable" in these files, since 02-utils.js still legitimately uses
+    // that word in developer comments describing the underlying boolean
+    // (e.g. "Non-billable entries keep their exact timestamps…"), which is
+    // accurate and was intentionally left as-is; only the UI-facing copy moved.
+    const utilsSrcCheck = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
+    const renderSrcCheck = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+    const exportSrcCheck = readFileSync(join(__dirname, '../src/js/05a-export.js'), 'utf8');
+
+    assert.match(utilsSrcCheck, /💸 internal/);
+    assert.doesNotMatch(utilsSrcCheck, /💸 non-billable/);
+
+    assert.match(renderSrcCheck, /title="toggle billable\/internal"/);
+    assert.match(renderSrcCheck, /title="mixed billable\/internal"/);
+    assert.match(renderSrcCheck, /title="internal">💸/);
+    assert.doesNotMatch(renderSrcCheck, /title="[^"]*non-billable/);
+
+    assert.match(exportSrcCheck, /💸 Internal:/);
+    assert.doesNotMatch(exportSrcCheck, /💸 Non-billable/);
   });
 });

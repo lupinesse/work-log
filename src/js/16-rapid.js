@@ -479,6 +479,7 @@ function _qcActivateRow(rowId, text, tag, isActive) {
     });
   }
 
+  promoteMatchingTaskToInProgress(text);
   startTimer(entry.id);
   closeRapid();
   render();

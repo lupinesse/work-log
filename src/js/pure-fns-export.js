@@ -195,8 +195,160 @@ export function computeDayBounds(dayEntries, timedEntries, opts) {
 }
 
 /**
+ * Returns true if today's workday looks like it may be over and hasn't been
+ * exported yet: the day was started, has at least one entry, hasn't already
+ * been ended, and `workdayHours` have passed since it started. Used to show
+ * a reminder nudging the user toward "end the day" (which triggers the real
+ * export) — this function only decides whether to nudge, it never exports
+ * or ends the day itself.
+ *
+ * Pure: all environmental inputs (day-start/day-end timestamps, whether
+ * today has entries, the current time) are injected via `opts` so the
+ * function can be unit-tested without touching localStorage or Date.now(),
+ * matching {@link computeDayBounds}'s style.
+ *
+ * @param {Object} opts
+ * @param {number|null} opts.sodTs - Today's day-start timestamp (ms), or null if not started.
+ * @param {number|null} opts.eodTs - Today's day-end timestamp (ms), or null if not yet ended.
+ * @param {boolean} opts.hasEntriesToday - Whether at least one entry exists for today.
+ * @param {number} opts.now - Current time in ms.
+ * @param {number} [opts.workdayHours=8] - Hours after day-start to consider the day likely over.
+ * @returns {boolean} True if the reminder should be shown.
+ * @example
+ * isWorkdayLikelyOver({ sodTs: 1000, eodTs: null, hasEntriesToday: true, now: 1000 + 8 * 3600000 })
+ * // → true (exactly 8h after day-start)
+ * isWorkdayLikelyOver({ sodTs: 1000, eodTs: null, hasEntriesToday: true, now: 1000 + 7 * 3600000 })
+ * // → false (only 7h in)
+ * isWorkdayLikelyOver({ sodTs: null, eodTs: null, hasEntriesToday: true, now: 999999 })
+ * // → false (day never started)
+ */
+export function isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now, workdayHours = 8 }) {
+  if (!sodTs || eodTs || !hasEntriesToday) return false;
+  return now >= sodTs + workdayHours * 60 * 60 * 1000;
+}
+
+/**
+ * Builds a lookup of task notes for a single day, keyed by lowercased task
+ * text so it lines up with the task keys produced by
+ * {@link groupEntriesByCategory}. Only tasks dated `dateKey` with a non-blank
+ * `note` are included.
+ *
+ * Task/entry linkage is by date + case-insensitive text match — the same
+ * convention `addEntry` and `flatSort` already use to find a task's plan row —
+ * because plan tasks and log entries share no `taskId` field.
+ *
+ * @param {Array<Object>} planTasks - All plan/board tasks.
+ * @param {string} dateKey - The exported day's date key (YYYY-MM-DD).
+ * @returns {Object<string, string>} Map of lowercased task text to trimmed note.
+ * @example
+ * buildTaskNoteMap(
+ *   [{ text: 'Fix login', date: '2026-06-04', note: 'waiting on staging creds' }],
+ *   '2026-06-04'
+ * )
+ * // → { 'fix login': 'waiting on staging creds' }
+ */
+export function buildTaskNoteMap(planTasks, dateKey) {
+  const notes = {};
+  (planTasks || []).forEach((task) => {
+    if (task.date !== dateKey) return;
+    const note = task.note && task.note.trim();
+    if (!note) return;
+    notes[task.text.toLowerCase()] = note;
+  });
+  return notes;
+}
+
+/**
+ * Builds a lookup of entry-level notes for a single day, keyed by lowercased
+ * task text so it lines up with {@link buildTaskNoteMap} and the task keys
+ * produced by {@link groupEntriesByCategory}. Entry notes are written at the
+ * time the work happens (unlike a plan task's note, which describes the task
+ * in general), so multiple entries sharing a task text each contribute their
+ * own note line rather than overwriting one another.
+ *
+ * @param {Array<Object>} dayEntries - Entries for the exported day.
+ * @returns {Object<string, string>} Map of lowercased task text to
+ *   newline-joined notes, one line per entry that carries a note.
+ * @example
+ * buildEntryNoteMap([{ text: 'Fix login', note: 'reproduced in staging' }])
+ * // → { 'fix login': 'reproduced in staging' }
+ */
+export function buildEntryNoteMap(dayEntries) {
+  const notes = {};
+  (dayEntries || []).forEach((entry) => {
+    const note = entry.note && entry.note.trim();
+    if (!note) return;
+    const key = entry.text.toLowerCase();
+    notes[key] = notes[key] ? `${notes[key]}\n${note}` : note;
+  });
+  return notes;
+}
+
+/**
+ * Combines two task-keyed note maps — e.g. plan-task notes and entry notes —
+ * into one, concatenating notes for the same key with a newline so both
+ * survive as separate `note:` lines in the exported text (see
+ * {@link formatGroupedLines}, which splits each map value on `\n`).
+ *
+ * @param {Object<string, string>} a - First note map (rendered first).
+ * @param {Object<string, string>} b - Second note map, appended after `a`.
+ * @returns {Object<string, string>} Combined map.
+ * @example
+ * mergeNoteMaps({ x: 'from task' }, { x: 'from entry' })
+ * // → { x: 'from task\nfrom entry' }
+ */
+export function mergeNoteMaps(a, b) {
+  const merged = { ...a };
+  Object.entries(b || {}).forEach(([key, note]) => {
+    merged[key] = merged[key] ? `${merged[key]}\n${note}` : note;
+  });
+  return merged;
+}
+
+/* ── Gap report ── */
+
+// Utility entries logged via logUtilEntry() in 03-timer.js — never carry
+// documentation, so they'd just be noise in the gap report.
+const GAP_REPORT_UTILITY_TEXTS = new Set(['☕ Break', '🥪 Lunch', '📅 Meeting']);
+
+/**
+ * Finds finished, non-cancelled work entries within `[weekStart, weekEnd)`
+ * that have neither a proof link nor a note — candidates for the
+ * end-of-week gap report. Uses the same "finished and not cancelled" filter
+ * as every other report/aggregation in this codebase ({@link buildRollingSummary},
+ * `findLargestGap` in `11-timeflow.js`, `exportTxt`'s billable summary), plus
+ * excludes break/lunch/meeting utility entries which never need documentation.
+ *
+ * @param {Array<Object>} entries - All log entries.
+ * @param {number} weekStart - Inclusive week-start timestamp in ms (e.g. Monday 00:00).
+ * @param {number} weekEnd - Exclusive week-end timestamp in ms (e.g. the following Monday 00:00).
+ * @returns {Array<Object>} Matching entries, sorted by `ts` ascending.
+ * @example
+ * findGapReportEntries(
+ *   [{ id: '1', text: 'Fix login', ts: 100, tsEnd: 200, date: '2026-06-01' }],
+ *   0, 1000
+ * )
+ * // → [{ id: '1', text: 'Fix login', ts: 100, tsEnd: 200, date: '2026-06-01' }]
+ */
+export function findGapReportEntries(entries, weekStart, weekEnd) {
+  return (entries || [])
+    .filter(
+      (entry) =>
+        entry.tsEnd &&
+        entry.signifier !== 'cancelled' &&
+        entry.ts >= weekStart &&
+        entry.ts < weekEnd &&
+        !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        !(entry.link && entry.link.trim()) &&
+        !(entry.note && entry.note.trim())
+    )
+    .sort((a, b) => a.ts - b.ts);
+}
+
+/**
  * Renders the grouped-by-category structure into indented text lines: one line
- * per category (with its total), each followed by its indented task lines.
+ * per category (with its total), each followed by its indented task lines and,
+ * when the task carries a note, one or more further-indented `note:` lines.
  *
  * Pure: the duration formatter and category-label resolver are injected so this
  * function has no dependency on global state and can be unit-tested directly.
@@ -205,9 +357,11 @@ export function computeDayBounds(dayEntries, timedEntries, opts) {
  * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
  * @param {function(number): string} fmtDuration  - Formats a duration in ms (e.g. `fmtDurLong`).
  * @param {function(string): string} getCatLabel - Resolves a category key to its label.
+ * @param {Object<string, string>} [taskNotes] - Map of lowercased task text to note,
+ *   as produced by {@link buildTaskNoteMap}. Omitted tasks render with no note line.
  * @returns {string[]} The body lines for the export file.
  */
-export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel) {
+export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel, taskNotes = {}) {
   const lines = [];
   catOrder.forEach((catKey) => {
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
@@ -217,6 +371,14 @@ export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabe
       const { label, totalMs: taskMs, hasTime } = tasks[taskKey];
       const taskTimeStr = hasTime ? fmtDuration(taskMs) : '--';
       lines.push(`    ${taskTimeStr} - ${label}`);
+      const note = taskNotes[taskKey];
+      if (note) {
+        note
+          .split('\n')
+          .map((noteLine) => noteLine.trim())
+          .filter(Boolean)
+          .forEach((noteLine) => lines.push(`        note: ${noteLine}`));
+      }
     });
   });
   return lines;

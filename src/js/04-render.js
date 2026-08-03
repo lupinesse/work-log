@@ -1,5 +1,185 @@
 /* ── Render ── */
 
+// Entry whose proof-link/note editor is currently open (`entry.id`), or null
+// when none is open. Survives render() since the editor panel's open/closed
+// state can't live in the DOM — render() rebuilds #timeline's innerHTML from
+// `entries` on every call, same as `_flowNoteEditId` in 11-timeflow.js.
+let _entryMetaEditId = null;
+
+/**
+ * Builds the proof-link / note indicator and inline editor for a log entry.
+ * Read-only state shows a 🔗 and/or 📝 indicator (title = full value) plus a
+ * toggle button; editing state additionally shows the link/note inputs. Both
+ * fields are optional and independent — either can be filled in on its own.
+ * @param {{ id: string, link: (string|undefined), note: (string|undefined) }} entry - The log entry.
+ * @param {boolean} isEditing - Whether this entry's link/note panel is open.
+ * @returns {string} HTML string.
+ */
+function buildEntryMetaHtml(entry, isEditing) {
+  const hasLink = !!(entry.link && entry.link.trim());
+  const hasNote = !!(entry.note && entry.note.trim());
+  const linkIndicator = hasLink
+    ? /^https?:\/\//i.test(entry.link.trim())
+      ? `<a class="emeta-ind emeta-link-view" href="${escHtml(entry.link.trim())}" target="_blank" rel="noopener" title="${escHtml(entry.link)}" onclick="event.stopPropagation()">🔗</a>`
+      : `<span class="emeta-ind" title="${escHtml(entry.link)}">🔗</span>`
+    : '';
+  const noteIndicator = hasNote
+    ? `<span class="emeta-ind" title="${escHtml(entry.note)}">📝</span>`
+    : '';
+  // Indicators render as siblings of the toggle button, not inside it — an
+  // <a> nested in a <button> is invalid HTML and the anchor's own click
+  // handler would be unreachable behind the button's.
+  const indicators =
+    linkIndicator || noteIndicator
+      ? `<span class="emeta-inds">${linkIndicator}${noteIndicator}</span>`
+      : '';
+  const label = hasLink || hasNote ? 'edit proof link / note' : 'add proof link / note';
+  const toggle = `<button class="emeta-btn" data-id="${entry.id}" title="${label}" aria-label="${label}">${hasLink || hasNote ? '✎' : '📎'}</button>`;
+  if (!isEditing) return `<div class="emeta">${indicators}${toggle}</div>`;
+  return `<div class="emeta">
+      ${indicators}${toggle}
+      <div class="emeta-editor open" id="em-${entry.id}">
+        <label class="emeta-lbl" for="emli-${entry.id}">proof link</label>
+        <input class="emeta-link-input" type="text" id="emli-${entry.id}" data-id="${entry.id}"
+               value="${escHtml(entry.link || '')}"
+               placeholder="Confluence page id, Zephyr key, filename…" />
+        <label class="emeta-lbl" for="emno-${entry.id}">note</label>
+        <textarea class="emeta-note-input" id="emno-${entry.id}" data-id="${entry.id}" rows="2"
+                  placeholder="what did you do?">${escHtml(entry.note || '')}</textarea>
+        <div class="emeta-actions">
+          <button class="emeta-save" data-id="${entry.id}">save</button>
+          ${hasLink || hasNote ? `<button class="emeta-del" data-id="${entry.id}">clear</button>` : ''}
+          <button class="emeta-cancel" data-id="${entry.id}">cancel</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Builds the category picker contents for a single log entry: one button
+ * per existing category, a cancel button, and an inline "+ new epic"
+ * creator so a brand-new epic can be added without leaving the entry —
+ * mirrors the board's task-card picker (catOpts in 10a-tasks-row.js's
+ * renderRow), which previously was the only place epics could be created.
+ * @param {{ id: string, tag: (string|undefined) }} entry - The log entry.
+ * @param {Array<{id: string, label: string, color: string}>} categoryList - Available categories.
+ * @returns {string} HTML string for the picker's contents.
+ */
+function buildEntryCatPickerHtml(entry, categoryList) {
+  const catOpts = categoryList
+    .map(
+      (cat) =>
+        `<button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}</button>`
+    )
+    .join('');
+  return (
+    catOpts +
+    `<button class="cat-cancel" data-id="${entry.id}">cancel</button>` +
+    `<div class="pcat-add-row">` +
+    `<button class="pcat-add-btn" data-id="${entry.id}">+ new epic</button>` +
+    `<div class="pcat-add-form" id="ecaf-${entry.id}">` +
+    `<input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
+    `<button class="pcat-add-ok" data-id="${entry.id}" aria-label="save">&#10003;</button>` +
+    `<button class="pcat-add-cancel2" data-id="${entry.id}" aria-label="cancel">&#10005;</button>` +
+    `</div></div>`
+  );
+}
+
+/**
+ * Binds open/save/clear/cancel events for each entry's proof-link/note
+ * editor. Re-attached after every render() call since #timeline's innerHTML
+ * is fully replaced each time, same pattern as the other entry-row bindings
+ * in render() (time editor, category picker, billable toggle).
+ * @param {HTMLElement} timelineEl - The #timeline element.
+ */
+function bindEntryMetaEvents(timelineEl) {
+  timelineEl.querySelectorAll('.emeta-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _entryMetaEditId = _entryMetaEditId === id ? null : id;
+      render();
+      if (_entryMetaEditId === id) {
+        setTimeout(() => document.getElementById('emli-' + id)?.focus(), 0);
+      }
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        const linkVal = document.getElementById('emli-' + id).value.trim();
+        const noteVal = document.getElementById('emno-' + id).value.trim();
+        if (linkVal) entry.link = linkVal;
+        else delete entry.link;
+        if (noteVal) entry.note = noteVal;
+        else delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-del').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        delete entry.link;
+        delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _entryMetaEditId = null;
+      render();
+    });
+  });
+}
+
+/**
+ * Binds click/Enter handlers for the ad-hoc inline log row (`#tlAdHocBtn` /
+ * `#tlAdHocInput`). Called from render() on both the empty-state branch and
+ * the normal entry-list branch, since #timeline's innerHTML — and the row
+ * inside it — is fully replaced on every render() call. Both branches must
+ * call this, or the row exists in the DOM but silently does nothing.
+ * @returns {void}
+ */
+function bindAdHocRow() {
+  const adHocBtn = document.getElementById('tlAdHocBtn');
+  const adHocInput = document.getElementById('tlAdHocInput');
+  if (!adHocBtn || !adHocInput) return;
+  const commitAdHoc = () => {
+    const text = adHocInput.value.trim();
+    if (!text) {
+      adHocInput.focus();
+      return;
+    }
+    const entry = {
+      id: Date.now() + '',
+      text,
+      tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
+      ts: safeRoundedStart(),
+      date: dk(new Date()),
+    };
+    entries.push(entry);
+    save();
+    render();
+  };
+  adHocBtn.addEventListener('click', commitAdHoc);
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') commitAdHoc();
+  });
+  // Prevent Space from opening the rapid-log overlay while typing here
+  adHocInput.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') event.stopPropagation();
+  });
+}
+
 /**
  * Full application re-render: updates the date label, timer bar, stat counters,
  * sub-stats, time-log list, chart, quick-pick, plan, completed section, and
@@ -24,6 +204,7 @@ function render() {
   // whenever the date changes.
   renderSodBtn();
   renderEodBtn();
+  renderEodReminder();
 
   /* ── 2. Timer bar ── */
   if (!activeTimer) {
@@ -40,11 +221,10 @@ function render() {
     entries.filter((entry) => entry.date === todayKey).map((entry) => entry.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
-    weekStart.setHours(0, 0, 0, 0);
-    return new Set(entries.filter((entry) => new Date(entry.ts) >= weekStart).map((entry) => entry.tag || 'other'))
-      .size;
+    const weekStart = mondayOfWeek();
+    return new Set(
+      entries.filter((entry) => entry.ts >= weekStart).map((entry) => entry.tag || 'other')
+    ).size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
 
@@ -70,7 +250,9 @@ function render() {
   }
 
   // Today: task with most tracked time
-  const todayTimed = entries.filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts);
+  const todayTimed = entries.filter(
+    (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
+  );
   const todayByTask = {};
   todayTimed.forEach((entry) => {
     const taskKey = entry.text.toLowerCase();
@@ -173,10 +355,12 @@ function render() {
         : 'nothing was logged on this day.') +
       '</div>' +
       adHocRow;
+    bindAdHocRow();
     const chartEl = document.getElementById('chart');
     if (chartEl) chartEl.innerHTML = '';
     renderQuickPick();
     renderPlan();
+    renderPlanReviewReminder();
     renderCompleted();
     renderTodayFlow();
     renderTrackers();
@@ -198,13 +382,7 @@ function render() {
             ? `<span class="etime-end">&#8627; ${fmtTime(entry.tsEnd)}</span>${durLabel(entry.ts, entry.tsEnd)}`
             : `<span class="etime-end" style="color:var(--text3);font-style:italic;font-size:10px;">+ end time</span>`;
 
-        const catOpts =
-          categories
-            .map(
-              (cat) =>
-                `<button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}</button>`
-            )
-            .join('') + `<button class="cat-cancel" data-id="${entry.id}">cancel</button>`;
+        const catOpts = buildEntryCatPickerHtml(entry, categories);
 
         const startVal = toTimeInput(entry.ts);
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
@@ -235,8 +413,9 @@ function render() {
               ${escHtml(getCatLabel(entry.tag))} &#9660;
             </button>
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
+            ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/non-billable" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
           <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
         </div>`;
@@ -245,38 +424,9 @@ function render() {
 
   /* ── 6. Event binding (time editor, category picker, billable, delete, restart, rename) ── */
 
-  /* Ad-hoc log row */
-  const adHocBtn = document.getElementById('tlAdHocBtn');
-  const adHocInput = document.getElementById('tlAdHocInput');
-  if (adHocBtn && adHocInput) {
-    const commitAdHoc = () => {
-      const text = adHocInput.value.trim();
-      if (!text) {
-        adHocInput.focus();
-        return;
-      }
-      const entry = {
-        id: Date.now() + '',
-        text,
-        tag: selectedTag || (categories[0] ? categories[0].id : 'other'),
-        ts: safeRoundedStart(),
-        date: dk(new Date()),
-      };
-      entries.push(entry);
-      save();
-      render();
-    };
-    adHocBtn.addEventListener('click', commitAdHoc);
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') commitAdHoc();
-    });
-    // Prevent Space from opening the rapid-log overlay while typing here
-    adHocInput.addEventListener('keydown', (event) => {
-      if (event.code === 'Space') event.stopPropagation();
-    });
-  }
-
+  bindAdHocRow();
   bindSignifierClicks();
+  bindEntryMetaEvents(timelineEl);
 
   /* time editor */
   timelineEl.querySelectorAll('.etime-display').forEach((el) => {
@@ -337,6 +487,58 @@ function render() {
   timelineEl.querySelectorAll('.cat-cancel').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.getElementById('cp-' + btn.dataset.id).classList.remove('open');
+    });
+  });
+
+  /* + new epic inside entry category picker */
+  timelineEl.querySelectorAll('.pcat-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      btn.style.display = 'none';
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      form.classList.add('open');
+      form.querySelector('.pcat-add-input').focus();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-ok').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      const input = form.querySelector('.pcat-add-input');
+      if (!input.value.trim()) {
+        input.focus();
+        return;
+      }
+      const category = createCategory(input.value);
+      if (!category) {
+        input.style.borderColor = '#C62828';
+        input.focus();
+        return;
+      }
+      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
+      if (entry) {
+        const taskText = entry.text.toLowerCase();
+        entries.forEach((sameEntry) => {
+          if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = category.id;
+        });
+      }
+      save();
+      renderTagRow();
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-input').forEach((inp) => {
+    inp.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
+      if (event.key === 'Escape')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-cancel2').click();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-cancel2').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      form.classList.remove('open');
+      const addBtn = form.closest('.pcat-add-row').querySelector('.pcat-add-btn');
+      if (addBtn) addBtn.style.display = '';
     });
   });
 
@@ -440,6 +642,7 @@ function render() {
   renderQuickPick();
   renderChart(list);
   renderPlan();
+  renderPlanReviewReminder();
   renderCompleted();
   renderTodayFlow();
   renderTrackers();
@@ -471,7 +674,9 @@ function renderQuickPick() {
       .map((entry) => entry.text.toLowerCase())
   );
   const recent = allRecent
-    .filter((entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase()))
+    .filter(
+      (entry) => !qpHidden.has(entry.text.toLowerCase()) && !expiredQp.has(entry.text.toLowerCase())
+    )
     .slice(0, 16);
   // Hidden count is the intersection of qpHidden with task texts actually present in entries
   const hiddenInUse = allRecent.filter((entry) => qpHidden.has(entry.text.toLowerCase())).length;
@@ -597,9 +802,9 @@ function renderChart(list) {
     const c = billCounts[key];
     if (!c) return '';
     if (c.bill && c.nonBill)
-      return '<span class="chart-bill" title="mixed billable/non-billable">⚖️</span>';
+      return '<span class="chart-bill" title="mixed billable/internal">⚖️</span>';
     if (c.bill) return '<span class="chart-bill" title="billable">💰</span>';
-    if (c.nonBill) return '<span class="chart-bill" title="non-billable">💸</span>';
+    if (c.nonBill) return '<span class="chart-bill" title="internal">💸</span>';
     return '';
   }
 
@@ -627,10 +832,12 @@ function renderChart(list) {
     .join('');
 
   const totalDur = fmtDur(grandTotal);
-  const billMs = timed.filter((entry) => isEntryBillable(entry)).reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  const billMs = timed
+    .filter((entry) => isEntryBillable(entry))
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillMs = timed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) - billMs;
   const title = chartMode === 'task' ? 'time by task' : 'time by epic';
-  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 non-billable: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
+  el.innerHTML = `<div class="chart-section"><div class="chart-header"><span class="chart-title">${title}</span>${toggleHtml}</div><div class="chart-body">${rows}<div class="chart-total">total tracked: <span>${totalDur}</span></div>${billMs > 0 || nonBillMs > 0 ? `<div class="chart-total">💰 billable: <span>${fmtDur(billMs)}</span></div><div class="chart-total">💸 internal: <span>${fmtDur(nonBillMs)}</span></div>` : ''}</div></div>`;
   el.querySelectorAll('.chart-tog').forEach((btn) =>
     btn.addEventListener('click', () => {
       chartMode = btn.dataset.mode;

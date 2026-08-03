@@ -65,6 +65,26 @@ export function dk(d) {
 }
 
 /**
+ * Returns the Unix timestamp (ms) of Monday 00:00 local time for the week
+ * containing `ts` — the app's calendar-week boundary, matching the "Week
+ * N/52" header label (`getISOWeek()` in `09-clock-weather.js`).
+ * @param {number} [ts] - Reference time in ms; defaults to `Date.now()`.
+ * @returns {number} Monday 00:00 local time, in ms.
+ * @example
+ * // 2026-06-03 is a Wednesday → Monday of that week is 2026-06-01
+ * new Date(mondayOfWeek(new Date(2026, 5, 3, 14, 30).getTime())).toDateString()
+ * // → 'Mon Jun 01 2026'
+ * // 2026-06-01 is already a Monday → returns that same day at 00:00
+ * new Date(mondayOfWeek(new Date(2026, 5, 1, 9, 0).getTime())).getHours() // → 0
+ */
+export function mondayOfWeek(ts = Date.now()) {
+  const d = new Date(ts);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/**
  * Formats a Unix timestamp as HH:MM in 24-hour local time.
  * @param {number} ts - Unix timestamp in milliseconds.
  * @returns {string} e.g. '09:30'
@@ -150,6 +170,23 @@ export function fmtDurLong(ms) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return h > 0 ? (m > 0 ? `${h}h ${m}min` : `${h}h`) : `${m}min`;
+}
+
+/**
+ * Returns true if a timer's elapsed time has crossed a long-running safety
+ * threshold. Pure boundary check, extracted so the threshold logic is
+ * unit-testable without mocking the DOM or the timer interval.
+ * @param {number} elapsedMs - Elapsed timer time in milliseconds.
+ * @param {number} [thresholdMins=240] - Threshold in minutes (default 4h).
+ * @returns {boolean} True once `elapsedMs` exceeds the threshold.
+ * @example
+ * isLongRunningTimer(3 * 60 * 60 * 1000)          // → false (3h)
+ * isLongRunningTimer(4 * 60 * 60 * 1000)           // → false (exactly 4h)
+ * isLongRunningTimer(4 * 60 * 60 * 1000 + 1)       // → true  (just past 4h)
+ * isLongRunningTimer(31 * 60 * 1000, 30)           // → true  (custom 30 min threshold)
+ */
+export function isLongRunningTimer(elapsedMs, thresholdMins = 240) {
+  return elapsedMs > thresholdMins * 60 * 1000;
 }
 
 /* ── Billing time rounding ── */

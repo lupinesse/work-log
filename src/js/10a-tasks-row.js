@@ -98,7 +98,7 @@ function billBtnHtml(t, status) {
   // is preserved on the task object and reappears when status returns to active.
   if (status === 'pending' || status === 'blocked' || status === 'upcoming') return '';
   const icon = t.billable === false ? '💸' : '💰';
-  const title = t.billable === false ? 'mark billable' : 'mark non-billable';
+  const title = t.billable === false ? 'mark billable' : 'mark internal';
   return `<button class="bill-btn bill-btn-left" data-pid="${t.id}" title="${title}">${icon}</button>`;
 }
 
@@ -142,9 +142,9 @@ function renderRow(t) {
     `<div class="pcat-add-row">` +
     `<button class="pcat-add-btn" data-pid="${t.id}">+ new epic</button>` +
     `<div class="pcat-add-form" id="pcaf-${t.id}">` +
-    `<input class="pcat-add-input" placeholder="name…" />` +
-    `<button class="pcat-add-ok" data-pid="${t.id}">&#10003;</button>` +
-    `<button class="pcat-add-cancel2" data-pid="${t.id}">&#10005;</button>` +
+    `<input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
+    `<button class="pcat-add-ok" data-pid="${t.id}" aria-label="save">&#10003;</button>` +
+    `<button class="pcat-add-cancel2" data-pid="${t.id}" aria-label="cancel">&#10005;</button>` +
     `</div></div>`;
 
   // Comment row + bubble for pending/blocked

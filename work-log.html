@@ -137,6 +137,11 @@
              placeholder="park a distraction… (↵ saves to Parked Thoughts)" autocomplete="off"/>
       <span class="hero-note-hint" aria-hidden="true">↵</span>
     </div>
+    <!-- Long-running-timer safety warning — appears once elapsed time crosses
+         LONG_RUNNING_MINS (03-timer.js). Content is fully rebuilt by
+         renderLongRunningWarning() on every tick; the stop/dismiss buttons
+         are bound once via event delegation on this stable container. -->
+    <div class="hero-longrun-warn" id="heroLongRunningWarn" style="display:none" role="alert"></div>
   </div>
 
   <!-- ③ PAUSED — timer on hold -->
@@ -314,6 +319,11 @@
     <span class="plan-toggle" aria-hidden="true">&#9660;</span>
   </div>
   <div class="plan-body">
+    <div class="plan-review-reminder" id="planReviewBanner" role="status" style="display:none">
+      <span class="plan-review-reminder__msg" id="planReviewMsg"></span>
+      <button type="button" class="plan-review-reminder__action" id="planReviewActionBtn">review</button>
+      <button type="button" class="plan-review-reminder__dismiss" id="planReviewDismissBtn" aria-label="dismiss">&times;</button>
+    </div>
     <div class="plan-add-row" id="planAddRow">
       <input class="plan-input" id="planInput" aria-label="Add a task" placeholder="add a task or paste a Jira ticket…" autocomplete="off" />
       <button class="plan-add-btn" id="planAddBtn">+ add</button>
@@ -427,11 +437,17 @@
        aria-label="Select JSON backup file to merge entries from" />
 
 <div class="export-section">
+  <div class="eod-reminder" id="eodReminderBanner" role="status" style="display:none">
+    <span class="eod-reminder__msg" id="eodReminderMsg"></span>
+    <button type="button" class="eod-reminder__action" id="eodReminderActionBtn">🌙 end the day</button>
+    <button type="button" class="eod-reminder__dismiss" id="eodReminderDismissBtn" aria-label="dismiss">&times;</button>
+  </div>
   <div class="export-header">
     <span class="export-title">export</span>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="expiry-btn" id="mergeBackupBtn" title="Merge entries from a backup made on another machine">⇣ merge backup</button>
       <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
+      <button class="expiry-btn" id="gapReportBtn" aria-haspopup="dialog" title="Entries missing a proof link or note this week">🔍 gap report</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
   </div>
@@ -495,6 +511,30 @@
     <button class="eod-copy-btn" id="eodCopyBtn">📋 copy to clipboard</button>
     <div class="eod-footer">
       <button class="eod-close" id="eodClose">Done — close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gap report modal — entries missing a proof link or note this week -->
+<div class="gap-report-overlay" id="gapReportOverlay" role="dialog" aria-modal="true" aria-labelledby="gapReportTitle">
+  <div class="gap-report-modal">
+    <div class="gap-report-title" id="gapReportTitle">🔍 Gap report</div>
+    <div class="gap-report-subtitle" id="gapReportSubtitle"></div>
+    <div class="gap-report-list" id="gapReportList"></div>
+    <div class="gap-report-footer">
+      <button class="eod-close" id="gapReportClose">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly plan review checklist — 'upcoming' tasks dated within the current week -->
+<div class="plan-review-overlay" id="planReviewOverlay" role="dialog" aria-modal="true" aria-labelledby="planReviewTitle">
+  <div class="plan-review-modal">
+    <div class="plan-review-title" id="planReviewTitle">📋 This week's plan</div>
+    <div class="plan-review-subtitle" id="planReviewSubtitle"></div>
+    <div class="plan-review-list" id="planReviewList"></div>
+    <div class="plan-review-footer">
+      <button class="eod-close" id="planReviewClose">close</button>
     </div>
   </div>
 </div>

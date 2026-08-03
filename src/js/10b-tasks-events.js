@@ -35,7 +35,9 @@ function bindPlanEvents(lists) {
       const picker = document.getElementById('pcp-' + pid);
       const isOpen = picker.classList.contains('open');
       lists.forEach((listEl) =>
-        listEl.querySelectorAll('.plan-cat-picker.open').forEach((picker) => picker.classList.remove('open'))
+        listEl
+          .querySelectorAll('.plan-cat-picker.open')
+          .forEach((picker) => picker.classList.remove('open'))
       );
       if (!isOpen) picker.classList.add('open');
     });
@@ -69,21 +71,18 @@ function bindPlanEvents(lists) {
     btn.addEventListener('click', () => {
       const form = document.getElementById('pcaf-' + btn.dataset.pid);
       const input = form.querySelector('.pcat-add-input');
-      const label = input.value.trim();
-      if (!label) {
+      if (!input.value.trim()) {
         input.focus();
         return;
       }
-      if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+      const category = createCategory(input.value);
+      if (!category) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
       }
-      const color = nextDistinctColor();
-      const id = 'cat_' + Date.now();
-      categories.push({ id, label, color });
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
-      if (task) task.tag = id;
+      if (task) task.tag = category.id;
       save();
       savePlan();
       renderTagRow();
@@ -92,7 +91,8 @@ function bindPlanEvents(lists) {
   });
   qa('.pcat-add-input').forEach((inp) => {
     inp.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
+      if (event.key === 'Enter')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
       if (event.key === 'Escape')
         inp.closest('.pcat-add-form').querySelector('.pcat-add-cancel2').click();
     });
@@ -138,7 +138,9 @@ function bindPlanEvents(lists) {
         planTasks
           .filter(
             (planTask) =>
-              planTask.id !== task.id && planTask.text.toLowerCase() === task.text.toLowerCase() && planTask.status !== 'done'
+              planTask.id !== task.id &&
+              planTask.text.toLowerCase() === task.text.toLowerCase() &&
+              planTask.status !== 'done'
           )
           .forEach((planTask) => {
             planTask.status = 'done';
@@ -149,8 +151,13 @@ function bindPlanEvents(lists) {
       if (newStatus === 'done' && task.parentId) {
         const parent = planTasks.find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status !== 'done') {
-          const siblings = planTasks.filter((child) => child.parentId === parent.id && child.date === task.date);
-          if (siblings.length > 0 && siblings.every((sibling) => sibling.status === 'done' || sibling.id === task.id)) {
+          const siblings = planTasks.filter(
+            (child) => child.parentId === parent.id && child.date === task.date
+          );
+          if (
+            siblings.length > 0 &&
+            siblings.every((sibling) => sibling.status === 'done' || sibling.id === task.id)
+          ) {
             parent.status = 'done';
             if (!parent.completedAt) parent.completedAt = Date.now();
           }
@@ -288,15 +295,7 @@ function bindPlanEvents(lists) {
         date: dk(new Date()),
       };
       entries.push(entry);
-      if (task && (task.status === 'todo' || task.status === 'upcoming')) {
-        task.status = 'inprogress';
-        if (task.parentId) {
-          const parent = planTasks.find((planTask) => planTask.id === task.parentId);
-          if (parent && parent.status === 'todo') parent.status = 'inprogress';
-        }
-        savePlan();
-        renderPlan();
-      }
+      promoteMatchingTaskToInProgress(text);
       ensureDayStarted();
       viewDate = new Date();
       save();

@@ -20,6 +20,7 @@ function getElapsedMs() {
 function startTimer(entryId) {
   if (timerInterval) clearInterval(timerInterval);
   _lastChimeMinute = null;
+  _longRunningWarnDismissed = false;
   activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
   save();
   timerInterval = setInterval(tickTimer, 1000); // set up BEFORE first tick so it always runs
@@ -122,6 +123,45 @@ function updateLiveBlock() {
 // Favicon — drawn on a 32×32 canvas as a colored dot
 const HYPERFOCUS_MINS = 90;
 let _faviconState = null; // track last state to avoid redundant redraws
+
+// Long-running-timer safety warning
+const LONG_RUNNING_MINS = 240; // 4h — see renderLongRunningWarning()
+let _longRunningWarnDismissed = false; // reset on startTimer(); survives pause/resume
+let _longRunningWarnLabel = null; // last-rendered "Xh Ym" label, so ticks that don't change it skip the DOM rebuild
+
+/**
+ * Shows or hides the long-running-timer warning banner in the Hero Card's
+ * running panel. Purely visual — never stops or modifies the timer itself;
+ * the user must click "stop timer" for that. Stays hidden for the rest of
+ * this timer session once dismissed (reset by the next startTimer() call).
+ *
+ * Called every second from tickTimer(); rebuilds the banner's innerHTML only
+ * when the displayed "Xh Ym" label actually changes (once a minute), not on
+ * every tick. The container is `role="alert"`, so a per-second DOM rewrite
+ * would make screen readers re-announce it every second — this keeps
+ * announcements to once per minute, matching the visible text change.
+ * @param {number} elapsedMs - Elapsed timer time in milliseconds.
+ */
+function renderLongRunningWarning(elapsedMs) {
+  const el = document.getElementById('heroLongRunningWarn');
+  if (!el) return;
+  const show = !_longRunningWarnDismissed && isLongRunningTimer(elapsedMs, LONG_RUNNING_MINS);
+  if (!show) {
+    el.style.display = 'none';
+    _longRunningWarnLabel = null;
+    return;
+  }
+  const hours = Math.floor(elapsedMs / 3600000);
+  const mins = Math.floor((elapsedMs % 3600000) / 60000);
+  const label = `${hours}h ${mins}m`;
+  el.style.display = '';
+  if (label === _longRunningWarnLabel) return;
+  _longRunningWarnLabel = label;
+  el.innerHTML =
+    `<span class="hero-longrun-warn__msg">⚠ Timer has been running for ${label} — still working?</span>` +
+    `<button type="button" class="hero-longrun-warn__stop" id="heroLongRunningStopBtn">stop timer</button>` +
+    `<button type="button" class="hero-longrun-warn__dismiss" id="heroLongRunningDismissBtn" aria-label="dismiss">&times;</button>`;
+}
 
 /**
  * Updates the browser favicon to a coloured dot reflecting the timer state.
@@ -303,6 +343,7 @@ function tickTimer() {
     if (boardLiveClockEl) boardLiveClockEl.textContent = fmtElapsed(elapsed);
     updateTimerBarColor();
     checkChime(elapsed);
+    renderLongRunningWarning(elapsed);
     if (emergencyMode) {
       const emergEl = document.getElementById('emergencyTask');
       if (emergEl) emergEl.textContent = entry ? entry.text : '—';
@@ -374,6 +415,32 @@ setInterval(() => {
     /* renderChart may not be ready on very first tick */
   }
 }, CHART_REFRESH_MS);
+
+// ── Idle-return check ──
+// Timer safety net for the "left it running overnight" case: if the tab was
+// hidden for more than IDLE_RETURN_THRESHOLD_MS while a timer was running,
+// ask on return whether to stop it. Never stops or adjusts the timer
+// automatically — the user always decides. Registered once at load; a no-op
+// whenever no timer is running.
+const IDLE_RETURN_THRESHOLD_MS = 30 * 60 * 1000; // 30 min
+let _timerHiddenAt = null;
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    _timerHiddenAt = Date.now();
+    return;
+  }
+  const hiddenAt = _timerHiddenAt;
+  _timerHiddenAt = null;
+  if (!hiddenAt || !activeTimer || activeTimer.paused) return;
+  const hiddenMs = Date.now() - hiddenAt;
+  if (hiddenMs <= IDLE_RETURN_THRESHOLD_MS) return;
+  const hiddenMins = Math.round(hiddenMs / 60000);
+  const stop = confirm(
+    `The timer has been running in the background for about ${hiddenMins} min while this tab was hidden. Stop it?`
+  );
+  if (stop) stopTimer();
+});
 
 /* ── Banner controls (mood dropdown, note input, utility pills) ── */
 
@@ -519,4 +586,20 @@ function initBannerControls() {
   if (breakBtn) breakBtn.addEventListener('click', () => logUtilEntry('break'));
   if (lunchBtn) lunchBtn.addEventListener('click', () => logUtilEntry('lunch'));
   if (meetingBtn) meetingBtn.addEventListener('click', () => logUtilEntry('meeting'));
+
+  // ── Long-running-timer warning: stop/dismiss, delegated from the stable
+  // #heroLongRunningWarn container so renderLongRunningWarning() can rebuild
+  // its innerHTML (whenever the displayed label changes) without losing
+  // these listeners.
+  const longRunWarnEl = document.getElementById('heroLongRunningWarn');
+  if (longRunWarnEl) {
+    longRunWarnEl.addEventListener('click', (e) => {
+      if (e.target.closest('#heroLongRunningStopBtn')) {
+        stopTimer();
+      } else if (e.target.closest('#heroLongRunningDismissBtn')) {
+        _longRunningWarnDismissed = true;
+        renderLongRunningWarning(getElapsedMs());
+      }
+    });
+  }
 }

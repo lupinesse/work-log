@@ -3,9 +3,10 @@
 /**
  * Exports the currently viewed day's log as a plaintext file.
  * Groups entries by category and task, includes a header with day start/end
- * times and tracked time totals, and appends a pasteable billable summary.
- * Writes to the user's chosen save folder via the File System Access API,
- * or falls back to a browser download.
+ * times and tracked time totals, appends any plan-task note and/or per-entry
+ * notes as indented lines under their task, and finishes with a pasteable
+ * billable summary. Writes to the user's chosen save folder via the File
+ * System Access API, or falls back to a browser download.
  */
 function exportTxt() {
   const dayEntries = viewEntries().slice().reverse();
@@ -29,9 +30,14 @@ function exportTxt() {
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   };
 
-  // Body: tracked time grouped by category, then task (first-seen order)
+  // Body: tracked time grouped by category, then task (first-seen order),
+  // with each task's plan note (if any) appended as an indented "note:" line.
   const { catOrder, catGrouped } = groupEntriesByCategory(dayEntries);
-  const lines = formatGroupedLines(catOrder, catGrouped, fmtDurLong, getCatLabel);
+  const taskNotes = mergeNoteMaps(
+    buildTaskNoteMap(planTasks, dateStr),
+    buildEntryNoteMap(dayEntries)
+  );
+  const lines = formatGroupedLines(catOrder, catGrouped, fmtDurLong, getCatLabel, taskNotes);
 
   // Billable / non-billable breakdown
   const totalTrackedMs = timedEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
@@ -48,7 +54,7 @@ function exportTxt() {
   }
   if (totalTrackedMs > 0) {
     header.push(
-      `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Non-billable: ${fmtDurLong(nonBillableMs)}`
+      `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Internal: ${fmtDurLong(nonBillableMs)}`
     );
   }
   header.push('---');

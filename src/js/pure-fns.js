@@ -18,6 +18,8 @@ export {
   fmtDur,
   fmtAgo,
   fmtDurLong,
+  isLongRunningTimer,
+  mondayOfWeek,
   roundToNearest30,
 } from './pure-fns-format.js';
 
@@ -38,6 +40,8 @@ export {
 export {
   parseRapidTokens,
   resolveCarryStatus,
+  findWeeklyPlanReviewTasks,
+  findPromotableTask,
   WORK_LOCATIONS,
   locationFor,
   nextLocation,
@@ -50,8 +54,13 @@ export {
   mergeAdjacentEntries,
   buildBillableSummaryParts,
   computeDayBounds,
+  isWorkdayLikelyOver,
+  buildTaskNoteMap,
+  buildEntryNoteMap,
+  mergeNoteMaps,
   formatGroupedLines,
   buildRollingSummary,
   applyBackupRetention,
   buildBackupPayload,
+  findGapReportEntries,
 } from './pure-fns-export.js';
