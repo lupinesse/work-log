@@ -1544,6 +1544,76 @@ describe('_heroStartFromChip', () => {
   });
 });
 
+// ── addEntry — plan task promotion (regression) ───────────────────────────────
+// Same bug, reached via the Log view's own capture input (05-entries.js) —
+// the fourth and last "start tracking" entry point.
+
+/**
+ * Loads 05-entries.js into a VM sandbox. `captureInput` is exposed on the
+ * sandbox so tests can set the typed text before calling addEntry().
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadEntriesSandbox(overrides = {}) {
+  const entriesSrc = readFileSync(join(__dirname, '../src/js/05-entries.js'), 'utf8');
+  const captureInput = { value: '', focus: () => {} };
+  const elements = { captureInput };
+
+  const sandbox = {
+    document: { getElementById: (id) => elements[id] || null },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    activeTimer: null,
+    entries: [],
+    selectedTag: 'other',
+    viewDate: new Date(),
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    dk: () => '2026-06-04',
+    safeRoundedStart: () => Date.now(),
+    promoteMatchingTaskToInProgress: () => {},
+    ...overrides,
+  };
+  sandbox._captureInput = captureInput;
+  vm.createContext(sandbox);
+  vm.runInContext(entriesSrc, sandbox);
+  return sandbox;
+}
+
+describe('addEntry', () => {
+  it('promotes a matching plan task when starting the timer on a new entry', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('does not attempt promotion when logging without starting the timer', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(false);
+    assert.deepEqual(calls, []);
+  });
+
+  it('does not attempt promotion when the capture input is empty', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = '   ';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, []);
+  });
+});
+
 // ── calcMonthSummaryStats and calcMonthTaskCounts ────────────────────────────
 // Pure helpers extracted from 19-monthlylog.js so the data-derivation step
 // is independently testable without DOM. The render functions are thin
