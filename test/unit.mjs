@@ -1577,6 +1577,8 @@ function loadEntriesSandbox(overrides = {}) {
     dk: () => '2026-06-04',
     safeRoundedStart: () => Date.now(),
     promoteMatchingTaskToInProgress: () => {},
+    _entryMetaEditId: null,
+    _pendingNoteConfirm: null,
     ...overrides,
   };
   sandbox._captureInput = captureInput;
@@ -1614,6 +1616,146 @@ describe('addEntry', () => {
     sandbox._captureInput.value = '   ';
     sandbox.addEntry(true);
     assert.deepEqual(calls, []);
+  });
+});
+
+// ── findMostRecentEntryForText / createRestartedEntry ────────────────────────
+// Shared "restart with timer" helpers used by the log's ▶ restart button, the
+// kanban board's ▸ track button, and the "+ track recent" chips.
+
+describe('findMostRecentEntryForText', () => {
+  it('returns the most recently created matching entry', () => {
+    const sandbox = loadEntriesSandbox({
+      entries: [
+        { id: '1', text: 'Ship feature', tag: 'other' },
+        { id: '2', text: 'Ship feature', tag: 'other', link: 'CONF-1' },
+      ],
+    });
+    const found = sandbox.findMostRecentEntryForText('Ship feature');
+    assert.equal(found.id, '2');
+  });
+
+  it('matches case-insensitively and ignores surrounding whitespace', () => {
+    const sandbox = loadEntriesSandbox({
+      entries: [{ id: '1', text: 'Ship Feature', tag: 'other' }],
+    });
+    assert.equal(sandbox.findMostRecentEntryForText('  ship feature  ').id, '1');
+  });
+
+  it('returns undefined when no entry matches', () => {
+    const sandbox = loadEntriesSandbox({ entries: [{ id: '1', text: 'Other task' }] });
+    assert.equal(sandbox.findMostRecentEntryForText('Ship feature'), undefined);
+  });
+});
+
+describe('createRestartedEntry', () => {
+  it('builds a plain new entry when no prior entry with the same text exists', () => {
+    const sandbox = loadEntriesSandbox({ entries: [] });
+    const entry = sandbox.createRestartedEntry('Ship feature', 'dev');
+    assert.equal(entry.text, 'Ship feature');
+    assert.equal(entry.tag, 'dev');
+    assert.equal(entry.link, undefined);
+    assert.equal(sandbox._entryMetaEditId, null);
+    assert.equal(sandbox._pendingNoteConfirm, null);
+  });
+
+  it('carries the prior entry link over silently, without a note-confirm prompt', () => {
+    const sandbox = loadEntriesSandbox({
+      entries: [{ id: '1', text: 'Ship feature', tag: 'dev', link: 'CONF-42' }],
+    });
+    const entry = sandbox.createRestartedEntry('Ship feature', 'dev');
+    assert.equal(entry.link, 'CONF-42');
+    assert.equal(sandbox._entryMetaEditId, null);
+    assert.equal(sandbox._pendingNoteConfirm, null);
+  });
+
+  it('flags the prior note for confirmation instead of copying it directly', () => {
+    const sandbox = loadEntriesSandbox({
+      entries: [{ id: '1', text: 'Ship feature', tag: 'dev', note: 'Wrote unit tests' }],
+    });
+    const entry = sandbox.createRestartedEntry('Ship feature', 'dev');
+    assert.equal(entry.note, undefined);
+    assert.equal(sandbox._entryMetaEditId, entry.id);
+    assert.equal(sandbox._pendingNoteConfirm.id, entry.id);
+    assert.equal(sandbox._pendingNoteConfirm.note, 'Wrote unit tests');
+  });
+
+  it('carries the link over and flags the note when both are present', () => {
+    const sandbox = loadEntriesSandbox({
+      entries: [
+        { id: '1', text: 'Ship feature', tag: 'dev', link: 'CONF-42', note: 'Wrote unit tests' },
+      ],
+    });
+    const entry = sandbox.createRestartedEntry('Ship feature', 'dev');
+    assert.equal(entry.link, 'CONF-42');
+    assert.equal(entry.note, undefined);
+    assert.equal(sandbox._pendingNoteConfirm.id, entry.id);
+    assert.equal(sandbox._pendingNoteConfirm.note, 'Wrote unit tests');
+  });
+});
+
+// ── buildEntryMetaHtml — restart note-confirmation banner ────────────────────
+// The banner (04-render.js) is what surfaces createRestartedEntry's pending
+// note confirmation to the user; extracted by matching between JSDoc headings
+// so the snippet stays in sync with the source automatically.
+
+const entryMetaSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+
+/**
+ * Evaluates just the buildEntryMetaHtml function from 04-render.js in a
+ * minimal VM sandbox. The function only touches escHtml and the module-level
+ * `_pendingNoteConfirm` state — both stubbed as plain, externally-mutable
+ * sandbox properties (the source's own `let _pendingNoteConfirm` declaration
+ * is deliberately excluded from the extracted snippet, since a `let` binding
+ * created inside a vm context isn't reachable as a sandbox property from the
+ * host afterwards).
+ * @param {Record<string, unknown>} [overrides]
+ * @returns {Object} Populated VM sandbox.
+ */
+function loadEntryMetaSandbox(overrides = {}) {
+  const match = entryMetaSrc.match(
+    /\/\*\*\r?\n \* Builds the proof-link[\s\S]*?(?=\/\*\*\r?\n \* Builds the category picker)/
+  );
+  if (!match) throw new Error('buildEntryMetaHtml block not found in 04-render.js');
+  const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  const sandbox = {
+    escHtml: (s) => String(s).replace(/[&<>"']/g, (c) => escapeMap[c]),
+    _pendingNoteConfirm: null,
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(match[0], sandbox);
+  return sandbox;
+}
+
+describe('buildEntryMetaHtml — restart note-confirmation banner', () => {
+  it('shows no banner in read-only (non-editing) mode, even with a pending confirmation', () => {
+    const sandbox = loadEntryMetaSandbox({ _pendingNoteConfirm: { id: '1', note: 'Wrote tests' } });
+    const html = sandbox.buildEntryMetaHtml({ id: '1' }, false);
+    assert.doesNotMatch(html, /emeta-restart-confirm/);
+  });
+
+  it('shows no banner while editing when nothing is pending', () => {
+    const sandbox = loadEntryMetaSandbox();
+    const html = sandbox.buildEntryMetaHtml({ id: '1' }, true);
+    assert.doesNotMatch(html, /emeta-restart-confirm/);
+  });
+
+  it('shows no banner when the pending confirmation belongs to a different entry', () => {
+    const sandbox = loadEntryMetaSandbox({ _pendingNoteConfirm: { id: '2', note: 'Wrote tests' } });
+    const html = sandbox.buildEntryMetaHtml({ id: '1' }, true);
+    assert.doesNotMatch(html, /emeta-restart-confirm/);
+  });
+
+  it('shows the confirm banner with the escaped prior note when editing the pending entry', () => {
+    const sandbox = loadEntryMetaSandbox({
+      _pendingNoteConfirm: { id: '1', note: 'Wrote <b>tests</b>' },
+    });
+    const html = sandbox.buildEntryMetaHtml({ id: '1' }, true);
+    assert.match(html, /emeta-restart-confirm/);
+    assert.match(html, /Same note as last time\?/);
+    assert.match(html, /Wrote &lt;b&gt;tests&lt;\/b&gt;/);
+    assert.doesNotMatch(html, /Wrote <b>tests<\/b>/);
   });
 });
 
