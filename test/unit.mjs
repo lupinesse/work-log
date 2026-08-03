@@ -44,6 +44,7 @@ const {
   mergeNoteMaps,
   formatGroupedLines,
   resolveCarryStatus,
+  findWeeklyPlanReviewTasks,
   locationFor,
   nextLocation,
   WORK_LOCATIONS,
@@ -3773,6 +3774,59 @@ describe('resolveCarryStatus', () => {
 
   it('returns null when today is upcoming', () =>
     assert.equal(resolveCarryStatus(today('upcoming'), prev('upcoming')), null));
+});
+
+// ── findWeeklyPlanReviewTasks ──────────────────────────────────────────────────
+describe('findWeeklyPlanReviewTasks', () => {
+  const WEEK_START = '2026-06-01'; // Monday
+  const WEEK_END = '2026-06-08'; // following Monday
+  const base = { id: '1', text: 'PROJ-1: Fix login', status: 'upcoming', date: '2026-06-03' };
+
+  it('includes an upcoming task dated inside the window', () => {
+    assert.deepEqual(findWeeklyPlanReviewTasks([base], WEEK_START, WEEK_END), [base]);
+  });
+
+  for (const status of ['todo', 'inprogress', 'pending', 'blocked', 'done']) {
+    it(`excludes a "${status}" task even when dated inside the window`, () => {
+      assert.deepEqual(findWeeklyPlanReviewTasks([{ ...base, status }], WEEK_START, WEEK_END), []);
+    });
+  }
+
+  it('excludes an upcoming task dated before the window', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: '2026-05-31' }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('excludes an upcoming task dated exactly at the window end (exclusive)', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: WEEK_END }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('includes an upcoming task dated exactly at the window start (inclusive)', () => {
+    assert.deepEqual(
+      findWeeklyPlanReviewTasks([{ ...base, date: WEEK_START }], WEEK_START, WEEK_END),
+      [{ ...base, date: WEEK_START }]
+    );
+  });
+
+  it('sorts matching tasks by date ascending', () => {
+    const later = { ...base, id: '2', date: '2026-06-05' };
+    const earlier = { ...base, id: '3', date: '2026-06-02' };
+    const result = findWeeklyPlanReviewTasks([later, base, earlier], WEEK_START, WEEK_END);
+    assert.deepEqual(
+      result.map((t) => t.id),
+      ['3', '1', '2']
+    );
+  });
+
+  it('returns an empty array for an empty or missing planTasks array', () => {
+    assert.deepEqual(findWeeklyPlanReviewTasks([], WEEK_START, WEEK_END), []);
+    assert.deepEqual(findWeeklyPlanReviewTasks(undefined, WEEK_START, WEEK_END), []);
+  });
 });
 
 // ── work location ─────────────────────────────────────────────────────────────

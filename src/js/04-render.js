@@ -290,6 +290,7 @@ function render() {
     if (chartEl) chartEl.innerHTML = '';
     renderQuickPick();
     renderPlan();
+    renderPlanReviewReminder();
     renderCompleted();
     renderTodayFlow();
     renderTrackers();
@@ -555,6 +556,7 @@ function render() {
   renderQuickPick();
   renderChart(list);
   renderPlan();
+  renderPlanReviewReminder();
   renderCompleted();
   renderTodayFlow();
   renderTrackers();

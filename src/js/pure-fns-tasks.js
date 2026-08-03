@@ -178,6 +178,33 @@ export function resolveCarryStatus(todayTask, prev) {
   return null;
 }
 
+/**
+ * Finds plan tasks explicitly scheduled as 'upcoming' whose date falls within
+ * `[weekStartKey, weekEndKey)` — candidates for the weekly plan review
+ * checklist, run once a new ISO week begins so stale "upcoming" tasks (ones
+ * already finished elsewhere before their target week arrived) get caught
+ * and reconciled instead of silently resurfacing on their date.
+ *
+ * Compares `date` as strings, not timestamps: `YYYY-MM-DD` keys already sort
+ * and compare correctly lexicographically, so no Date conversion is needed.
+ *
+ * @param {Array<Object>} planTasks - All plan/board tasks.
+ * @param {string} weekStartKey - Inclusive YYYY-MM-DD (e.g. this week's Monday).
+ * @param {string} weekEndKey - Exclusive YYYY-MM-DD (e.g. next week's Monday).
+ * @returns {Array<Object>} Matching tasks, sorted by date ascending.
+ * @example
+ * findWeeklyPlanReviewTasks(
+ *   [{ id: '1', text: 'PROJ-1: Fix login', status: 'upcoming', date: '2026-06-03' }],
+ *   '2026-06-01', '2026-06-08'
+ * )
+ * // → [{ id: '1', text: 'PROJ-1: Fix login', status: 'upcoming', date: '2026-06-03' }]
+ */
+export function findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey) {
+  return (planTasks || [])
+    .filter((t) => t.status === 'upcoming' && t.date >= weekStartKey && t.date < weekEndKey)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 /* ── Work location ── */
 
 /**

@@ -562,3 +562,190 @@
     color: #fbbf24;
   }
 }
+
+/* Weekly plan review reminder — same dismissible-alert language as .eod-reminder */
+.plan-review-reminder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius);
+  background: #fef3c7;
+  border: 0.5px solid #fde68a;
+  font-size: 12px;
+  color: #92400e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .plan-review-reminder {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+  }
+}
+
+.plan-review-reminder__msg {
+  flex: 1;
+}
+
+.plan-review-reminder__action {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  border: 0.5px solid #b45309;
+  cursor: pointer;
+  background: none;
+  color: #92400e;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+.plan-review-reminder__action:hover {
+  background: rgba(180, 83, 9, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .plan-review-reminder__action {
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+
+  .plan-review-reminder__action:hover {
+    background: rgba(251, 191, 36, 0.12);
+  }
+}
+
+.plan-review-reminder__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: #b45309;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .plan-review-reminder__dismiss {
+    color: #fbbf24;
+  }
+}
+
+/* Weekly plan review checklist modal — same shell as .gap-report-overlay */
+.plan-review-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.plan-review-overlay.show {
+  display: flex;
+}
+
+.plan-review-modal {
+  background: var(--bg);
+  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  max-width: 560px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.plan-review-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.plan-review-subtitle {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 20px;
+}
+
+.plan-review-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-review-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--border);
+  font-size: 13px;
+}
+
+.plan-review-row:last-child {
+  border-bottom: none;
+}
+
+.plan-review-date {
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+  flex-shrink: 0;
+  width: 68px;
+}
+
+.plan-review-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.plan-review-ticket {
+  color: var(--jira);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.plan-review-sep {
+  color: var(--text3);
+  margin: 0 1px;
+}
+
+.plan-review-done,
+.plan-review-drop {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  border: 0.5px solid var(--border2);
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--text2);
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+.plan-review-done:hover,
+.plan-review-drop:hover {
+  background: var(--bg2);
+  color: var(--text);
+}
+
+.plan-review-empty {
+  font-size: 13px;
+  color: var(--text3);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.plan-review-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--border);
+}
