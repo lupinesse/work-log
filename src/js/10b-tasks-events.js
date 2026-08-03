@@ -71,21 +71,18 @@ function bindPlanEvents(lists) {
     btn.addEventListener('click', () => {
       const form = document.getElementById('pcaf-' + btn.dataset.pid);
       const input = form.querySelector('.pcat-add-input');
-      const label = input.value.trim();
-      if (!label) {
+      if (!input.value.trim()) {
         input.focus();
         return;
       }
-      if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+      const category = createCategory(input.value);
+      if (!category) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
       }
-      const color = nextDistinctColor();
-      const id = 'cat_' + Date.now();
-      categories.push({ id, label, color });
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
-      if (task) task.tag = id;
+      if (task) task.tag = category.id;
       save();
       savePlan();
       renderTagRow();

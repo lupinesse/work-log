@@ -142,9 +142,9 @@ function renderRow(t) {
     `<div class="pcat-add-row">` +
     `<button class="pcat-add-btn" data-pid="${t.id}">+ new epic</button>` +
     `<div class="pcat-add-form" id="pcaf-${t.id}">` +
-    `<input class="pcat-add-input" placeholder="name…" />` +
-    `<button class="pcat-add-ok" data-pid="${t.id}">&#10003;</button>` +
-    `<button class="pcat-add-cancel2" data-pid="${t.id}">&#10005;</button>` +
+    `<input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
+    `<button class="pcat-add-ok" data-pid="${t.id}" aria-label="save">&#10003;</button>` +
+    `<button class="pcat-add-cancel2" data-pid="${t.id}" aria-label="cancel">&#10005;</button>` +
     `</div></div>`;
 
   // Comment row + bubble for pending/blocked
