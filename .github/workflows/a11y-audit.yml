@@ -53,6 +53,14 @@ jobs:
       # pa11y exits 1 when violations are found (still valid JSON) and 2 on
       # a technical error. continue-on-error lets us always reach the report
       # and comment steps regardless of exit code.
+      #
+      # --config points at .github/pa11y.config.json, which passes
+      # --no-sandbox/--disable-setuid-sandbox to the headless Chrome launch.
+      # GitHub-hosted runners disable unprivileged user namespaces, so
+      # Chrome's own sandbox can't initialize and every run fails with
+      # "No usable sandbox!" without it. The runner's container is already
+      # the isolation boundary here, so this is the standard, safe fix for
+      # headless Chrome in CI (see https://pptr.dev/troubleshooting).
       - name: Run pa11y WCAG 2.1 AA audit
         continue-on-error: true
         run: |
@@ -60,6 +68,7 @@ jobs:
             --standard WCAG2AA \
             --reporter json \
             --timeout 30000 \
+            --config .github/pa11y.config.json \
             > pa11y-raw.json
 
       - name: Format audit report
