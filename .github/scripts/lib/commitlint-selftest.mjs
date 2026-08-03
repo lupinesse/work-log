@@ -22,7 +22,14 @@
  * be unit-tested without spawning commitlint.
  */
 
-/** A message that must pass: conventional type, colon, non-empty subject. */
+/**
+ * A message that must pass: conventional type, colon, non-empty subject.
+ *
+ * commitlint echoes the input back in its output, which is then matched against
+ * {@link RESOLUTION_ERROR_PATTERNS} — so this must not contain any phrase from
+ * that list ("cannot find module", "failed to load"), or a plain lint failure
+ * would be misreported as a broken dependency tree.
+ */
 export const CONFORMING_SAMPLE = 'feat: add a sample commit message';
 
 /** A message that must fail: no conventional type prefix at all. */
@@ -46,6 +53,9 @@ const RESOLUTION_ERROR_PATTERNS = [
   /ERR_REQUIRE_ESM/,
   /Cannot find module/i,
   /failed to load/i,
+  // The preset resolved but contributed nothing — a different fault from the
+  // ones above, though it has the same cause (a broken or empty preset) and the
+  // same remedy, so it is reported alongside them.
   /Please add rules to your `commitlint\.config\.js`/,
 ];
 

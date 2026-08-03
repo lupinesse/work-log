@@ -22,21 +22,70 @@ import {
 const require = createRequire(import.meta.url);
 
 /**
+ * Locate the commitlint CLI's JS entry point.
+ *
+ * Resolved through the package's own `bin` field rather than hard-coding
+ * `cli.js`, so a future layout change surfaces as a clear error here instead of
+ * an `ERR_PACKAGE_PATH_NOT_EXPORTED` that looks identical to the #251
+ * dependency-skew regression this whole check exists to detect.
+ *
+ * @returns {string} Absolute path to the CLI entry point.
+ * @throws {Error} With a message naming the actual cause — package missing, or
+ *   present but no longer exposing its bin entry.
+ */
+function resolveCommitlintCli() {
+  let binField;
+  try {
+    ({ bin: binField } = require('@commitlint/cli/package.json'));
+  } catch (err) {
+    throw new Error(
+      `@commitlint/cli could not be resolved — is it installed? Try \`npm ci\`. (${err.message})`,
+      { cause: err }
+    );
+  }
+
+  const binPath = typeof binField === 'string' ? binField : binField?.commitlint;
+  if (!binPath) {
+    throw new Error(
+      '@commitlint/cli is installed but declares no `commitlint` bin entry — ' +
+        'its package layout changed and this check needs updating.'
+    );
+  }
+
+  try {
+    return require.resolve(`@commitlint/cli/${binPath.replace(/^\.\//, '')}`);
+  } catch (err) {
+    throw new Error(
+      `@commitlint/cli is installed but its bin entry (${binPath}) is not importable — ` +
+        `the package added an \`exports\` map or moved the file. (${err.message})`,
+      { cause: err }
+    );
+  }
+}
+
+/**
  * Run commitlint once against a message supplied on stdin.
  *
- * Resolves and spawns the CLI's JS entry point with the current Node binary
- * rather than shelling out to `npx` or `node_modules/.bin/commitlint`: the bin
- * shim is `.cmd` on Windows and would need `shell: true`, and this repo is used
- * on both Windows and Linux CI.
+ * Spawns the CLI's JS entry point with the current Node binary rather than
+ * shelling out to `npx` or `node_modules/.bin/commitlint`: the bin shim is
+ * `.cmd` on Windows and would need `shell: true`, and this repo is used on both
+ * Windows and Linux CI.
+ *
+ * Assumption worth knowing: `.husky/commit-msg` invokes commitlint as
+ * `npx --no -- commitlint --edit`, which is a *different* resolution path from
+ * this one. Both load the same config and the same dependency tree, so the
+ * preset-resolution breakage this check targets reproduces under either — but a
+ * failure isolated to the bin shim or to `npx` itself would leave the hook dead
+ * while this check stays green.
  *
  * @param {string} message - The commit message to lint.
  * @returns {import('./lib/commitlint-selftest.mjs').CommitlintRun}
- * @throws {Error} If @commitlint/cli cannot be resolved at all — that is a
- *   missing devDependency rather than a lint result, so it must not be
- *   reported as an ordinary failure.
+ * @throws {Error} If commitlint cannot be located or spawned at all — that is a
+ *   broken install rather than a lint result, so it must not be reported as an
+ *   ordinary failure.
  */
 function runCommitlint(message) {
-  const cliPath = require.resolve('@commitlint/cli/cli.js');
+  const cliPath = resolveCommitlintCli();
   const result = spawnSync(process.execPath, [cliPath], {
     input: message,
     encoding: 'utf8',
@@ -65,7 +114,6 @@ function main() {
     nonConformingRun = runCommitlint(NON_CONFORMING_SAMPLE);
   } catch (err) {
     console.error(`✖ could not run commitlint at all — ${err.message}`);
-    console.error('  Is @commitlint/cli installed? Try `npm ci`.');
     return 1;
   }
 

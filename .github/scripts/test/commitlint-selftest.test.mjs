@@ -28,6 +28,21 @@ import {
  */
 const run = (exitCode, output = '') => ({ exitCode, output });
 
+/**
+ * Whether a message opens with a Conventional Commits type prefix.
+ *
+ * Written as a split rather than a regex: the natural pattern for this
+ * (`^[a-z]+(\(...\))?!?: `) nests a quantifier inside an optional group, which
+ * trips eslint-plugin-security's detect-unsafe-regex.
+ *
+ * @param {string} message - A commit message.
+ * @returns {boolean} True if the text before the first ': ' is a bare type.
+ */
+function hasConventionalTypePrefix(message) {
+  const [head, ...rest] = message.split(': ');
+  return rest.length > 0 && /^[a-z]+$/.test(head.replace(/!$/, '').split('(')[0]);
+}
+
 /** A healthy pair of runs: conforming passes, non-conforming is rejected. */
 const HEALTHY = {
   conforming: run(0),
@@ -150,5 +165,28 @@ describe('interpretSelfTest — output formatting', () => {
   test('substitutes a placeholder when commitlint printed nothing', () => {
     const [failure] = interpretSelfTest(run(1, '   \n  '), HEALTHY.nonConforming).failures;
     assert.match(failure, /\(no output\)/);
+  });
+});
+
+// The sample constants are matched against RESOLUTION_ERROR_PATTERNS via the
+// input echo in commitlint's own output. If a future edit puts one of those
+// phrases into a sample, an ordinary lint failure would be misreported as a
+// broken dependency tree — so pin the invariant rather than the wording.
+describe('sample messages are safe to echo', () => {
+  for (const [name, sample] of [
+    ['CONFORMING_SAMPLE', CONFORMING_SAMPLE],
+    ['NON_CONFORMING_SAMPLE', NON_CONFORMING_SAMPLE],
+  ]) {
+    test(`${name} does not itself look like a resolution failure`, () => {
+      assert.strictEqual(isPresetResolutionFailure(sample), false);
+    });
+  }
+
+  test('CONFORMING_SAMPLE carries a conventional type prefix', () => {
+    assert.strictEqual(hasConventionalTypePrefix(CONFORMING_SAMPLE), true);
+  });
+
+  test('NON_CONFORMING_SAMPLE carries no type prefix', () => {
+    assert.strictEqual(hasConventionalTypePrefix(NON_CONFORMING_SAMPLE), false);
   });
 });
