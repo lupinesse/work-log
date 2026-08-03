@@ -84,7 +84,7 @@ jobs:
           git commit -m "docs: delivery metrics $WEEK"
           git push -f origin "$BRANCH"
 
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')" ]; then
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')" ]; then
             gh pr create \
               --title "Delivery metrics $WEEK" \
               --body "Automated weekly Say/Do ratio update. See \`docs/delivery-metrics.md\`." \

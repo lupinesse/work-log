@@ -56,7 +56,7 @@ jobs:
           git commit -m "docs: weekly QA report $DATE"
           git push -f origin "$BRANCH"
 
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number')" ]; then
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number // empty')" ]; then
             gh pr create \
               --title "Weekly QA report $DATE" \
               --body "Automated weekly QA review. See \`docs/qa-reports/qa-review-$DATE.md\`." \
