@@ -3516,6 +3516,151 @@ describe('jiraRenderTasks', () => {
   });
 });
 
+// ── buildEntryCatPickerHtml — log-entry category picker ─────────────────────
+// Regression coverage for the log entry's category picker having no way to
+// create a new epic (only the task board's picker had a "+ new epic"
+// control). buildEntryCatPickerHtml is the pure HTML builder extracted from
+// render() so this can be tested without standing up the full DOM.
+
+/**
+ * Creates a VM sandbox with pure-fns.js and 04-render.js loaded, exposing
+ * buildEntryCatPickerHtml for direct testing.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadRenderSandbox(overrides = {}) {
+  const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+  const pureSrc = loadPureFnsScriptSource();
+
+  const sandbox = {
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(renderSrc, sandbox);
+  return sandbox;
+}
+
+describe('buildEntryCatPickerHtml', () => {
+  const categoryList = [
+    { id: 'work', label: 'Work', color: '#4a90e2' },
+    { id: 'meeting', label: 'Meeting', color: '#e67e22' },
+  ];
+
+  it('renders a "+ new epic" control so a new epic can be created from a log entry', () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'work' }, categoryList);
+    assert.ok(html.includes('pcat-add-btn'), 'must render the + new epic button');
+    assert.ok(html.includes('+ new epic'));
+    assert.ok(html.includes('pcat-add-input'), 'must render the inline name input');
+    assert.ok(html.includes('pcat-add-ok'), 'must render the save control');
+  });
+
+  it("renders one button per category, marking the entry's current tag selected", () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'meeting' }, categoryList);
+    assert.ok(html.includes('>Work<'));
+    assert.ok(html.includes('>Meeting<'));
+    const meetingBtn = html.match(
+      /<button class="cat-opt[^"]*" data-id="e1" data-cat="meeting"[^>]*>/
+    )[0];
+    assert.ok(meetingBtn.includes('sel'));
+  });
+
+  it('escapes a malicious category label via escHtml', () => {
+    const sandbox = loadRenderSandbox();
+    const malicious = [{ id: 'x', label: '<img src=x onerror=alert(1)>', color: '#4a90e2' }];
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'x' }, malicious);
+    assert.ok(!html.includes('<img src=x onerror=alert(1)>'));
+    assert.ok(html.includes('&lt;img'));
+  });
+
+  it('sanitises a malicious category color via safeCssColor', () => {
+    const sandbox = loadRenderSandbox();
+    const malicious = [{ id: 'x', label: 'Evil', color: 'red; background:url(x)' }];
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'x' }, malicious);
+    assert.ok(!html.includes('red; background:url(x)'));
+  });
+
+  it("uses an ecaf- prefixed form id, distinct from the board picker's pcaf- id", () => {
+    const sandbox = loadRenderSandbox();
+    const html = sandbox.buildEntryCatPickerHtml({ id: 'e1', tag: 'work' }, categoryList);
+    assert.ok(html.includes('id="ecaf-e1"'));
+  });
+});
+
+// ── createCategory — shared "+ new epic" creator ─────────────────────────────
+// Extracted out of the near-identical duplicated logic that used to live
+// separately in the board's and the log entry's "+ new epic" click handlers
+// (10b-tasks-events.js, 04-render.js) — both now call this one function.
+
+/**
+ * Creates a VM sandbox with 01-state.js loaded, exposing createCategory and
+ * nextDistinctColor for direct testing.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadStateSandbox(overrides = {}) {
+  // categories is declared with `let` at module scope, which the vm module
+  // keeps in a lexical record separate from the sandbox global object —
+  // setting sandbox.categories after the fact wouldn't be visible to
+  // createCategory()/nextDistinctColor(). Promote to `var` so it's a real
+  // global property tests can seed (same fix as loadJiraSandbox above).
+  const stateSrc = readFileSync(join(__dirname, '../src/js/01-state.js'), 'utf8').replace(
+    /^let categories = \[\.\.\.DEFAULT_CATS\];$/m,
+    'var categories = [...DEFAULT_CATS];'
+  );
+
+  const sandbox = {
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(stateSrc, sandbox);
+  return sandbox;
+}
+
+describe('createCategory', () => {
+  it('creates and appends a category with a distinct colour', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    const result = sandbox.createCategory('New Epic');
+    assert.ok(result);
+    assert.equal(result.label, 'New Epic');
+    assert.ok(result.id.startsWith('cat_'));
+    assert.ok(result.color);
+    assert.equal(sandbox.categories.length, 2);
+    assert.ok(sandbox.categories.includes(result));
+  });
+
+  it('trims the raw label before creating', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [];
+    const result = sandbox.createCategory('  Spaced Epic  ');
+    assert.equal(result.label, 'Spaced Epic');
+  });
+
+  it('returns null and does not append for an empty/whitespace-only label', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    assert.equal(sandbox.createCategory('   '), null);
+    assert.equal(sandbox.categories.length, 1);
+  });
+
+  it('returns null and does not append a case-insensitive duplicate label', () => {
+    const sandbox = loadStateSandbox();
+    sandbox.categories = [{ id: 'work', label: 'Work', color: '#378ADD' }];
+    assert.equal(sandbox.createCategory('WORK'), null);
+    assert.equal(sandbox.categories.length, 1);
+  });
+});
+
 // ── buildDailyLogItems — session-note partitioning ───────────────────────────
 
 const dailylogSrc = readFileSync(join(__dirname, '../src/js/18-dailylog.js'), 'utf8');

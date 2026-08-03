@@ -70,6 +70,23 @@ function nextDistinctColor() {
   return `hsl(${hue}, 65%, 52%)`;
 }
 
+/**
+ * Creates and appends a new category from a raw label, unless a category
+ * with the same label already exists (case-insensitive). Shared by the
+ * task board's and the log entry's "+ new epic" pickers so both stay in
+ * sync (10b-tasks-events.js, 04-render.js).
+ * @param {string} rawLabel - User-entered label text, not yet trimmed.
+ * @returns {{ id: string, label: string, color: string }|null} The new category, or null when the label is empty or already taken.
+ */
+function createCategory(rawLabel) {
+  const label = String(rawLabel).trim();
+  if (!label) return null;
+  if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) return null;
+  const category = { id: 'cat_' + Date.now(), label, color: nextDistinctColor() };
+  categories.push(category);
+  return category;
+}
+
 // eslint-disable-next-line prefer-const -- reassigned by 04-render.js, 05-entries.js, 07-lifecycle.js
 let viewDate = new Date();
 // eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04-render.js

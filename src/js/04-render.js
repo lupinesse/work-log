@@ -56,6 +56,36 @@ function buildEntryMetaHtml(entry, isEditing) {
 }
 
 /**
+ * Builds the category picker contents for a single log entry: one button
+ * per existing category, a cancel button, and an inline "+ new epic"
+ * creator so a brand-new epic can be added without leaving the entry —
+ * mirrors the board's task-card picker (catOpts in 10a-tasks-row.js's
+ * renderRow), which previously was the only place epics could be created.
+ * @param {{ id: string, tag: (string|undefined) }} entry - The log entry.
+ * @param {Array<{id: string, label: string, color: string}>} categoryList - Available categories.
+ * @returns {string} HTML string for the picker's contents.
+ */
+function buildEntryCatPickerHtml(entry, categoryList) {
+  const catOpts = categoryList
+    .map(
+      (cat) =>
+        `<button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}</button>`
+    )
+    .join('');
+  return (
+    catOpts +
+    `<button class="cat-cancel" data-id="${entry.id}">cancel</button>` +
+    `<div class="pcat-add-row">` +
+    `<button class="pcat-add-btn" data-id="${entry.id}">+ new epic</button>` +
+    `<div class="pcat-add-form" id="ecaf-${entry.id}">` +
+    `<input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
+    `<button class="pcat-add-ok" data-id="${entry.id}">&#10003;</button>` +
+    `<button class="pcat-add-cancel2" data-id="${entry.id}">&#10005;</button>` +
+    `</div></div>`
+  );
+}
+
+/**
  * Binds open/save/clear/cancel events for each entry's proof-link/note
  * editor. Re-attached after every render() call since #timeline's innerHTML
  * is fully replaced each time, same pattern as the other entry-row bindings
@@ -312,13 +342,7 @@ function render() {
             ? `<span class="etime-end">&#8627; ${fmtTime(entry.tsEnd)}</span>${durLabel(entry.ts, entry.tsEnd)}`
             : `<span class="etime-end" style="color:var(--text3);font-style:italic;font-size:10px;">+ end time</span>`;
 
-        const catOpts =
-          categories
-            .map(
-              (cat) =>
-                `<button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}</button>`
-            )
-            .join('') + `<button class="cat-cancel" data-id="${entry.id}">cancel</button>`;
+        const catOpts = buildEntryCatPickerHtml(entry, categories);
 
         const startVal = toTimeInput(entry.ts);
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
@@ -453,6 +477,58 @@ function render() {
   timelineEl.querySelectorAll('.cat-cancel').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.getElementById('cp-' + btn.dataset.id).classList.remove('open');
+    });
+  });
+
+  /* + new epic inside entry category picker */
+  timelineEl.querySelectorAll('.pcat-add-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      btn.style.display = 'none';
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      form.classList.add('open');
+      form.querySelector('.pcat-add-input').focus();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-ok').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      const input = form.querySelector('.pcat-add-input');
+      if (!input.value.trim()) {
+        input.focus();
+        return;
+      }
+      const category = createCategory(input.value);
+      if (!category) {
+        input.style.borderColor = '#C62828';
+        input.focus();
+        return;
+      }
+      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
+      if (entry) {
+        const taskText = entry.text.toLowerCase();
+        entries.forEach((sameEntry) => {
+          if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = category.id;
+        });
+      }
+      save();
+      renderTagRow();
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-input').forEach((inp) => {
+    inp.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-ok').click();
+      if (event.key === 'Escape')
+        inp.closest('.pcat-add-form').querySelector('.pcat-add-cancel2').click();
+    });
+  });
+  timelineEl.querySelectorAll('.pcat-add-cancel2').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const form = document.getElementById('ecaf-' + btn.dataset.id);
+      form.classList.remove('open');
+      const addBtn = form.closest('.pcat-add-row').querySelector('.pcat-add-btn');
+      if (addBtn) addBtn.style.display = '';
     });
   });
 
