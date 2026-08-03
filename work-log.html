@@ -448,6 +448,7 @@
       <button class="expiry-btn" id="mergeBackupBtn" title="Merge entries from a backup made on another machine">⇣ merge backup</button>
       <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
       <button class="expiry-btn" id="gapReportBtn" aria-haspopup="dialog" title="Entries missing a proof link or note this week">🔍 gap report</button>
+      <button class="expiry-btn" id="weeklyReportBtn" aria-haspopup="dialog" title="Copyable weekly status-report draft, grouped by ticket">📝 weekly report</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
     </div>
   </div>
@@ -523,6 +524,22 @@
     <div class="gap-report-list" id="gapReportList"></div>
     <div class="gap-report-footer">
       <button class="eod-close" id="gapReportClose">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly report draft modal — Mon-Sun ticket-grouped time summary for copy-paste into a status report -->
+<div class="eod-overlay" id="weeklyReportOverlay" role="dialog" aria-modal="true" aria-labelledby="weeklyReportTitle">
+  <div class="eod-modal">
+    <div class="eod-title" id="weeklyReportTitle">📝 Weekly report draft</div>
+    <div class="eod-subtitle" id="weeklyReportSubtitle"></div>
+    <pre class="weekly-report-text" id="weeklyReportText" tabindex="0" aria-label="Weekly report draft text"></pre>
+    <div class="weekly-report-copy-row">
+      <button type="button" class="weekly-report-copy-btn" id="weeklyReportCopyBtn">📋 Copy report</button>
+      <div class="weekly-report-copy-feedback" id="weeklyReportCopyFeedback" aria-live="polite"></div>
+    </div>
+    <div class="eod-footer">
+      <button class="eod-close" id="weeklyReportClose">close</button>
     </div>
   </div>
 </div>

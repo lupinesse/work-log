@@ -63,4 +63,7 @@ export {
   applyBackupRetention,
   buildBackupPayload,
   findGapReportEntries,
+  WEEKLY_REPORT_NO_TICKET_KEY,
+  buildWeeklyTicketSummary,
+  formatWeeklyTicketSummaryText,
 } from './pure-fns-export.js';
