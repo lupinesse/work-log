@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Home</title>
+    <title>JSDoc: Source: 10e-weeklyplan-review.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,1363 +17,204 @@
 
 <div id="main">
 
-    <h1 class="page-title">Home</h1>
+    <h1 class="page-title">Source: 10e-weeklyplan-review.js</h1>
 
     
 
 
 
     
-
-
-    <h3> </h3>
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
     <section>
-        <article><h1>Work Log</h1>
-<p>ADHD-friendly work tracker — single HTML file, runs locally in your browser.</p>
-<h2>Screenshots</h2>
-<p><img src="screenshots/ss1-overview.png" alt="Overview"></p>
-<p><img src="screenshots/ss2-tasks.png" alt="Kanban board"></p>
-<p><img src="screenshots/ss3-timeblock.png" alt="Today's Flow — Log &amp; Timeblock"></p>
-<p><img src="screenshots/ss4-pomodoro.png" alt="Pomodoro"></p>
-<p><img src="screenshots/ss5-focus-mode.png" alt="Focus Mode"></p>
-<h2>How to use</h2>
-<blockquote>
-<p><strong>Important:</strong> The tracker needs to run via a local server (not opened directly as a file) so your data saves correctly between sessions.</p>
-</blockquote>
-<h3>Windows</h3>
-<ol>
-<li>Download <code>work-log.html</code>, <code>launch.bat</code>, and <code>start-server.ps1</code> into the same folder</li>
-<li>Double-click <code>launch.bat</code></li>
-<li>The tracker opens automatically in your browser</li>
-</ol>
-<h3>Linux / Mac</h3>
-<ol>
-<li>Download <code>work-log.html</code> and <code>launch.sh</code> into the same folder</li>
-<li>Open a terminal in that folder and run:<pre class="prettyprint source"><code>bash launch.sh
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * @file 10e-weeklyplan-review.js — Weekly plan review checklist.
+ *
+ * Surfaces plan tasks explicitly marked 'upcoming' whose date falls within
+ * the current ISO week, via the pure findWeeklyPlanReviewTasks() (pure-fns.js),
+ * as a dismissible banner once a new week begins — so tasks planned ahead
+ * that turned out to already be finished elsewhere get caught before they
+ * silently resurface on their date (see 11b-timeblock-carry.js's
+ * autoCarryTasks(), which deliberately never touches 'upcoming' tasks).
+ * This app has no live Jira connection (14-jira.js is a one-way CSV import),
+ * so the checklist can only prompt the user to reconcile manually — it never
+ * auto-detects completion.
+ */
+
+// Element that had focus when the checklist was opened, restored on close —
+// same convention as the gap-report modal in 12c-gapreport.js.
+let _planReviewTrigger = null;
+
+/**
+ * Returns the current ISO-week key (e.g. '2026-W32'), matching the format
+ * checkPomoWeeklyClear() already uses in 07-lifecycle.js.
+ * @returns {string}
+ */
+function currentPlanReviewWeekKey() {
+  const today = new Date();
+  return `${today.getFullYear()}-W${String(getISOWeek(today)).padStart(2, '0')}`;
+}
+
+/**
+ * Returns this ISO week's [startKey, endKey) as YYYY-MM-DD date-string
+ * bounds, using the existing mondayOfWeek()/dk() helpers.
+ * @returns {{weekStartKey: string, weekEndKey: string}}
+ */
+function planReviewWeekBounds() {
+  const weekStart = mondayOfWeek();
+  const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
+  return { weekStartKey: dk(new Date(weekStart)), weekEndKey: dk(new Date(weekEnd)) };
+}
+
+/**
+ * Builds one checklist row: date, ticket key (via the existing parseJiraLabel())
+ * or plain text, and "done"/"drop" reconcile actions.
+ * @param {Object} task - A plan task from findWeeklyPlanReviewTasks().
+ * @returns {string} HTML string.
+ */
+function buildPlanReviewRowHtml(task) {
+  const { ticket, name } = parseJiraLabel(task.text);
+  const label = ticket
+    ? `&lt;span class="plan-review-ticket">${escHtml(ticket)}&lt;/span>${name ? `&lt;span class="plan-review-sep">:&lt;/span> ${escHtml(name)}` : ''}`
+    : escHtml(task.text);
+  return `&lt;div class="plan-review-row">
+      &lt;span class="plan-review-date">${fmtDateLabel(task.date)}&lt;/span>
+      &lt;span class="plan-review-text">${label}&lt;/span>
+      &lt;button type="button" class="plan-review-done" data-id="${task.id}" title="mark done">✓ done&lt;/button>
+      &lt;button type="button" class="plan-review-drop" data-id="${task.id}" title="remove from plan">✕ drop&lt;/button>
+    &lt;/div>`;
+}
+
+/**
+ * Rebuilds the checklist list + subtitle from current planTasks state.
+ * Shared by the initial open and by each row action, since an action removes
+ * exactly one task from the underlying data and the list should reflect that
+ * immediately rather than requiring a re-open.
+ */
+function renderPlanReviewList() {
+  const { weekStartKey, weekEndKey } = planReviewWeekBounds();
+  const upcoming = findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey);
+
+  const subtitleEl = document.getElementById('planReviewSubtitle');
+  const listEl = document.getElementById('planReviewList');
+  if (subtitleEl) {
+    subtitleEl.textContent = upcoming.length
+      ? `${upcoming.length} ${upcoming.length === 1 ? 'task' : 'tasks'} planned for this week — still accurate?`
+      : 'Nothing left to review this week.';
+  }
+  if (listEl) {
+    listEl.innerHTML = upcoming.length
+      ? upcoming.map(buildPlanReviewRowHtml).join('')
+      : '&lt;div class="plan-review-empty">Nothing to review.&lt;/div>';
+  }
+}
+
+/** Opens the weekly plan review checklist, rebuilding it fresh from current data. */
+function openPlanReviewOverlay() {
+  const overlay = document.getElementById('planReviewOverlay');
+  if (!overlay) return;
+  _planReviewTrigger = document.activeElement;
+  renderPlanReviewList();
+  overlay.classList.add('show');
+  setTimeout(() => {
+    const first = overlay.querySelector('button, [tabindex]:not([tabindex="-1"])');
+    if (first) first.focus();
+  }, 50);
+}
+
+/** Restores focus to whatever triggered the checklist, then clears it. */
+function restorePlanReviewFocus() {
+  if (_planReviewTrigger) {
+    _planReviewTrigger.focus();
+    _planReviewTrigger = null;
+  }
+}
+
+/** Hides the checklist overlay, restores focus, and marks the week reviewed. */
+function closePlanReviewOverlay() {
+  const overlay = document.getElementById('planReviewOverlay');
+  if (overlay) overlay.classList.remove('show');
+  restorePlanReviewFocus();
+  markPlanReviewedThisWeek();
+}
+
+/**
+ * Shows or hides the weekly plan review reminder banner. A nudge, not an
+ * automatic reconciliation — this app has no live Jira connection, so only
+ * the user can confirm a planned task is still accurate. Hidden once the
+ * current ISO week has already been marked reviewed, or when there's
+ * nothing to review.
+ */
+function renderPlanReviewReminder() {
+  const banner = document.getElementById('planReviewBanner');
+  if (!banner) return;
+  const alreadyReviewed =
+    localStorage.getItem('wl_plan_review_week') === currentPlanReviewWeekKey();
+  const { weekStartKey, weekEndKey } = planReviewWeekBounds();
+  const upcoming = findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey);
+  if (alreadyReviewed || !upcoming.length) {
+    banner.style.display = 'none';
+    return;
+  }
+  const msgEl = document.getElementById('planReviewMsg');
+  if (msgEl) {
+    msgEl.textContent = `${upcoming.length} ${upcoming.length === 1 ? 'task' : 'tasks'} planned for this week — still accurate?`;
+  }
+  banner.style.display = '';
+}
+
+/**
+ * Marks the current ISO week as reviewed so the reminder banner won't
+ * reappear this week, then re-renders the banner (hides it). Called both by
+ * the banner's dismiss button and by closing the checklist — either counts
+ * as "reviewed," matching the dismiss semantics already used for the
+ * long-running-timer and end-of-day-export reminders.
+ */
+function markPlanReviewedThisWeek() {
+  localStorage.setItem('wl_plan_review_week', currentPlanReviewWeekKey());
+  renderPlanReviewReminder();
+}
+
+const planReviewActionBtn = document.getElementById('planReviewActionBtn');
+const planReviewDismissBtn = document.getElementById('planReviewDismissBtn');
+const planReviewOverlay = document.getElementById('planReviewOverlay');
+const planReviewClose = document.getElementById('planReviewClose');
+const planReviewList = document.getElementById('planReviewList');
+
+if (planReviewActionBtn) planReviewActionBtn.addEventListener('click', openPlanReviewOverlay);
+if (planReviewDismissBtn) planReviewDismissBtn.addEventListener('click', markPlanReviewedThisWeek);
+if (planReviewClose) planReviewClose.addEventListener('click', closePlanReviewOverlay);
+if (planReviewOverlay) {
+  planReviewOverlay.addEventListener('click', (e) => {
+    if (e.target === planReviewOverlay) closePlanReviewOverlay();
+  });
+  planReviewOverlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePlanReviewOverlay();
+  });
+}
+if (planReviewList) {
+  planReviewList.addEventListener('click', (e) => {
+    const doneBtn = e.target.closest('.plan-review-done');
+    const dropBtn = e.target.closest('.plan-review-drop');
+    if (doneBtn) {
+      const task = planTasks.find((t) => t.id === doneBtn.dataset.id);
+      if (task) {
+        task.status = 'done';
+        if (!task.completedAt) task.completedAt = Date.now();
+        savePlan();
+        renderPlan();
+      }
+      renderPlanReviewList();
+    } else if (dropBtn) {
+      planTasks = planTasks.filter((t) => t.id !== dropBtn.dataset.id);
+      savePlan();
+      renderPlan();
+      renderPlanReviewList();
+    }
+  });
+}
 </code></pre>
-</li>
-<li>The tracker opens automatically in your browser</li>
-</ol>
-<p>Your data is stored locally in your browser — nothing is sent anywhere.</p>
-<h2>Features</h2>
-<h3>Time tracking</h3>
-<ul>
-<li><strong>Live timer</strong> — start a timer on any task, pause and resume, add a handoff note when stopping</li>
-<li><strong>Billable tracking</strong> — mark epics and individual entries as billable; totals shown per task and per day</li>
-<li><strong>Quick pick</strong> — recent tasks shown as chips for fast re-logging</li>
-</ul>
-<h3>Tasks</h3>
-<ul>
-<li><strong>Kanban board</strong> — drag tasks between To Do / In Progress / Done columns with epic colour coding</li>
-<li><strong>WIP warning</strong> — amber highlight and dismissable banner when more than one task is in progress</li>
-<li><strong>Task subtasks</strong> — split any task into child steps; completing all steps completes the parent</li>
-<li><strong>Deadlines</strong> — date picker with overdue (red) and due-today (amber) highlighting</li>
-<li><strong>Auto-carry</strong> — unfinished tasks roll over to the next day automatically</li>
-<li><strong>Jira import</strong> — paste a Jira CSV export to bulk-add tickets as tasks</li>
-</ul>
-<h3>Today's Flow</h3>
-<ul>
-<li><strong>Flow view</strong> — chronological feed merging time entries, log notes, and task updates for the day</li>
-<li><strong>Log view</strong> — editable time log with duration, epic, billable flag, and ad-hoc entry row</li>
-<li><strong>Blocks view</strong> — visual 08:00–18:00 timeblock grid auto-filled from logged entries; drag to rearrange</li>
-<li><strong>Month view</strong> — heatmap of hours per day with intensity colouring; monthly summary and task inventory</li>
-<li><strong>Rolling Summary</strong> — AI-ready summary of recent activity across configurable days</li>
-</ul>
-<h3>Focus mode</h3>
-<ul>
-<li><strong>Focus screen</strong> — one-click distraction-free view showing only the active task and next steps</li>
-<li><strong>Parked thoughts</strong> — capture stray thoughts mid-focus without leaving the screen</li>
-<li><strong>Pomodoro timer</strong> — 5 / 10 / 20 min ring timer with session log; visible in focus mode</li>
-</ul>
-<h3>Planning</h3>
-<ul>
-<li><strong>Today's meetings</strong> — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link</li>
-<li><strong>Day streak</strong> — consecutive days with logged work</li>
-</ul>
-<h3>Export &amp; review</h3>
-<ul>
-<li><strong>End the day</strong> — one-click summary with test areas and tomorrow's notes, exported as .txt</li>
-<li><strong>Auto-backup</strong> — JSON backup saved automatically on end-of-day to a local <code>JSON backups/</code> folder</li>
-<li><strong>Reflection</strong> — end-of-day focus-quality and energy ratings with an optional note</li>
-</ul>
-<h3>Bullet Journal (BuJo) features</h3>
-<ul>
-<li><strong>Rapid logging</strong> — <code>✏️</code> button opens a floating capture panel; <code>Enter</code> starts the timer immediately</li>
-<li><strong>Signifiers</strong> — clickable symbol on each entry cycles through meeting / flagged / migrated / cancelled / overtime; cancelled entries are excluded from totals</li>
-<li><strong>Daily Log</strong> — tab view merging time entries, log notes, and task updates in a single chronological feed</li>
-<li><strong>Monthly Log</strong> — heatmap of hours per day with intensity colouring; monthly summary and task inventory</li>
-<li><strong>Migration</strong> — end-of-month close-out flow: carry forward, reschedule, or drop each open task</li>
-<li><strong>Trackers</strong> — custom 28-day progress grids with a daily target and streak counter</li>
-<li><strong>Sprints</strong> — intention-first focus sessions: declare an outcome, run a Pomodoro, then record yes / partly / no</li>
-</ul>
-<h3>Info widgets</h3>
-<ul>
-<li><strong>Weather</strong> — current conditions, rain forecast, sunrise/sunset (Helsinki)</li>
-<li><strong>Moon phase</strong> — current phase, illumination %, and zodiac sign</li>
-<li><strong>Finnish nameday</strong> — fetched live from nimipaivat.fi</li>
-</ul>
-<h2>Project documentation</h2>
-<table>
-<thead>
-<tr>
-<th>Document</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="ARCHITECTURE.md">ARCHITECTURE.md</a></td>
-<td>Module map, data flow, and design decisions</td>
-</tr>
-<tr>
-<td><a href="DATA.md">DATA.md</a></td>
-<td>localStorage schema dictionary</td>
-</tr>
-<tr>
-<td><a href="CONTRIBUTING.md">CONTRIBUTING.md</a></td>
-<td>Dev setup, branching strategy, and quality standard</td>
-</tr>
-<tr>
-<td><a href="ROADMAP.md">ROADMAP.md</a></td>
-<td>Planned and in-progress features</td>
-</tr>
-<tr>
-<td><a href="CHANGELOG.md">CHANGELOG.md</a></td>
-<td>Full release history</td>
-</tr>
-<tr>
-<td><a href="QA.md">QA.md</a></td>
-<td>QA checklist and stakeholder sign-offs per release</td>
-</tr>
-</tbody>
-</table>
-<h2>Testing</h2>
-<p>A smoke test suite is included. Requires Node.js ≥ 22.12 (matches <code>engines</code> in <code>package.json</code>; bumped to track <code>@commitlint/cli</code> v21).</p>
-<pre class="prettyprint source"><code>node smoke-tests.cjs
-</code></pre>
-<p>Or double-click <code>run-tests.bat</code> on Windows.</p>
-<p>To schedule tests to run automatically each morning, run <code>schedule-tests.bat</code> once as Administrator.</p>
-<p>To set up automated weekly releases every Friday, run <code>setup-scheduler.ps1</code> once as Administrator.</p></article>
+        </article>
     </section>
-
-
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>01b-migrate.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>01b-migrate.js
-Automatic localStorage schema migration.</p>
-<p>Runs once per page load, before load() reads from the versioned keys.
-Each migration entry maps an old key name to the new one. If the old
-key has data and the new key is empty, the data is copied across and
-the old key is removed. Already-migrated users are unaffected (the
-old key simply won't exist).</p>
-<p>Adding a new migration: append an entry to MIGRATIONS. Never remove
-old entries — a user might be upgrading across multiple versions.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="01b-migrate.js.html">01b-migrate.js</a>, <a href="01b-migrate.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-    <dt class="tag-see">See:</dt>
-    <dd class="tag-see">
-        <ul>
-            <li>DATA.md for the full localStorage schema reference.</li>
-        </ul>
-    </dd>
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>10e-weeklyplan-review.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>10e-weeklyplan-review.js — Weekly plan review checklist.</p>
-<p>Surfaces plan tasks explicitly marked 'upcoming' whose date falls within
-the current ISO week, via the pure findWeeklyPlanReviewTasks() (pure-fns.js),
-as a dismissible banner once a new week begins — so tasks planned ahead
-that turned out to already be finished elsewhere get caught before they
-silently resurface on their date (see 11b-timeblock-carry.js's
-autoCarryTasks(), which deliberately never touches 'upcoming' tasks).
-This app has no live Jira connection (14-jira.js is a one-way CSV import),
-so the checklist can only prompt the user to reconcile manually — it never
-auto-detects completion.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="10e-weeklyplan-review.js.html">10e-weeklyplan-review.js</a>, <a href="10e-weeklyplan-review.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>12b-changelog-data.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>12b-changelog-data.js
-Embedded dev-changelog data, split out of 12a-changelog.js: the wl_dev_log
-storage key (STORE_DEV_LOG), the test-area name lookup table
-(TEST_AREA_NAMES), and the hardcoded DEV_CHANGES entry array. New changelog
-entries are appended to DEV_CHANGES here.</p>
-<p>Load-order-sensitive: these are top-level consts, evaluated in filename
-concatenation order, and the startup block in 12c-startup.js calls
-mergeDevLog() — which dereferences STORE_DEV_LOG and DEV_CHANGES — at top
-level. This file must therefore sort BEFORE 12c-startup.js.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12b-changelog-data.js.html">12b-changelog-data.js</a>, <a href="12b-changelog-data.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>12c-gapreport.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>12c-gapreport.js — End-of-week gap report.</p>
-<p>Lists this calendar week's (Mon–Sun) finished, non-cancelled log entries
-that have neither a proof link nor a note, via the pure
-findGapReportEntries() (pure-fns.js), so the user can catch missing
-documentation themselves before a weekly report is due. Clicking a flagged
-entry jumps straight to it in the Log view with its proof-link/note editor
-already open — see buildEntryMetaHtml()/bindEntryMetaEvents() in
-04-render.js for the editor itself (added alongside the entry.link/note
-fields this report reads).</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12c-gapreport.js.html">12c-gapreport.js</a>, <a href="12c-gapreport.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>12c-startup.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>12c-startup.js
-Top-level app startup orchestration, split out of 12a-changelog.js: loads
-persisted state, merges the dev changelog, carries tasks forward, runs the
-initial render/check sequence, and resumes any active timer.</p>
-<p>Load-order-sensitive: mergeDevLog() dereferences the top-level consts
-STORE_DEV_LOG and DEV_CHANGES (12b-changelog-data.js) at call time, so this
-file must sort AFTER 12b. It must also keep sorting after 12a-changelog.js
-(whose listener bindings it follows) and before 13-calendar.js's own
-top-level loadParked()/renderParked() calls and window.__wl test handle.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12c-startup.js.html">12c-startup.js</a>, <a href="12c-startup.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>24-location.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>24-location.js
-Per-day work location (Remote / Office) shown in the date-nav header where the
-ISO week number used to sit. The location is stored against each calendar day
-so navigating with ← → reveals that day's location. Unset days default to
-Remote (see DEFAULT_WORK_LOCATION in pure-fns.js).</p>
-<p>Pure helpers (locationFor, nextLocation, WORK_LOCATIONS) live in pure-fns.js
-and are unit-tested; this module is the localStorage + DOM glue around them.</p>
-<p>The storage key (STORE_LOCATION) is declared in 01-state.js alongside the
-other wl_*_v1 keys. It must live there, not here: modules are concatenated in
-filename order, and render() (04-render.js) calls renderLocation() during boot
-— before this file's top-level code would run — so a const declared here would
-be in the temporal dead zone at that point.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="24-location.js.html">24-location.js</a>, <a href="24-location.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>25-rollingsummary.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>25-rollingsummary.js — Rolling 7-day summary tab inside Today's Flow.</p>
-<p>Shows per-day rows (date · location · session times · tracked total · top 3 tasks)
-and a week total. Includes a &quot;Copy&quot; button for standup use.</p>
-<p>Pure data calculation lives in buildRollingSummary (pure-fns.js) and is
-unit-tested there. This module is the localStorage + DOM glue around it.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="25-rollingsummary.js.html">25-rollingsummary.js</a>, <a href="25-rollingsummary.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>pure-fns-export.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>pure-fns-export.js
-Entry/export/summary helpers: billable-export grouping and merging, day
-bounds, grouped-line formatting, rolling summary, and backup retention.
-Split out of pure-fns.js (re-exported there as a barrel). Pure functions
-with no side-effects and no global state — a leaf ES module (imports only
-from pure-fns-format.js).</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="pure-fns-export.js.html">pure-fns-export.js</a>, <a href="pure-fns-export.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>pure-fns-format.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>pure-fns-format.js
-CSS/HTML safety, date/time/duration formatting, and billing time rounding.
-Split out of pure-fns.js (re-exported there as a barrel). Pure functions with
-no side-effects, no global state, and no imports — a leaf ES module.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="pure-fns-format.js.html">pure-fns-format.js</a>, <a href="pure-fns-format.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>pure-fns-tasks.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>pure-fns-tasks.js
-Task/day helpers: rapid-capture inline token grammar, carry-forward status
-resolution, and per-day work-location helpers. Split out of pure-fns.js
-(re-exported there as a barrel). Pure functions with no side-effects and no
-global state — a leaf ES module (imports only from pure-fns-format.js).</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="pure-fns-tasks.js.html">pure-fns-tasks.js</a>, <a href="pure-fns-tasks.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>pure-fns-validate.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>pure-fns-validate.js
-Validators: localStorage schema validators, backup-import validation, and
-external-API response validators. Split out of pure-fns.js (re-exported
-there as a barrel). Pure functions with no side-effects, no global state,
-and no imports — a leaf ES module.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="pure-fns-validate.js.html">pure-fns-validate.js</a>, <a href="pure-fns-validate.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
-
-
-
-
-
-
-
-<section>
-
-<header>
-    
-        <h2>pure-fns.js</h2>
-        
-    
-</header>
-
-<article>
-    <div class="container-overview">
-    
-        
-            <div class="description"><p>pure-fns.js
-Barrel module for the pure-function helpers, which live in four themed leaf
-sub-modules: pure-fns-format.js (CSS/HTML safety, date/time/duration
-formatting, billing rounding), pure-fns-validate.js (schema, backup, and
-external-API validators), pure-fns-tasks.js (rapid-capture grammar,
-carry-forward status, work location), and pure-fns-export.js (billable
-export grouping, rolling summary, backup retention). Re-exports every public
-symbol so existing imports of './pure-fns.js' keep working unchanged.</p></div>
-        
-
-        
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="pure-fns.js.html">pure-fns.js</a>, <a href="pure-fns.js.html#line1">line 1</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-        
-    
-    </div>
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
 
 
 
