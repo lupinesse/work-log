@@ -18,6 +18,9 @@ on:
 jobs:
   auto-chore:
     if: github.event.label.name == 'chore'
+    concurrency:
+      group: auto-chore-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: write       # push the new branch
@@ -57,7 +60,7 @@ jobs:
         run: |
           SLUG=$(echo "$ISSUE_TITLE" | tr '[:upper:]' '[:lower:]' \
             | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40)
-          BRANCH="chore/issue-${ISSUE_NUMBER}-${SLUG}"
+          BRANCH="chore/issue-${ISSUE_NUMBER}-${SLUG:-untitled}"
           git checkout -b "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
@@ -82,6 +85,7 @@ jobs:
 
       - name: Run Claude on the issue
         if: steps.guard.outputs.skip != 'true'
+        id: claude
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -91,6 +95,7 @@ jobs:
           GIT_COMMITTER_NAME: "Claude Code"
           GIT_COMMITTER_EMAIL: "noreply@anthropic.com"
         run: |
+          set +e
           claude -p "/chore-start" \
             --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
                            "Bash(npm run build)" \
@@ -105,8 +110,11 @@ jobs:
                            "Bash(gh issue comment:*)" \
                            "Bash(cat:*)" \
                            "Bash(wc:*)" \
-            > chore-output.txt 2>&1 || true
-          echo "Claude run complete ($(wc -l < chore-output.txt) output lines)"
+            > chore-output.txt 2>&1
+          CLAUDE_EXIT=$?
+          set -e
+          echo "exit_code=$CLAUDE_EXIT" >> "$GITHUB_OUTPUT"
+          echo "Claude run complete (exit $CLAUDE_EXIT, $(wc -l < chore-output.txt) output lines)"
 
       - name: Push branch and open PR (if Claude committed)
         if: steps.guard.outputs.skip != 'true'
@@ -141,7 +149,15 @@ jobs:
         run: |
           if [ "${{ steps.push.outputs.pushed }}" = "true" ]; then
             BODY="🤖 **Auto-chore started** — opened ${{ steps.push.outputs.pr_url }}. It goes through the normal PR review pipeline before it can merge."
+          elif [ "${{ steps.claude.outputs.exit_code }}" != "0" ]; then
+            BODY="🔴 **Auto-chore failed to run** — the Claude CLI itself errored (exit ${{ steps.claude.outputs.exit_code }}), it did not just decline the change. This run is marked failed on the Actions dashboard. See the run log: ${RUN_URL}"
           else
-            BODY="⚠️ **Auto-chore did not open a PR** — Claude judged this unsafe to automate, or hit an error. Check for a comment above from Claude, or see the run log: ${RUN_URL}"
+            BODY="⚠️ **Auto-chore did not open a PR** — Claude ran successfully but judged this unsafe to automate. Check for a comment above from Claude, or see the run log: ${RUN_URL}"
           fi
           gh issue comment "$ISSUE_NUMBER" --body "$BODY"
+
+      - name: Fail the job if the Claude CLI itself errored
+        if: steps.guard.outputs.skip != 'true' && steps.claude.outputs.exit_code != '0'
+        run: |
+          echo "::error::Claude CLI exited with code ${{ steps.claude.outputs.exit_code }} — see chore-output.txt in this run's logs, not a case of Claude declining to act"
+          exit 1
