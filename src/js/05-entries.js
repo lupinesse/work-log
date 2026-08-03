@@ -27,15 +27,7 @@ function addEntry(withTimer) {
   viewDate = new Date();
   save();
   if (withTimer) {
-    // Auto In progress on matching plan task
-    const todayKey = dk(new Date());
-    const task = planTasks.find(
-      (planTask) => planTask.date === todayKey && planTask.text.toLowerCase() === text.toLowerCase()
-    );
-    if (task && task.status === 'todo') {
-      task.status = 'inprogress';
-      savePlan();
-    }
+    promoteMatchingTaskToInProgress(text);
     startTimer(entry.id);
   }
   render();

@@ -205,6 +205,44 @@ export function findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * Finds today's plan task matching `text` (case-insensitive), for promotion
+ * to "in progress" when a timer starts on that text — regardless of which UI
+ * control (hero composer, recent chip, capture input, board's own "track"
+ * button) started it. Returns `null` when there's no match, or the match
+ * isn't in a promotable state (only `todo`/`upcoming` tasks are promoted —
+ * an already-`inprogress`, `pending`, `blocked`, or `done` task is left
+ * alone). Doesn't mutate `planTasks`; callers apply the status change.
+ *
+ * Task/entry linkage is by date + case-insensitive text match — the same
+ * convention {@link buildTaskNoteMap} uses, because plan tasks and log
+ * entries share no `taskId` field.
+ *
+ * @param {Array<Object>} planTasks - All plan/board tasks.
+ * @param {string} text - The entry text a timer was just started on.
+ * @param {string} todayKey - Today's date key (YYYY-MM-DD).
+ * @returns {Object|null} The matching plan task to promote, or null.
+ * @example
+ * findPromotableTask(
+ *   [{ id: 't1', text: 'Fix login', date: '2026-06-04', status: 'todo' }],
+ *   'Fix login',
+ *   '2026-06-04'
+ * ) // → { id: 't1', text: 'Fix login', date: '2026-06-04', status: 'todo' }
+ * @example
+ * findPromotableTask(
+ *   [{ id: 't1', text: 'Fix login', date: '2026-06-04', status: 'inprogress' }],
+ *   'Fix login',
+ *   '2026-06-04'
+ * ) // → null — already in progress, nothing to promote
+ */
+export function findPromotableTask(planTasks, text, todayKey) {
+  const task = (planTasks || []).find(
+    (t) => t.date === todayKey && t.text.toLowerCase() === (text || '').toLowerCase()
+  );
+  if (!task || (task.status !== 'todo' && task.status !== 'upcoming')) return null;
+  return task;
+}
+
 /* ── Work location ── */
 
 /**

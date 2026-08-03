@@ -45,6 +45,7 @@ const {
   formatGroupedLines,
   resolveCarryStatus,
   findWeeklyPlanReviewTasks,
+  findPromotableTask,
   locationFor,
   nextLocation,
   WORK_LOCATIONS,
@@ -1414,6 +1415,202 @@ describe('_qcTaskListHtml', () => {
     const html = sandbox._qcTaskListHtml({ inProgress: [entry], todo: [], recent: [] }, '');
     assert.ok(!html.includes('<script>'), 'raw <script> tag must not appear in output');
     assert.ok(html.includes('&lt;script&gt;'), 'text must be HTML-escaped');
+  });
+});
+
+// ── _qcActivateRow — plan task promotion (regression) ────────────────────────
+// Bug: starting a "to do" plan task from the quick-capture list created a log
+// entry and started the timer, but never promoted the matching planTasks row
+// to "inprogress", so the card never moved on the Kanban board. Verifies the
+// caller now delegates to the shared promoteMatchingTaskToInProgress helper
+// (10-tasks.js) — a spy here catches a caller that stops invoking it, which a
+// pure-function test of the helper alone would not.
+describe('_qcActivateRow', () => {
+  it('promotes the matching plan task when starting a "to do" row', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('plan:t1', 'Ship feature', 'work', false);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('promotes the matching plan task when resuming an existing log entry', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      entries: [{ id: 'e1', text: 'Ship feature', tag: 'work', ts: 1 }],
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('e1', 'Ship feature', 'work', false);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('does nothing when the clicked row is already the active timer', () => {
+    const calls = [];
+    const sandbox = loadRapidSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._qcActivateRow('e1', 'Ship feature', 'work', true);
+    assert.deepEqual(calls, []);
+  });
+});
+
+// ── Hero composer — plan task promotion (regression) ─────────────────────────
+// Same bug as above, reached via the primary "WHAT'S NEXT?" start box and its
+// recent-chip shortcuts (06a-hero.js) instead of the quick-capture overlay.
+
+/**
+ * Loads 06a-hero.js into a VM sandbox. All of the file's DOM binding happens
+ * inside initHero() (called separately, not at parse time), so the module
+ * evaluates safely with a minimal document stub. `_composerInput` is exposed
+ * on the sandbox so tests can set the typed text before calling _heroHandleStart.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadHeroSandbox(overrides = {}) {
+  const pureSrc = loadPureFnsScriptSource();
+  const heroSrc = readFileSync(join(__dirname, '../src/js/06a-hero.js'), 'utf8');
+  const composerInput = { value: '' };
+  const elements = { heroComposerInput: composerInput };
+
+  const sandbox = {
+    document: {
+      getElementById: (id) => elements[id] || null,
+      addEventListener: () => {},
+    },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    activeTimer: null,
+    entries: [],
+    planTasks: [],
+    categories: [{ id: 'other', label: 'Other', color: '#888780' }],
+    selectedTag: 'other',
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    safeRoundedStart: () => Date.now(),
+    promoteMatchingTaskToInProgress: () => {},
+    ...overrides,
+  };
+  sandbox._composerInput = composerInput;
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(heroSrc, sandbox);
+  return sandbox;
+}
+
+describe('_heroHandleStart', () => {
+  it('promotes a matching plan task when starting tracking from typed text', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._composerInput.value = 'Write report';
+    sandbox._heroHandleStart();
+    assert.deepEqual(calls, ['Write report']);
+  });
+
+  it('does not attempt promotion when the composer input is empty', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._composerInput.value = '   ';
+    sandbox._heroHandleStart();
+    assert.deepEqual(calls, []);
+  });
+});
+
+describe('_heroStartFromChip', () => {
+  it('promotes a matching plan task when reusing an open entry', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      entries: [{ id: 'e1', text: 'Recent task', tag: 'other', ts: 1 }],
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._heroStartFromChip('Recent task', 'other');
+    assert.deepEqual(calls, ['Recent task']);
+  });
+
+  it('promotes a matching plan task when creating a fresh entry', () => {
+    const calls = [];
+    const sandbox = loadHeroSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._heroStartFromChip('New task', 'other');
+    assert.deepEqual(calls, ['New task']);
+  });
+});
+
+// ── addEntry — plan task promotion (regression) ───────────────────────────────
+// Same bug, reached via the Log view's own capture input (05-entries.js) —
+// the fourth and last "start tracking" entry point.
+
+/**
+ * Loads 05-entries.js into a VM sandbox. `captureInput` is exposed on the
+ * sandbox so tests can set the typed text before calling addEntry().
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox.
+ */
+function loadEntriesSandbox(overrides = {}) {
+  const entriesSrc = readFileSync(join(__dirname, '../src/js/05-entries.js'), 'utf8');
+  const captureInput = { value: '', focus: () => {} };
+  const elements = { captureInput };
+
+  const sandbox = {
+    document: { getElementById: (id) => elements[id] || null },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    activeTimer: null,
+    entries: [],
+    selectedTag: 'other',
+    viewDate: new Date(),
+    startTimer: () => {},
+    stopTimer: () => {},
+    save: () => {},
+    render: () => {},
+    dk: () => '2026-06-04',
+    safeRoundedStart: () => Date.now(),
+    promoteMatchingTaskToInProgress: () => {},
+    ...overrides,
+  };
+  sandbox._captureInput = captureInput;
+  vm.createContext(sandbox);
+  vm.runInContext(entriesSrc, sandbox);
+  return sandbox;
+}
+
+describe('addEntry', () => {
+  it('promotes a matching plan task when starting the timer on a new entry', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, ['Ship feature']);
+  });
+
+  it('does not attempt promotion when logging without starting the timer', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = 'Ship feature';
+    sandbox.addEntry(false);
+    assert.deepEqual(calls, []);
+  });
+
+  it('does not attempt promotion when the capture input is empty', () => {
+    const calls = [];
+    const sandbox = loadEntriesSandbox({
+      promoteMatchingTaskToInProgress: (text) => calls.push(text),
+    });
+    sandbox._captureInput.value = '   ';
+    sandbox.addEntry(true);
+    assert.deepEqual(calls, []);
   });
 });
 
@@ -3826,6 +4023,164 @@ describe('findWeeklyPlanReviewTasks', () => {
   it('returns an empty array for an empty or missing planTasks array', () => {
     assert.deepEqual(findWeeklyPlanReviewTasks([], WEEK_START, WEEK_END), []);
     assert.deepEqual(findWeeklyPlanReviewTasks(undefined, WEEK_START, WEEK_END), []);
+  });
+});
+
+// ── findPromotableTask ────────────────────────────────────────────────────────
+// Regression coverage for a bug where tasks added directly on the board (as
+// opposed to Jira imports) never showed as "In progress": starting a timer
+// via the hero composer, a recent chip, or the quick-capture list created a
+// log entry but never updated the matching planTasks row's status, so the
+// card stayed in the To Do column. findPromotableTask is the shared lookup
+// every "start tracking" entry point now calls through.
+describe('findPromotableTask', () => {
+  const TODAY = '2026-06-04';
+  const task = (overrides) => ({
+    id: 't1',
+    text: 'Fix login',
+    date: TODAY,
+    status: 'todo',
+    ...overrides,
+  });
+
+  it('finds a todo task with matching date and text', () => {
+    const t = task();
+    assert.equal(findPromotableTask([t], 'Fix login', TODAY), t);
+  });
+
+  it('finds an upcoming task with matching date and text', () => {
+    const t = task({ status: 'upcoming' });
+    assert.equal(findPromotableTask([t], 'Fix login', TODAY), t);
+  });
+
+  it('matches case-insensitively', () => {
+    const t = task();
+    assert.equal(findPromotableTask([t], 'FIX LOGIN', TODAY), t);
+  });
+
+  it('returns null when no task matches the text', () => {
+    assert.equal(findPromotableTask([task()], 'Something else', TODAY), null);
+  });
+
+  it('returns null when the matching task is dated a different day', () => {
+    assert.equal(findPromotableTask([task({ date: '2026-06-03' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is already inprogress', () => {
+    assert.equal(findPromotableTask([task({ status: 'inprogress' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is done', () => {
+    assert.equal(findPromotableTask([task({ status: 'done' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null when the matching task is pending or blocked', () => {
+    assert.equal(findPromotableTask([task({ status: 'pending' })], 'Fix login', TODAY), null);
+    assert.equal(findPromotableTask([task({ status: 'blocked' })], 'Fix login', TODAY), null);
+  });
+
+  it('returns null for an empty or missing planTasks array', () => {
+    assert.equal(findPromotableTask([], 'Fix login', TODAY), null);
+    assert.equal(findPromotableTask(undefined, 'Fix login', TODAY), null);
+  });
+});
+
+// ── promoteMatchingTaskToInProgress ───────────────────────────────────────────
+// The mutation wrapper (10-tasks.js) that every "start tracking" entry point
+// now calls through. Exercises the actual status flip, completedAt clearing,
+// and parent-task promotion that findPromotableTask's tests can't cover since
+// that helper only decides which task to promote, without mutating it.
+
+/**
+ * Loads 10-tasks.js into a VM sandbox so promoteMatchingTaskToInProgress can
+ * be called directly. The file declares `planTasks` as a top-level `let`
+ * (not a plain sandbox property), so a lexical binding inside the loaded
+ * script — not a global object property — holds the array; direct
+ * `sandbox.planTasks = …` assignment from outside would not be visible to
+ * functions defined in the script. `_setPlanTasks`/`_getPlanTasks` injector
+ * functions (defined in the same context, after the file loads) bridge that
+ * gap. Several top-level statements call `document.getElementById(id).addEventListener(...)`
+ * without a null-check, so getElementById must return a dummy element for
+ * every id, not null.
+ * @returns {Object} The populated sandbox, with _setPlanTasks/_getPlanTasks helpers.
+ */
+function loadTasksSandbox() {
+  const pureSrc = loadPureFnsScriptSource();
+  const tasksSrc = readFileSync(join(__dirname, '../src/js/10-tasks.js'), 'utf8');
+  const dummyEl = () => ({
+    addEventListener: () => {},
+    classList: { toggle: () => {}, add: () => {}, remove: () => {}, contains: () => false },
+  });
+
+  const sandbox = {
+    document: { getElementById: () => dummyEl(), addEventListener: () => {} },
+    localStorage: { getItem: () => null, setItem: () => {} },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    readCollapseState: () => false,
+    writeCollapseState: () => {},
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(tasksSrc, sandbox);
+  vm.runInContext(
+    'function _setPlanTasks(arr) { planTasks = arr; } function _getPlanTasks() { return planTasks; }',
+    sandbox
+  );
+  return sandbox;
+}
+
+describe('promoteMatchingTaskToInProgress', () => {
+  const TODAY = dk(new Date());
+
+  it('promotes a matching todo task to inprogress and clears completedAt', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 't1', text: 'Ship feature', date: TODAY, status: 'todo', completedAt: 12345 },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'inprogress');
+    assert.equal(task.completedAt, undefined);
+  });
+
+  it('promotes the parent task when a todo subtask is promoted', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 'parent', text: 'Epic', date: TODAY, status: 'todo' },
+      { id: 'child', text: 'Subtask', date: TODAY, status: 'todo', parentId: 'parent' },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Subtask');
+    const [parent, child] = sandbox._getPlanTasks();
+    assert.equal(child.status, 'inprogress');
+    assert.equal(parent.status, 'inprogress');
+  });
+
+  it('does not demote a parent that is already past todo', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([
+      { id: 'parent', text: 'Epic', date: TODAY, status: 'pending' },
+      { id: 'child', text: 'Subtask', date: TODAY, status: 'todo', parentId: 'parent' },
+    ]);
+    sandbox.promoteMatchingTaskToInProgress('Subtask');
+    const [parent] = sandbox._getPlanTasks();
+    assert.equal(parent.status, 'pending');
+  });
+
+  it('is a no-op when no plan task matches the text', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([{ id: 't1', text: 'Other task', date: TODAY, status: 'todo' }]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'todo');
+  });
+
+  it('is a no-op when the matching task is already inprogress', () => {
+    const sandbox = loadTasksSandbox();
+    sandbox._setPlanTasks([{ id: 't1', text: 'Ship feature', date: TODAY, status: 'inprogress' }]);
+    sandbox.promoteMatchingTaskToInProgress('Ship feature');
+    const [task] = sandbox._getPlanTasks();
+    assert.equal(task.status, 'inprogress');
   });
 });
 
