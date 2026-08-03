@@ -79,8 +79,8 @@ function buildEntryCatPickerHtml(entry, categoryList) {
     `<button class="pcat-add-btn" data-id="${entry.id}">+ new epic</button>` +
     `<div class="pcat-add-form" id="ecaf-${entry.id}">` +
     `<input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
-    `<button class="pcat-add-ok" data-id="${entry.id}">&#10003;</button>` +
-    `<button class="pcat-add-cancel2" data-id="${entry.id}">&#10005;</button>` +
+    `<button class="pcat-add-ok" data-id="${entry.id}" aria-label="save">&#10003;</button>` +
+    `<button class="pcat-add-cancel2" data-id="${entry.id}" aria-label="cancel">&#10005;</button>` +
     `</div></div>`
   );
 }
