@@ -1547,6 +1547,122 @@ describe('_heroStartFromChip', () => {
   });
 });
 
+// ── renderTagRow — colour sanitisation (regression, CodeQL js/xss-through-dom) ─
+// Issue #267 / CodeQL alert #2: the quick colour picker's raw DOM value could
+// reach `cat.color` (persisted state) and the swatch's `style.background`
+// without an explicit sanitizer at those specific sinks. `getCat()` already
+// sanitises on read, but CodeQL's dataflow analysis doesn't credit that as a
+// barrier across the object spread — and the two input-handler sinks below
+// bypass `getCat()` entirely, so they're genuinely unguarded without this fix.
+// A real `<input type="color">` clamps `.value` to valid hex at the DOM level
+// (a real browser can't be tricked into holding a malicious string there),
+// so this sandbox — where `.value` is a plain mutable property — is what
+// makes the gap reproducible at all.
+
+/**
+ * Loads 02-utils.js into a VM sandbox with a minimal fake DOM. Every
+ * `document.getElementById(id)` call returns the same object per id (a Map
+ * keyed by id), each supporting `.style`, `.dataset`, `.value`, `.innerHTML`,
+ * and an `addEventListener` that records the handler on `._listeners`.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {Object} The populated sandbox, plus `_elements` (the id → element Map).
+ */
+function loadTagRowSandbox(overrides = {}) {
+  const pureSrc = loadPureFnsScriptSource();
+  const utilsSrc = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
+  const elements = new Map();
+  const mockEl = (id) => {
+    if (!elements.has(id)) {
+      const el = {
+        id,
+        style: {},
+        dataset: {},
+        value: '',
+        innerHTML: '',
+        _listeners: {},
+        focus: () => {},
+        select: () => {},
+        addEventListener: (type, handler) => {
+          el._listeners[type] = handler;
+        },
+      };
+      elements.set(id, el);
+    }
+    return elements.get(id);
+  };
+
+  const sandbox = {
+    document: { getElementById: mockEl },
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+    selectedTag: 'work',
+    planTasks: [],
+    save: () => {},
+    savePlan: () => {},
+    render: () => {},
+    renderPlan: () => {},
+    renderTimeblock: () => {},
+    renderCompleted: () => {},
+    nextDistinctColor: () => '#000000',
+    ...overrides,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(utilsSrc, sandbox);
+  sandbox._elements = elements;
+  return sandbox;
+}
+
+describe('renderTagRow — colour sanitisation (regression, issue #267)', () => {
+  it('sanitises a malicious value entering via the quick colour picker "input" handler', () => {
+    const sandbox = loadTagRowSandbox();
+    sandbox.renderTagRow();
+    const pick = sandbox._elements.get('catQuickColorPick');
+    pick.value = '"><script>alert(1)</script>';
+    pick._listeners.input();
+    const dot = sandbox._elements.get('catDotPreview');
+    assert.equal(dot.style.background, '#888780');
+  });
+
+  it('sanitises a malicious value entering via the quick colour picker "change" handler before it reaches persisted state', () => {
+    const sandbox = loadTagRowSandbox();
+    sandbox.renderTagRow();
+    const pick = sandbox._elements.get('catQuickColorPick');
+    pick.value = 'javascript:alert(1)';
+    pick._listeners.change();
+    const cat = sandbox.categories.find((c) => c.id === 'work');
+    assert.equal(cat.color, '#888780');
+  });
+
+  it('passes through a legitimate hex value unchanged via both handlers', () => {
+    const sandbox = loadTagRowSandbox();
+    sandbox.renderTagRow();
+    const pick = sandbox._elements.get('catQuickColorPick');
+
+    pick.value = '#ff00aa';
+    pick._listeners.input();
+    const dot = sandbox._elements.get('catDotPreview');
+    assert.equal(dot.style.background, '#ff00aa');
+
+    pick._listeners.change();
+    const cat = sandbox.categories.find((c) => c.id === 'work');
+    assert.equal(cat.color, '#ff00aa');
+  });
+
+  // Passes before and after the source fix — getCat()'s own sanitisation is
+  // the actual upstream barrier here, so this only guards the invariant.
+  it('never lets a malicious persisted colour reach the rendered template', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '"><script>alert(1)</script>' }],
+    });
+    sandbox.renderTagRow();
+    const row = sandbox._elements.get('tagRow');
+    assert.ok(row.innerHTML.includes('value="#888780"'));
+    assert.ok(!row.innerHTML.includes('<script>'));
+  });
+});
+
 // ── addEntry — plan task promotion (regression) ───────────────────────────────
 // Same bug, reached via the Log view's own capture input (05-entries.js) —
 // the fourth and last "start tracking" entry point.
