@@ -56,12 +56,15 @@ function exportTxt() {
   // Billable / non-billable breakdown. Entries are annotated with their
   // resolved billable status up front so both the header totals and the
   // summary line (below) read from the same source of truth.
-  const billedEntries = timedEntries.map((entry) => ({
+  const entriesWithBillingStatus = timedEntries.map((entry) => ({
     ...entry,
     _billable: isEntryBillable(entry),
   }));
-  const totalTrackedMs = billedEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
-  const billableMs = billedEntries
+  const totalTrackedMs = entriesWithBillingStatus.reduce(
+    (sum, entry) => sum + (entry.tsEnd - entry.ts),
+    0
+  );
+  const billableMs = entriesWithBillingStatus
     .filter((entry) => entry._billable)
     .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillableMs = totalTrackedMs - billableMs;
@@ -89,7 +92,7 @@ function exportTxt() {
   // Pasteable summary — last line of the file. One "Label (duration)" item
   // per distinct task/category/billable combination, totalled across the
   // whole day, billable and internal alike (internal ones marked).
-  const summaryLine = buildTimesheetSummaryLine(billedEntries, fmtDurLong);
+  const summaryLine = buildTimesheetSummaryLine(entriesWithBillingStatus, fmtDurLong);
 
   // Gap/anomaly warnings — flags issues before anyone else has to ask about them.
   const warnings = findExportWarnings(dayEntries, {
