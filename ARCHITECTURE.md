@@ -98,7 +98,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (520 lines) — Entry grouping, merging, export helpers, rolling summary, backup retention: `stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-export.js` (520 lines) — Entry grouping, export helpers, rolling summary, backup retention: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
@@ -192,20 +192,36 @@ render() → {
 **Responsibility**: Generate and download the end-of-day plaintext export.
 
 **Key Functions**:
-- `exportTxt()` — Orchestrates the export: groups entries by category, computes day bounds, builds the billable summary, and writes the file via `05b-filesystem.js` or a browser download fallback.
+- `exportTxt()` — Orchestrates the export: groups entries by category (with each task's individual tracked sessions, notes, and proof links), computes day bounds and the implied break time, builds the per-task summary line and any anomaly warnings, and writes the file via `05b-filesystem.js` or a browser download fallback.
 
 **Text Export Format**:
 ```
 Work Log — 2026-05-25
-Started: 08:45 | Ended: 17:30 | Workday: 8h 45min
+Started: 08:45  |  Ended: 17:30
+Workday: 8h 45min
+Total tracked: 8h 20min  |  💰 Billable: 7h 50min  |  💸 Internal: 30min
+Breaks (untracked): 25min
 ---
 8h 20min - Work
     4h 30min - Build form
+        08:45–13:15
+        note: waiting on staging creds
+        link: T197797
     3h 50min - Code review
 ...
+---
+Build form (4h 30min); Code review (3h 50min, internal)
+---
+⚠ Warnings:
+  - Long unbroken block: Build form (4h 30min)
 ```
 
-Pure helpers (`stripJiraPrefix`, `groupEntriesByCategory`, `mergeAdjacentEntries`, `buildBillableSummaryParts`) live in `pure-fns.js` and are unit-tested there.
+The `Breaks (untracked)` header line and the `⚠ Warnings` section are omitted
+when there is nothing to show (no computable workday span, or a clean day
+respectively).
+
+Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`,
+`findExportWarnings`) live in `pure-fns.js` and are unit-tested there.
 
 ---
 
