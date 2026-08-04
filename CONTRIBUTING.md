@@ -15,7 +15,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ## Development Setup
 
 ### Prerequisites
-- Node.js ≥ 22.12 (matches `engines` in `package.json`; `.nvmrc` pins the dev version)
+- Node.js ≥ 24.15.0 (matches `engines` in `package.json`; `.nvmrc` pins the dev version)
 - A text editor or IDE (VS Code recommended)
 - Git
 
