@@ -8,6 +8,14 @@ name: Auto-start chore issues
 # PR. If Claude judges the issue unsafe to automate, it comments on the
 # issue instead and no PR is opened.
 #
+# Known limitation: the default GITHUB_TOKEN can never push changes under
+# .github/workflows/* — GitHub blocks this at the token level and there is
+# no `permissions:` entry that grants it (that requires a PAT with the
+# separate "workflow" OAuth scope, which this workflow does not use). A
+# chore that edits a workflow file will implement and commit successfully,
+# then fail at the push step; the "Comment on the issue" step below reports
+# that distinctly rather than silently.
+#
 # Required secrets:
 #   CLAUDE_CODE_OAUTH_TOKEN — set in Settings > Secrets and variables > Actions
 
@@ -26,7 +34,6 @@ jobs:
       contents: write       # push the new branch
       issues: write         # comment on the issue with the outcome
       pull-requests: write  # open the PR
-      workflows: write      # allow pushes that touch .github/workflows/* — chores can legitimately edit CI config
 
     steps:
       - name: Check out main
