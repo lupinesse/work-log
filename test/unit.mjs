@@ -1649,6 +1649,27 @@ describe('renderTagRow — colour sanitisation (regression, issue #267)', () => 
     const cat = sandbox.categories.find((c) => c.id === 'work');
     assert.equal(cat.color, '#ff00aa');
   });
+
+  // The mock `catQuickColorPick` element's `.value` is only populated by
+  // `getElementById` calls the source makes directly (the two handlers
+  // above) — the initial `row.innerHTML` template string is never parsed
+  // back into it in this sandbox, so this test inspects the rendered
+  // string itself. Note this passes both before and after the source fix:
+  // `selCat.color` already comes through `getCat()`'s own `safeCssColor()`
+  // sanitisation, so wrapping it again at this specific sink is functionally
+  // redundant defence-in-depth (it exists to satisfy CodeQL's dataflow
+  // analysis, which doesn't credit sanitisation across the object spread in
+  // `getCat()` — see the CHANGELOG entry). Kept anyway as coverage of the
+  // invariant, in case `getCat()`'s own sanitisation is ever weakened later.
+  it('never lets a malicious persisted colour reach the rendered template', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '"><script>alert(1)</script>' }],
+    });
+    sandbox.renderTagRow();
+    const row = sandbox._elements.get('tagRow');
+    assert.ok(row.innerHTML.includes('value="#888780"'));
+    assert.ok(!row.innerHTML.includes('<script>'));
+  });
 });
 
 // ── addEntry — plan task promotion (regression) ───────────────────────────────
