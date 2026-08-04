@@ -238,6 +238,14 @@ node smoke-tests.cjs  # Run test suite
 node smoke-tests.cjs
 ```
 
+### Run Individual Test Categories
+```bash
+npm run test:unit        # Unit tests (test/unit.mjs)
+npm run test:scripts     # CI script tests (.github/scripts/test/*.test.mjs)
+npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlint.mjs)
+```
+`npm test` runs the unit tests, smoke tests, and CI script tests together.
+
 ### Test Categories Covered
 - Page load and initialization
 - Timer functionality (start, pause, resume, stop)
