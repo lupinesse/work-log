@@ -57,7 +57,7 @@ function renderTagRow() {
   row.innerHTML = `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
-          <input type="color" id="catQuickColorPick" value="${selCat.color}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
+          <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect">
         ${[...categories]
@@ -96,12 +96,12 @@ function renderTagRow() {
   if (quickColorPick) {
     quickColorPick.addEventListener('input', () => {
       const dot = document.getElementById('catDotPreview');
-      if (dot) dot.style.background = quickColorPick.value;
+      if (dot) dot.style.background = safeCssColor(quickColorPick.value);
     });
     quickColorPick.addEventListener('change', () => {
       const cat = categories.find((c) => c.id === selectedTag);
       if (cat) {
-        cat.color = quickColorPick.value;
+        cat.color = safeCssColor(quickColorPick.value);
         save();
         renderTagRow();
         render();
