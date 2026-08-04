@@ -32,17 +32,17 @@ const {
   validCalendarMeeting,
   validJiraCsvRow,
   parseRapidTokens,
-  stripJiraPrefix,
   parseJiraLabel,
   groupEntriesByCategory,
-  mergeAdjacentEntries,
-  buildBillableSummaryParts,
+  buildTimesheetSummaryLine,
   computeDayBounds,
   isWorkdayLikelyOver,
   buildTaskNoteMap,
   buildEntryNoteMap,
+  buildEntryLinkMap,
   mergeNoteMaps,
   formatGroupedLines,
+  findExportWarnings,
   resolveCarryStatus,
   findWeeklyPlanReviewTasks,
   findPromotableTask,
@@ -2411,21 +2411,6 @@ describe('parseRapidTokens', () => {
   });
 });
 
-// ── stripJiraPrefix ───────────────────────────────────────────────────────────
-describe('stripJiraPrefix', () => {
-  it('strips a "KEY-123: " prefix', () =>
-    assert.equal(stripJiraPrefix('PROJ-42: Fix login'), 'Fix login'));
-  it('strips a "KEY-123 " prefix (space separator)', () =>
-    assert.equal(stripJiraPrefix('ABC-7 Write docs'), 'Write docs'));
-  it('handles alphanumeric project keys', () =>
-    assert.equal(stripJiraPrefix('AB12-9: Task'), 'Task'));
-  it('leaves text without a Jira key unchanged', () =>
-    assert.equal(stripJiraPrefix('Write tests'), 'Write tests'));
-  it('does not strip a lowercase pseudo-key', () =>
-    assert.equal(stripJiraPrefix('proj-42: keep'), 'proj-42: keep'));
-  it('trims surrounding whitespace', () => assert.equal(stripJiraPrefix('  spaced  '), 'spaced'));
-});
-
 // ── parseJiraLabel ────────────────────────────────────────────────────────────
 describe('parseJiraLabel', () => {
   it('extracts ticket and name from "KEY-123: text"', () =>
@@ -2466,6 +2451,26 @@ describe('groupEntriesByCategory', () => {
     assert.equal(catGrouped.work.tasks.a.hasTime, true);
   });
 
+  it('records each tracked entry as its own session, unmerged', () => {
+    const entries = [
+      { text: 'A', tag: 'work', ts: 0, tsEnd: 1000 },
+      { text: 'A', tag: 'work', ts: 2000, tsEnd: 4000 },
+    ];
+    const { catGrouped } = groupEntriesByCategory(entries);
+    assert.deepEqual(
+      [...catGrouped.work.tasks.a.sessions],
+      [
+        { ts: 0, tsEnd: 1000 },
+        { ts: 2000, tsEnd: 4000 },
+      ]
+    );
+  });
+
+  it('leaves sessions empty for a task with no tracked time', () => {
+    const { catGrouped } = groupEntriesByCategory([{ text: 'X', tag: 'work', ts: 100 }]);
+    assert.deepEqual([...catGrouped.work.tasks.x.sessions], []);
+  });
+
   it('treats a missing tag as "other"', () => {
     const { catOrder } = groupEntriesByCategory([{ text: 'X', ts: 0, tsEnd: 10 }]);
     assert.deepEqual([...catOrder], ['other']);
@@ -2492,117 +2497,96 @@ describe('groupEntriesByCategory', () => {
   });
 });
 
-// ── mergeAdjacentEntries ───────────────────────────────────────────────────────
-describe('mergeAdjacentEntries', () => {
-  const MIN = 60000;
+// ── buildTimesheetSummaryLine ────────────────────────────────────────────────
+describe('buildTimesheetSummaryLine', () => {
+  const HOUR = 3600000;
+  const fmt = (ms) => `${ms}ms`;
 
-  it('merges same-task entries within the default 30-min gap', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'A', ts: 0, tsEnd: 10 * MIN },
-      { text: 'A', ts: 30 * MIN, tsEnd: 40 * MIN },
-    ]);
-    assert.equal(merged.length, 1);
-    assert.equal(merged[0]._end, 40 * MIN);
-  });
-
-  it('does not merge across a gap larger than the threshold', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'A', ts: 0, tsEnd: 10 * MIN },
-      { text: 'A', ts: 50 * MIN, tsEnd: 60 * MIN },
-    ]);
-    assert.equal(merged.length, 2);
-  });
-
-  it('does not merge different tasks even when adjacent', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'A', ts: 0, tsEnd: 10 * MIN },
-      { text: 'B', ts: 11 * MIN, tsEnd: 12 * MIN },
-    ]);
-    assert.equal(merged.length, 2);
-  });
-
-  it('does not merge same-text entries that belong to different categories', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'Standup', tag: 'work', ts: 0, tsEnd: 10 * MIN },
-      { text: 'Standup', tag: 'dev', ts: 11 * MIN, tsEnd: 20 * MIN },
-    ]);
-    assert.equal(merged.length, 2);
-    assert.deepEqual([...merged.map((e) => e.tag)], ['work', 'dev']);
-  });
-
-  it('still merges same-text entries when both lack a tag (both → "other")', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'Email', ts: 0, tsEnd: 10 * MIN },
-      { text: 'Email', ts: 11 * MIN, tsEnd: 20 * MIN },
-    ]);
-    assert.equal(merged.length, 1);
-  });
-
-  it('sorts by start time before merging', () => {
-    const merged = mergeAdjacentEntries([
-      { text: 'A', ts: 30 * MIN, tsEnd: 40 * MIN },
-      { text: 'A', ts: 0, tsEnd: 10 * MIN },
-    ]);
-    assert.equal(merged.length, 1);
-    assert.equal(merged[0].ts, 0);
-    assert.equal(merged[0]._end, 40 * MIN);
-  });
-
-  it('respects a custom gap argument', () => {
-    // 6-minute gap between the first end (10 min) and the second start (16 min)
-    const entries = [
-      { text: 'A', ts: 0, tsEnd: 10 * MIN },
-      { text: 'A', ts: 16 * MIN, tsEnd: 20 * MIN },
-    ];
-    assert.equal(mergeAdjacentEntries(entries, 5 * MIN).length, 2); // gap exceeds 5 min
-    assert.equal(mergeAdjacentEntries(entries, 10 * MIN).length, 1); // gap within 10 min
-  });
-
-  it('does not mutate the input array or its objects', () => {
-    const input = [{ text: 'A', ts: 0, tsEnd: 10 }];
-    const snapshot = JSON.stringify(input);
-    mergeAdjacentEntries(input);
-    assert.equal(JSON.stringify(input), snapshot);
-  });
-});
-
-// ── buildBillableSummaryParts ──────────────────────────────────────────────────
-describe('buildBillableSummaryParts', () => {
-  const label = (tag) => ({ work: 'Work', dev: 'Dev' })[tag] || tag;
-
-  it('groups categorised tasks as "Category (task, task)"', () => {
-    const parts = buildBillableSummaryParts(
+  it('joins one "Label (duration)" item per distinct task with "; "', () => {
+    const line = buildTimesheetSummaryLine(
       [
-        { text: 'PROJ-1: Build', tag: 'work' },
-        { text: 'Review', tag: 'work' },
+        { text: 'AITO-183656', ts: 0, tsEnd: 7 * HOUR },
+        { text: '📅 Meeting', ts: 7 * HOUR, tsEnd: 7.5 * HOUR },
       ],
-      label
+      fmt
     );
-    assert.deepEqual([...parts], ['Work (Build, Review)']);
+    assert.equal(line, `AITO-183656 (${7 * HOUR}ms); 📅 Meeting (${0.5 * HOUR}ms)`);
   });
 
-  it('lists uncategorised tasks bare (no tag or "other")', () => {
-    const parts = buildBillableSummaryParts(
-      [{ text: 'Standup', tag: 'other' }, { text: 'Email' }],
-      label
-    );
-    assert.deepEqual([...parts], ['Standup', 'Email']);
-  });
-
-  it('preserves first-seen category order and de-duplicates task names', () => {
-    const parts = buildBillableSummaryParts(
+  it('collapses a task worked in two separate sessions into one full-day total', () => {
+    // Regression: two "AITO-183656" sessions with an unrelated "Meeting" entry
+    // logged in between must still total to a single summary-line item, not
+    // one item per session split by whatever happened between them.
+    const line = buildTimesheetSummaryLine(
       [
-        { text: 'Code', tag: 'dev' },
-        { text: 'Plan', tag: 'work' },
-        { text: 'Code', tag: 'dev' },
+        { text: 'AITO-183656', ts: 0, tsEnd: 4 * HOUR },
+        { text: '📅 Meeting', ts: 4 * HOUR, tsEnd: 4.5 * HOUR, _billable: false },
+        { text: 'AITO-183656', ts: 4.5 * HOUR, tsEnd: 7.5 * HOUR },
       ],
-      label
+      fmt
     );
-    assert.deepEqual([...parts], ['Dev (Code)', 'Work (Plan)']);
+    assert.equal(line, `AITO-183656 (${7 * HOUR}ms); 📅 Meeting (${0.5 * HOUR}ms, internal)`);
   });
 
-  it('returns an empty array for no entries', () =>
-    assert.equal(buildBillableSummaryParts([], label).length, 0));
+  it('marks non-billable entries as internal', () => {
+    const line = buildTimesheetSummaryLine(
+      [{ text: '📅 Meeting', ts: 0, tsEnd: HOUR, _billable: false }],
+      fmt
+    );
+    assert.equal(line, `📅 Meeting (${HOUR}ms, internal)`);
+  });
+
+  it('does not treat billable (undefined or true) as internal', () => {
+    const line = buildTimesheetSummaryLine(
+      [{ text: 'A', ts: 0, tsEnd: HOUR, _billable: true }],
+      fmt
+    );
+    assert.equal(line, `A (${HOUR}ms)`);
+  });
+
+  it('does not merge the same task text across different categories', () => {
+    const line = buildTimesheetSummaryLine(
+      [
+        { text: 'Standup', tag: 'work', ts: 0, tsEnd: HOUR },
+        { text: 'Standup', tag: 'dev', ts: HOUR, tsEnd: 2 * HOUR },
+      ],
+      fmt
+    );
+    assert.equal(line, `Standup (${HOUR}ms); Standup (${HOUR}ms)`);
+  });
+
+  it('does not merge the same task text across differing billable status', () => {
+    const line = buildTimesheetSummaryLine(
+      [
+        { text: 'A', ts: 0, tsEnd: HOUR, _billable: true },
+        { text: 'A', ts: HOUR, tsEnd: 2 * HOUR, _billable: false },
+      ],
+      fmt
+    );
+    assert.equal(line, `A (${HOUR}ms); A (${HOUR}ms, internal)`);
+  });
+
+  it('keeps the raw text including any Jira key — does not strip it', () => {
+    const line = buildTimesheetSummaryLine(
+      [{ text: 'PROJ-1: Fix login', ts: 0, tsEnd: HOUR }],
+      fmt
+    );
+    assert.equal(line, `PROJ-1: Fix login (${HOUR}ms)`);
+  });
+
+  it('preserves first-seen order of distinct tasks', () => {
+    const line = buildTimesheetSummaryLine(
+      [
+        { text: 'B', ts: HOUR, tsEnd: 2 * HOUR },
+        { text: 'A', ts: 0, tsEnd: HOUR },
+      ],
+      fmt
+    );
+    assert.equal(line, `B (${HOUR}ms); A (${HOUR}ms)`);
+  });
+
+  it('returns an empty string for no entries', () =>
+    assert.equal(buildTimesheetSummaryLine([], fmt), ''));
 });
 
 // ── computeDayBounds ───────────────────────────────────────────────────────────
@@ -2805,6 +2789,68 @@ describe('formatGroupedLines', () => {
     const lines = formatGroupedLines(['work'], catGrouped, fmt, label);
     assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
   });
+
+  it('renders one time-range line per session when fmtSessionRange is given', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 3000,
+        taskOrder: ['a'],
+        tasks: {
+          a: {
+            label: 'Task A',
+            totalMs: 3000,
+            hasTime: true,
+            sessions: [
+              { ts: 0, tsEnd: 1000 },
+              { ts: 2000, tsEnd: 4000 },
+            ],
+          },
+        },
+      },
+    };
+    const fmtRange = (s) => `${s.ts}-${s.tsEnd}`;
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label, {}, {}, fmtRange);
+    assert.deepEqual(
+      [...lines],
+      ['3000ms - [work]', '    3000ms - Task A', '        0-1000', '        2000-4000']
+    );
+  });
+
+  it('omits session lines when fmtSessionRange is not given, even if sessions exist', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: {
+          a: { label: 'Task A', totalMs: 1000, hasTime: true, sessions: [{ ts: 0, tsEnd: 1000 }] },
+        },
+      },
+    };
+    const lines = formatGroupedLines(['work'], catGrouped, fmt, label);
+    assert.deepEqual([...lines], ['1000ms - [work]', '    1000ms - Task A']);
+  });
+
+  it('appends a link line under a task that has a matching entry in taskLinks', () => {
+    const catGrouped = {
+      work: {
+        totalMs: 1000,
+        taskOrder: ['a'],
+        tasks: { a: { label: 'Task A', totalMs: 1000, hasTime: true } },
+      },
+    };
+    const lines = formatGroupedLines(
+      ['work'],
+      catGrouped,
+      fmt,
+      label,
+      {},
+      { a: 'T197797, T197805' }
+    );
+    assert.deepEqual(
+      [...lines],
+      ['1000ms - [work]', '    1000ms - Task A', '        link: T197797, T197805']
+    );
+  });
 });
 
 // ── buildTaskNoteMap ───────────────────────────────────────────────────────────
@@ -2871,6 +2917,51 @@ describe('buildEntryNoteMap', () => {
   it('returns an empty object for an empty or missing entries array', () => {
     assert.deepEqual(buildEntryNoteMap([]), {});
     assert.deepEqual(buildEntryNoteMap(undefined), {});
+  });
+});
+
+// ── buildEntryLinkMap ─────────────────────────────────────────────────────────
+describe('buildEntryLinkMap', () => {
+  it('maps an entry link by lowercased task text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', link: 'T197797' }];
+    assert.deepEqual(buildEntryLinkMap(dayEntries), { 'fix login': 'T197797' });
+  });
+
+  it('excludes entries with no link, an empty link, or a whitespace-only link', () => {
+    const dayEntries = [
+      { id: '1', text: 'A' },
+      { id: '2', text: 'B', link: '' },
+      { id: '3', text: 'C', link: '   ' },
+    ];
+    assert.deepEqual(buildEntryLinkMap(dayEntries), {});
+  });
+
+  it('trims the link text', () => {
+    const dayEntries = [{ id: '1', text: 'Fix Login', link: '  T197797  ' }];
+    assert.deepEqual(buildEntryLinkMap(dayEntries), { 'fix login': 'T197797' });
+  });
+
+  it('joins distinct links from multiple entries sharing a task text with ", "', () => {
+    const dayEntries = [
+      { id: '1', text: 'Update test steps', link: 'T197797' },
+      { id: '2', text: 'update test steps', link: 'T197805' },
+    ];
+    assert.deepEqual(buildEntryLinkMap(dayEntries), {
+      'update test steps': 'T197797, T197805',
+    });
+  });
+
+  it('de-duplicates repeated links for the same task', () => {
+    const dayEntries = [
+      { id: '1', text: 'A', link: 'T1' },
+      { id: '2', text: 'A', link: 'T1' },
+    ];
+    assert.deepEqual(buildEntryLinkMap(dayEntries), { a: 'T1' });
+  });
+
+  it('returns an empty object for an empty or missing entries array', () => {
+    assert.deepEqual(buildEntryLinkMap([]), {});
+    assert.deepEqual(buildEntryLinkMap(undefined), {});
   });
 });
 
@@ -3003,6 +3094,74 @@ describe('findGapReportEntries', () => {
   it('returns an empty array for an empty or missing entries array', () => {
     assert.deepEqual(findGapReportEntries([], WEEK_START, WEEK_END), []);
     assert.deepEqual(findGapReportEntries(undefined, WEEK_START, WEEK_END), []);
+  });
+});
+
+// ── findExportWarnings ─────────────────────────────────────────────────────────
+describe('findExportWarnings', () => {
+  const HOUR = 3600000;
+  const fmt = (ms) => `${Math.round(ms / HOUR)}h`;
+  const noSpan = { workdaySpanMs: 0, untrackedMs: 0, fmtDuration: fmt };
+
+  it('flags a finished entry with neither a note nor a link', () => {
+    const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR };
+    assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
+  });
+
+  it('does not flag an entry with a link, a note, or both', () => {
+    const withLink = { text: 'A', ts: 0, tsEnd: HOUR, link: 'T1' };
+    const withNote = { text: 'B', ts: 0, tsEnd: HOUR, note: 'done' };
+    assert.deepEqual(findExportWarnings([withLink, withNote], noSpan), []);
+  });
+
+  it('does not flag cancelled or unfinished entries, or break/lunch/meeting utility entries', () => {
+    const entries = [
+      { text: 'Cancelled', ts: 0, tsEnd: HOUR, signifier: 'cancelled' },
+      { text: 'Still running', ts: 0 },
+      { text: '☕ Break', ts: 0, tsEnd: HOUR },
+    ];
+    assert.deepEqual(findExportWarnings(entries, noSpan), []);
+  });
+
+  it('flags an unbroken block over the 4h long-running-timer threshold', () => {
+    const entry = { text: 'Deep work', ts: 0, tsEnd: 5 * HOUR, link: 'T1' };
+    assert.deepEqual(findExportWarnings([entry], noSpan), ['Long unbroken block: Deep work (5h)']);
+  });
+
+  it('does not flag a block at or under the 4h threshold', () => {
+    const entry = { text: 'Deep work', ts: 0, tsEnd: 4 * HOUR, link: 'T1' };
+    assert.deepEqual(findExportWarnings([entry], noSpan), []);
+  });
+
+  it('flags a long day (>=6h span) with under 15min untracked as missing a break', () => {
+    const warnings = findExportWarnings([], {
+      workdaySpanMs: 8 * HOUR,
+      untrackedMs: 5 * 60000,
+      fmtDuration: fmt,
+    });
+    assert.deepEqual(warnings, ['No break logged despite a 8h day (only 0h untracked)']);
+  });
+
+  it('does not flag a long day that already has a break-sized gap', () => {
+    const warnings = findExportWarnings([], {
+      workdaySpanMs: 8 * HOUR,
+      untrackedMs: 30 * 60000,
+      fmtDuration: fmt,
+    });
+    assert.deepEqual(warnings, []);
+  });
+
+  it('does not flag a short day even with no untracked time', () => {
+    const warnings = findExportWarnings([], {
+      workdaySpanMs: 3 * HOUR,
+      untrackedMs: 0,
+      fmtDuration: fmt,
+    });
+    assert.deepEqual(warnings, []);
+  });
+
+  it('returns an empty array for a clean day with no entries', () => {
+    assert.deepEqual(findExportWarnings([], noSpan), []);
   });
 });
 

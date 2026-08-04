@@ -7,24 +7,9 @@
  * from pure-fns-format.js).
  */
 
-import { dk } from './pure-fns-format.js';
+import { dk, isLongRunningTimer } from './pure-fns-format.js';
 
 /* ── Export grouping ── */
-
-/**
- * Removes a leading Jira issue key (e.g. `ABC-123: ` or `ABC-123 `) from a task
- * label, leaving the human-readable summary. Used when building the pasteable
- * billable summary so issue keys do not clutter the client-facing line.
- * @param {string} text - The raw task label.
- * @returns {string} The label with any leading Jira key stripped and trimmed.
- * @example
- * stripJiraPrefix('PROJ-42: Fix login')  // → 'Fix login'
- * stripJiraPrefix('Write tests')         // → 'Write tests'
- */
-export function stripJiraPrefix(text) {
-  if (!text || typeof text !== 'string') return text ?? '';
-  return text.replace(/^[A-Z][A-Z0-9]*-\d+[:\s]\s*/, '').trim();
-}
 
 /**
  * Parses a task label into its Jira issue key and human-readable name.
@@ -54,7 +39,10 @@ export function parseJiraLabel(label) {
  * @param {Array<Object>} dayEntries - Entries for the viewed day.
  * @returns {{catOrder: string[], catGrouped: Object}} `catOrder` is the list of
  *   category keys in first-seen order; `catGrouped[catKey]` is
- *   `{ totalMs, tasks: { [taskKey]: { label, totalMs, hasTime } }, taskOrder }`.
+ *   `{ totalMs, tasks: { [taskKey]: { label, totalMs, hasTime, sessions } }, taskOrder }`.
+ *   `sessions` is the task's individual tracked `{ts, tsEnd}` pairs, in
+ *   encounter order — kept separate (not merged) so a task worked in two
+ *   sessions still shows both time ranges rather than one collapsed total.
  */
 export function groupEntriesByCategory(dayEntries) {
   const catOrder = [];
@@ -68,91 +56,82 @@ export function groupEntriesByCategory(dayEntries) {
     }
     if (!catGrouped[catKey].tasks[taskKey]) {
       catGrouped[catKey].taskOrder.push(taskKey);
-      catGrouped[catKey].tasks[taskKey] = { label: entry.text, totalMs: 0, hasTime: false };
+      catGrouped[catKey].tasks[taskKey] = {
+        label: entry.text,
+        totalMs: 0,
+        hasTime: false,
+        sessions: [],
+      };
     }
     if (entry.tsEnd && entry.tsEnd > entry.ts) {
       const ms = entry.tsEnd - entry.ts;
       catGrouped[catKey].totalMs += ms;
       catGrouped[catKey].tasks[taskKey].totalMs += ms;
       catGrouped[catKey].tasks[taskKey].hasTime = true;
+      catGrouped[catKey].tasks[taskKey].sessions.push({ ts: entry.ts, tsEnd: entry.tsEnd });
     }
   });
   return { catOrder, catGrouped };
 }
 
 /**
- * Merges same-task entries that are separated by no more than `gapMs` into a
- * single block, carrying the merged end time on a `_end` property.
+ * Builds the pasteable end-of-day summary line: one semicolon-separated
+ * `Label (duration)` item per distinct task, each carrying its *full-day*
+ * total — not per-session — so a task worked in two separate blocks (e.g.
+ * 09:30–13:00 and 13:30–16:00) still collapses to one line with one total,
+ * matching how a Jira worklog is checked against a ticket. The per-session
+ * breakdown lives in the report body instead (see {@link formatGroupedLines}'s
+ * `sessions` rendering) — this line's job is the checkable total, not the
+ * timeline. Distinct tasks are kept in first-seen order; entries are grouped
+ * by task text, category (`tag`, missing normalised to `other`), and
+ * `_billable` status combined, so a task worked once billable and once
+ * internal renders as two line items rather than one status silently
+ * overwriting the other.
  *
- * Two entries merge only when they share the same task text *and* the same
- * category (`tag`, with a missing tag normalised to `other`). Category is part
- * of the key so that two adjacent entries with the same label but different
- * categories are not collapsed — otherwise the later category would be lost from
- * the exported billable summary, which reads `tag` from the merged block.
+ * Non-billable items are suffixed `, internal` so the billable/internal split
+ * — already visible in the header totals — is also checkable at the level of
+ * an individual line item.
  *
- * Rationale for the gap: the default 30-minute window matches the billing
- * rounding unit — splitting a task at a gap shorter than one slot would produce
- * two entries that each round to the same half-hour anyway, while making the
- * summary harder to read. Input is not mutated; entries are sorted by start time first.
+ * Unlike the grouped report body (whose task labels feed a client-facing
+ * read), this line keeps the entry's raw text, Jira key included: the line's
+ * job is proving logged hours against ticket worklogs, so the ticket key is
+ * exactly the part that must stay visible.
  *
- * @param {Array<Object>} entries - Entries to merge (each with `ts`, optional `tsEnd`, `text`, `tag`).
- * @param {number} [gapMs=1800000] - Maximum gap, in ms, to bridge (default 30 min).
- * @returns {Array<Object>} New entry objects, each with a `_end` timestamp.
+ * @param {Array<Object>} timedEntries - Timed entries (`ts`, `tsEnd`, `text`,
+ *   optional `tag`), each optionally carrying a `_billable` flag (`false`
+ *   renders as internal; anything else, including absent, renders as billable).
+ * @param {function(number): string} fmtDuration - Formats a duration in ms
+ *   (e.g. `fmtDurLong`). Injected so this function stays free of global state.
+ * @returns {string} The summary line, or `''` when there are no entries.
+ * @example
+ * buildTimesheetSummaryLine(
+ *   [
+ *     { text: 'AITO-183656', ts: 0, tsEnd: 4 * 3600000 },
+ *     { text: '📅 Meeting', ts: 4 * 3600000, tsEnd: 4.5 * 3600000, _billable: false },
+ *     { text: 'AITO-183656', ts: 4.5 * 3600000, tsEnd: 7.5 * 3600000 },
+ *   ],
+ *   fmtDurLong
+ * )
+ * // → 'AITO-183656 (7h); 📅 Meeting (30min, internal)'
  */
-export function mergeAdjacentEntries(entries, gapMs = 30 * 60000) {
-  const sorted = [...entries].sort((a, b) => a.ts - b.ts);
-  const out = [];
-  for (const entry of sorted) {
-    const prev = out[out.length - 1];
-    if (
-      prev &&
-      prev.text.toLowerCase() === entry.text.toLowerCase() &&
-      (prev.tag || 'other') === (entry.tag || 'other') &&
-      entry.ts - (prev._end || prev.ts) <= gapMs
-    ) {
-      prev._end = Math.max(prev._end || prev.ts, entry.tsEnd || entry.ts);
-    } else {
-      out.push({ ...entry, _end: entry.tsEnd || entry.ts });
+export function buildTimesheetSummaryLine(timedEntries, fmtDuration) {
+  const order = [];
+  const totals = {};
+  timedEntries.forEach((entry) => {
+    const key = `${entry.tag || 'other'} ${entry.text.toLowerCase()} ${entry._billable}`;
+    if (!totals[key]) {
+      order.push(key);
+      totals[key] = { text: entry.text, billable: entry._billable, ms: 0 };
     }
-  }
-  return out;
-}
-
-/**
- * Builds the parts of the pasteable billable summary from merged billable
- * entries. Categorised tasks are grouped as `Category (task1, task2)`;
- * uncategorised tasks (no tag or `other`) are listed bare. Order of first
- * appearance is preserved and duplicate task names are de-duplicated.
- *
- * @param {Array<Object>} mergedEntries - Output of {@link mergeAdjacentEntries}.
- * @param {function(string): string} getCatLabel - Resolves a category key to its
- *   display label. Injected so this function stays free of global state.
- * @returns {string[]} Summary parts, ready to be joined with `, `.
- */
-export function buildBillableSummaryParts(mergedEntries, getCatLabel) {
-  const summaryOrder = [];
-  const summaryGroups = {};
-  const summaryUngrouped = [];
-  mergedEntries.forEach((entry) => {
-    const taskName = stripJiraPrefix(entry.text);
-    if (!entry.tag || entry.tag === 'other') {
-      if (!summaryUngrouped.includes(taskName)) summaryUngrouped.push(taskName);
-    } else {
-      if (!summaryGroups[entry.tag]) {
-        summaryOrder.push(entry.tag);
-        summaryGroups[entry.tag] = { label: getCatLabel(entry.tag), tasks: [] };
-      }
-      if (!summaryGroups[entry.tag].tasks.includes(taskName)) {
-        summaryGroups[entry.tag].tasks.push(taskName);
-      }
-    }
+    totals[key].ms += entry.tsEnd - entry.ts;
   });
-  return [
-    ...summaryOrder.map(
-      (key) => `${summaryGroups[key].label} (${summaryGroups[key].tasks.join(', ')})`
-    ),
-    ...summaryUngrouped,
-  ];
+  return order
+    .map((key) => {
+      const { text, billable, ms } = totals[key];
+      const suffix = billable === false ? ', internal' : '';
+      return `${text} (${fmtDuration(ms)}${suffix})`;
+    })
+    .join('; ');
 }
 
 /**
@@ -305,6 +284,38 @@ export function mergeNoteMaps(a, b) {
   return merged;
 }
 
+/**
+ * Builds a lookup of proof links for a single day, keyed by lowercased task
+ * text so it lines up with {@link buildEntryNoteMap} and the task keys
+ * produced by {@link groupEntriesByCategory}. Unlike notes (free text, one
+ * line per entry), links are short reference codes — Zephyr keys, Confluence
+ * pages, ticket URLs — so multiple links for the same task are deduplicated
+ * and joined onto a single comma-separated line rather than one per entry.
+ *
+ * @param {Array<Object>} dayEntries - Entries for the exported day.
+ * @returns {Object<string, string>} Map of lowercased task text to a
+ *   comma-separated, deduplicated list of that task's proof links.
+ * @example
+ * buildEntryLinkMap([
+ *   { text: 'Update test steps', link: 'T197797' },
+ *   { text: 'Update test steps', link: 'T197805' },
+ * ])
+ * // → { 'update test steps': 'T197797, T197805' }
+ */
+export function buildEntryLinkMap(dayEntries) {
+  const linksByTask = {};
+  (dayEntries || []).forEach((entry) => {
+    const link = entry.link && entry.link.trim();
+    if (!link) return;
+    const key = entry.text.toLowerCase();
+    if (!linksByTask[key]) linksByTask[key] = [];
+    if (!linksByTask[key].includes(link)) linksByTask[key].push(link);
+  });
+  return Object.fromEntries(
+    Object.entries(linksByTask).map(([key, links]) => [key, links.join(', ')])
+  );
+}
+
 /* ── Gap report ── */
 
 // Utility entries logged via logUtilEntry() in 03-timer.js — never carry
@@ -345,13 +356,84 @@ export function findGapReportEntries(entries, weekStart, weekEnd) {
     .sort((a, b) => a.ts - b.ts);
 }
 
+// The single-block "too long" threshold reuses isLongRunningTimer's own 4h
+// default below rather than a third local constant.
+/** Day span, in ms, above which a workday is expected to contain a real break. */
+const LONG_DAY_SPAN_MS = 6 * 60 * 60000;
+/** Untracked time, in ms, below which a long day is flagged as missing a break. */
+const MIN_EXPECTED_BREAK_MS = 15 * 60000;
+
+/**
+ * Flags anomalies in a day's entries that would otherwise only surface when
+ * someone questions the timesheet later: work logged with no way to check it,
+ * suspiciously long unbroken stretches, and a full workday with no break-sized
+ * gap in it. Surfaced as a warnings section at the end of the plaintext export
+ * so the person doing the logging finds the gap before anyone asking about it
+ * does.
+ *
+ * Pure: the duration formatter is injected (same convention as
+ * {@link formatGroupedLines}) so this has no dependency on global state.
+ *
+ * @param {Array<Object>} dayEntries - All entries for the exported day.
+ * @param {Object} opts
+ * @param {number} [opts.workdaySpanMs=0] - Ended-minus-started span for the day.
+ * @param {number} [opts.untrackedMs=0] - `workdaySpanMs` minus total tracked time —
+ *   i.e. the implied, unlabelled break/gap time within the day.
+ * @param {function(number): string} opts.fmtDuration - Formats a duration in ms.
+ * @returns {string[]} Human-readable warning lines; empty when nothing stands out.
+ * @example
+ * findExportWarnings(
+ *   [{ text: 'Fix login', ts: 0, tsEnd: 3600000, signifier: '' }],
+ *   { workdaySpanMs: 3600000, untrackedMs: 0, fmtDuration: (ms) => `${ms}ms` }
+ * )
+ * // → ['No note or link: Fix login']
+ */
+export function findExportWarnings(dayEntries, opts) {
+  const { workdaySpanMs = 0, untrackedMs = 0, fmtDuration } = opts;
+  const warnings = [];
+
+  (dayEntries || [])
+    .filter(
+      (entry) =>
+        entry.tsEnd &&
+        entry.tsEnd > entry.ts &&
+        entry.signifier !== 'cancelled' &&
+        !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        !(entry.link && entry.link.trim()) &&
+        !(entry.note && entry.note.trim())
+    )
+    .forEach((entry) => warnings.push(`No note or link: ${entry.text}`));
+
+  (dayEntries || [])
+    .filter(
+      (entry) =>
+        entry.tsEnd && entry.signifier !== 'cancelled' && isLongRunningTimer(entry.tsEnd - entry.ts)
+    )
+    .forEach((entry) =>
+      warnings.push(`Long unbroken block: ${entry.text} (${fmtDuration(entry.tsEnd - entry.ts)})`)
+    );
+
+  if (workdaySpanMs >= LONG_DAY_SPAN_MS && untrackedMs < MIN_EXPECTED_BREAK_MS) {
+    warnings.push(
+      `No break logged despite a ${fmtDuration(workdaySpanMs)} day ` +
+        `(only ${fmtDuration(untrackedMs)} untracked)`
+    );
+  }
+
+  return warnings;
+}
+
 /**
  * Renders the grouped-by-category structure into indented text lines: one line
  * per category (with its total), each followed by its indented task lines and,
- * when the task carries a note, one or more further-indented `note:` lines.
+ * when the task carries tracked sessions, a note, and/or a proof link, further
+ * indented sub-lines for each — session time ranges first, then note lines,
+ * then a link line — so a task worked in two separate sessions still shows
+ * both time ranges instead of only their collapsed total.
  *
- * Pure: the duration formatter and category-label resolver are injected so this
- * function has no dependency on global state and can be unit-tested directly.
+ * Pure: the duration/time formatters and category-label resolver are injected
+ * so this function has no dependency on global state and can be unit-tested
+ * directly.
  *
  * @param {string[]} catOrder   - Category keys in display order.
  * @param {Object}   catGrouped - Grouping produced by {@link groupEntriesByCategory}.
@@ -359,18 +441,36 @@ export function findGapReportEntries(entries, weekStart, weekEnd) {
  * @param {function(string): string} getCatLabel - Resolves a category key to its label.
  * @param {Object<string, string>} [taskNotes] - Map of lowercased task text to note,
  *   as produced by {@link buildTaskNoteMap}. Omitted tasks render with no note line.
+ * @param {Object<string, string>} [taskLinks] - Map of lowercased task text to a
+ *   comma-separated link list, as produced by {@link buildEntryLinkMap}. Omitted
+ *   tasks render with no link line.
+ * @param {function({ts: number, tsEnd: number}): string} [fmtSessionRange] - Formats
+ *   one tracked session as a time-range string (e.g. `'09:30–13:00'`). When
+ *   omitted, session lines are skipped entirely (e.g. for callers that never
+ *   populated `sessions` on their task objects).
  * @returns {string[]} The body lines for the export file.
  */
-export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabel, taskNotes = {}) {
+export function formatGroupedLines(
+  catOrder,
+  catGrouped,
+  fmtDuration,
+  getCatLabel,
+  taskNotes = {},
+  taskLinks = {},
+  fmtSessionRange
+) {
   const lines = [];
   catOrder.forEach((catKey) => {
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
     const catTimeStr = totalMs > 0 ? fmtDuration(totalMs) : '--';
     lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
     taskOrder.forEach((taskKey) => {
-      const { label, totalMs: taskMs, hasTime } = tasks[taskKey];
+      const { label, totalMs: taskMs, hasTime, sessions } = tasks[taskKey];
       const taskTimeStr = hasTime ? fmtDuration(taskMs) : '--';
       lines.push(`    ${taskTimeStr} - ${label}`);
+      if (fmtSessionRange && sessions && sessions.length) {
+        sessions.forEach((session) => lines.push(`        ${fmtSessionRange(session)}`));
+      }
       const note = taskNotes[taskKey];
       if (note) {
         note
@@ -379,6 +479,8 @@ export function formatGroupedLines(catOrder, catGrouped, fmtDuration, getCatLabe
           .filter(Boolean)
           .forEach((noteLine) => lines.push(`        note: ${noteLine}`));
       }
+      const link = taskLinks[taskKey];
+      if (link) lines.push(`        link: ${link}`);
     });
   });
   return lines;

@@ -3,9 +3,12 @@
 /**
  * Exports the currently viewed day's log as a plaintext file.
  * Groups entries by category and task, includes a header with day start/end
- * times and tracked time totals, appends any plan-task note and/or per-entry
- * notes as indented lines under their task, and finishes with a pasteable
- * billable summary. Writes to the user's chosen save folder via the File
+ * times, tracked/billable/internal totals, and the implied (untracked) break
+ * time; lists each task's individual tracked sessions as time ranges plus any
+ * plan-task/entry notes and proof links as indented lines; finishes with a
+ * pasteable per-item summary line and, when anything looks off (undocumented
+ * work, an unbroken >4h block, a full day with no break-sized gap), a
+ * warnings section. Writes to the user's chosen save folder via the File
  * System Access API, or falls back to a browser download.
  */
 function exportTxt() {
@@ -29,44 +32,84 @@ function exportTxt() {
     const d = new Date(ts);
     return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   };
+  const fmtSessionRange = (session) => `${fmtTsHM(session.ts)}–${fmtTsHM(session.tsEnd)}`;
 
   // Body: tracked time grouped by category, then task (first-seen order),
-  // with each task's plan note (if any) appended as an indented "note:" line.
+  // with each task's individual sessions, plan/entry notes, and proof links
+  // appended as indented lines.
   const { catOrder, catGrouped } = groupEntriesByCategory(dayEntries);
   const taskNotes = mergeNoteMaps(
     buildTaskNoteMap(planTasks, dateStr),
     buildEntryNoteMap(dayEntries)
   );
-  const lines = formatGroupedLines(catOrder, catGrouped, fmtDurLong, getCatLabel, taskNotes);
+  const taskLinks = buildEntryLinkMap(dayEntries);
+  const lines = formatGroupedLines(
+    catOrder,
+    catGrouped,
+    fmtDurLong,
+    getCatLabel,
+    taskNotes,
+    taskLinks,
+    fmtSessionRange
+  );
 
-  // Billable / non-billable breakdown
-  const totalTrackedMs = timedEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
-  const billableTimed = timedEntries.filter((entry) => isEntryBillable(entry));
-  const billableMs = billableTimed.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  // Billable / non-billable breakdown. Entries are annotated with their
+  // resolved billable status up front so both the header totals and the
+  // summary line (below) read from the same source of truth.
+  const entriesWithBillingStatus = timedEntries.map((entry) => ({
+    ...entry,
+    _billable: isEntryBillable(entry),
+  }));
+  const totalTrackedMs = entriesWithBillingStatus.reduce(
+    (sum, entry) => sum + (entry.tsEnd - entry.ts),
+    0
+  );
+  const billableMs = entriesWithBillingStatus
+    .filter((entry) => entry._billable)
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   const nonBillableMs = totalTrackedMs - billableMs;
+
+  const workdaySpanMs = dayStartTs && dayEndTs ? dayEndTs - dayStartTs : 0;
+  const untrackedMs = workdaySpanMs ? Math.max(0, workdaySpanMs - totalTrackedMs) : 0;
 
   const header = [`Work Log — ${dateStr}`];
   if (dayStartTs) {
     const startStr = fmtTsHM(dayStartTs);
     const endStr = dayEndTs ? fmtTsHM(dayEndTs) : '--:--';
     header.push(`Started: ${startStr}  |  Ended: ${endStr}`);
-    if (dayEndTs) header.push(`Workday: ${fmtDurLong(dayEndTs - dayStartTs)}`);
+    if (dayEndTs) header.push(`Workday: ${fmtDurLong(workdaySpanMs)}`);
   }
   if (totalTrackedMs > 0) {
     header.push(
       `Total tracked: ${fmtDurLong(totalTrackedMs)}  |  💰 Billable: ${fmtDurLong(billableMs)}  |  💸 Internal: ${fmtDurLong(nonBillableMs)}`
     );
   }
+  if (workdaySpanMs > 0) {
+    header.push(`Breaks (untracked): ${fmtDurLong(untrackedMs)}`);
+  }
   header.push('---');
 
-  // Pasteable billable summary — last line of the file.
-  // Merge same-task entries separated by ≤30 min, then group by category.
-  const billableMerged = mergeAdjacentEntries(billableTimed);
-  const summaryParts = buildBillableSummaryParts(billableMerged, getCatLabel);
-  const summaryLine = summaryParts.length ? summaryParts.join(', ') : '';
+  // Pasteable summary — last line of the file. One "Label (duration)" item
+  // per distinct task/category/billable combination, totalled across the
+  // whole day, billable and internal alike (internal ones marked).
+  const summaryLine = buildTimesheetSummaryLine(entriesWithBillingStatus, fmtDurLong);
+
+  // Gap/anomaly warnings — flags issues before anyone else has to ask about them.
+  const warnings = findExportWarnings(dayEntries, {
+    workdaySpanMs,
+    untrackedMs,
+    fmtDuration: fmtDurLong,
+  });
+  const warningLines = warnings.length
+    ? ['---', '⚠ Warnings:', ...warnings.map((warning) => `  - ${warning}`)]
+    : [];
 
   const blob = new Blob(
-    [[...header, ...lines, ...(summaryLine ? ['---', summaryLine] : [])].join('\n')],
+    [
+      [...header, ...lines, ...(summaryLine ? ['---', summaryLine] : []), ...warningLines].join(
+        '\n'
+      ),
+    ],
     { type: 'text/plain' }
   );
   const filename = `work-log-${dateStr}.txt`;

@@ -48,17 +48,17 @@ export {
 } from './pure-fns-tasks.js';
 
 export {
-  stripJiraPrefix,
   parseJiraLabel,
   groupEntriesByCategory,
-  mergeAdjacentEntries,
-  buildBillableSummaryParts,
+  buildTimesheetSummaryLine,
   computeDayBounds,
   isWorkdayLikelyOver,
   buildTaskNoteMap,
   buildEntryNoteMap,
+  buildEntryLinkMap,
   mergeNoteMaps,
   formatGroupedLines,
+  findExportWarnings,
   buildRollingSummary,
   applyBackupRetention,
   buildBackupPayload,
