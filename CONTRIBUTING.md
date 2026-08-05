@@ -274,8 +274,20 @@ and put it on your `PATH`, or point `ACTIONLINT_PATH` at the binary:
 ACTIONLINT_PATH=/path/to/actionlint npm run test:actionlint
 ```
 
-Linting of `run:` block *contents* (shellcheck, pyflakes) is currently disabled —
-see the `COMMON_FLAGS` comment in `.github/scripts/check-actionlint.mjs`.
+Two things are deliberately muted, both documented at their definition:
+
+- **Linting of `run:` block contents** (shellcheck, pyflakes) — see the
+  `COMMON_FLAGS` comment in `.github/scripts/check-actionlint.mjs`.
+- **Two `actions/create-github-app-token` input findings** — actionlint v1.7.12
+  ships a stale schema for that action and believes `client-id` is invalid and
+  `app-id` required, when the action itself deprecates `app-id` in favour of
+  `client-id`. See `IGNORED_FINDING_PATTERNS` in
+  `.github/scripts/lib/actionlint-selftest.mjs`; delete it once actionlint
+  refreshes its snapshot.
+
+If you need to add another suppression, scope it to the specific action or rule
+by name — never disable a rule wholesale. A unit test asserts no ignore pattern
+can swallow either of the fixtures' expected findings.
 
 ### Test Categories Covered
 - Page load and initialization

@@ -71,6 +71,37 @@ export const EXPECTED_FINDINGS = Object.freeze([
 ]);
 
 /**
+ * Findings suppressed because actionlint is wrong about them, not because they
+ * are inconvenient.
+ *
+ * actionlint ships a snapshot of popular actions' input schemas. Its v1.7.12
+ * snapshot of `actions/create-github-app-token` predates that action swapping
+ * its identifier input: `client-id` is now the supported input and `app-id` is
+ * *deprecated* ("Use 'client-id' instead", per the action's own `action.yml`).
+ * actionlint still believes the reverse, so it reports two findings at each of
+ * the nine mint-token steps in this repo — 18 in total, all false:
+ *
+ *     input "client-id" is not defined in action "actions/create-github-app-token@v3"
+ *     missing input "app-id" which is required by action "actions/create-github-app-token@v3"
+ *
+ * Acting on them would move every workflow onto a deprecated input, and PR #256
+ * already showed the action validating `client-id` at runtime.
+ *
+ * Deliberately scoped to this one action by name rather than disabling the
+ * `action` rule: a genuine typo in any other action's inputs must still fail.
+ * Once actionlint refreshes its snapshot these become no-ops and should be
+ * deleted — {@link EXPECTED_FINDINGS} is unaffected either way, and the unit
+ * tests assert these patterns cannot swallow a fixture's expected finding.
+ *
+ * @type {ReadonlyArray<string>} Go-regexp source strings for actionlint's
+ *   `-ignore` flag.
+ */
+export const IGNORED_FINDING_PATTERNS = Object.freeze([
+  'input "client-id" is not defined in action "actions/create-github-app-token',
+  'missing input "app-id" which is required by action "actions/create-github-app-token',
+]);
+
+/**
  * Parse actionlint's `-format '{{json .}}'` output into findings.
  *
  * Empty output means "no problems found" — actionlint prints nothing at all in

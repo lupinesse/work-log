@@ -18,7 +18,11 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { EXPECTED_FINDINGS, interpretSelfTest } from './lib/actionlint-selftest.mjs';
+import {
+  EXPECTED_FINDINGS,
+  IGNORED_FINDING_PATTERNS,
+  interpretSelfTest,
+} from './lib/actionlint-selftest.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
@@ -50,7 +54,13 @@ const ACTIONLINT_BIN = process.env.ACTIONLINT_PATH || 'actionlint';
  * dropping these two flags and fixing what surfaces, not by adding per-rule
  * ignores here.
  */
-const COMMON_FLAGS = Object.freeze(['-format', '{{json .}}', '-shellcheck=', '-pyflakes=']);
+const COMMON_FLAGS = Object.freeze([
+  '-format',
+  '{{json .}}',
+  '-shellcheck=',
+  '-pyflakes=',
+  ...IGNORED_FINDING_PATTERNS.flatMap((pattern) => ['-ignore', pattern]),
+]);
 
 /**
  * Run actionlint once.

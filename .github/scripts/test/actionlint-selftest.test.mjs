@@ -17,6 +17,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EXPECTED_FINDINGS,
+  IGNORED_FINDING_PATTERNS,
   parseActionlintFindings,
   interpretFixtureRun,
   interpretWorkflowsRun,
@@ -110,6 +111,56 @@ describe('EXPECTED_FINDINGS', () => {
       'context "job" is not allowed here. available contexts are "env", "github"',
       secretsExpectation.pattern
     );
+  });
+});
+
+describe('IGNORED_FINDING_PATTERNS', () => {
+  // The danger of any ignore list is that it grows until it swallows something
+  // that mattered. These patterns exist only to mute actionlint's stale
+  // create-github-app-token schema; if one is ever widened enough to hide a
+  // fixture's expected finding, the self-test would go green while checking
+  // nothing — the exact failure this module is built to prevent.
+  test('cannot suppress either historical bug', () => {
+    for (const pattern of IGNORED_FINDING_PATTERNS) {
+      assert.ok(!SECRETS_IN_IF_MESSAGE.includes(pattern), `"${pattern}" would mute PR #256`);
+      assert.ok(!PERMISSION_SCOPE_MESSAGE.includes(pattern), `"${pattern}" would mute PR #299`);
+    }
+  });
+
+  // actionlint reads these as Go regexps. Keeping them free of metacharacters
+  // means substring matching is equivalent, which is what makes the assertions
+  // above a faithful test of the real behaviour rather than an approximation.
+  test('contain no regex metacharacters, so they match literally', () => {
+    for (const pattern of IGNORED_FINDING_PATTERNS) {
+      assert.doesNotMatch(
+        pattern,
+        /[\\^$.|?*+()[\]{}]/,
+        `"${pattern}" has regex syntax — its match semantics are no longer obvious`
+      );
+    }
+  });
+
+  test('each is scoped to the specific action it excuses', () => {
+    for (const pattern of IGNORED_FINDING_PATTERNS) {
+      assert.match(
+        pattern,
+        /actions\/create-github-app-token/,
+        'an ignore that names no action would mute that rule repo-wide'
+      );
+    }
+  });
+
+  test('matches the false positives it is meant to mute', () => {
+    const falsePositives = [
+      'input "client-id" is not defined in action "actions/create-github-app-token@v3". available inputs are "app-id"',
+      'missing input "app-id" which is required by action "actions/create-github-app-token@v3". all required inputs are "app-id", "private-key"',
+    ];
+    for (const message of falsePositives) {
+      assert.ok(
+        IGNORED_FINDING_PATTERNS.some((pattern) => message.includes(pattern)),
+        `no ignore pattern matched: ${message}`
+      );
+    }
   });
 });
 
