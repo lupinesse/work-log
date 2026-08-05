@@ -23,7 +23,7 @@ const POMO_RIBBON_DOT_COUNT = 5;
  * @returns {number}
  */
 function pomoSessionsOnDate(log, dateKey) {
-  return log.filter((e) => dk(new Date(e.ts)) === dateKey).length;
+  return log.filter((session) => dk(new Date(session.ts)) === dateKey).length;
 }
 
 /**
@@ -32,9 +32,9 @@ function pomoSessionsOnDate(log, dateKey) {
  * @returns {string[]} Array of YYYY-MM-DD strings.
  */
 function pomoBuildDateRange() {
-  return Array.from({ length: POMO_SPARKLINE_DAYS }, (_, i) => {
+  return Array.from({ length: POMO_SPARKLINE_DAYS }, (_, index) => {
     const d = new Date();
-    d.setDate(d.getDate() - (POMO_SPARKLINE_DAYS - 1 - i));
+    d.setDate(d.getDate() - (POMO_SPARKLINE_DAYS - 1 - index));
     return dk(d);
   });
 }
@@ -65,7 +65,7 @@ function renderPomoSparkline() {
 
   const log = pomoGetLog();
   const days = pomoBuildDateRange();
-  const counts = days.map((d) => pomoSessionsOnDate(log, d));
+  const counts = days.map((day) => pomoSessionsOnDate(log, day));
   const maxCount = Math.max(...counts, 1); // guard against all-zero
 
   const dpr = window.devicePixelRatio || 1;
@@ -88,8 +88,8 @@ function renderPomoSparkline() {
   const barW = barUnit * 0.72;
   const maxBarH = cssH - 6; // 6 px bottom margin for breathing room
 
-  counts.forEach((count, i) => {
-    const x = i * barUnit;
+  counts.forEach((count, index) => {
+    const x = index * barUnit;
     const barH = count > 0 ? Math.max(3, (count / maxCount) * maxBarH) : 2;
     const y = cssH - barH - 3;
 
@@ -123,9 +123,9 @@ function renderPomoRibbon() {
 
   if (dotsEl) {
     const slice = log.slice(0, POMO_RIBBON_DOT_COUNT);
-    dotsEl.innerHTML = Array.from({ length: POMO_RIBBON_DOT_COUNT }, (_, i) => {
-      if (i < slice.length) {
-        const session = slice[i];
+    dotsEl.innerHTML = Array.from({ length: POMO_RIBBON_DOT_COUNT }, (_, index) => {
+      if (index < slice.length) {
+        const session = slice[index];
         const taskPart = session.task ? ` — ${escHtml(session.task)}` : '';
         const label = `${session.mins} min session${taskPart}`;
         return `<span class="pomo-rdot pomo-rdot-filled" title="${label}" aria-hidden="true">●</span>`;
@@ -139,13 +139,13 @@ function renderPomoRibbon() {
 
     // Tally sessions per calendar day across the full log
     const perDay = {};
-    log.forEach((e) => {
-      const d = dk(new Date(e.ts));
+    log.forEach((session) => {
+      const d = dk(new Date(session.ts));
       perDay[d] = (perDay[d] || 0) + 1;
     });
 
     const todayCount = perDay[today] || 0;
-    const peakCount = Object.values(perDay).reduce((a, b) => Math.max(a, b), 0);
+    const peakCount = Object.values(perDay).reduce((max, count) => Math.max(max, count), 0);
 
     if (todayCount > 0 && todayCount >= peakCount) {
       pillEl.textContent = `🔥 Peak Focus — ${todayCount} session${todayCount > 1 ? 's' : ''}`;
@@ -172,7 +172,7 @@ function renderPomoRibbon() {
 function updatePomoTaskLabel() {
   const el = document.getElementById('pomoTaskLabel');
   if (!el) return;
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
   el.textContent = liveEntry ? liveEntry.text : '';
 }
 

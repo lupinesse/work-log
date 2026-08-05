@@ -37,7 +37,7 @@ function loadBlocks() {
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {
-    blocks = blocks.map((b) => ({ ...b, slot: b.slot + 2 }));
+    blocks = blocks.map((block) => ({ ...block, slot: block.slot + 2 }));
     saveBlocks();
     localStorage.setItem('wl_tb_migrated_7', '1');
   }
@@ -87,24 +87,24 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
   const hits = [];
   // Check against manual planned blocks
   blocks
-    .filter((b) => b.date === dateKey && b.id !== excludeId)
-    .forEach((b) => {
-      const s = TB_START * 60 + b.slot * 30,
-        e = s + b.duration * 30;
-      if (newStartMins < e && newEndMins > s) hits.push(b.text);
+    .filter((block) => block.date === dateKey && block.id !== excludeId)
+    .forEach((block) => {
+      const s = TB_START * 60 + block.slot * 30,
+        e = s + block.duration * 30;
+      if (newStartMins < e && newEndMins > s) hits.push(block.text);
     });
   // Check against completed log entries
   entries
-    .filter((e) => e.date === dateKey && e.tsEnd && e.tsEnd > e.ts)
-    .forEach((e) => {
-      const s = new Date(e.ts).getHours() * 60 + new Date(e.ts).getMinutes();
-      const en = new Date(e.tsEnd).getHours() * 60 + new Date(e.tsEnd).getMinutes();
-      if (newStartMins < en && newEndMins > s) hits.push(e.text);
+    .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.tsEnd > entry.ts)
+    .forEach((entry) => {
+      const s = new Date(entry.ts).getHours() * 60 + new Date(entry.ts).getMinutes();
+      const en = new Date(entry.tsEnd).getHours() * 60 + new Date(entry.tsEnd).getMinutes();
+      if (newStartMins < en && newEndMins > s) hits.push(entry.text);
     });
   // Deduplicate and format
   const unique = [...new Set(hits)];
   if (!unique.length) return '';
-  return unique.map((t) => `"${t}"`).join(', ');
+  return unique.map((name) => `"${name}"`).join(', ');
 }
 
 /**
@@ -124,7 +124,7 @@ function openBlockEmojiPicker(bid, anchor) {
     }
   }
   _emojiPickerPid = bid;
-  const block = blocks.find((b) => b.id === bid);
+  const block = blocks.find((bl) => bl.id === bid);
   if (!block) return;
 
   const picker = document.createElement('div');
@@ -162,12 +162,12 @@ function openBlockEmojiPicker(bid, anchor) {
 
   input.focus();
   input.select();
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
       const v = input.value.trim();
       setBlockEmoji(bid, v || null);
     }
-    if (e.key === 'Escape') {
+    if (event.key === 'Escape') {
       picker.remove();
       _emojiPickerPid = null;
     }
@@ -190,7 +190,7 @@ function openBlockEmojiPicker(bid, anchor) {
  * @param {string|null} emoji - Emoji character to assign, or null to remove.
  */
 function setBlockEmoji(bid, emoji) {
-  const block = blocks.find((b) => b.id === bid);
+  const block = blocks.find((bl) => bl.id === bid);
   if (!block) return;
   if (emoji) block.emoji = emoji;
   else delete block.emoji;
@@ -216,7 +216,9 @@ function checkBlockNotifications() {
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
 
-  const pending = blocks.filter((b) => b.date === todayKey && !notifiedBlocks.has(b.id));
+  const pending = blocks.filter(
+    (block) => block.date === todayKey && !notifiedBlocks.has(block.id)
+  );
 
   for (const b of pending) {
     const startMins = TB_START * 60 + b.slot * 30;
@@ -228,9 +230,14 @@ function checkBlockNotifications() {
         notifiedBlocks.add(b.id);
         // Skip if already logged or timer already running for this meeting
         const alreadyLogged = entries.some(
-          (e) => e.date === todayKey && e.text.toLowerCase() === b.text.toLowerCase() && !e.tsEnd // only count open entries — not pre-created completed ones
+          (entry) =>
+            entry.date === todayKey &&
+            entry.text.toLowerCase() === b.text.toLowerCase() &&
+            !entry.tsEnd // only count open entries — not pre-created completed ones
         );
-        const curEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+        const curEntry = activeTimer
+          ? entries.find((entry) => entry.id === activeTimer.entryId)
+          : null;
         const alreadyActive = curEntry && curEntry.text.toLowerCase() === b.text.toLowerCase();
         if (!alreadyLogged && !alreadyActive) {
           // Use the meeting's scheduled start time, not now
@@ -251,7 +258,7 @@ function checkBlockNotifications() {
       if (nowMins < startMins || nowMins >= startMins + 3) continue;
       notifiedBlocks.add(b.id);
       if (activeTimer) {
-        const cur = entries.find((e) => e.id === activeTimer.entryId);
+        const cur = entries.find((entry) => entry.id === activeTimer.entryId);
         const curName = cur ? cur.text : 'current task';
         const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
         if (sw) {
@@ -289,7 +296,7 @@ function tbStartBlock(blockId, overrideTs) {
   if (!b) return;
   const todayKey = dk(new Date());
   let task = planTasks.find(
-    (t) => t.date === todayKey && t.text.toLowerCase() === b.text.toLowerCase()
+    (match) => match.date === todayKey && match.text.toLowerCase() === b.text.toLowerCase()
   );
   if (!task) {
     task = {

@@ -121,7 +121,7 @@ function weatherEmoji(code) {
 function getMoonData(date) {
   const JD = date.getTime() / 86400000 + 2440587.5;
   const D = JD - 2451545.0; // days from J2000
-  const toR = (x) => (x * Math.PI) / 180;
+  const toR = (degrees) => (degrees * Math.PI) / 180;
 
   // Moon's ecliptic longitude (simplified Meeus)
   const L = (((218.316 + 13.176396 * D) % 360) + 360) % 360;
@@ -324,14 +324,18 @@ function fetchNameday() {
 
   // Fetch both Finnish and Swedish names, show with explicit language labels
   fetch(`${NAMEDAY_API_BASE}/namedays/today`)
-    .then((r) => {
-      if (!r.ok) throw new Error(`API error: ${r.status}`);
-      return r.json();
+    .then((response) => {
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      return response.json();
     })
     .then((data) => {
       if (data.success && data.name_days_by_type) {
-        const finnishNames = (data.name_days_by_type.suomi || []).map((n) => n.name);
-        const swedishNames = (data.name_days_by_type.ruotsi || []).map((n) => n.name);
+        const finnishNames = (data.name_days_by_type.suomi || []).map(
+          (nameEntry) => nameEntry.name
+        );
+        const swedishNames = (data.name_days_by_type.ruotsi || []).map(
+          (nameEntry) => nameEntry.name
+        );
 
         let display = "🎂 Today's name day: ";
 
@@ -388,14 +392,18 @@ function fetchCalendarEvents() {
     }
     const todayFull = `${year}-${todayMD}`;
     const all = [
-      ...Object.entries(thisYear).map(([k, v]) => ({ key: `${year}-${k}`, type: 'flag', name: v })),
-      ...Object.entries(nextYear).map(([k, v]) => ({
-        key: `${year + 1}-${k}`,
+      ...Object.entries(thisYear).map(([dayKey, dayName]) => ({
+        key: `${year}-${dayKey}`,
         type: 'flag',
-        name: v,
+        name: dayName,
       })),
-    ].sort((a, b) => a.key.localeCompare(b.key));
-    const next = all.find((d) => d.key > todayFull);
+      ...Object.entries(nextYear).map(([dayKey, dayName]) => ({
+        key: `${year + 1}-${dayKey}`,
+        type: 'flag',
+        name: dayName,
+      })),
+    ].sort((eventA, eventB) => eventA.key.localeCompare(eventB.key));
+    const next = all.find((event) => event.key > todayFull);
     if (next) {
       const dateStr = new Date(next.key + 'T12:00:00').toLocaleDateString('en', {
         month: 'long',
@@ -411,7 +419,7 @@ function fetchCalendarEvents() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((response) => (response.ok ? response.json() : Promise.reject()))
       .catch(() => ({ hits: [] }));
 
   const todayStr = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -483,7 +491,7 @@ function fetchCalendarEvents() {
           });
 
         if (events.length > 0) {
-          const next = events.sort((a, b) => a.date.localeCompare(b.date))[0];
+          const next = events.sort((eventA, eventB) => eventA.date.localeCompare(eventB.date))[0];
           const dateStr = new Date(next.date + 'T12:00:00').toLocaleDateString('en', {
             month: 'long',
             day: 'numeric',
@@ -513,24 +521,24 @@ function fetchWeather() {
   fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=sunrise,sunset,daylight_duration&timezone=Europe%2FHelsinki&past_days=1&forecast_days=2`
   )
-    .then((r) => r.json())
-    .then((d) => {
-      if (!validWeatherResponse(d)) {
-        wlLog.warn('fetchWeather: unexpected response shape', d);
+    .then((response) => response.json())
+    .then((data) => {
+      if (!validWeatherResponse(data)) {
+        wlLog.warn('fetchWeather: unexpected response shape', data);
         throw new Error('fetchWeather: invalid response shape');
       }
-      const temp = Math.round(d.current.temperature_2m);
-      const emoji = weatherEmoji(d.current.weather_code);
+      const temp = Math.round(data.current.temperature_2m);
+      const emoji = weatherEmoji(data.current.weather_code);
       document.getElementById('liveWeather').textContent = `${WEATHER_NAME}, ${temp}°C ${emoji}`;
 
       // Peak rain probability in next 8 hours
-      const times = d.hourly.time;
-      const probs = d.hourly.precipitation_probability;
+      const times = data.hourly.time;
+      const probs = data.hourly.precipitation_probability;
       // Find current hour in local time (API times are local)
       const _now = new Date();
-      const _pad = (n) => String(n).padStart(2, '0');
+      const _pad = (num) => String(num).padStart(2, '0');
       const nowLocalStr = `${_now.getFullYear()}-${_pad(_now.getMonth() + 1)}-${_pad(_now.getDate())}T${_pad(_now.getHours())}`;
-      const nowIdx = times.findIndex((t) => t.slice(0, 13) === nowLocalStr);
+      const nowIdx = times.findIndex((time) => time.slice(0, 13) === nowLocalStr);
       if (nowIdx === -1) return;
 
       const windowStart = nowIdx + 1; // start from next hour — current hour may already be past
@@ -545,9 +553,9 @@ function fetchWeather() {
         peak > 0 ? `${peak}% chance of rain at ${hh}:${mm}` : 'No rain expected';
 
       // Sunrise / sunset / day length
-      if (d.daily && d.daily.time && d.daily.sunrise) {
+      if (data.daily && data.daily.time && data.daily.sunrise) {
         const todayStr = dk(new Date()); // "YYYY-MM-DD"
-        const todayIdx = d.daily.time.indexOf(todayStr);
+        const todayIdx = data.daily.time.indexOf(todayStr);
         const yesterdayIdx = todayIdx > 0 ? todayIdx - 1 : -1;
         if (todayIdx !== -1) {
           const parse = (str) => {
@@ -556,14 +564,14 @@ function fetchWeather() {
               String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0')
             );
           };
-          const rise = parse(d.daily.sunrise[todayIdx]);
-          const set_ = parse(d.daily.sunset[todayIdx]);
-          const durSec = d.daily.daylight_duration[todayIdx];
+          const rise = parse(data.daily.sunrise[todayIdx]);
+          const set_ = parse(data.daily.sunset[todayIdx]);
+          const durSec = data.daily.daylight_duration[todayIdx];
           const h = Math.floor(durSec / 3600);
           const m = Math.floor((durSec % 3600) / 60);
           let diffHtml = '';
           if (yesterdayIdx !== -1) {
-            const diffMin = Math.round((durSec - d.daily.daylight_duration[yesterdayIdx]) / 60);
+            const diffMin = Math.round((durSec - data.daily.daylight_duration[yesterdayIdx]) / 60);
             if (diffMin > 0)
               diffHtml = ` <strong style="color:var(--sig-event)">+${diffMin} min</strong>`;
             else if (diffMin < 0)
@@ -581,7 +589,7 @@ function fetchWeather() {
 // Load location from server config before the first weather fetch.
 // Falls back to the defaults in 00-config.js when the server is not running.
 fetch('/api/config')
-  .then((r) => (r.ok ? r.json() : null))
+  .then((response) => (response.ok ? response.json() : null))
   .then((cfg) => {
     if (!cfg) return;
     if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;

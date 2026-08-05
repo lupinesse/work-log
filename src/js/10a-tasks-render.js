@@ -7,11 +7,11 @@
  * @returns {{ todoTasks: object[], inProgressTasks: object[], todayDoneTasks: object[] }}
  */
 function groupTasksByColumn(viewKey) {
-  const allViewTasks = planTasks.filter((t) => t.date === viewKey);
+  const allViewTasks = planTasks.filter((task) => task.date === viewKey);
   return {
-    todoTasks: allViewTasks.filter((t) => !['inprogress', 'done'].includes(t.status)),
-    inProgressTasks: allViewTasks.filter((t) => t.status === 'inprogress'),
-    todayDoneTasks: allViewTasks.filter((t) => t.status === 'done'),
+    todoTasks: allViewTasks.filter((task) => !['inprogress', 'done'].includes(task.status)),
+    inProgressTasks: allViewTasks.filter((task) => task.status === 'inprogress'),
+    todayDoneTasks: allViewTasks.filter((task) => task.status === 'done'),
   };
 }
 
@@ -127,29 +127,30 @@ function renderPlan() {
 function renderBoardDoneHistory(doneListEl, viewKey) {
   const activeTodayTexts = new Set(
     planTasks
-      .filter((t) => t.date === viewKey && t.status !== 'done')
-      .map((t) => t.text.toLowerCase())
+      .filter((task) => task.date === viewKey && task.status !== 'done')
+      .map((task) => task.text.toLowerCase())
   );
 
   const olderDone = planTasks
-    .filter((t) => {
-      if (t.status !== 'done') return false;
-      if (activeTodayTexts.has(t.text.toLowerCase())) return false;
-      const completedTs = t.completedAt || new Date((t.date || viewKey) + 'T23:59:00').getTime();
+    .filter((task) => {
+      if (task.status !== 'done') return false;
+      if (activeTodayTexts.has(task.text.toLowerCase())) return false;
+      const completedTs =
+        task.completedAt || new Date((task.date || viewKey) + 'T23:59:00').getTime();
       const completedDay = dk(new Date(completedTs));
       if (completedDay === viewKey) return false;
       const expiryDay = getIterationExpiry(completedDay);
       if (!expiryDay) return viewKey >= completedDay;
       return viewKey >= completedDay && viewKey < expiryDay;
     })
-    .sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
+    .sort((taskA, taskB) => (taskB.completedAt || 0) - (taskA.completedAt || 0));
 
   if (!olderDone.length) return;
 
   // Deduplicate by text — keep most recently completed
   const seen = new Set();
-  const deduped = olderDone.filter((t) => {
-    const key = t.text.toLowerCase();
+  const deduped = olderDone.filter((task) => {
+    const key = task.text.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -158,10 +159,10 @@ function renderBoardDoneHistory(doneListEl, viewKey) {
 
   // Group by completion day
   const byDay = {};
-  deduped.forEach((t) => {
-    const day = t.completedAt ? dk(new Date(t.completedAt)) : t.date || viewKey;
+  deduped.forEach((task) => {
+    const day = task.completedAt ? dk(new Date(task.completedAt)) : task.date || viewKey;
     if (!byDay[day]) byDay[day] = [];
-    byDay[day].push(t);
+    byDay[day].push(task);
   });
 
   const btn = document.createElement('button');
@@ -209,13 +210,13 @@ function renderTrackRecent() {
   const seen = new Set();
   const recent = [];
   [...entries]
-    .filter((e) => e.date === todayKey)
+    .filter((entry) => entry.date === todayKey)
     .reverse()
-    .forEach((e) => {
-      const key = e.text.toLowerCase();
+    .forEach((entry) => {
+      const key = entry.text.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        recent.push(e);
+        recent.push(entry);
       }
     });
 
@@ -224,11 +225,11 @@ function renderTrackRecent() {
     return;
   }
 
-  const chips = recent.slice(0, 5).map((e) => {
-    const color = getCatColor(e.tag);
-    return `<button class="ptr-chip" data-eid="${escHtml(e.id)}" title="Track: ${escHtml(e.text)}">
+  const chips = recent.slice(0, 5).map((entry) => {
+    const color = getCatColor(entry.tag);
+    return `<button class="ptr-chip" data-eid="${escHtml(entry.id)}" title="Track: ${escHtml(entry.text)}">
       <span class="ptr-chip-dot" style="background:${color}" aria-hidden="true"></span>
-      ${escHtml(e.text)}
+      ${escHtml(entry.text)}
     </button>`;
   });
 
@@ -237,7 +238,7 @@ function renderTrackRecent() {
 
   container.querySelectorAll('.ptr-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
-      const src = entries.find((e) => e.id === chip.dataset.eid);
+      const src = entries.find((en) => en.id === chip.dataset.eid);
       if (!src) return;
       if (activeTimer) stopTimer();
       const entry = createRestartedEntry(src.text, src.tag);

@@ -41,7 +41,7 @@ function sigTitle(entry) {
  * @param {string} entryId - ID of the entry to update.
  */
 function cycleSignifier(entryId) {
-  const entry = entries.find((e) => e.id === entryId);
+  const entry = entries.find((en) => en.id === entryId);
   if (!entry) {
     // No matching entry usually means a stale click during a re-render —
     // a misuse-shaped event, not a routine info-level branch.
@@ -75,13 +75,13 @@ function sigHtml(entry) {
 /** Attaches click and keyboard listeners to all `.esig` elements after a render. */
 function bindSignifierClicks() {
   document.querySelectorAll('.esig').forEach((el) => {
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
+    el.addEventListener('click', (event) => {
+      event.stopPropagation();
       cycleSignifier(el.dataset.entryId);
     });
-    el.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
         cycleSignifier(el.dataset.entryId);
       }
     });

@@ -12,7 +12,7 @@ let _boardDragTaskId = null;
  * @returns {void}
  */
 function moveTaskToColumn(taskId, newStatus) {
-  const t = planTasks.find((p) => p.id === taskId);
+  const t = planTasks.find((task) => task.id === taskId);
   if (!t) {
     wlLog.warn('board: moveTaskToColumn — task not found', { id: taskId });
     return;
@@ -25,7 +25,7 @@ function moveTaskToColumn(taskId, newStatus) {
   // Stop the active timer only if it was tracking this exact task
   const stopTimerIfMatches = () => {
     if (activeTimer) {
-      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
+      const timerEntry = entries.find((entry) => entry.id === activeTimer.entryId);
       if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
     }
   };
@@ -65,9 +65,9 @@ function moveTaskToColumn(taskId, newStatus) {
 function bindBoardColumnDnD() {
   document.querySelectorAll('.kb-cards > .plan-item').forEach((card) => {
     card.setAttribute('draggable', 'true');
-    card.addEventListener('dragstart', (e) => {
+    card.addEventListener('dragstart', (event) => {
       _boardDragTaskId = card.dataset.pid;
-      e.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.effectAllowed = 'move';
       card.classList.add('kb-dragging');
     });
     card.addEventListener('dragend', () => {
@@ -96,19 +96,19 @@ function initBoardColumnDnD() {
     const listEl = document.getElementById(listId);
     if (!listEl) return;
 
-    listEl.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
+    listEl.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
       listEl.closest('.kb-col').classList.add('kb-col--drop-over');
     });
-    listEl.addEventListener('dragleave', (e) => {
+    listEl.addEventListener('dragleave', (event) => {
       // Only remove highlight when truly leaving the column (not a child element)
-      if (!listEl.closest('.kb-col').contains(e.relatedTarget)) {
+      if (!listEl.closest('.kb-col').contains(event.relatedTarget)) {
         listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
       }
     });
-    listEl.addEventListener('drop', (e) => {
-      e.preventDefault();
+    listEl.addEventListener('drop', (event) => {
+      event.preventDefault();
       listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
       if (_boardDragTaskId) {
         moveTaskToColumn(_boardDragTaskId, COLUMN_MAP[listId]);
@@ -164,8 +164,8 @@ function initBoardTabs() {
     btn.addEventListener('click', () => activateBoardTab(btn.dataset.tab));
 
     // Drag over a tab → switch to that lane so the card can be dropped there
-    btn.addEventListener('dragover', (e) => {
-      e.preventDefault();
+    btn.addEventListener('dragover', (event) => {
+      event.preventDefault();
       btn.classList.add('board-tab--drop');
       activateBoardTab(btn.dataset.tab);
     });
@@ -176,21 +176,21 @@ function initBoardTabs() {
   // Arrow-key navigation between tabs (WCAG SC 4.1.2 tablist pattern)
   const tabsEl = document.getElementById('boardTabs');
   if (tabsEl) {
-    tabsEl.addEventListener('keydown', (e) => {
+    tabsEl.addEventListener('keydown', (event) => {
       const tabs = [...document.querySelectorAll('.board-tab')];
-      const idx = tabs.findIndex((t) => t === document.activeElement);
+      const idx = tabs.findIndex((tab) => tab === document.activeElement);
       if (idx === -1) return;
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
         tabs[(idx + 1) % tabs.length].focus();
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
         tabs[(idx - 1 + tabs.length) % tabs.length].focus();
-      } else if (e.key === 'Home') {
-        e.preventDefault();
+      } else if (event.key === 'Home') {
+        event.preventDefault();
         tabs[0].focus();
-      } else if (e.key === 'End') {
-        e.preventDefault();
+      } else if (event.key === 'End') {
+        event.preventDefault();
         tabs[tabs.length - 1].focus();
       }
     });
@@ -213,7 +213,7 @@ function updateBoardLive() {
     return;
   }
 
-  const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+  const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
   if (!liveEntry) {
     stripEl.hidden = true;
     return;

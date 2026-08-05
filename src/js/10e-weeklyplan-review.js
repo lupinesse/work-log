@@ -156,19 +156,19 @@ if (planReviewActionBtn) planReviewActionBtn.addEventListener('click', openPlanR
 if (planReviewDismissBtn) planReviewDismissBtn.addEventListener('click', markPlanReviewedThisWeek);
 if (planReviewClose) planReviewClose.addEventListener('click', closePlanReviewOverlay);
 if (planReviewOverlay) {
-  planReviewOverlay.addEventListener('click', (e) => {
-    if (e.target === planReviewOverlay) closePlanReviewOverlay();
+  planReviewOverlay.addEventListener('click', (event) => {
+    if (event.target === planReviewOverlay) closePlanReviewOverlay();
   });
-  planReviewOverlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePlanReviewOverlay();
+  planReviewOverlay.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closePlanReviewOverlay();
   });
 }
 if (planReviewList) {
-  planReviewList.addEventListener('click', (e) => {
-    const doneBtn = e.target.closest('.plan-review-done');
-    const dropBtn = e.target.closest('.plan-review-drop');
+  planReviewList.addEventListener('click', (event) => {
+    const doneBtn = event.target.closest('.plan-review-done');
+    const dropBtn = event.target.closest('.plan-review-drop');
     if (doneBtn) {
-      const task = planTasks.find((t) => t.id === doneBtn.dataset.id);
+      const task = planTasks.find((match) => match.id === doneBtn.dataset.id);
       if (task) {
         task.status = 'done';
         if (!task.completedAt) task.completedAt = Date.now();
@@ -177,7 +177,7 @@ if (planReviewList) {
       }
       renderPlanReviewList();
     } else if (dropBtn) {
-      planTasks = planTasks.filter((t) => t.id !== dropBtn.dataset.id);
+      planTasks = planTasks.filter((task) => task.id !== dropBtn.dataset.id);
       savePlan();
       renderPlan();
       renderPlanReviewList();
