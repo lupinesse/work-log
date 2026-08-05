@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (55 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (57 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -340,8 +340,11 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (565 lines) — Live Info Widgets
-**Responsibility**: Display current time, weather, moon phase, nameday
+#### **09-clock-weather.js** (114 lines) — Live Info Widgets
+**Responsibility**: Display current time and drive the shared bootstrap
+sequence that kicks off weather/almanac/misc renders on load. Weather
+(`weatherEmoji`, `fetchWeather`) was split to `09a-weather.js`; moon phase,
+Finnish flag days, and nameday were split to `09b-almanac.js`.
 
 **Data Sources**:
 - **Time**: Browser `Date` object
