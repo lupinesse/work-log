@@ -1463,16 +1463,19 @@ describe('_qcActivateRow', () => {
 // recent-chip shortcuts (06a-hero.js) instead of the quick-capture overlay.
 
 /**
- * Loads 06a-hero.js into a VM sandbox. All of the file's DOM binding happens
- * inside initHero() (called separately, not at parse time), so the module
- * evaluates safely with a minimal document stub. `_composerInput` is exposed
- * on the sandbox so tests can set the typed text before calling _heroHandleStart.
+ * Loads 06a-hero.js and its sibling 06b-hero-events.js into a VM sandbox
+ * (_heroHandleStart/_heroStartFromChip were split into the latter). All of
+ * the DOM binding happens inside initHero() (called separately, not at parse
+ * time), so the module evaluates safely with a minimal document stub.
+ * `_composerInput` is exposed on the sandbox so tests can set the typed text
+ * before calling _heroHandleStart.
  * @param {Object} [overrides] - Properties merged into the sandbox before eval.
  * @returns {Object} The populated sandbox.
  */
 function loadHeroSandbox(overrides = {}) {
   const pureSrc = loadPureFnsScriptSource();
   const heroSrc = readFileSync(join(__dirname, '../src/js/06a-hero.js'), 'utf8');
+  const heroEventsSrc = readFileSync(join(__dirname, '../src/js/06b-hero-events.js'), 'utf8');
   const composerInput = { value: '' };
   const elements = { heroComposerInput: composerInput };
 
@@ -1501,6 +1504,7 @@ function loadHeroSandbox(overrides = {}) {
   vm.createContext(sandbox);
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(heroSrc, sandbox);
+  vm.runInContext(heroEventsSrc, sandbox);
   return sandbox;
 }
 
