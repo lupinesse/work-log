@@ -12,7 +12,7 @@ const STORE_LOCATION = 'wl_location_v1';
 const qpHidden = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_QP_HIDDEN) || '[]');
-    return new Set(Array.isArray(raw) ? raw.map((s) => String(s).toLowerCase()) : []);
+    return new Set(Array.isArray(raw) ? raw.map((text) => String(text).toLowerCase()) : []);
   } catch (err) {
     return new Set();
   }
@@ -62,8 +62,8 @@ const CUSTOM_PALETTE = [
  * @returns {string} A CSS colour string (hex or hsl).
  */
 function nextDistinctColor() {
-  const usedColors = new Set(categories.map((c) => c.color.toLowerCase()));
-  const pick = CUSTOM_PALETTE.find((c) => !usedColors.has(c.toLowerCase()));
+  const usedColors = new Set(categories.map((cat) => cat.color.toLowerCase()));
+  const pick = CUSTOM_PALETTE.find((color) => !usedColors.has(color.toLowerCase()));
   if (pick) return pick;
   // All palette colours used — generate by golden-angle hue steps
   const hue = (usedColors.size * 137) % 360;

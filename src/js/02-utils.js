@@ -8,7 +8,9 @@
  * @returns {{ id: string, label: string, color: string }}
  */
 function getCat(id) {
-  const cat = categories.find((c) => c.id === id) || categories.find((c) => c.id === 'other');
+  const cat =
+    categories.find((category) => category.id === id) ||
+    categories.find((category) => category.id === 'other');
   if (!cat) return { id: 'other', label: 'other', color: '#888780' };
   return { ...cat, color: safeCssColor(cat.color) };
 }
@@ -61,10 +63,10 @@ function renderTagRow() {
         </label>
         <select class="cat-select" id="catSelect">
         ${[...categories]
-          .sort((a, b) => a.label.localeCompare(b.label))
+          .sort((catA, catB) => catA.label.localeCompare(catB.label))
           .map(
-            (c) =>
-              `<option value="${c.id}"${c.id === selectedTag ? ' selected' : ''}>${escHtml(c.label)}</option>`
+            (cat) =>
+              `<option value="${cat.id}"${cat.id === selectedTag ? ' selected' : ''}>${escHtml(cat.label)}</option>`
           )
           .join('')}
         </select>
@@ -77,8 +79,8 @@ function renderTagRow() {
       <div class="cat-manage-row${manageRowOpen ? ' open' : ''}" id="catManageRow">${manageHtml}</div>`;
 
   // Select change
-  document.getElementById('catSelect').addEventListener('change', (e) => {
-    selectedTag = e.target.value;
+  document.getElementById('catSelect').addEventListener('change', (event) => {
+    selectedTag = event.target.value;
     editingCatId = null;
     addingNewCat = false;
     renderTagRow();
@@ -99,7 +101,7 @@ function renderTagRow() {
       if (dot) dot.style.background = safeCssColor(quickColorPick.value);
     });
     quickColorPick.addEventListener('change', () => {
-      const cat = categories.find((c) => c.id === selectedTag);
+      const cat = categories.find((category) => category.id === selectedTag);
       if (cat) {
         cat.color = safeCssColor(quickColorPick.value);
         save();
@@ -132,12 +134,16 @@ function renderTagRow() {
         renderTagRow();
         return;
       }
-      if (categories.find((c) => c.id !== id && c.label.toLowerCase() === label.toLowerCase())) {
+      if (
+        categories.find(
+          (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
+        )
+      ) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
       }
-      const cat = categories.find((c) => c.id === id);
+      const cat = categories.find((category) => category.id === id);
       if (cat) cat.label = label;
       editingCatId = null;
       catManageOpen = false;
@@ -152,9 +158,9 @@ function renderTagRow() {
     if (editInput) {
       editInput.focus();
       editInput.select();
-      editInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveEdit();
-        if (e.key === 'Escape') {
+      editInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') saveEdit();
+        if (event.key === 'Escape') {
           editingCatId = null;
           renderTagRow();
         }
@@ -175,7 +181,7 @@ function renderTagRow() {
   const delBtn = document.getElementById('catDelBtn');
   if (delBtn)
     delBtn.addEventListener('click', () => {
-      categories = categories.filter((c) => c.id !== selectedTag);
+      categories = categories.filter((cat) => cat.id !== selectedTag);
       selectedTag = 'work';
       save();
       renderTagRow();
@@ -196,8 +202,8 @@ function renderTagRow() {
       const cat = getCat(selectedTag);
       cat.billable = cat.billable === false;
       // Retroactively update all tasks with this category
-      planTasks.forEach((t) => {
-        if (t.tag === selectedTag) t.billable = cat.billable;
+      planTasks.forEach((task) => {
+        if (task.tag === selectedTag) task.billable = cat.billable;
       });
       save();
       savePlan();
@@ -217,7 +223,7 @@ function renderTagRow() {
         renderTagRow();
         return;
       }
-      if (categories.find((c) => c.label.toLowerCase() === label.toLowerCase())) {
+      if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
@@ -237,9 +243,9 @@ function renderTagRow() {
     const newCatInput = document.getElementById('catNewInput');
     if (newCatInput) {
       newCatInput.focus();
-      newCatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveNew();
-        if (e.key === 'Escape') {
+      newCatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') saveNew();
+        if (event.key === 'Escape') {
           addingNewCat = false;
           renderTagRow();
         }
@@ -306,8 +312,8 @@ function safeRoundedStart() {
   const ts = roundToNearest30(Date.now());
   const todayKey = dk(new Date());
   const lastEnd = entries
-    .filter((e) => e.date === todayKey && e.tsEnd)
-    .reduce((max, e) => Math.max(max, e.tsEnd), 0);
+    .filter((entry) => entry.date === todayKey && entry.tsEnd)
+    .reduce((max, entry) => Math.max(max, entry.tsEnd), 0);
   return Math.max(ts, lastEnd);
 }
 
@@ -317,7 +323,7 @@ function safeRoundedStart() {
  */
 function viewEntries() {
   return entries
-    .filter((e) => e.date === dk(viewDate))
+    .filter((entry) => entry.date === dk(viewDate))
     .slice()
     .reverse();
 }
@@ -327,7 +333,7 @@ function viewEntries() {
  * @returns {number}
  */
 function calcStreak() {
-  const days = new Set(entries.map((e) => e.date));
+  const days = new Set(entries.map((entry) => entry.date));
   let streak = 0;
   const d = new Date();
   d.setDate(d.getDate() - 1); // Start from yesterday, not today

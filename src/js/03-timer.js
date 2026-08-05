@@ -73,7 +73,7 @@ function stopTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
   }
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((en) => en.id === activeTimer.entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
   // Enter the 6-second confirmation panel before clearing activeTimer so
   // heroEnterStopped() can snapshot the entry details.
@@ -100,7 +100,7 @@ function stopTimer() {
 function updateLiveBlock() {
   const el = document.getElementById('tb-live-block');
   if (!el || !activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((en) => en.id === activeTimer.entryId);
   if (!entry) return;
   const tbStartMins = TB_START * 60,
     tbEndMins = TB_END * 60;
@@ -208,7 +208,7 @@ function updateTabAndFavicon() {
     setFavicon('idle');
     return;
   }
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((en) => en.id === activeTimer.entryId);
   const taskText = entry ? entry.text : '…';
   const elapsedMs = getElapsedMs();
   const elapsed = fmtElapsed(elapsedMs);
@@ -254,7 +254,7 @@ function checkChime(elapsedMs) {
   if (!activeTimer || activeTimer.paused) return;
   const elapsedMins = Math.floor(elapsedMs / 60000);
   if (elapsedMins === _lastChimeMinute) return;
-  if (CHIME_INTERVALS_MINS.some((n) => elapsedMins > 0 && elapsedMins % n === 0)) {
+  if (CHIME_INTERVALS_MINS.some((interval) => elapsedMins > 0 && elapsedMins % interval === 0)) {
     _lastChimeMinute = elapsedMins;
     playChime();
   }
@@ -328,7 +328,7 @@ function updateTimerArc(elapsedMs) {
 function tickTimer() {
   try {
     if (!activeTimer) return;
-    const entry = entries.find((e) => e.id === activeTimer.entryId);
+    const entry = entries.find((en) => en.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
     // Update hero card clock and header tracking total every tick
     heroUpdateClock();
@@ -385,7 +385,7 @@ function updateTimerBtn(running) {
  */
 function resumeTimerIfActive() {
   if (!activeTimer) return;
-  if (!entries.find((e) => e.id === activeTimer.entryId)) {
+  if (!entries.find((en) => en.id === activeTimer.entryId)) {
     if (
       entries.length > 0 ||
       !localStorage.getItem(STORE_ENTRIES) ||
@@ -544,8 +544,8 @@ function initBannerControls() {
   const moodPanel = document.getElementById('tbMoodPanel');
 
   if (moodBtn && moodPanel) {
-    moodBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    moodBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
       const open = moodPanel.style.display !== 'none';
       moodPanel.style.display = open ? 'none' : 'block';
       moodBtn.setAttribute('aria-expanded', String(!open));
@@ -558,8 +558,8 @@ function initBannerControls() {
     });
 
     // Close on outside click
-    document.addEventListener('click', (e) => {
-      if (!moodBtn.contains(e.target) && !moodPanel.contains(e.target)) {
+    document.addEventListener('click', (event) => {
+      if (!moodBtn.contains(event.target) && !moodPanel.contains(event.target)) {
         moodPanel.style.display = 'none';
         moodBtn.setAttribute('aria-expanded', 'false');
       }
@@ -569,13 +569,13 @@ function initBannerControls() {
   // ── Quick-note input ──
   const noteInput = document.getElementById('tbNoteInput');
   if (noteInput) {
-    noteInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
+    noteInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
         commitBannerNote();
       }
       // Prevent Space from triggering the rapid-log overlay
-      if (e.code === 'Space') e.stopPropagation();
+      if (event.code === 'Space') event.stopPropagation();
     });
   }
 
@@ -593,10 +593,10 @@ function initBannerControls() {
   // these listeners.
   const longRunWarnEl = document.getElementById('heroLongRunningWarn');
   if (longRunWarnEl) {
-    longRunWarnEl.addEventListener('click', (e) => {
-      if (e.target.closest('#heroLongRunningStopBtn')) {
+    longRunWarnEl.addEventListener('click', (event) => {
+      if (event.target.closest('#heroLongRunningStopBtn')) {
         stopTimer();
-      } else if (e.target.closest('#heroLongRunningDismissBtn')) {
+      } else if (event.target.closest('#heroLongRunningDismissBtn')) {
         _longRunningWarnDismissed = true;
         renderLongRunningWarning(getElapsedMs());
       }

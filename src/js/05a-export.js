@@ -168,8 +168,8 @@ function exportBackup() {
   );
   const droppedPairs = Object.entries(dropped);
   if (droppedPairs.length) {
-    const total = droppedPairs.reduce((sum, [, n]) => sum + n, 0);
-    const detail = droppedPairs.map(([label, n]) => `${label}: ${n}`).join(', ');
+    const total = droppedPairs.reduce((sum, [, count]) => sum + count, 0);
+    const detail = droppedPairs.map(([label, count]) => `${label}: ${count}`).join(', ');
     wlLog.info(
       `exportBackup: excluded ${total} record${total === 1 ? '' : 's'} older than ${BACKUP_RETENTION_DAYS} days (${detail})`
     );
@@ -323,7 +323,7 @@ async function mergeBackupEntries(file) {
     return;
   }
 
-  const dates = [...new Set(incoming.map((e) => e.date).filter(Boolean))].sort();
+  const dates = [...new Set(incoming.map((entry) => entry.date).filter(Boolean))].sort();
   const exportedAt = backup.exported ? new Date(backup.exported).toLocaleString() : 'unknown date';
 
   const confirmed = window.confirm(

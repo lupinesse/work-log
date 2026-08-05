@@ -8,8 +8,8 @@ let _cachedDirHandle = null;
 function openIDB() {
   return new Promise((res, rej) => {
     const req = indexedDB.open('wl_fs_v1', 1);
-    req.onupgradeneeded = (e) => e.target.result.createObjectStore('handles');
-    req.onsuccess = (e) => res(e.target.result);
+    req.onupgradeneeded = (event) => event.target.result.createObjectStore('handles');
+    req.onsuccess = (event) => res(event.target.result);
     req.onerror = () => rej(req.error);
   });
 }

@@ -15,9 +15,11 @@ function renderEmergencyCps() {
   const wrap = document.getElementById('emergencyCpsWrap');
   const el = document.getElementById('emergencyCps');
   if (!wrap || !el) return;
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
   const todayKey = dk(new Date());
-  const task = entry ? planTasks.find((t) => t.text === entry.text && t.date === todayKey) : null;
+  const task = entry
+    ? planTasks.find((task) => task.text === entry.text && task.date === todayKey)
+    : null;
   const cps = task && Array.isArray(task.checkpoints) ? task.checkpoints : [];
   if (!cps.length) {
     wrap.style.display = 'none';
@@ -38,7 +40,7 @@ function renderEmergencyCps() {
     .join('');
   el.querySelectorAll('.emergency-cp-check').forEach((box) => {
     box.addEventListener('click', () => {
-      const t = planTasks.find((t) => t.id === box.dataset.tid);
+      const t = planTasks.find((planTask) => planTask.id === box.dataset.tid);
       if (!t || !t.checkpoints) return;
       const cur = t.checkpoints[parseInt(box.dataset.cidx)].done;
       t.checkpoints[parseInt(box.dataset.cidx)].done =
@@ -58,7 +60,7 @@ function renderEmergencyCps() {
 function enterEmergency() {
   emergencyMode = true;
   document.body.classList.add('emergency');
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
   document.getElementById('emergencyTask').textContent = entry
     ? entry.text
     : 'No active task — start one first';
@@ -80,7 +82,7 @@ function exitEmergency() {
   emergencyMode = false;
   document.body.classList.remove('emergency');
   // Save the next action note
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
   const note = document.getElementById('emergencyNext').value.trim();
   if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
   else if (entry) localStorage.removeItem('wl_emergency_next_' + entry.id);
@@ -93,10 +95,10 @@ function exitEmergency() {
   // Auto-expand checkpoints for the active task so user can pick up where they left off
   if (entry) {
     const activeTask = planTasks.find(
-      (t) =>
-        t.text.toLowerCase() === entry.text.toLowerCase() &&
-        Array.isArray(t.checkpoints) &&
-        t.checkpoints.length > 0
+      (task) =>
+        task.text.toLowerCase() === entry.text.toLowerCase() &&
+        Array.isArray(task.checkpoints) &&
+        task.checkpoints.length > 0
     );
     if (activeTask) _cpOpenIds.add(activeTask.id);
   }
@@ -108,8 +110,8 @@ document.getElementById('emergencyBtn').addEventListener('click', () => {
 });
 document.getElementById('emergencyExit').addEventListener('click', exitEmergency);
 // Escape key exits emergency mode
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && emergencyMode) exitEmergency();
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && emergencyMode) exitEmergency();
 });
 
 /* ── Transition handoff note ── */
@@ -159,7 +161,7 @@ document.getElementById('timerStop').addEventListener('click', () => {
     document.getElementById('timerStop').textContent = 'done ✓';
   } else {
     // Second click — save note and stop
-    const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+    const entry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
     const note = handoffEl.value.trim();
     if (entry) saveHandoffNote(entry.text, note);
     hideHandoffInput();
@@ -169,9 +171,9 @@ document.getElementById('timerStop').addEventListener('click', () => {
   }
 });
 // Enter key on handoff input also confirms
-document.getElementById('timerHandoff').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') document.getElementById('timerStop').click();
-  if (e.key === 'Escape') {
+document.getElementById('timerHandoff').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') document.getElementById('timerStop').click();
+  if (event.key === 'Escape') {
     hideHandoffInput();
     document.getElementById('timerStop').textContent = 'stop';
   }

@@ -160,7 +160,7 @@ function renderEodReminder() {
   const todayKey = dk(today);
   const sodTs = getDayStart(today);
   const eodTs = getEodTs(today);
-  const hasEntriesToday = entries.some((e) => e.date === todayKey);
+  const hasEntriesToday = entries.some((entry) => entry.date === todayKey);
   const shouldShow =
     _eodReminderDismissedDate !== todayKey &&
     isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now: Date.now() });
@@ -274,10 +274,10 @@ document.getElementById('pomoHeader').addEventListener('click', () => {
 // Backup restore: the hidden file input is triggered from the SOD button flow.
 // The change handler calls importBackup() and resets the input so the same
 // file can be re-selected if needed (e.g. user cancels and retries).
-document.getElementById('backupFileInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
+document.getElementById('backupFileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
   if (file) importBackup(file);
-  e.target.value = '';
+  event.target.value = '';
 });
 
 // Merge backup: triggered from the export section's "merge backup" button.
@@ -286,16 +286,16 @@ document.getElementById('backupFileInput').addEventListener('change', (e) => {
 document.getElementById('mergeBackupBtn').addEventListener('click', () => {
   document.getElementById('mergeFileInput').click();
 });
-document.getElementById('mergeFileInput').addEventListener('change', (e) => {
-  const file = e.target.files[0];
+document.getElementById('mergeFileInput').addEventListener('change', (event) => {
+  const file = event.target.files[0];
   if (file) mergeBackupEntries(file);
-  e.target.value = '';
+  event.target.value = '';
 });
 
 document.getElementById('addBtn').addEventListener('click', () => addEntry(false));
 document.getElementById('timerBtn').addEventListener('click', () => addEntry(true));
-document.getElementById('captureInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addEntry(false);
+document.getElementById('captureInput').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') addEntry(false);
 });
 document.getElementById('timerPause').addEventListener('click', () => {
   if (activeTimer && activeTimer.paused) resumeTimer();
@@ -342,20 +342,20 @@ document.getElementById('nextDay').addEventListener('click', () => {
 function saveSnapshot() {
   const todayKey = dk(new Date());
   const dayEntries = entries
-    .filter((e) => e.date === todayKey)
+    .filter((entry) => entry.date === todayKey)
     .slice()
-    .sort((a, b) => a.ts - b.ts);
+    .sort((entryA, entryB) => entryA.ts - entryB.ts);
   if (!dayEntries.length) return;
   const order = [],
     grouped = {};
-  dayEntries.forEach((e) => {
-    const key = e.text.toLowerCase();
+  dayEntries.forEach((entry) => {
+    const key = entry.text.toLowerCase();
     if (!grouped[key]) {
       order.push(key);
-      grouped[key] = { label: e.text, tag: e.tag, totalMs: 0, hasTime: false };
+      grouped[key] = { label: entry.text, tag: entry.tag, totalMs: 0, hasTime: false };
     }
-    if (e.tsEnd && e.tsEnd > e.ts) {
-      grouped[key].totalMs += e.tsEnd - e.ts;
+    if (entry.tsEnd && entry.tsEnd > entry.ts) {
+      grouped[key].totalMs += entry.tsEnd - entry.ts;
       grouped[key].hasTime = true;
     }
   });
