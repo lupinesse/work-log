@@ -243,8 +243,51 @@ node smoke-tests.cjs
 npm run test:unit        # Unit tests (test/unit.mjs)
 npm run test:scripts     # CI script tests (.github/scripts/test/*.test.mjs)
 npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlint.mjs)
+npm run test:actionlint  # Workflow lint + self-test (needs the actionlint binary)
 ```
 `npm test` runs the unit tests, smoke tests, and CI script tests together.
+
+### Workflow linting
+
+An invalid key in a workflow file does not fail loudly. GitHub refuses to parse
+the file, schedules **zero jobs**, and reports no error anywhere — the run just
+looks like it had nothing to do. This repo has been bitten twice: PR #256
+(`secrets` referenced in a step-level `if:`) and PR #299 (`workflows: write` in
+a `permissions:` block). Both went unnoticed until someone checked
+`gh api .../jobs` by hand and found an empty list.
+
+`npm run test:actionlint` lints `.github/workflows/` with
+[actionlint](https://github.com/rhysd/actionlint), and additionally re-runs it
+against two fixtures that reproduce those exact bugs — so if a future actionlint
+release drops or renames either rule, the check fails instead of going quietly
+green. It runs in the `lint` job on every PR.
+
+The fixtures in `.github/scripts/test/fixtures/actionlint/` are **deliberately
+broken** and live outside `.github/workflows/` so GitHub never tries to run
+them. Don't "fix" them.
+
+CI installs a pinned, checksum-verified release. To run it locally, install
+actionlint ([download options](https://github.com/rhysd/actionlint/blob/main/docs/install.md))
+and put it on your `PATH`, or point `ACTIONLINT_PATH` at the binary:
+
+```bash
+ACTIONLINT_PATH=/path/to/actionlint npm run test:actionlint
+```
+
+Two things are deliberately muted, both documented at their definition:
+
+- **Linting of `run:` block contents** (shellcheck, pyflakes) — see the
+  `COMMON_FLAGS` comment in `.github/scripts/check-actionlint.mjs`.
+- **Two `actions/create-github-app-token` input findings** — actionlint v1.7.12
+  ships a stale schema for that action and believes `client-id` is invalid and
+  `app-id` required, when the action itself deprecates `app-id` in favour of
+  `client-id`. See `IGNORED_FINDING_PATTERNS` in
+  `.github/scripts/lib/actionlint-selftest.mjs`; delete it once actionlint
+  refreshes its snapshot.
+
+If you need to add another suppression, scope it to the specific action or rule
+by name — never disable a rule wholesale. A unit test asserts no ignore pattern
+can swallow either of the fixtures' expected findings.
 
 ### Test Categories Covered
 - Page load and initialization

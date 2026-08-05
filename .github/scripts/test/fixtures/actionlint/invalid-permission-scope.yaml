@@ -1,0 +1,21 @@
+# Fixture — NOT a real workflow. Deliberately broken.
+#
+# Reproduces the PR #299 regression: `workflows` is not a GITHUB_TOKEN
+# permission scope (that is the separate PAT `workflow` OAuth scope). The
+# invalid key made auto-chore.yml unparseable, so GitHub scheduled zero jobs on
+# every chore trigger and reported no error anywhere.
+#
+# Lives outside .github/workflows/ so GitHub never tries to run it.
+# check-actionlint.mjs asserts actionlint still reports "unknown permission
+# scope" here. Do not "fix" this file.
+name: Fixture - invalid permission scope
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      workflows: write # ← the bug
+    steps:
+      - run: echo "unreachable"

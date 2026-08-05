@@ -70,5 +70,32 @@ jobs:
       - name: Commitlint self-test (dependency-skew guard)
         run: npm run test:commitlint
 
+      # Pinned to an exact release and checksum-verified before it runs: this
+      # binary lints the files that decide what CI does, so an unpinned or
+      # unverified download would be a poor trade.
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: '1.7.12'
+          ACTIONLINT_SHA256: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+        run: |
+          set -euo pipefail
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
+            --output "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          mkdir -p "${RUNNER_TEMP}/bin"
+          tar -xzf "$archive" -C "${RUNNER_TEMP}/bin" actionlint
+          rm "$archive"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+
+      # An invalid key in a workflow file does not fail loudly — GitHub refuses
+      # to parse it, schedules zero jobs, and reports nothing. That has broken
+      # this repo twice (PR #256, PR #299), both times found by hand days later.
+      # Also re-checks that actionlint still catches both, so this can't rot
+      # into a green check that proves nothing (see issue #307).
+      - name: Workflow lint + self-test (silent-CI-breakage guard)
+        run: npm run test:actionlint
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
