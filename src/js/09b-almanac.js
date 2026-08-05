@@ -1,8 +1,13 @@
 /* ── Almanac: moon phase, Finnish flag days, name days (split out of
-   09-clock-weather.js) ── fetchNameday()/fetchCalendarEvents()/renderMoon()/
-   renderFlagDay() are invoked from 09-clock-weather.js's eager bootstrap
-   sequence, which stays there since it also kicks off several unrelated
-   renders on load. */
+   09-clock-weather.js) ── the eager page-load bootstrap sequence at the
+   bottom of this file (originally in 09-clock-weather.js) was moved here,
+   the last-loading file of the 09/09a/09b group: fetchNameday() and
+   fetchCalendarEvents() read this file's own const NAMEDAY_API_BASE
+   synchronously, so calling them eagerly from an earlier-loading sibling
+   hits that const's temporal dead zone before this file's top-level code
+   has run. renderDistractionCount/renderSodBtn/renderEodBtn/
+   renderFolderStatus/loadChimeSetting/fetchWeather are unrelated renders
+   that happened to share this bootstrap sequence in the original file. */
 
 /**
  * Calculates moon phase, illumination percentage, and zodiac sign for a date
@@ -399,3 +404,32 @@ function fetchCalendarEvents() {
     })
     .catch(() => showFallback());
 }
+
+// Load location from server config before the first weather fetch.
+// Falls back to the defaults in 00-config.js when the server is not running.
+fetch('/api/config')
+  .then((response) => (response.ok ? response.json() : null))
+  .then((cfg) => {
+    if (!cfg) return;
+    if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
+    if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
+    if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
+    // Mark that the API server responded — read by wlLog.config() in 07-lifecycle.js
+    // to record which environment the app is running in.
+    localStorage.setItem('wl_api_ok', '1');
+  })
+  .catch(() => {
+    localStorage.removeItem('wl_api_ok');
+  })
+  .finally(() => fetchWeather());
+
+fetchNameday();
+fetchCalendarEvents();
+renderMoon();
+renderFlagDay();
+renderDistractionCount();
+renderSodBtn();
+renderEodBtn();
+renderFolderStatus();
+loadChimeSetting();
+setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min

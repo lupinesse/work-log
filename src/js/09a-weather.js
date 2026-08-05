@@ -1,8 +1,7 @@
 /* ── Weather (split out of 09-clock-weather.js) ──
    WEATHER_LAT, WEATHER_LON, WEATHER_NAME are defined in 00-config.js.
-   fetchWeather() is invoked from 09-clock-weather.js's eager bootstrap
-   sequence, which stays there since it also kicks off several unrelated
-   renders on load. */
+   fetchWeather() is invoked from 09b-almanac.js's eager bootstrap sequence
+   (the last-loading file of this group — see 09b's header comment for why). */
 
 /**
  * Maps a WMO weather interpretation code to a representative emoji.

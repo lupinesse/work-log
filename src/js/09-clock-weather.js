@@ -71,9 +71,13 @@ function updateHeaderTracking() {
 
 // WEATHER_LAT, WEATHER_LON, WEATHER_NAME, JIRA_BASE are defined in 00-config.js
 // weatherEmoji/fetchWeather split to 09a-weather.js; moon/flag-day/nameday
-// almanac split to 09b-almanac.js. Both are invoked from this file's eager
-// bootstrap sequence below, which stays here since it also kicks off several
-// unrelated renders on load.
+// almanac split to 09b-almanac.js. The eager page-load bootstrap sequence
+// (fetch weather config, fetch nameday/flag-day/moon, kick off several
+// unrelated renders) lives at the end of 09b-almanac.js — the last-loading
+// file of this group — since it calls fetchNameday()/fetchCalendarEvents(),
+// which read 09b's own const NAMEDAY_API_BASE synchronously; calling them
+// eagerly from here (loaded before 09b) hits that const's temporal dead
+// zone before 09b's own top-level code has run.
 
 /**
  * Returns HTML for a task text string, converting any leading Jira ticket key
@@ -92,32 +96,3 @@ function jiraTicketHtml(text) {
   const link = `<a class="jira-key-link" href="${JIRA_BASE}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}</a>`;
   return rest ? `${link}<span class="jira-key-sep">:</span> ${escHtml(rest)}` : link;
 }
-
-// Load location from server config before the first weather fetch.
-// Falls back to the defaults in 00-config.js when the server is not running.
-fetch('/api/config')
-  .then((response) => (response.ok ? response.json() : null))
-  .then((cfg) => {
-    if (!cfg) return;
-    if (typeof cfg.weatherLat === 'number') WEATHER_LAT = cfg.weatherLat;
-    if (typeof cfg.weatherLon === 'number') WEATHER_LON = cfg.weatherLon;
-    if (cfg.weatherName) WEATHER_NAME = cfg.weatherName;
-    // Mark that the API server responded — read by wlLog.config() in 07-lifecycle.js
-    // to record which environment the app is running in.
-    localStorage.setItem('wl_api_ok', '1');
-  })
-  .catch(() => {
-    localStorage.removeItem('wl_api_ok');
-  })
-  .finally(() => fetchWeather());
-
-fetchNameday();
-fetchCalendarEvents();
-renderMoon();
-renderFlagDay();
-renderDistractionCount();
-renderSodBtn();
-renderEodBtn();
-renderFolderStatus();
-loadChimeSetting();
-setInterval(fetchWeather, 10 * 60 * 1000); // refresh every 10 min
