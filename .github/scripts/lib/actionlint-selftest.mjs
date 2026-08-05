@@ -42,9 +42,16 @@
  * The historical bugs this check exists to catch, one fixture each.
  *
  * `pattern` deliberately matches actionlint's *message* rather than its `kind`
- * tag: the message text is what a contributor reads and is stable across
- * releases, whereas rule tags have been renamed before. The observed `kind` is
- * still surfaced in the runner's output for humans.
+ * tag: the message text is what a contributor reads, whereas rule tags have
+ * been renamed before. The observed `kind` is still surfaced in the runner's
+ * output for humans.
+ *
+ * Each pattern is kept loose enough to survive a reworded message but tight
+ * enough to still identify the specific bug — the context check, for instance,
+ * says "is not allowed here" in v1.7.12 but has used "is not available"
+ * phrasing elsewhere, so both are accepted. Patterns below are matched against
+ * the messages actionlint v1.7.12 actually emits, captured from a real run
+ * (see the message constants in the unit tests).
  *
  * @type {ReadonlyArray<{ fixture: string, pattern: RegExp, incident: string, summary: string }>}
  */
@@ -57,7 +64,7 @@ export const EXPECTED_FINDINGS = Object.freeze([
   }),
   Object.freeze({
     fixture: 'secrets-in-step-if.yaml',
-    pattern: /context "secrets" is not available/i,
+    pattern: /context "secrets" is not (allowed|available)/i,
     incident: 'PR #256',
     summary: '`secrets` is not available in a step-level `if:`',
   }),

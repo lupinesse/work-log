@@ -23,6 +23,11 @@ import { EXPECTED_FINDINGS, interpretSelfTest } from './lib/actionlint-selftest.
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '..', '..');
 const fixtureDir = path.join(scriptDir, 'test', 'fixtures', 'actionlint');
+/**
+ * Reported at startup only. actionlint discovers this directory itself when
+ * given no target paths — it is never passed as an argument (doing so fails
+ * with `is a directory`).
+ */
 const workflowsDir = path.join(repoRoot, '.github', 'workflows');
 
 /**
@@ -48,9 +53,15 @@ const ACTIONLINT_BIN = process.env.ACTIONLINT_PATH || 'actionlint';
 const COMMON_FLAGS = Object.freeze(['-format', '{{json .}}', '-shellcheck=', '-pyflakes=']);
 
 /**
- * Run actionlint once against explicit paths.
+ * Run actionlint once.
  *
- * @param {string[]} targets - File or directory paths to lint.
+ * actionlint takes explicit *file* paths — handing it a directory fails with
+ * `is a directory` and exit 3. To lint the repository's own workflows, pass no
+ * targets at all: actionlint then discovers `.github/workflows/` itself,
+ * relative to `cwd`.
+ *
+ * @param {string[]} targets - Workflow file paths, or `[]` to lint the
+ *   repository's own `.github/workflows/`.
  * @returns {import('./lib/actionlint-selftest.mjs').ActionlintRun}
  * @throws {Error} If actionlint cannot be spawned at all — a missing binary is
  *   a broken environment, not a lint result, and must not read as a pass.
@@ -120,7 +131,7 @@ function main() {
   let workflowsRun;
   let fixtureRuns;
   try {
-    workflowsRun = runActionlint([workflowsDir]);
+    workflowsRun = runActionlint([]);
     fixtureRuns = EXPECTED_FINDINGS.map((expectation) => ({
       expectation,
       run: runActionlint([path.join(fixtureDir, expectation.fixture)]),

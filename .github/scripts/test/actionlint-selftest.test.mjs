@@ -52,15 +52,25 @@ const finding = (message, kind = 'expression') => ({
   kind,
 });
 
-/** The real message actionlint emits for PR #299's bug. */
+/** The message actionlint v1.7.12 emits for PR #299's bug. */
 const PERMISSION_SCOPE_MESSAGE =
   'unknown permission scope "workflows". all available permission scopes are ' +
   '"actions", "attestations", "checks", "contents", "deployments", "discussions"';
 
-/** The real message actionlint emits for PR #256's bug. */
+/**
+ * The message actionlint v1.7.12 emits for PR #256's bug — verbatim from a real
+ * run (PR #312's CI).
+ *
+ * Worth keeping exact. An earlier guess at this string assumed "is not
+ * available at ..."; v1.7.12 actually says "is not allowed here". The fixture
+ * caught that immediately by failing, which is the behaviour these tests exist
+ * to protect — a pattern that matches nothing must never pass quietly.
+ */
 const SECRETS_IN_IF_MESSAGE =
-  'context "secrets" is not available at "jobs.<job_id>.steps.if". available contexts are ' +
-  '"env", "github", "inputs", "job", "matrix", "needs", "runner", "steps", "strategy", "vars"';
+  'context "secrets" is not allowed here. available contexts are "env", "github", ' +
+  '"inputs", "job", "matrix", "needs", "runner", "steps", "strategy", "vars". see ' +
+  'https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability ' +
+  'for more details';
 
 const permissionExpectation = EXPECTED_FINDINGS.find(
   (e) => e.fixture === 'invalid-permission-scope.yaml'
@@ -82,6 +92,24 @@ describe('EXPECTED_FINDINGS', () => {
   test('patterns are specific enough not to match each other', () => {
     assert.doesNotMatch(SECRETS_IN_IF_MESSAGE, permissionExpectation.pattern);
     assert.doesNotMatch(PERMISSION_SCOPE_MESSAGE, secretsExpectation.pattern);
+  });
+
+  // The context-availability message has been worded both ways upstream, so the
+  // pattern accepts either rather than pinning to whatever v1.7.12 happens to
+  // say. It must still require the "secrets" context specifically.
+  test('the context pattern tolerates both known phrasings', () => {
+    assert.match(SECRETS_IN_IF_MESSAGE, secretsExpectation.pattern);
+    assert.match(
+      'context "secrets" is not available at "jobs.<job_id>.steps.if"',
+      secretsExpectation.pattern
+    );
+  });
+
+  test('the context pattern does not match a different unavailable context', () => {
+    assert.doesNotMatch(
+      'context "job" is not allowed here. available contexts are "env", "github"',
+      secretsExpectation.pattern
+    );
   });
 });
 
