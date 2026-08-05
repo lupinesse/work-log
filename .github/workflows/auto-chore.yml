@@ -159,7 +159,7 @@ jobs:
             BODY="🤖 **Auto-chore started** — opened ${{ steps.push.outputs.pr_url }}. It goes through the normal PR review pipeline before it can merge."
           elif [ "${{ steps.push.conclusion }}" = "failure" ]; then
             BODY="🔴 **Auto-chore implemented a fix but failed to push it or open the PR** — Claude committed a change, but pushing the branch or creating the PR itself errored (permissions, network, etc.). Nothing was lost — the commit only exists on the run's ephemeral checkout, so this needs a manual retry. See the run log: ${RUN_URL}"
-          elif [ "${{ steps.claude.outputs.exit_code }}" != "0" ]; then
+          elif [ -n "${{ steps.claude.outputs.exit_code }}" ] && [ "${{ steps.claude.outputs.exit_code }}" != "0" ]; then
             BODY="🔴 **Auto-chore failed to run** — the Claude CLI itself errored (exit ${{ steps.claude.outputs.exit_code }}), it did not just decline the change. This run is marked failed on the Actions dashboard. See the run log: ${RUN_URL}"
           else
             BODY="⚠️ **Auto-chore did not open a PR** — Claude ran successfully but judged this unsafe to automate. Check for a comment above from Claude, or see the run log: ${RUN_URL}"
@@ -167,7 +167,10 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --body "$BODY"
 
       - name: Fail the job if the Claude CLI itself errored
-        if: steps.guard.outputs.skip != 'true' && steps.claude.outputs.exit_code != '0'
+        if: >
+          steps.guard.outputs.skip != 'true' &&
+          steps.claude.outputs.exit_code != '' &&
+          steps.claude.outputs.exit_code != '0'
         run: |
           echo "::error::Claude CLI exited with code ${{ steps.claude.outputs.exit_code }} — see chore-output.txt in this run's logs, not a case of Claude declining to act"
           exit 1
