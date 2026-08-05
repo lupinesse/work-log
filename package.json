@@ -15,6 +15,7 @@
     "test:unit": "node test/unit.mjs",
     "test:scripts": "node --test \".github/scripts/test/*.test.mjs\"",
     "test:commitlint": "node .github/scripts/check-commitlint.mjs",
+    "test:actionlint": "node .github/scripts/check-actionlint.mjs",
     "test": "node test/unit.mjs && node smoke-tests.cjs && node .github/scripts/test/ci-scripts.test.mjs",
     "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
     "lint:css": "stylelint \"src/css/**/*.scss\"",
