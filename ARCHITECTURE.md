@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (54 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (55 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -494,8 +494,10 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
-**Responsibility**: Fetch and display today's calendar meetings
+#### **13-calendar.js** (351 lines) — Outlook Calendar Integration
+**Responsibility**: Fetch and display today's calendar meetings. The
+post-meeting transition-bridge feature (detects a just-ended meeting, offers
+3 AI-generated steps to the next task) was split to `13a-calendar-bridge.js`.
 
 **Data Source**:
 - Windows: PowerShell server fetches Outlook COM
