@@ -24,8 +24,8 @@ function mlDaysInMonth(y, m) {
 function mlHoursForDay(dateKey) {
   return (
     entries
-      .filter((e) => e.date === dateKey && e.signifier !== 'cancelled' && e.tsEnd)
-      .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
+      .filter((entry) => entry.date === dateKey && entry.signifier !== 'cancelled' && entry.tsEnd)
+      .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0) / 3600000
   );
 }
 
@@ -72,8 +72,8 @@ function renderMonthlyCalendar(calEl, year, month) {
 
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const emptyCells = Array(offset).fill('<div></div>').join('');
-  const dayCells = Array.from({ length: days }, (_, i) => {
-    const d = i + 1;
+  const dayCells = Array.from({ length: days }, (_, index) => {
+    const d = index + 1;
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const hrs = mlHoursForDay(dateKey);
     const refl = typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
@@ -92,7 +92,7 @@ function renderMonthlyCalendar(calEl, year, month) {
       <button class="ml-nav-btn" id="mlNext">→</button>
     </div>
     <div class="ml-grid">
-      ${dayLabels.map((d) => `<div class="ml-day-lbl">${d}</div>`).join('')}
+      ${dayLabels.map((dayLabel) => `<div class="ml-day-lbl">${dayLabel}</div>`).join('')}
       ${emptyCells}
       ${dayCells}
     </div>
@@ -104,10 +104,10 @@ function renderMonthlyCalendar(calEl, year, month) {
         [7, '7h+'],
       ]
         .map(
-          ([v, l]) =>
+          ([value, label]) =>
             `<div class="ml-legend-item">
-              <div class="ml-legend-swatch" style="background:${mlHeatColor(v + 0.1)}"></div>
-              <span>${l}</span>
+              <div class="ml-legend-swatch" style="background:${mlHeatColor(value + 0.1)}"></div>
+              <span>${label}</span>
             </div>`
         )
         .join('')}
@@ -155,16 +155,18 @@ function renderMonthlyCalendar(calEl, year, month) {
  */
 function calcMonthSummaryStats(allEntries, monthPrefix, isBillable) {
   const monthEntries = allEntries.filter(
-    (e) => e.date.startsWith(monthPrefix) && e.tsEnd && e.signifier !== 'cancelled'
+    (entry) => entry.date.startsWith(monthPrefix) && entry.tsEnd && entry.signifier !== 'cancelled'
   );
-  const totalMs = monthEntries.reduce((s, e) => s + (e.tsEnd - e.ts), 0);
-  const billableMs = monthEntries.filter(isBillable).reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+  const totalMs = monthEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+  const billableMs = monthEntries
+    .filter(isBillable)
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
 
   const tagTotals = {};
-  monthEntries.forEach((e) => {
-    tagTotals[e.tag] = (tagTotals[e.tag] || 0) + (e.tsEnd - e.ts);
+  monthEntries.forEach((entry) => {
+    tagTotals[entry.tag] = (tagTotals[entry.tag] || 0) + (entry.tsEnd - entry.ts);
   });
-  const topTagEntry = Object.entries(tagTotals).sort((a, b) => b[1] - a[1])[0];
+  const topTagEntry = Object.entries(tagTotals).sort((pairA, pairB) => pairB[1] - pairA[1])[0];
 
   return {
     totalMs,
@@ -182,11 +184,11 @@ function calcMonthSummaryStats(allEntries, monthPrefix, isBillable) {
  * @returns {{ open: number, done: number, migrated: number }}
  */
 function calcMonthTaskCounts(allTasks, monthPrefix) {
-  const monthTasks = allTasks.filter((t) => t.date.startsWith(monthPrefix));
+  const monthTasks = allTasks.filter((task) => task.date.startsWith(monthPrefix));
   return {
-    open: monthTasks.filter((t) => t.status !== 'done').length,
-    done: monthTasks.filter((t) => t.status === 'done').length,
-    migrated: monthTasks.filter((t) => t.signifier === 'migrated' || t._migrated).length,
+    open: monthTasks.filter((task) => task.status !== 'done').length,
+    done: monthTasks.filter((task) => task.status === 'done').length,
+    migrated: monthTasks.filter((task) => task.signifier === 'migrated' || task._migrated).length,
   };
 }
 

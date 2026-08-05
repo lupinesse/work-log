@@ -169,8 +169,8 @@ export function validateBackupFile(backup) {
  *   not appear in `currentEntries`.
  */
 export function filterNewBackupEntries(currentEntries, backupEntries, isValid) {
-  const existingIds = new Set(currentEntries.map((e) => e.id));
-  return backupEntries.filter((e) => isValid(e) && !existingIds.has(e.id));
+  const existingIds = new Set(currentEntries.map((entry) => entry.id));
+  return backupEntries.filter((entry) => isValid(entry) && !existingIds.has(entry.id));
 }
 
 /* ── External API response validators ── */

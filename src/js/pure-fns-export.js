@@ -353,7 +353,7 @@ export function findGapReportEntries(entries, weekStart, weekEnd) {
         !(entry.link && entry.link.trim()) &&
         !(entry.note && entry.note.trim())
     )
-    .sort((a, b) => a.ts - b.ts);
+    .sort((entryA, entryB) => entryA.ts - entryB.ts);
 }
 
 // The single-block "too long" threshold reuses isLongRunningTimer's own 4h
@@ -563,7 +563,7 @@ export function buildWeeklyTicketSummary(entries, weekStart, weekEnd) {
 
   const ticketOrder = Object.keys(grouped)
     .filter((key) => key !== WEEKLY_REPORT_NO_TICKET_KEY)
-    .sort((a, b) => grouped[b].totalMs - grouped[a].totalMs);
+    .sort((ticketKeyA, ticketKeyB) => grouped[ticketKeyB].totalMs - grouped[ticketKeyA].totalMs);
   // The no-ticket bucket is a catch-all grouping, not a reportable ticket —
   // it always sorts last regardless of its total time, even if that time
   // exceeds a real ticket's.
@@ -640,9 +640,9 @@ export function buildRollingSummary(dateKeys, opts) {
   const { entries, getDayStartTs, getDayEodTs, getLocationEmoji } = opts;
   return dateKeys.map((dateKey) => {
     const dayEntries = entries.filter(
-      (e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled'
+      (entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled'
     );
-    const totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+    const totalMs = dayEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
 
     // Aggregate by task text; case-preserving, case-sensitive key so "Fix bug" and
     // "fix bug" remain separate entries (they were logged as distinct tasks).
@@ -652,7 +652,7 @@ export function buildRollingSummary(dateKeys, opts) {
       byText[key] = (byText[key] || 0) + (e.tsEnd - e.ts);
     }
     const topTasks = Object.entries(byText)
-      .sort((a, b) => b[1] - a[1])
+      .sort((pairA, pairB) => pairB[1] - pairA[1])
       .slice(0, 3)
       .map(([text, ms]) => ({ text, totalMs: ms }));
 

@@ -57,9 +57,9 @@ function renderSprintDurations() {
   const el = document.getElementById('sprintDurations');
   if (!el) return;
   el.innerHTML = SPRINT_DURATIONS.map(
-    (d) =>
-      `<button class="add-btn sprint-dur-btn${d === _sprintDuration ? ' sprint-dur-active' : ''}"
-               data-dur="${d}">${d}m</button>`
+    (duration) =>
+      `<button class="add-btn sprint-dur-btn${duration === _sprintDuration ? ' sprint-dur-active' : ''}"
+               data-dur="${duration}">${duration}m</button>`
   ).join('');
   el.querySelectorAll('.sprint-dur-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -167,7 +167,7 @@ function showSprintReview() {
       _outcome = btn.dataset.outcome;
       outcomesEl
         .querySelectorAll('.sprint-outcome-btn')
-        .forEach((b) => (b.style.fontWeight = b === btn ? '600' : ''));
+        .forEach((otherBtn) => (otherBtn.style.fontWeight = otherBtn === btn ? '600' : ''));
     });
   });
 
@@ -194,7 +194,7 @@ function showSprintReview() {
       hasNote: !!note,
     });
 
-    const entry = entries.find((e) => e.id === _sprintEntryId);
+    const entry = entries.find((en) => en.id === _sprintEntryId);
     if (entry) {
       entry._sprintOutcome = _outcome;
       save();
@@ -221,7 +221,7 @@ function initSprints() {
     const el = document.getElementById('sprintSetup');
     if (el) el.style.display = 'none';
   });
-  document.getElementById('sprintIntention')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') startSprint();
+  document.getElementById('sprintIntention')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') startSprint();
   });
 }

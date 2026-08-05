@@ -102,10 +102,10 @@ export function parseRapidTokens(raw, cats, now) {
     const catArr = cats || [];
     // Exact id match → label match → id-prefix match → label-prefix match
     const resolved =
-      catArr.find((c) => c.id.toLowerCase() === lower) ||
-      catArr.find((c) => c.label.toLowerCase() === lower) ||
-      catArr.find((c) => c.id.toLowerCase().startsWith(lower)) ||
-      catArr.find((c) => c.label.toLowerCase().startsWith(lower)) ||
+      catArr.find((cat) => cat.id.toLowerCase() === lower) ||
+      catArr.find((cat) => cat.label.toLowerCase() === lower) ||
+      catArr.find((cat) => cat.id.toLowerCase().startsWith(lower)) ||
+      catArr.find((cat) => cat.label.toLowerCase().startsWith(lower)) ||
       null;
     if (resolved) {
       tag = resolved.id;
@@ -201,8 +201,10 @@ export function resolveCarryStatus(todayTask, prev) {
  */
 export function findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey) {
   return (planTasks || [])
-    .filter((t) => t.status === 'upcoming' && t.date >= weekStartKey && t.date < weekEndKey)
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .filter(
+      (task) => task.status === 'upcoming' && task.date >= weekStartKey && task.date < weekEndKey
+    )
+    .sort((taskA, taskB) => taskA.date.localeCompare(taskB.date));
 }
 
 /**
@@ -237,7 +239,8 @@ export function findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey) {
  */
 export function findPromotableTask(planTasks, text, todayKey) {
   const task = (planTasks || []).find(
-    (t) => t.date === todayKey && t.text.toLowerCase() === (text || '').toLowerCase()
+    (candidate) =>
+      candidate.date === todayKey && candidate.text.toLowerCase() === (text || '').toLowerCase()
   );
   if (!task || (task.status !== 'todo' && task.status !== 'upcoming')) return null;
   return task;

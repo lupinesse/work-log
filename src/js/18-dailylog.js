@@ -20,61 +20,61 @@ function buildDailyLogItems(dateKey) {
   const items = [];
 
   entries
-    .filter((e) => e.date === dateKey)
-    .forEach((e) => {
-      const cat = getCat(e.tag);
+    .filter((entry) => entry.date === dateKey)
+    .forEach((entry) => {
+      const cat = getCat(entry.tag);
       items.push({
-        ts: e.ts,
+        ts: entry.ts,
         type: 'entry',
-        entryId: e.id,
+        entryId: entry.id,
         color: cat.color,
-        text: escHtml(e.text),
-        sub: `${escHtml(cat.label)} · ${e.tsEnd ? fmtDur(e.tsEnd - e.ts) : 'ongoing'} · ${sigSymbol(e)}`,
+        text: escHtml(entry.text),
+        sub: `${escHtml(cat.label)} · ${entry.tsEnd ? fmtDur(entry.tsEnd - entry.ts) : 'ongoing'} · ${sigSymbol(entry)}`,
       });
     });
 
   logNotes
-    .filter((n) => n.date === dateKey)
-    .forEach((n) => {
-      if (n.type === 'session-note') {
+    .filter((note) => note.date === dateKey)
+    .forEach((note) => {
+      if (note.type === 'session-note') {
         // Session-notes render nested under their parent entry, not as standalone rows.
         items.push({
-          ts: n.ts,
+          ts: note.ts,
           type: 'session-note',
-          parentEntryId: n.entryId,
+          parentEntryId: note.entryId,
           color: 'var(--bg3)',
-          text: escHtml(n.text),
+          text: escHtml(note.text),
           sub: '',
         });
       } else {
         items.push({
-          ts: n.ts,
+          ts: note.ts,
           type: 'note',
           color: 'var(--bg3)',
-          text: `<em>${escHtml(n.text)}</em>`,
+          text: `<em>${escHtml(note.text)}</em>`,
           sub: 'Note',
         });
       }
     });
 
   planTasks
-    .filter((t) => t.date === dateKey && Array.isArray(t.statusComments))
-    .forEach((t) => {
-      t.statusComments.forEach((c) => {
-        if (dk(new Date(c.ts)) === dateKey) {
+    .filter((task) => task.date === dateKey && Array.isArray(task.statusComments))
+    .forEach((task) => {
+      task.statusComments.forEach((comment) => {
+        if (dk(new Date(comment.ts)) === dateKey) {
           items.push({
-            ts: c.ts,
+            ts: comment.ts,
             type: 'task',
-            taskId: t.id,
+            taskId: task.id,
             color: '#ef9f27',
-            text: `<span class="tl-task-name">${escHtml(t.text)}</span>${c.comment ? ` — ${escHtml(c.comment)}` : ''}`,
+            text: `<span class="tl-task-name">${escHtml(task.text)}</span>${comment.comment ? ` — ${escHtml(comment.comment)}` : ''}`,
             sub: 'Task update',
           });
         }
       });
     });
 
-  return items.sort((a, b) => a.ts - b.ts);
+  return items.sort((itemA, itemB) => itemA.ts - itemB.ts);
 }
 
 /** Reads the note input, appends a note to logNotes, persists, and re-renders. */

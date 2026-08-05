@@ -93,13 +93,13 @@ function renderReflStars(elId, current) {
   const focusVal = current || 1;
   el.innerHTML = [1, 2, 3, 4, 5]
     .map(
-      (n) =>
-        `<span class="refl-star${n <= current ? ' on' : ''}"
+      (starValue) =>
+        `<span class="refl-star${starValue <= current ? ' on' : ''}"
               role="radio"
-              aria-checked="${n === current ? 'true' : 'false'}"
-              aria-label="${n} star${n > 1 ? 's' : ''}"
-              tabindex="${n === focusVal ? '0' : '-1'}"
-              data-val="${n}" data-el="${elId}">★</span>`
+              aria-checked="${starValue === current ? 'true' : 'false'}"
+              aria-label="${starValue} star${starValue > 1 ? 's' : ''}"
+              tabindex="${starValue === focusVal ? '0' : '-1'}"
+              data-val="${starValue}" data-el="${elId}">★</span>`
     )
     .join('');
 
@@ -124,22 +124,22 @@ function renderReflStars(elId, current) {
   // how many times renderReflStars re-renders the widget.
   if (!el.dataset.kbWired) {
     el.dataset.kbWired = '1';
-    el.addEventListener('keydown', (e) => {
+    el.addEventListener('keydown', (event) => {
       const stars = [...el.querySelectorAll('.refl-star')];
-      const idx = stars.findIndex((s) => s === document.activeElement);
+      const idx = stars.findIndex((star) => star === document.activeElement);
       if (idx === -1) return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-        e.preventDefault();
+      if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+        event.preventDefault();
         const next = stars[Math.min(idx + 1, stars.length - 1)];
         next.focus();
         selectStar(parseInt(next.dataset.val, 10));
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-        e.preventDefault();
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+        event.preventDefault();
         const prev = stars[Math.max(idx - 1, 0)];
         prev.focus();
         selectStar(parseInt(prev.dataset.val, 10));
-      } else if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
         selectStar(parseInt(stars[idx].dataset.val, 10));
       }
     });
