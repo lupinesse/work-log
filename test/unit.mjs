@@ -1811,14 +1811,15 @@ describe('createRestartedEntry', () => {
 });
 
 // ── buildEntryMetaHtml — restart note-confirmation banner ────────────────────
-// The banner (04-render.js) is what surfaces createRestartedEntry's pending
-// note confirmation to the user; extracted by matching between JSDoc headings
-// so the snippet stays in sync with the source automatically.
+// The banner (04a-render-widgets.js, split out of 04-render.js) is what
+// surfaces createRestartedEntry's pending note confirmation to the user;
+// extracted by matching between JSDoc headings so the snippet stays in sync
+// with the source automatically.
 
-const entryMetaSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+const entryMetaSrc = readFileSync(join(__dirname, '../src/js/04a-render-widgets.js'), 'utf8');
 
 /**
- * Evaluates just the buildEntryMetaHtml function from 04-render.js in a
+ * Evaluates just the buildEntryMetaHtml function from 04a-render-widgets.js in a
  * minimal VM sandbox. The function only touches escHtml and the module-level
  * `_pendingNoteConfirm` state — both stubbed as plain, externally-mutable
  * sandbox properties (the source's own `let _pendingNoteConfirm` declaration
@@ -1832,7 +1833,7 @@ function loadEntryMetaSandbox(overrides = {}) {
   const match = entryMetaSrc.match(
     /\/\*\*\r?\n \* Builds the proof-link[\s\S]*?(?=\/\*\*\r?\n \* Builds the category picker)/
   );
-  if (!match) throw new Error('buildEntryMetaHtml block not found in 04-render.js');
+  if (!match) throw new Error('buildEntryMetaHtml block not found in 04a-render-widgets.js');
   const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const sandbox = {
     escHtml: (s) => String(s).replace(/[&<>"']/g, (c) => escapeMap[c]),
@@ -4450,13 +4451,15 @@ describe('jiraRenderTasks', () => {
 // render() so this can be tested without standing up the full DOM.
 
 /**
- * Creates a VM sandbox with pure-fns.js and 04-render.js loaded, exposing
- * buildEntryCatPickerHtml for direct testing.
+ * Creates a VM sandbox with pure-fns.js, 04-render.js, and its sibling
+ * 04a-render-widgets.js loaded (buildEntryCatPickerHtml was split into the
+ * latter), exposing buildEntryCatPickerHtml for direct testing.
  * @param {Object} [overrides] - Properties merged into the sandbox before eval.
  * @returns {Object} The populated sandbox.
  */
 function loadRenderSandbox(overrides = {}) {
   const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+  const renderWidgetsSrc = readFileSync(join(__dirname, '../src/js/04a-render-widgets.js'), 'utf8');
   const pureSrc = loadPureFnsScriptSource();
 
   const sandbox = {
@@ -4467,6 +4470,7 @@ function loadRenderSandbox(overrides = {}) {
 
   vm.createContext(sandbox);
   vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(renderWidgetsSrc, sandbox);
   vm.runInContext(renderSrc, sandbox);
   return sandbox;
 }
@@ -5985,8 +5989,13 @@ describe('regression #227: autoCarryTasks guard key', () => {
 // first entry of a fresh day, or navigating to a day with nothing logged) set
 // the same markup into #timeline but returned before the bindings ran, so the
 // "+ log" button silently did nothing. Fixed by extracting the binding into
-// bindAdHocRow() and calling it from both branches.
+// bindAdHocRow() and calling it from both branches. bindAdHocRow() itself now
+// lives in 04a-render-widgets.js, a sibling split out of 04-render.js.
 const renderSrc = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+const renderWidgetsSrcForAdHoc = readFileSync(
+  join(__dirname, '../src/js/04a-render-widgets.js'),
+  'utf8'
+);
 
 describe('regression: ad-hoc log row binds even when render() takes the empty-state branch', () => {
   /**
@@ -6024,11 +6033,13 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
   }
 
   /**
-   * Builds a vm sandbox with 04-render.js loaded and every cross-file global
-   * it calls (renderHeroCard, renderPlan, etc. — each defined in a different
-   * concatenated source file in the real build) stubbed as a no-op, same
-   * pattern as loadTimeflowSandbox above. `entries` and `document` are real,
-   * mutable objects so the ad-hoc commit flow can be observed end to end.
+   * Builds a vm sandbox with 04-render.js and its sibling 04a-render-widgets.js
+   * loaded (bindAdHocRow, called directly by render(), lives in the latter)
+   * and every remaining cross-file global (renderHeroCard, renderPlan, etc. —
+   * each defined in a different concatenated source file in the real build)
+   * stubbed as a no-op, same pattern as loadTimeflowSandbox above. `entries`
+   * and `document` are real, mutable objects so the ad-hoc commit flow can be
+   * observed end to end.
    * @param {object} overrides
    */
   function makeRenderSandbox(overrides = {}) {
@@ -6072,6 +6083,7 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
       _elements: elements,
     };
     vm.createContext(sb);
+    vm.runInContext(renderWidgetsSrcForAdHoc, sb);
     vm.runInContext(renderSrc, sb);
     return sb;
   }
@@ -6177,7 +6189,12 @@ describe('regression: non-billable relabeled as "internal"', () => {
     // (e.g. "Non-billable entries keep their exact timestamps…"), which is
     // accurate and was intentionally left as-is; only the UI-facing copy moved.
     const utilsSrcCheck = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
-    const renderSrcCheck = readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8');
+    // renderChart (title="mixed billable/internal", title="internal">💸) was
+    // split into 04a-render-widgets.js; render()'s own ebill-btn toggle
+    // (title="toggle billable/internal") stayed in 04-render.js — check both.
+    const renderSrcCheck =
+      readFileSync(join(__dirname, '../src/js/04-render.js'), 'utf8') +
+      readFileSync(join(__dirname, '../src/js/04a-render-widgets.js'), 'utf8');
     const exportSrcCheck = readFileSync(join(__dirname, '../src/js/05a-export.js'), 'utf8');
 
     assert.match(utilsSrcCheck, /💸 internal/);

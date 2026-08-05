@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (50 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (54 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -142,8 +142,11 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (848 lines) — Top-Level UI Rendering
-**Responsibility**: Orchestrate rendering of all visible sections
+#### **04-render.js** (437 lines) — Top-Level UI Rendering
+**Responsibility**: Orchestrate rendering of all visible sections. Timeline-entry
+widgets (proof-link/note editor, category picker, ad-hoc row, quick-pick bar,
+time chart) were split to `04a-render-widgets.js`; small time-editor helpers
+were split to `04b-render-time-helpers.js`.
 
 **Main Function**:
 - `render()` — Master render function called after every state change
