@@ -121,19 +121,19 @@ function renderDayStrip(dateKey) {
   // Hour-tick labels at two-hour intervals
   const ticks = [7, 9, 11, 13, 15, 17, 19, 21]
     .map(
-      (h) =>
-        `<span class="tf-tick" style="left:${stripPct(h * 60)}%">${String(h).padStart(2, '0')}</span>`
+      (hour) =>
+        `<span class="tf-tick" style="left:${stripPct(hour * 60)}%">${String(hour).padStart(2, '0')}</span>`
     )
     .join('');
 
   // Completed entry footprints — skip entries entirely outside the strip
   // (right === left after clamping) to avoid phantom slivers at the edges.
   const bars = entries
-    .filter((e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled')
-    .map((e) => {
-      const cat = getCat(e.tag);
-      const left = stripPct(Math.max(TF_STRIP_START, tsToMins(e.ts)));
-      const right = stripPct(Math.min(TF_STRIP_END, tsToMins(e.tsEnd)));
+    .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
+    .map((entry) => {
+      const cat = getCat(entry.tag);
+      const left = stripPct(Math.max(TF_STRIP_START, tsToMins(entry.ts)));
+      const right = stripPct(Math.min(TF_STRIP_END, tsToMins(entry.tsEnd)));
       if (right <= left) return '';
       return `<div class="tf-bar" style="left:${left}%;width:${Math.max(0.5, right - left)}%;background:${safeCssColor(cat.color)}"></div>`;
     })
@@ -143,7 +143,7 @@ function renderDayStrip(dateKey) {
   // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
   if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
     if (liveEntry && liveEntry.date === dateKey) {
       const liveEndMins = tsToMins(liveEntry.ts + activeTimerDurationMs(liveEntry));
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(liveEntry.ts)));
@@ -177,7 +177,7 @@ function renderDayStrip(dateKey) {
 function findLargestGap(dateKey) {
   if (!isToday(viewDate)) return null;
   const timed = entries
-    .filter((e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled')
+    .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .sort((a, b) => a.ts - b.ts);
 
   let largest = null;
@@ -240,16 +240,16 @@ function renderFlowHeader(dateKey, activeView) {
   if (!el) return;
 
   const dayEntries = entries.filter(
-    (e) => e.date === dateKey && e.tsEnd && e.signifier !== 'cancelled'
+    (entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled'
   );
-  let totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+  let totalMs = dayEntries.reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
   let billMs = dayEntries
-    .filter((e) => isEntryBillable(e))
-    .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+    .filter((entry) => isEntryBillable(entry))
+    .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
 
   // Include live timer duration so both totals update while tracking
   if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
     if (liveEntry && liveEntry.date === dateKey && !liveEntry.tsEnd) {
       const liveMs = activeTimerDurationMs(liveEntry);
       totalMs += liveMs;
@@ -312,10 +312,10 @@ function buildSessionNotesHtml(notes) {
     `<ul class="tf-session-notes" aria-label="Session notes">` +
     notes
       .map(
-        (n) =>
+        (note) =>
           `<li class="tf-session-note">` +
-          `<span class="tf-sn-time">${fmtHm(n.ts)}</span>` +
-          `<span class="tf-sn-text">${n.text}</span>` +
+          `<span class="tf-sn-time">${fmtHm(note.ts)}</span>` +
+          `<span class="tf-sn-text">${note.text}</span>` +
           `</li>`
       )
       .join('') +
@@ -372,8 +372,8 @@ function bindFlowNoteEvents(pane) {
   }
 
   pane.querySelectorAll('.tf-task-note-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
       const tid = btn.dataset.taskid;
       _flowNoteEditId = _flowNoteEditId === tid ? null : tid;
       renderFlowView(dateKey);
@@ -386,7 +386,7 @@ function bindFlowNoteEvents(pane) {
       const tid = btn.dataset.taskid;
       const ta = btn.closest('.tf-task-note-edit').querySelector('.tf-task-note-input');
       const val = ta.value.trim();
-      const task = planTasks.find((t) => t.id === tid);
+      const task = planTasks.find((taskItem) => taskItem.id === tid);
       if (task) {
         if (val) task.note = val;
         else delete task.note;
@@ -401,7 +401,7 @@ function bindFlowNoteEvents(pane) {
   pane.querySelectorAll('.tf-task-note-del').forEach((btn) => {
     btn.addEventListener('click', () => {
       const tid = btn.dataset.taskid;
-      const task = planTasks.find((t) => t.id === tid);
+      const task = planTasks.find((taskItem) => taskItem.id === tid);
       if (task) {
         delete task.note;
         savePlan();
@@ -420,17 +420,17 @@ function bindFlowNoteEvents(pane) {
   });
 
   pane.querySelectorAll('.tf-task-note-input').forEach((ta) => {
-    ta.addEventListener('keydown', (e) => {
-      e.stopPropagation();
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
+    ta.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
         ta.closest('.tf-task-note-edit').querySelector('.tf-task-note-save').click();
       }
-      if (e.key === 'Escape') {
+      if (event.key === 'Escape') {
         ta.closest('.tf-task-note-edit').querySelector('.tf-task-note-cancel').click();
       }
     });
-    ta.addEventListener('click', (e) => e.stopPropagation());
+    ta.addEventListener('click', (event) => event.stopPropagation());
   });
 }
 
@@ -457,11 +457,15 @@ function renderFlowView(dateKey) {
 
       // Look up the underlying entry object for entry-type items
       const entryObj =
-        item.type === 'entry' && item.entryId ? entries.find((e) => e.id === item.entryId) : null;
+        item.type === 'entry' && item.entryId
+          ? entries.find((entry) => entry.id === item.entryId)
+          : null;
 
       // Look up the task object for task-type items (status update rows)
       const taskObj =
-        item.type === 'task' && item.taskId ? planTasks.find((t) => t.id === item.taskId) : null;
+        item.type === 'task' && item.taskId
+          ? planTasks.find((task) => task.id === item.taskId)
+          : null;
 
       let durationMin = 0;
       let durMs = 0;
@@ -564,22 +568,22 @@ function focusTabAt(nextIndex) {
  */
 function initTodayFlow() {
   document.getElementById('dailyLogNoteBtn')?.addEventListener('click', addLogNote);
-  document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addLogNote();
+  document.getElementById('dailyLogNoteInput')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') addLogNote();
   });
 
   // Gap-reminder "+ log it" button: delegated from the stable #tfGapReminder
   // container so renderGapReminder() stays single-purpose (markup only).
-  document.getElementById('tfGapReminder')?.addEventListener('click', (e) => {
-    if (!e.target.closest('#tfGapLogBtn')) return;
+  document.getElementById('tfGapReminder')?.addEventListener('click', (event) => {
+    if (!event.target.closest('#tfGapLogBtn')) return;
     document.getElementById('captureInput')?.focus();
   });
 
   const header = document.getElementById('tfHeader');
   if (!header) return;
 
-  header.addEventListener('click', (e) => {
-    const btn = e.target.closest('.tf-seg-btn');
+  header.addEventListener('click', (event) => {
+    const btn = event.target.closest('.tf-seg-btn');
     if (!btn) return;
     setFlowView(btn.dataset.view);
     // Sync month calendar to viewDate when entering Month tab
@@ -591,16 +595,16 @@ function initTodayFlow() {
   });
 
   // WCAG 2.1.1: Arrow keys + Home/End navigate between tabs in the tablist.
-  header.addEventListener('keydown', (e) => {
-    if (!e.target.classList || !e.target.classList.contains('tf-seg-btn')) return;
+  header.addEventListener('keydown', (event) => {
+    if (!event.target.classList || !event.target.classList.contains('tf-seg-btn')) return;
     const current = TF_VIEWS.indexOf(getFlowView());
     let next;
-    if (e.key === 'ArrowLeft') next = (current - 1 + TF_VIEWS.length) % TF_VIEWS.length;
-    else if (e.key === 'ArrowRight') next = (current + 1) % TF_VIEWS.length;
-    else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = TF_VIEWS.length - 1;
+    if (event.key === 'ArrowLeft') next = (current - 1 + TF_VIEWS.length) % TF_VIEWS.length;
+    else if (event.key === 'ArrowRight') next = (current + 1) % TF_VIEWS.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = TF_VIEWS.length - 1;
     else return;
-    e.preventDefault();
+    event.preventDefault();
     focusTabAt(next);
   });
 }

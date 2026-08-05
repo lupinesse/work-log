@@ -53,8 +53,8 @@ function renderCalStrip(meetings) {
   }
 
   const now = new Date();
-  const fmtTime = (d) =>
-    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const fmtTime = (date) =>
+    `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   const upcoming = meetings.filter((ev) => new Date(ev.end) > now).length;
   if (countEl) countEl.textContent = upcoming ? `${upcoming} upcoming` : '';
 
@@ -105,12 +105,14 @@ function renderCalStrip(meetings) {
       // Meetings always default to the "meeting" category. Try the default id first,
       // then any category whose label matches; fall back to selectedTag if absent.
       const meetingCat =
-        categories.find((c) => c.id === 'meeting') ||
-        categories.find((c) => (c.label || '').toLowerCase() === 'meeting') ||
+        categories.find((cat) => cat.id === 'meeting') ||
+        categories.find((cat) => (cat.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : selectedTag;
       const exists = planTasks.find(
-        (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
+        (candidateTask) =>
+          candidateTask.date === todayKey &&
+          candidateTask.text.toLowerCase() === subject.toLowerCase()
       );
       if (!exists) {
         planTasks.push({
@@ -132,7 +134,9 @@ function renderCalStrip(meetings) {
       };
       entries.push(entry);
       const task = planTasks.find(
-        (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
+        (candidateTask) =>
+          candidateTask.date === todayKey &&
+          candidateTask.text.toLowerCase() === subject.toLowerCase()
       );
       if (task && task.status === 'todo') {
         task.status = 'inprogress';
@@ -209,7 +213,7 @@ async function fetchAndRenderCalendar() {
       wlLog.warn('fetchAndRenderCalendar: response is not an array — skipping render', data);
       return;
     }
-    const invalidMeetings = data.filter((m) => !validCalendarMeeting(m));
+    const invalidMeetings = data.filter((meeting) => !validCalendarMeeting(meeting));
     if (invalidMeetings.length) {
       wlLog.warn(
         `fetchAndRenderCalendar: dropped ${invalidMeetings.length} malformed meeting(s)`,
@@ -228,7 +232,9 @@ async function fetchAndRenderCalendar() {
         return [];
       }
     })();
-    const filteredData = validMeetings.filter((m) => !hiddenMeetings.includes(m.subject));
+    const filteredData = validMeetings.filter(
+      (meeting) => !hiddenMeetings.includes(meeting.subject)
+    );
 
     renderCalStrip(filteredData);
   } catch (err) {
@@ -308,8 +314,8 @@ function showBridgeBanner(meeting) {
     if (bannerQueue.length) showBridgeBanner(bannerQueue.shift());
   };
   dismissBtn.onclick = onDismiss;
-  bridgeBtn.onclick = async (e) => {
-    e.stopPropagation();
+  bridgeBtn.onclick = async (event) => {
+    event.stopPropagation();
     await buildBridge(meeting, expanded, bridgeBtn);
   };
 }
@@ -325,8 +331,8 @@ function showBridgeBanner(meeting) {
  */
 async function buildBridge(meeting, expandedEl, bridgeBtn) {
   const todayKey = dk(new Date());
-  const notDone = planTasks.filter((t) => t.date === todayKey && t.status !== 'done');
-  const inProgress = notDone.filter((t) => t.status === 'inprogress');
+  const notDone = planTasks.filter((task) => task.date === todayKey && task.status !== 'done');
+  const inProgress = notDone.filter((task) => task.status === 'inprogress');
 
   let nextTask = null;
   if (inProgress.length) {
@@ -337,14 +343,14 @@ async function buildBridge(meeting, expandedEl, bridgeBtn) {
     expandedEl.innerHTML = '<div style="font-size:11px;margin-bottom:6px">Pick next task:</div>';
     const list = document.createElement('div');
     list.style.cssText = 'display:flex;flex-direction:column;gap:4px';
-    notDone.forEach((t) => {
+    notDone.forEach((task) => {
       const b = document.createElement('button');
       b.style.cssText =
         'font-size:11px;padding:4px 8px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);cursor:pointer;text-align:left;color:var(--text2)';
-      b.textContent = t.text;
+      b.textContent = task.text;
       b.onclick = async () => {
         list.style.display = 'none';
-        await fetchBridge(meeting, t, expandedEl, bridgeBtn);
+        await fetchBridge(meeting, task, expandedEl, bridgeBtn);
       };
       list.appendChild(b);
     });
@@ -419,22 +425,24 @@ setInterval(() => {
       return [];
     }
   })();
-  const filteredData = _calMeetingsCache.filter((m) => !hiddenMeetings.includes(m.subject));
+  const filteredData = _calMeetingsCache.filter(
+    (meeting) => !hiddenMeetings.includes(meeting.subject)
+  );
   renderCalStrip(filteredData);
 
   // Detect newly-ended meetings and offer a bridge
   const seen = getSeenEnded();
   const now = new Date();
-  filteredData.forEach((m) => {
-    const key = getMeetingKey(m);
-    const endTime = new Date(m.end);
+  filteredData.forEach((meeting) => {
+    const key = getMeetingKey(meeting);
+    const endTime = new Date(meeting.end);
     if (endTime > now || seen.has(key)) return;
     seen.add(key);
     const nextTooSoon = filteredData.some((other) => {
       const diff = (new Date(other.start) - endTime) / 60000;
       return diff > 0 && diff < 10;
     });
-    if (!nextTooSoon) showBridgeBanner(m);
+    if (!nextTooSoon) showBridgeBanner(meeting);
   });
   setSeenEnded(seen);
 }, 60 * 1000);
@@ -517,8 +525,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
   // and renderCompleted re-runs automatically
   Object.defineProperty(window.__wl, 'viewDate', {
     get: () => viewDate,
-    set: (v) => {
-      viewDate = v instanceof Date ? v : new Date(v);
+    set: (value) => {
+      viewDate = value instanceof Date ? value : new Date(value);
       renderCompleted();
     },
     enumerable: true,

@@ -107,10 +107,10 @@ if (weeklyReportBtn) weeklyReportBtn.addEventListener('click', openWeeklyReportO
 if (weeklyReportClose) weeklyReportClose.addEventListener('click', closeWeeklyReportOverlay);
 if (weeklyReportCopyBtn) weeklyReportCopyBtn.addEventListener('click', copyWeeklyReportText);
 if (weeklyReportOverlay) {
-  weeklyReportOverlay.addEventListener('click', (e) => {
-    if (e.target === weeklyReportOverlay) closeWeeklyReportOverlay();
+  weeklyReportOverlay.addEventListener('click', (event) => {
+    if (event.target === weeklyReportOverlay) closeWeeklyReportOverlay();
   });
-  weeklyReportOverlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeWeeklyReportOverlay();
+  weeklyReportOverlay.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeWeeklyReportOverlay();
   });
 }

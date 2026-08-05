@@ -68,7 +68,7 @@
   function jiraGetExistingToday() {
     const today = dk(new Date());
     return new Set(
-      planTasks.filter((t) => t.date === today).map((t) => t.text.toLowerCase().trim())
+      planTasks.filter((task) => task.date === today).map((task) => task.text.toLowerCase().trim())
     );
   }
 
@@ -93,13 +93,13 @@
     // Match by ticket key prefix first — most reliable, prevents "UAT" matching "Pre-UAT"
     if (parentKey) {
       const byKey = categories.find(
-        (c) => c.label.startsWith(parentKey + ':') || c.label === parentKey
+        (cat) => cat.label.startsWith(parentKey + ':') || cat.label === parentKey
       );
       if (byKey) return byKey;
     }
     // Fall back to exact label match only — no fuzzy substring matching
     const lower = label.toLowerCase().trim();
-    return categories.find((c) => c.label.toLowerCase().trim() === lower) || null;
+    return categories.find((cat) => cat.label.toLowerCase().trim() === lower) || null;
   }
 
   /**
@@ -110,26 +110,27 @@
    */
   function jiraBuildCatMap(tasks) {
     jiraCatMap = {};
-    const usedColors = new Set(categories.map((c) => c.color));
+    const usedColors = new Set(categories.map((cat) => cat.color));
     let ci = 0;
     const seen = new Set();
     tasks
-      .filter((t) => t.parentKey || t.parentSummary)
-      .forEach((t) => {
-        const mapKey = (t.parentKey || '') + '|' + (t.parentSummary || '');
+      .filter((task) => task.parentKey || task.parentSummary)
+      .forEach((task) => {
+        const mapKey = (task.parentKey || '') + '|' + (task.parentSummary || '');
         if (seen.has(mapKey)) return;
         seen.add(mapKey);
         const label =
-          t.parentKey && t.parentSummary
-            ? `${t.parentKey}: ${t.parentSummary.trim()}`
-            : (t.parentSummary || t.parentKey || '').trim();
+          task.parentKey && task.parentSummary
+            ? `${task.parentKey}: ${task.parentSummary.trim()}`
+            : (task.parentSummary || task.parentKey || '').trim();
         if (!label) return;
-        const existing = jiraMatchCat(t.parentKey, label);
+        const existing = jiraMatchCat(task.parentKey, label);
         if (existing) {
           jiraCatMap[mapKey] = { ...existing, isNew: false };
         } else {
           const color =
-            AUTO_COLORS.find((c) => !usedColors.has(c)) || AUTO_COLORS[ci % AUTO_COLORS.length];
+            AUTO_COLORS.find((hexColor) => !usedColors.has(hexColor)) ||
+            AUTO_COLORS[ci % AUTO_COLORS.length];
           ci++;
           usedColors.add(color);
           jiraCatMap[mapKey] = {
@@ -157,7 +158,7 @@
    */
   function jiraUpdateCount() {
     const sel = [...jiraSelected].length;
-    const dups = jiraTasks.filter((t) => jiraIsDup(t)).length;
+    const dups = jiraTasks.filter((task) => jiraIsDup(task)).length;
     let txt = `${jiraTasks.length} issue${jiraTasks.length !== 1 ? 's' : ''} · ${sel} selected`;
     if (dups) txt += ` · ${dups} already in today's tasks`;
     document.getElementById('jiraCount').textContent = txt;
@@ -176,14 +177,14 @@
     // Group tasks by their category key, preserving first-seen order
     const groups = [];
     const groupIndex = {};
-    jiraTasks.forEach((t, i) => {
-      const cat = jiraGetCat(t);
+    jiraTasks.forEach((task, index) => {
+      const cat = jiraGetCat(task);
       const key = cat ? cat.id : '__none__';
       if (!(key in groupIndex)) {
         groupIndex[key] = groups.length;
         groups.push({ cat, tasks: [] });
       }
-      groups[groupIndex[key]].tasks.push({ t, i });
+      groups[groupIndex[key]].tasks.push({ task, index });
     });
 
     container.innerHTML = groups
@@ -192,7 +193,7 @@
           ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${safeCssColor(cat.color)};flex-shrink:0;margin-right:6px;vertical-align:-1px"></span>`
           : '';
         const catName = cat ? escHtml(cat.label) : 'no category';
-        const allDup = tasks.every(({ t }) => jiraIsDup(t));
+        const allDup = tasks.every(({ task }) => jiraIsDup(task));
         const newBadge =
           cat && cat.isNew
             ? `<span class="jira-badge jira-badge-new" style="margin-left:6px">new category</span>`
@@ -203,11 +204,11 @@
         </div>`;
 
         const rows = tasks
-          .map(({ t, i }) => {
-            const mapped = jiraMapStatus(t.status);
+          .map(({ task, index }) => {
+            const mapped = jiraMapStatus(task.status);
             const isDone = mapped === 'done';
-            const isDup = jiraIsDup(t);
-            const slabel = JIRA_STATUS_LABEL[mapped] || t.status;
+            const isDup = jiraIsDup(task);
+            const slabel = JIRA_STATUS_LABEL[mapped] || task.status;
             const statusBadge = isDup
               ? `<span class="jira-badge jira-badge-dup">already added</span>`
               : `<span class="jira-badge jira-badge-status-${mapped}">${escHtml(slabel)}</span>`;
@@ -215,10 +216,10 @@
               .filter(Boolean)
               .join(' ');
             return `<label class="${rowClass}">
-            <input type="checkbox" ${jiraSelected.has(i) ? 'checked' : ''} ${isDup ? 'disabled' : ''} data-ji="${i}"
-              style="flex-shrink:0" onchange="window.__jiraToggle(${i},this.checked)">
-            <span class="jira-task-key">${escHtml(t.key)}</span>
-            <span class="jira-task-title">${escHtml(t.summary)}</span>
+            <input type="checkbox" ${jiraSelected.has(index) ? 'checked' : ''} ${isDup ? 'disabled' : ''} data-ji="${index}"
+              style="flex-shrink:0" onchange="window.__jiraToggle(${index},this.checked)">
+            <span class="jira-task-key">${escHtml(task.key)}</span>
+            <span class="jira-task-title">${escHtml(task.summary)}</span>
             ${statusBadge}
           </label>`;
           })
@@ -280,11 +281,11 @@
     const headers = rows[0];
     return rows
       .slice(1)
-      .filter((r) => r.some((f) => f.trim()))
-      .map((r) => {
+      .filter((csvRow) => csvRow.some((cell) => cell.trim()))
+      .map((csvRow) => {
         const o = {};
-        headers.forEach((h, i) => {
-          o[h.trim()] = (r[i] || '').trim();
+        headers.forEach((header, index) => {
+          o[header.trim()] = (csvRow[index] || '').trim();
         });
         return o;
       });
@@ -307,20 +308,20 @@
       setJiraMsg('CSV is empty or could not be parsed.', false);
       return;
     }
-    const invalidRows = rows.filter((r) => !validJiraCsvRow(r));
+    const invalidRows = rows.filter((row) => !validJiraCsvRow(row));
     if (invalidRows.length) {
       wlLog.warn(
         `jiraParseAndRender: ${invalidRows.length} row(s) missing required columns (Issue key / Summary) — check delimiter`,
         invalidRows
       );
     }
-    jiraTasks = rows.filter(validJiraCsvRow).map((r) => ({
-      key: (r['Issue key'] || r['Key'] || r['Issue Key'] || '').trim(),
-      summary: (r['Summary'] || r['summary'] || '').trim(),
-      status: (r['Status'] || r['status'] || '').trim(),
-      parentKey: (r['Parent key'] || r['Parent Key'] || '').trim() || null,
+    jiraTasks = rows.filter(validJiraCsvRow).map((row) => ({
+      key: (row['Issue key'] || row['Key'] || row['Issue Key'] || '').trim(),
+      summary: (row['Summary'] || row['summary'] || '').trim(),
+      status: (row['Status'] || row['status'] || '').trim(),
+      parentKey: (row['Parent key'] || row['Parent Key'] || '').trim() || null,
       parentSummary:
-        (r['Parent summary'] || r['Parent Summary'] || r['Epic Name'] || '').trim() || null,
+        (row['Parent summary'] || row['Parent Summary'] || row['Epic Name'] || '').trim() || null,
     }));
 
     if (!jiraTasks.length) {
@@ -330,9 +331,9 @@
     // Pre-select: skip done and duplicates
     jiraSelected = new Set(
       jiraTasks
-        .map((_, i) => i)
-        .filter((i) => {
-          const t = jiraTasks[i];
+        .map((_, index) => index)
+        .filter((index) => {
+          const t = jiraTasks[index];
           return jiraMapStatus(t.status) !== 'done' && !jiraIsDup(t);
         })
     );
@@ -362,33 +363,33 @@
     document.getElementById('jiraMsg').textContent = '';
     document.getElementById('jiraImportBtn').disabled = false;
     const reader = new FileReader();
-    reader.onload = (e) => jiraParseAndRender(e.target.result);
+    reader.onload = (event) => jiraParseAndRender(event.target.result);
     reader.readAsText(f, 'UTF-8');
   }
 
   // Exposed globally for inline onchange handlers
-  window.__jiraToggle = (i, on) => {
-    on ? jiraSelected.add(i) : jiraSelected.delete(i);
+  window.__jiraToggle = (index, on) => {
+    on ? jiraSelected.add(index) : jiraSelected.delete(index);
     jiraUpdateCount();
   };
 
   // Drop zone
   const drop = document.getElementById('jiraDrop');
   drop.addEventListener('click', () => document.getElementById('jiraFileIn').click());
-  drop.addEventListener('dragover', (e) => {
-    e.preventDefault();
+  drop.addEventListener('dragover', (event) => {
+    event.preventDefault();
     drop.classList.add('over');
   });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', (e) => {
-    e.preventDefault();
+  drop.addEventListener('drop', (event) => {
+    event.preventDefault();
     drop.classList.remove('over');
-    const f = e.dataTransfer.files[0];
+    const f = event.dataTransfer.files[0];
     if (f) jiraHandleFile(f);
   });
   document
     .getElementById('jiraFileIn')
-    .addEventListener('change', (e) => jiraHandleFile(e.target.files[0]));
+    .addEventListener('change', (event) => jiraHandleFile(event.target.files[0]));
 
   // Restore stored collapse state (HTML default is collapsed).
   document
@@ -404,8 +405,8 @@
 
   // Select all / none
   document.getElementById('jiraSelAll').addEventListener('click', () => {
-    jiraTasks.forEach((t, i) => {
-      if (!jiraIsDup(t)) jiraSelected.add(i);
+    jiraTasks.forEach((task, index) => {
+      if (!jiraIsDup(task)) jiraSelected.add(index);
     });
     document
       .querySelectorAll('#jiraTaskRows input[type=checkbox]:not([disabled])')
@@ -428,12 +429,12 @@
     }
     const today = dk(new Date());
     const existing = new Set(
-      planTasks.filter((p) => p.date === today).map((p) => p.text.toLowerCase().trim())
+      planTasks.filter((task) => task.date === today).map((task) => task.text.toLowerCase().trim())
     );
 
     // Create any new categories
     Object.values(jiraCatMap).forEach((cat) => {
-      if (cat.isNew && !categories.find((c) => c.id === cat.id)) {
+      if (cat.isNew && !categories.find((existingCat) => existingCat.id === cat.id)) {
         categories.push({ id: cat.id, label: cat.label, color: cat.color });
       }
     });
@@ -443,28 +444,28 @@
     // Import in category-group order (same order as displayed)
     const grouped = [];
     const seen = {};
-    jiraTasks.forEach((t, i) => {
-      if (!jiraSelected.has(i)) return;
-      const cat = jiraGetCat(t);
+    jiraTasks.forEach((task, index) => {
+      if (!jiraSelected.has(index)) return;
+      const cat = jiraGetCat(task);
       const key = cat ? cat.id : '__none__';
       if (!(key in seen)) {
         seen[key] = grouped.length;
         grouped.push([]);
       }
-      grouped[seen[key]].push({ t, i });
+      grouped[seen[key]].push({ task, index });
     });
     grouped.forEach((group) =>
-      group.forEach(({ t }) => {
-        const text = `${t.key}: ${t.summary}`;
+      group.forEach(({ task }) => {
+        const text = `${task.key}: ${task.summary}`;
         if (existing.has(text.toLowerCase().trim())) {
           skipped++;
           return;
         }
-        const cat = jiraGetCat(t);
+        const cat = jiraGetCat(task);
         planTasks.push({
           id: 'jira_' + Date.now() + '_' + Math.random().toString(36).slice(2),
           text,
-          status: jiraMapStatus(t.status),
+          status: jiraMapStatus(task.status),
           tag: cat ? cat.id : 'other',
           date: today,
         });

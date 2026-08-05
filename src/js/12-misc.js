@@ -3,13 +3,15 @@ const STORE_DISTRACTIONS = 'wl_distractions_v1';
 function loadDistractions() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_DISTRACTIONS) || '[]');
-    return Array.isArray(raw) ? raw.filter((d) => d && typeof d.ts === 'number') : [];
+    return Array.isArray(raw)
+      ? raw.filter((distraction) => distraction && typeof distraction.ts === 'number')
+      : [];
   } catch (err) {
     return [];
   }
 }
 function saveDistraction(note) {
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
   const d = {
     ts: Date.now(),
     date: dk(new Date()),
@@ -25,20 +27,22 @@ function renderDistractionCount() {
   const el = document.getElementById('distractionSection');
   if (!el) return;
   const today = dk(new Date());
-  const all = loadDistractions().filter((d) => d.date === today);
+  const all = loadDistractions().filter((distraction) => distraction.date === today);
   if (!all.length) {
     el.innerHTML = '';
     return;
   }
   const rows = all
-    .map((d) => {
-      const t = new Date(d.ts);
+    .map((distraction) => {
+      const t = new Date(distraction.ts);
       const hh = String(t.getHours()).padStart(2, '0');
       const mm = String(t.getMinutes()).padStart(2, '0');
-      const task = d.task
-        ? `<span style="color:var(--text3);font-size:11px"> — ${escHtml(d.task)}</span>`
+      const task = distraction.task
+        ? `<span style="color:var(--text3);font-size:11px"> — ${escHtml(distraction.task)}</span>`
         : '';
-      const note = d.note ? `<span style="color:var(--text2)"> "${escHtml(d.note)}"</span>` : '';
+      const note = distraction.note
+        ? `<span style="color:var(--text2)"> "${escHtml(distraction.note)}"</span>`
+        : '';
       return `<div style="font-size:12px;padding:3px 0;border-bottom:0.5px solid var(--border)">${hh}:${mm}${task}${note}</div>`;
     })
     .join('');
@@ -79,7 +83,7 @@ function loadParked() {
   }
 }
 function renderParked() {
-  const open = parkedThoughts.filter((p) => !p.done);
+  const open = parkedThoughts.filter((thought) => !thought.done);
   const section = document.getElementById('parkSection');
   const list = document.getElementById('parkList');
   const badge = document.getElementById('parkBadge');
@@ -92,21 +96,21 @@ function renderParked() {
   if (badge) badge.textContent = open.length;
   list.innerHTML = open
     .map(
-      (p) => `
-      <div class="parked-item" data-id="${p.id}">
+      (thought) => `
+      <div class="parked-item" data-id="${thought.id}">
         <div class="parked-item-text">
-          ${escHtml(p.text)}
-          ${p.fromTask ? `<span class="parked-from">while working on: ${escHtml(p.fromTask)}</span>` : ''}
+          ${escHtml(thought.text)}
+          ${thought.fromTask ? `<span class="parked-from">while working on: ${escHtml(thought.fromTask)}</span>` : ''}
         </div>
-        <button class="parked-promote" data-id="${p.id}">→ task</button>
-        <button class="parked-dismiss" data-id="${p.id}" title="dismiss">✓</button>
+        <button class="parked-promote" data-id="${thought.id}">→ task</button>
+        <button class="parked-dismiss" data-id="${thought.id}" title="dismiss">✓</button>
       </div>`
     )
     .join('');
   list.querySelectorAll('.parked-promote').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const p = parkedThoughts.find((x) => x.id === btn.dataset.id);
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const p = parkedThoughts.find((thought) => thought.id === btn.dataset.id);
       if (!p) return;
       const todayKey = dk(new Date());
       planTasks.push({
@@ -124,9 +128,9 @@ function renderParked() {
     });
   });
   list.querySelectorAll('.parked-dismiss').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const p = parkedThoughts.find((x) => x.id === btn.dataset.id);
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const p = parkedThoughts.find((thought) => thought.id === btn.dataset.id);
       if (p) {
         p.done = true;
         saveParked();
@@ -141,8 +145,8 @@ function renderParked() {
   const btn = document.getElementById('timerParkBtn');
   const inp = document.getElementById('parkCapture');
   if (!btn || !inp) return;
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation();
     const showing = inp.classList.contains('show');
     inp.classList.toggle('show', !showing);
     btn.classList.toggle('active', !showing);
@@ -152,8 +156,8 @@ function renderParked() {
       inp.value = '';
     }
   });
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+  inp.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
       const text = inp.value.trim();
       if (!text) {
         inp.classList.remove('show');
@@ -173,7 +177,7 @@ function renderParked() {
       inp.value = '';
       inp.classList.remove('show');
       btn.classList.remove('active');
-    } else if (e.key === 'Escape') {
+    } else if (event.key === 'Escape') {
       inp.value = '';
       inp.classList.remove('show');
       btn.classList.remove('active');
@@ -185,8 +189,8 @@ function renderParked() {
 (() => {
   const inp = document.getElementById('heroParkInput');
   if (!inp) return;
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+  inp.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
       const text = inp.value.trim();
       if (!text) return;
       const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
@@ -200,7 +204,7 @@ function renderParked() {
       saveParked();
       renderParked();
       inp.value = '';
-    } else if (e.key === 'Escape') {
+    } else if (event.key === 'Escape') {
       inp.value = '';
     }
   });
@@ -211,11 +215,11 @@ function renderParked() {
   const btn = document.getElementById('idkwBtn');
   if (!btn) return;
   let idkwTimer = null;
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation();
     const todayKey = dk(new Date());
     const candidates = planTasks.filter(
-      (t) => t.date === todayKey && t.status === 'todo' && !t.parentId
+      (task) => task.date === todayKey && task.status === 'todo' && !task.parentId
     );
     if (!candidates.length) return;
     document
@@ -285,11 +289,11 @@ Requirements:
     panel.style.display = 'block';
   }
   function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).catch((e) => console.warn('Clipboard failed:', e));
+    navigator.clipboard.writeText(text).catch((err) => console.warn('Clipboard failed:', err));
   }
 
-  btn.addEventListener('click', async (e) => {
-    e.stopPropagation();
+  btn.addEventListener('click', async (event) => {
+    event.stopPropagation();
     if (!activeTimer) return;
     const entry = entries.find((en) => en.id === activeTimer.entryId);
     if (!entry) return;
@@ -332,8 +336,8 @@ Requirements:
 
   const regenBtn = document.getElementById('timerHookRegen');
   if (regenBtn) {
-    regenBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
+    regenBtn.addEventListener('click', async (event) => {
+      event.stopPropagation();
       if (!activeTimer) return;
       const entry = entries.find((en) => en.id === activeTimer.entryId);
       if (!entry) return;
@@ -348,9 +352,9 @@ Requirements:
 // Make a div[role="button"] respond to Enter/Space like a real button.
 function a11yHeaderKeydown(el) {
   if (!el) return;
-  el.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
+  el.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
       el.click();
     }
   });
@@ -427,8 +431,8 @@ function a11yHeaderKeydown(el) {
       }
     }
     if (eodClose) eodClose.addEventListener('click', restoreEodFocus);
-    eodOverlay.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
+    eodOverlay.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
         eodOverlay.classList.remove('show');
         restoreEodFocus();
       }

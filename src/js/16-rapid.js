@@ -161,7 +161,7 @@ function _qcRenderRunningStrip() {
     return;
   }
 
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = entries.find((en) => en.id === activeTimer.entryId);
   if (!entry) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
@@ -190,12 +190,12 @@ function _qcRenderCatChips() {
 
   const catBtns = categories
     .map(
-      (c) =>
-        `<button class="qc-cat-chip${_qcFilterCat === c.id ? ' active' : ''}"` +
-        ` data-cat="${escHtml(c.id)}"` +
-        ` aria-pressed="${_qcFilterCat === c.id}">` +
-        `<span class="qc-chip-dot" style="background:${safeCssColor(c.color)}" aria-hidden="true"></span>` +
-        `${escHtml(c.label)}` +
+      (cat) =>
+        `<button class="qc-cat-chip${_qcFilterCat === cat.id ? ' active' : ''}"` +
+        ` data-cat="${escHtml(cat.id)}"` +
+        ` aria-pressed="${_qcFilterCat === cat.id}">` +
+        `<span class="qc-chip-dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
+        `${escHtml(cat.label)}` +
         `</button>`
     )
     .join('');
@@ -258,7 +258,9 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   const matchCat = (tag) => !_qcFilterCat || tag === _qcFilterCat;
 
   // ── In progress: the currently-running entry (if any) ─────────────────
-  const activeEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const activeEntry = activeTimer
+    ? entries.find((entry) => entry.id === activeTimer.entryId)
+    : null;
 
   /** @type {Object[]} */
   const inProgress = [];
@@ -267,29 +269,31 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   }
 
   // ── To-do: today's open plan tasks ───────────────────────────────────
-  const seen = new Set(inProgress.map((e) => e.text.toLowerCase()));
+  const seen = new Set(inProgress.map((entry) => entry.text.toLowerCase()));
   const todo = planTasks.filter(
-    (t) =>
-      t.date === todayKey &&
-      t.status !== 'done' &&
-      !t._migrated &&
-      matchSearch(t.text) &&
-      matchCat(t.tag) &&
-      !seen.has(t.text.toLowerCase())
+    (task) =>
+      task.date === todayKey &&
+      task.status !== 'done' &&
+      !task._migrated &&
+      matchSearch(task.text) &&
+      matchCat(task.tag) &&
+      !seen.has(task.text.toLowerCase())
   );
-  todo.forEach((t) => seen.add(t.text.toLowerCase()));
+  todo.forEach((task) => seen.add(task.text.toLowerCase()));
 
   // ── Recent: unique entries from today, excluding the active one ───────
   /** @type {Object[]} */
   const recent = [];
   [...entries]
-    .filter((e) => e.date === todayKey && e.id !== (activeTimer ? activeTimer.entryId : ''))
+    .filter(
+      (entry) => entry.date === todayKey && entry.id !== (activeTimer ? activeTimer.entryId : '')
+    )
     .reverse()
-    .forEach((e) => {
-      const key = e.text.toLowerCase();
-      if (!seen.has(key) && matchSearch(e.text) && matchCat(e.tag)) {
+    .forEach((entry) => {
+      const key = entry.text.toLowerCase();
+      if (!seen.has(key) && matchSearch(entry.text) && matchCat(entry.tag)) {
         seen.add(key);
-        recent.push(e);
+        recent.push(entry);
       }
     });
 
@@ -318,22 +322,22 @@ function _qcTaskListHtml(groups, search) {
 
   if (inProgress.length) {
     html += '<div class="qc-group-hdr" aria-hidden="true">In progress</div>';
-    inProgress.forEach((e) => {
-      html += _qcTaskRowHtml(e.id, e.text, getCat(e.tag), true);
+    inProgress.forEach((entry) => {
+      html += _qcTaskRowHtml(entry.id, entry.text, getCat(entry.tag), true);
     });
   }
 
   if (todo.length) {
     html += '<div class="qc-group-hdr" aria-hidden="true">To-do</div>';
-    todo.slice(0, 6).forEach((t) => {
-      html += _qcTaskRowHtml('plan:' + t.id, t.text, getCat(t.tag), false);
+    todo.slice(0, 6).forEach((task) => {
+      html += _qcTaskRowHtml('plan:' + task.id, task.text, getCat(task.tag), false);
     });
   }
 
   if (recent.length) {
     html += '<div class="qc-group-hdr" aria-hidden="true">Recent</div>';
-    recent.slice(0, 5).forEach((e) => {
-      html += _qcTaskRowHtml(e.id, e.text, getCat(e.tag), false);
+    recent.slice(0, 5).forEach((entry) => {
+      html += _qcTaskRowHtml(entry.id, entry.text, getCat(entry.tag), false);
     });
   }
 
@@ -459,7 +463,7 @@ function _qcActivateRow(rowId, text, tag, isActive) {
   if (switching) stopTimer();
 
   // Re-use the existing entry for log entries; always create new for plan tasks.
-  let entry = rowId.startsWith('plan:') ? null : entries.find((e) => e.id === rowId);
+  let entry = rowId.startsWith('plan:') ? null : entries.find((en) => en.id === rowId);
 
   if (!entry) {
     entry = {
@@ -490,8 +494,8 @@ function _qcActivateRow(rowId, text, tag, isActive) {
 /** Registers all event listeners for the quick-capture overlay. Called once on DOMContentLoaded. */
 function initRapid() {
   // Escape closes the overlay
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && _rapidOpen) closeRapid();
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && _rapidOpen) closeRapid();
   });
 
   // Open via the ✏️ button in the Today's Tasks header
@@ -517,10 +521,10 @@ function initRapid() {
       _qcRenderTaskList();
       _qcRenderTokenPreview(parsed);
     });
-    inp.addEventListener('keydown', (e) => {
+    inp.addEventListener('keydown', (event) => {
       // Prevent the Space key from bubbling to the global rapid-open listener
-      if (e.code === 'Space') e.stopPropagation();
-      if (e.key === 'Enter') _qcLogOnly();
+      if (event.code === 'Space') event.stopPropagation();
+      if (event.key === 'Enter') _qcLogOnly();
     });
   }
 
@@ -536,7 +540,7 @@ function initRapid() {
   });
 
   // Dismiss overlay on backdrop click
-  document.getElementById('rapidOverlay')?.addEventListener('click', (e) => {
-    if (e.target === document.getElementById('rapidOverlay')) closeRapid();
+  document.getElementById('rapidOverlay')?.addEventListener('click', (event) => {
+    if (event.target === document.getElementById('rapidOverlay')) closeRapid();
   });
 }
