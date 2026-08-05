@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (59 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (61 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -573,10 +573,10 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (536 lines) — Today's Flow Unified Section
-**Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
+#### **11-timeflow.js** (139 lines) — Today's Flow Unified Section
+**Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). This file keeps the orchestrator (`renderTodayFlow()`, `initTodayFlow()`, `focusTabAt()`) and view-preference persistence (`getFlowView()`/`setFlowView()`). The day-overview strip, gap-reminder banner, and section header (totals + segmented control) were split to `11c-timeflow-header.js`; the Flow view's card list and its note-editing widgets were split to `11d-timeflow-flowview.js`.
 
-**Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
+**Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()` and `renderDayStrip()`/`renderGapReminder()`/`findLargestGap(dateKey)`/`activeTimerDurationMs(entry)` (11c-timeflow-header.js), `renderFlowView()` (11d-timeflow-flowview.js), `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
 
 **localStorage key**: `wl_flow_view` (`'flow' | 'log' | 'blocks'`, default `'flow'`).
 

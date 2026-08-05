@@ -2029,10 +2029,17 @@ describe('calcMonthTaskCounts', () => {
 // ── Today's Flow — findLargestGap / view preference ───────────────────────────
 
 const timeflowSrc = readFileSync(join(__dirname, '../src/js/11-timeflow.js'), 'utf8');
+const timeflowHeaderSrc = readFileSync(join(__dirname, '../src/js/11c-timeflow-header.js'), 'utf8');
+const timeflowFlowviewSrc = readFileSync(
+  join(__dirname, '../src/js/11d-timeflow-flowview.js'),
+  'utf8'
+);
 
 /**
- * Creates a vm sandbox with the minimal globals that 11-timeflow.js needs
- * for the pure-logic functions (findLargestGap, getFlowView, setFlowView).
+ * Creates a vm sandbox with 11-timeflow.js and its two split siblings
+ * (11c-timeflow-header.js: findLargestGap, renderGapReminder, renderDayStrip,
+ * renderFlowHeader, fmtHm; 11d-timeflow-flowview.js: renderFlowView and its
+ * note-editing helpers) loaded, plus the minimal globals they all need.
  * @param {object} overrides
  */
 function loadTimeflowSandbox(overrides = {}) {
@@ -2078,6 +2085,8 @@ function loadTimeflowSandbox(overrides = {}) {
     ...overrides,
   };
   vm.createContext(sandbox);
+  vm.runInContext(timeflowHeaderSrc, sandbox);
+  vm.runInContext(timeflowFlowviewSrc, sandbox);
   vm.runInContext(timeflowSrc, sandbox);
   return sandbox;
 }
