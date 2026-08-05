@@ -182,10 +182,17 @@ describe('parseActionlintFindings', () => {
     });
   });
 
+  // Valid JSON that is not a findings array. `null` is the one worth spelling
+  // out: `typeof null === 'object'`, so a naive shape check would wave it
+  // through as "an object, close enough" and then read zero findings off it.
   test('throws when JSON parses but is not an array', () => {
-    assert.throws(() => parseActionlintFindings('{"message":"boom"}'), {
-      message: /not an array/,
-    });
+    for (const notAnArray of ['{"message":"boom"}', '{}', 'null', '42', '"a string"']) {
+      assert.throws(
+        () => parseActionlintFindings(notAnArray),
+        { message: /not an array/ },
+        `should reject ${notAnArray}`
+      );
+    }
   });
 });
 
