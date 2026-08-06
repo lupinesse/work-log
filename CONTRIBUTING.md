@@ -402,6 +402,10 @@ wl_handoff           // End-of-day handoff notes
    - nimipaivat.fi API has rate limits (fallback included)
    - Weather API has rate limits
 
+4. **A restored branch stops auto-triggering CI on new pushes.** This repo has "Automatically delete head branches" enabled, so closing a PR deletes its branch on origin. If you later reopen that PR, `gh pr reopen` fails with "Could not open the pull request" until the branch exists again — recreate it first with `git push origin <sha>:refs/heads/<branch>`. Confirmed on this repo (PR #282, 2026-08-03): after that recreate-and-reopen, GitHub Actions stopped firing `pull_request: synchronize`/`reopened` runs on subsequent pushes to the branch, across two pushes and two further close/reopen cycles. No CLI fix found — if you hit this, don't loop on close/reopen cycling; either push to a fresh branch and open a new PR instead (what #282 ended up doing, superseded by #285), or check the GitHub web UI (Actions tab, webhook deliveries), which has visibility the `gh` CLI doesn't.
+
+   Whether the same restore also makes the branch *permanently skip* "automatically delete head branches" on a later merge is unconfirmed — the one incident in this repo's history was closed rather than merged, so it never reached that test. If you hit it, please update this note with what actually happened.
+
 ## QA Standards
 
 The following standards apply to all contributions. They reflect the processes that keep the codebase reliable for a single-developer, locally-run tool.
