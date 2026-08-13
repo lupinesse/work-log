@@ -104,6 +104,11 @@ node smoke-tests.cjs
 
 Or double-click `run-tests.bat` on Windows.
 
+If your environment has a pre-provisioned Chromium binary at a revision Playwright's
+own installer can't reach (e.g. an offline sandbox), point the smoke tests at it with
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium node smoke-tests.cjs` instead of
+running `npx playwright install`.
+
 To schedule tests to run automatically each morning, run `schedule-tests.bat` once as Administrator.
 
 To set up automated weekly releases every Friday, run `setup-scheduler.ps1` once as Administrator.
