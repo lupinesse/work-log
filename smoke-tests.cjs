@@ -95,7 +95,14 @@ async function runTests() {
   FILE = `http://127.0.0.1:${SERVER_PORT}/work-log.html?test=1`;
   console.log(`  Server running on port ${SERVER_PORT}`);
 
-  const browser = await chromium.launch();
+  // Some sandboxed/offline dev environments pre-provision a Chromium binary at a
+  // fixed revision that can lag behind the one this project's pinned `playwright`
+  // version expects, and cannot reach the network to download a matching one.
+  // PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH lets such environments point at their own
+  // binary instead. Unset in normal dev/CI, where `npx playwright install` keeps
+  // the download in sync with package.json and this has no effect.
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined;
+  const browser = await chromium.launch({ executablePath });
   const ctx = await browser.newContext();
 
   // ── 1. Page load ──────────────────────────────────────────────────────────
