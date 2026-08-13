@@ -1,14 +1,15 @@
 /**
  * @file 12c-gapreport.js — End-of-week gap report.
  *
- * Lists this calendar week's (Mon–Sun) finished, non-cancelled log entries
- * that have neither a proof link nor a note, via the pure
+ * Lists this calendar week's (Mon–Sun) finished, non-cancelled, billable log
+ * entries that have neither a proof link nor a note, via the pure
  * findGapReportEntries() (pure-fns.js), so the user can catch missing
- * documentation themselves before a weekly report is due. Clicking a flagged
- * entry jumps straight to it in the Log view with its proof-link/note editor
- * already open — see buildEntryMetaHtml()/bindEntryMetaEvents() in
- * 04-render.js for the editor itself (added alongside the entry.link/note
- * fields this report reads).
+ * documentation themselves before a weekly report is due. Non-billable
+ * entries are never flagged — there's nothing to bill, so nothing to prove.
+ * Clicking a flagged entry jumps straight to it in the Log view with its
+ * proof-link/note editor already open — see
+ * buildEntryMetaHtml()/bindEntryMetaEvents() in 04-render.js for the editor
+ * itself (added alongside the entry.link/note fields this report reads).
  */
 
 // Element that had focus when the report was opened, restored on close —
@@ -30,9 +31,9 @@ function buildGapReportRowHtml(entry) {
 }
 
 /**
- * Opens the gap report: this calendar week's entries missing both a proof
- * link and a note. Builds the list fresh from current `entries` state every
- * time it's opened, so it always reflects the latest data.
+ * Opens the gap report: this calendar week's billable entries missing both a
+ * proof link and a note. Builds the list fresh from current `entries` state
+ * every time it's opened, so it always reflects the latest data.
  */
 function openGapReportOverlay() {
   const overlay = document.getElementById('gapReportOverlay');
@@ -42,7 +43,14 @@ function openGapReportOverlay() {
 
   const weekStart = mondayOfWeek();
   const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
-  const flagged = findGapReportEntries(entries, weekStart, weekEnd);
+  // Resolve billable status up front (same convention as exportTxt's
+  // entriesWithBillingStatus) so non-billable entries aren't flagged for a
+  // missing note/link.
+  const entriesWithBillingStatus = entries.map((entry) => ({
+    ...entry,
+    _billable: isEntryBillable(entry),
+  }));
+  const flagged = findGapReportEntries(entriesWithBillingStatus, weekStart, weekEnd);
 
   const subtitleEl = document.getElementById('gapReportSubtitle');
   const listEl = document.getElementById('gapReportList');
