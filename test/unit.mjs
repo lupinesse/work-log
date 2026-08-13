@@ -3211,6 +3211,24 @@ describe('findGapReportEntries', () => {
     assert.deepEqual(findGapReportEntries([], WEEK_START, WEEK_END), []);
     assert.deepEqual(findGapReportEntries(undefined, WEEK_START, WEEK_END), []);
   });
+
+  it('excludes an entry resolved as non-billable, even with no note or link', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, _billable: false }], WEEK_START, WEEK_END),
+      []
+    );
+  });
+
+  it('includes an entry with no _billable flag (undefined means billable)', () => {
+    assert.deepEqual(findGapReportEntries([base], WEEK_START, WEEK_END), [base]);
+  });
+
+  it('includes an entry explicitly resolved as billable', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, _billable: true }], WEEK_START, WEEK_END),
+      [{ ...base, _billable: true }]
+    );
+  });
 });
 
 // ── findExportWarnings ─────────────────────────────────────────────────────────
@@ -3278,6 +3296,16 @@ describe('findExportWarnings', () => {
 
   it('returns an empty array for a clean day with no entries', () => {
     assert.deepEqual(findExportWarnings([], noSpan), []);
+  });
+
+  it('does not flag a non-billable entry for a missing note or link', () => {
+    const entry = { text: 'Team standup', ts: 0, tsEnd: HOUR, _billable: false };
+    assert.deepEqual(findExportWarnings([entry], noSpan), []);
+  });
+
+  it('flags an entry with no _billable flag (undefined means billable)', () => {
+    const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR };
+    assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
   });
 });
 
