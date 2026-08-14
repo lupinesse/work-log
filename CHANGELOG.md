@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Security
+- **Fixed 6 high-severity `npm audit` findings in transitive devDependencies** — `nanoid` (via `stylelint`→`postcss`), `linkify-it`, `js-yaml`, `immutable`, `fast-uri`, and `brace-expansion` all had known DoS-class advisories with patched versions already inside `package.json`'s existing semver ranges. `npm audit fix` (no `--force`) resolved all six; `package.json` itself is unchanged, only `package-lock.json`. Dev-tooling only — no runtime dependency was affected. Flagged in the last two QA reviews with zero remediation until now.
+
 ---
 
 ## [1.9.2] — 2026-08-14
