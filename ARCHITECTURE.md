@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.0-r3 |
-| Covers app version | v1.9.0+ (main, 2026-08-03) |
-| Last reviewed | 2026-08-03 |
-| Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map and line counts only, per the 2026-08-03 QA review; not a full architectural re-review) |
+| Document version | 1.9.2-r1 |
+| Covers app version | v1.9.2+ (main, 2026-08-14) |
+| Last reviewed | 2026-08-14 |
+| Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map and line counts only, per the v1.9.2 release; not a full architectural re-review) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (50 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (51 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -93,18 +93,18 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (62 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (520 lines) — Entry grouping, export helpers, rolling summary, backup retention: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-export.js` (745 lines) — Entry grouping, export helpers, rolling summary, backup retention: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
 ---
 
-#### **02-utils.js** (319 lines) — Utilities
+#### **02-utils.js** (323 lines) — Utilities
 **Responsibility**: Shared helper functions
 
 **Key Functions**:
@@ -142,7 +142,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (848 lines) — Top-Level UI Rendering
+#### **04-render.js** (892 lines) — Top-Level UI Rendering
 **Responsibility**: Orchestrate rendering of all visible sections
 
 **Main Function**:
@@ -389,7 +389,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (273 lines) — Task Rendering
+#### **10a-tasks-render.js** (267 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
@@ -403,7 +403,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (340 lines) — Task Event Binding
+#### **10b-tasks-events.js** (334 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -485,7 +485,8 @@ upcoming    → Scheduled for future date
 **Sub-modules**:
 - `12b-changelog-data.js` (631 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
 - `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
-- `12c-gapreport.js` (113 lines) — End-of-week gap report: lists this week's finished, non-cancelled entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
+- `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note (non-billable entries are never flagged — nothing to bill, nothing to prove), via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
+- `12d-weeklyreport.js` (104 lines) — Weekly status-report draft: groups this calendar week's (Mon–Sun) finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()` (`pure-fns.js`); opens a modal with the rendered text and a copy-to-clipboard button, mirroring `12c-gapreport.js`'s modal wiring.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
