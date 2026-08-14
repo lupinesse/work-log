@@ -323,14 +323,24 @@ export function buildEntryLinkMap(dayEntries) {
 const GAP_REPORT_UTILITY_TEXTS = new Set(['☕ Break', '🥪 Lunch', '📅 Meeting']);
 
 /**
- * Finds finished, non-cancelled work entries within `[weekStart, weekEnd)`
- * that have neither a proof link nor a note — candidates for the
- * end-of-week gap report. Uses the same "finished and not cancelled" filter
- * as every other report/aggregation in this codebase ({@link buildRollingSummary},
- * `findLargestGap` in `11-timeflow.js`, `exportTxt`'s billable summary), plus
- * excludes break/lunch/meeting utility entries which never need documentation.
+ * Finds finished, non-cancelled, billable work entries within
+ * `[weekStart, weekEnd)` that have neither a proof link nor a note —
+ * candidates for the end-of-week gap report. Uses the same "finished and
+ * not cancelled" filter as every other report/aggregation in this codebase
+ * ({@link buildRollingSummary}, `findLargestGap` in `11-timeflow.js`,
+ * `exportTxt`'s billable summary), plus excludes break/lunch/meeting
+ * utility entries which never need documentation.
  *
- * @param {Array<Object>} entries - All log entries.
+ * Non-billable entries are never flagged: this is a pure module with no
+ * access to the category/task lookups {@link isEntryBillable} needs, so
+ * callers resolve billable status themselves and annotate each entry with
+ * `_billable` before calling this (see `exportTxt`'s
+ * `entriesWithBillingStatus` for the same convention). An entry with no
+ * `_billable` property is treated as billable, matching
+ * {@link isEntryBillable}'s own "undefined means billable" default.
+ *
+ * @param {Array<Object>} entries - All log entries, each optionally carrying
+ *   a resolved `_billable` flag (`false` excludes it from the report).
  * @param {number} weekStart - Inclusive week-start timestamp in ms (e.g. Monday 00:00).
  * @param {number} weekEnd - Exclusive week-end timestamp in ms (e.g. the following Monday 00:00).
  * @returns {Array<Object>} Matching entries, sorted by `ts` ascending.
@@ -350,6 +360,10 @@ export function findGapReportEntries(entries, weekStart, weekEnd) {
         entry.ts >= weekStart &&
         entry.ts < weekEnd &&
         !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        // `!== false` (not `=== true`): an entry with no _billable property
+        // defaults to billable, mirroring isEntryBillable()'s own
+        // "undefined means billable" convention.
+        entry._billable !== false &&
         !(entry.link && entry.link.trim()) &&
         !(entry.note && entry.note.trim())
     )
@@ -369,12 +383,16 @@ const MIN_EXPECTED_BREAK_MS = 15 * 60000;
  * suspiciously long unbroken stretches, and a full workday with no break-sized
  * gap in it. Surfaced as a warnings section at the end of the plaintext export
  * so the person doing the logging finds the gap before anyone asking about it
- * does.
+ * does. Non-billable entries are never flagged for a missing note/link — see
+ * {@link findGapReportEntries} for why the `_billable` flag must already be
+ * resolved on each entry before it reaches this function.
  *
  * Pure: the duration formatter is injected (same convention as
  * {@link formatGroupedLines}) so this has no dependency on global state.
  *
- * @param {Array<Object>} dayEntries - All entries for the exported day.
+ * @param {Array<Object>} dayEntries - All entries for the exported day, each
+ *   optionally carrying a resolved `_billable` flag (`false` excludes it from
+ *   the missing-note/link check).
  * @param {Object} opts
  * @param {number} [opts.workdaySpanMs=0] - Ended-minus-started span for the day.
  * @param {number} [opts.untrackedMs=0] - `workdaySpanMs` minus total tracked time —
@@ -399,6 +417,7 @@ export function findExportWarnings(dayEntries, opts) {
         entry.tsEnd > entry.ts &&
         entry.signifier !== 'cancelled' &&
         !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        entry._billable !== false &&
         !(entry.link && entry.link.trim()) &&
         !(entry.note && entry.note.trim())
     )

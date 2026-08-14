@@ -94,8 +94,10 @@ function exportTxt() {
   // whole day, billable and internal alike (internal ones marked).
   const summaryLine = buildTimesheetSummaryLine(entriesWithBillingStatus, fmtDurLong);
 
-  // Gap/anomaly warnings — flags issues before anyone else has to ask about them.
-  const warnings = findExportWarnings(dayEntries, {
+  // Gap/anomaly warnings — flags issues before anyone else has to ask about
+  // them. Reuses entriesWithBillingStatus's resolved _billable flags so
+  // non-billable entries aren't flagged for a missing note/link.
+  const warnings = findExportWarnings(entriesWithBillingStatus, {
     workdaySpanMs,
     untrackedMs,
     fmtDuration: fmtDurLong,
