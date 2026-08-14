@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **CI now fails when one change is documented twice in the CHANGELOG** — two PRs describing the same fix insert their bullets at different line offsets, so git merges both without ever raising a conflict; the duplication is semantic, and nothing was looking for it. That reached `main` on 2026-08-14, when #331 and #332 both documented the Log-view sort fix (#326) eleven minutes apart and a third PR (#340) was needed to remove a copy. `npm run test:changelog` now compares every bullet's bold label against the others and fails the `lint` job on a near-match. Exact string comparison would not have helped — the two real labels were "Log view entries **now** sort by start time…" and "Log view entries sort by start time…", one word apart — so matching is similarity-based (Dice coefficient over normalised word sets). The 0.85 threshold was measured, not guessed: across all 11,628 label pairs in the file, the closest genuinely *different* pair scores 0.667 and the real duplicate scores 1.000. Comparisons are limited to pairs touching one of the two newest sections, since frozen release history cannot gain a duplicate and failing on it would block unrelated PRs. Pure `normalizeEntryLabel()`, `labelSimilarity()`, `parseChangelogEntries()`, `parseChangelogSections()`, and `findDuplicateChangelogEntries()` in `.github/scripts/lib/duplicate-changelog-entries.mjs`, with 27 unit tests — including the verbatim #331/#332 labels as a regression fixture, and a check that the closest real non-duplicate stays below the threshold so the guard cannot quietly start crying wolf.
+
 ---
 
 ## [1.9.2] — 2026-08-14
