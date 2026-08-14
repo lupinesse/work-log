@@ -3241,6 +3241,13 @@ describe('findGapReportEntries', () => {
       { ...base, _billable: null },
     ]);
   });
+
+  it('treats a non-boolean truthy _billable (e.g. a string) as billable', () => {
+    assert.deepEqual(
+      findGapReportEntries([{ ...base, _billable: 'yes' }], WEEK_START, WEEK_END),
+      [{ ...base, _billable: 'yes' }]
+    );
+  });
 });
 
 // ── findExportWarnings ─────────────────────────────────────────────────────────
@@ -3327,6 +3334,11 @@ describe('findExportWarnings', () => {
 
   it('flags a non-boolean falsy _billable (e.g. null) — only strict false excludes', () => {
     const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR, _billable: null };
+    assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
+  });
+
+  it('flags a non-boolean truthy _billable (e.g. a string)', () => {
+    const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR, _billable: 'yes' };
     assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
   });
 });
