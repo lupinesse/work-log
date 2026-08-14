@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Log view entries now sort by start time, not insertion order** — `viewEntries()` reversed insertion order to approximate newest-first, so a retroactively logged entry (e.g. filling in a missed morning slot after the rest of the day was already recorded) landed wherever it was typed in rather than at its correct chronological position. Now sorts by `ts` descending instead, so entries always land where their start time says they should. Side effect: `exportTxt()`'s oldest-first ordering (which re-reverses `viewEntries()`'s result) is now genuinely chronological too, rather than reversed-insertion-order. 2 new regression tests in `test/unit.mjs`.
+
 ---
 
 ## [1.9.2] — 2026-08-13
