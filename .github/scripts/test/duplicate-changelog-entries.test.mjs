@@ -247,6 +247,17 @@ describe('findDuplicateChangelogEntries', () => {
     assert.ok(duplicates[0].similarity >= duplicates[1].similarity);
   });
 
+  test('throws an informative TypeError on non-string input', () => {
+    // Without the guard the failure surfaces as "changelog.split is not a
+    // function" from two frames deeper, which does not say what was wrong.
+    for (const bad of [undefined, null, 42, {}]) {
+      assert.throws(() => findDuplicateChangelogEntries(bad), {
+        name: 'TypeError',
+        message: /expects the changelog text as a string/,
+      });
+    }
+  });
+
   test('defaults are the exported constants', () => {
     assert.equal(SIMILARITY_THRESHOLD, 0.85);
     assert.equal(ACTIVE_SECTION_COUNT, 2);

@@ -19,9 +19,12 @@
 import { readFileSync } from 'node:fs';
 
 import {
+  ACTIVE_SECTION_COUNT,
   SIMILARITY_THRESHOLD,
   findDuplicateChangelogEntries,
   formatDuplicateReport,
+  parseChangelogEntries,
+  parseChangelogSections,
 } from './lib/duplicate-changelog-entries.mjs';
 
 const CHANGELOG_PATH = 'CHANGELOG.md';
@@ -41,8 +44,19 @@ function main() {
     return 1;
   }
 
-  const duplicates = findDuplicateChangelogEntries(changelog);
   const threshold = `${Math.round(SIMILARITY_THRESHOLD * 100)}%`;
+  const entries = parseChangelogEntries(changelog);
+  const activeSections = parseChangelogSections(changelog).slice(0, ACTIVE_SECTION_COUNT);
+
+  // Log the configuration actually in effect before doing the work, so a run
+  // that reports "clean" also shows what it compared and how strictly.
+  console.log(
+    `changelog        ${CHANGELOG_PATH} (${entries.length} entries)\n` +
+      `threshold        ${threshold} similarity\n` +
+      `active sections  ${activeSections.join(', ') || '(none)'}`
+  );
+
+  const duplicates = findDuplicateChangelogEntries(changelog);
 
   if (duplicates.length === 0) {
     console.log(`✔ no duplicated CHANGELOG entries (nothing at or above ${threshold} similarity)`);
