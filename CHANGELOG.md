@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+---
+
+## [1.9.2] — 2026-08-13
+
 ### Security
 - **Closed a CodeQL `js/xss-through-dom` finding (alert #2) in the epic colour picker** — `renderTagRow()`'s quick colour picker (`src/js/02-utils.js`) read the raw `<input type="color">` value and wrote it straight into `cat.color` (persisted state) and the swatch's `style.background`, bypassing `getCat()`'s existing `safeCssColor()` sanitisation entirely; the `innerHTML` sink for the picker's own `value` attribute relied on that same upstream sanitisation, which CodeQL's dataflow analysis doesn't credit as a barrier across the object spread. All three sites now call `safeCssColor()` explicitly. A real `<input type="color">` clamps its `.value` to valid hex at the DOM level, so this isn't exploitable through normal use today — it closes the gap CodeQL flags and guards against any future code path (e.g. a non-native picker, or a refactor) that could feed an unclamped value through the same handlers. 3 new regression tests in `test/unit.mjs` (VM-sandboxed, since a real browser can't hold an invalid value in a colour input to prove the "before" case). This alert had been open since PR #87 (2026-05); a prior attempt (PR #265) was closed as superseded without merging.
 
