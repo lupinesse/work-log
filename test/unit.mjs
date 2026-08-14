@@ -3229,6 +3229,18 @@ describe('findGapReportEntries', () => {
       [{ ...base, _billable: true }]
     );
   });
+
+  it('excludes an entry with a missing ts instead of throwing', () => {
+    const noTs = { ...base };
+    delete noTs.ts;
+    assert.deepEqual(findGapReportEntries([noTs], WEEK_START, WEEK_END), []);
+  });
+
+  it('treats a non-boolean falsy _billable (e.g. null) as billable — only strict false excludes', () => {
+    assert.deepEqual(findGapReportEntries([{ ...base, _billable: null }], WEEK_START, WEEK_END), [
+      { ...base, _billable: null },
+    ]);
+  });
 });
 
 // ── findExportWarnings ─────────────────────────────────────────────────────────
@@ -3305,6 +3317,16 @@ describe('findExportWarnings', () => {
 
   it('flags an entry with no _billable flag (undefined means billable)', () => {
     const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR };
+    assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
+  });
+
+  it('does not flag an entry with a missing ts instead of throwing', () => {
+    const entry = { text: 'Fix login', tsEnd: HOUR };
+    assert.deepEqual(findExportWarnings([entry], noSpan), []);
+  });
+
+  it('flags a non-boolean falsy _billable (e.g. null) — only strict false excludes', () => {
+    const entry = { text: 'Fix login', ts: 0, tsEnd: HOUR, _billable: null };
     assert.deepEqual(findExportWarnings([entry], noSpan), ['No note or link: Fix login']);
   });
 });

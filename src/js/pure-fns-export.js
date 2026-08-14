@@ -360,6 +360,9 @@ export function findGapReportEntries(entries, weekStart, weekEnd) {
         entry.ts >= weekStart &&
         entry.ts < weekEnd &&
         !GAP_REPORT_UTILITY_TEXTS.has(entry.text) &&
+        // `!== false` (not `=== true`): an entry with no _billable property
+        // defaults to billable, mirroring isEntryBillable()'s own
+        // "undefined means billable" convention.
         entry._billable !== false &&
         !(entry.link && entry.link.trim()) &&
         !(entry.note && entry.note.trim())

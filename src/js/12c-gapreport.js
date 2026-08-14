@@ -43,8 +43,11 @@ function openGapReportOverlay() {
 
   const weekStart = mondayOfWeek();
   const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
-  // Resolve billable status up front (same convention as exportTxt's
-  // entriesWithBillingStatus) so non-billable entries aren't flagged for a
+  // findGapReportEntries() is a pure function with no access to the
+  // category/task lookups isEntryBillable() needs, so billable status is
+  // resolved here, up front, and passed in as each entry's _billable flag
+  // (same convention as exportTxt's entriesWithBillingStatus) — this is what
+  // lets non-billable entries be excluded without flagging them for a
   // missing note/link.
   const entriesWithBillingStatus = entries.map((entry) => ({
     ...entry,
