@@ -312,14 +312,18 @@ function safeRoundedStart() {
 }
 
 /**
- * Returns entries for the currently viewed date, sorted newest-first.
+ * Returns entries for the currently viewed date, sorted newest-first by
+ * start time (`ts`) — not by insertion order. This keeps retroactively
+ * added entries (e.g. filling in a missed morning slot after the day is
+ * already logged) positioned correctly rather than jumping to the top or
+ * staying at the bottom based on when they were typed in.
  * @returns {Array<object>}
  */
 function viewEntries() {
   return entries
     .filter((e) => e.date === dk(viewDate))
     .slice()
-    .reverse();
+    .sort((a, b) => b.ts - a.ts);
 }
 /**
  * Counts consecutive days with at least one logged entry, looking backwards from yesterday.

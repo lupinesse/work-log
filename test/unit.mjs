@@ -1663,6 +1663,44 @@ describe('renderTagRow — colour sanitisation (regression, issue #267)', () => 
   });
 });
 
+// ── viewEntries — sorts by start time, not insertion order (regression) ──────
+// Retroactively logging a missed morning slot after the rest of the day is
+// already filled in used to push it to the very top or bottom (whichever
+// end insertion order landed on) instead of its correct chronological slot.
+
+describe('viewEntries — sorts by start time (regression)', () => {
+  it('orders newest-first by ts regardless of insertion order', () => {
+    const viewDate = new Date(2026, 4, 26, 12, 0, 0);
+    const late = { id: '1', date: '2026-05-26', ts: 1000 * 60 * 60 * 15 }; // 15:00
+    const early = { id: '2', date: '2026-05-26', ts: 1000 * 60 * 60 * 8 }; // 08:00 — added after `late`
+    const mid = { id: '3', date: '2026-05-26', ts: 1000 * 60 * 60 * 11 }; // 11:00
+    const sandbox = loadTagRowSandbox({
+      viewDate,
+      entries: [late, early, mid],
+    });
+    const result = sandbox.viewEntries();
+    assert.deepEqual(
+      result.map((e) => e.id),
+      ['1', '3', '2']
+    );
+  });
+
+  it('only includes entries matching the viewed date', () => {
+    const viewDate = new Date(2026, 4, 26, 12, 0, 0);
+    const today = { id: 'a', date: '2026-05-26', ts: 1000 };
+    const otherDay = { id: 'b', date: '2026-05-25', ts: 2000 };
+    const sandbox = loadTagRowSandbox({
+      viewDate,
+      entries: [otherDay, today],
+    });
+    const result = sandbox.viewEntries();
+    assert.deepEqual(
+      result.map((e) => e.id),
+      ['a']
+    );
+  });
+});
+
 // ── addEntry — plan task promotion (regression) ───────────────────────────────
 // Same bug, reached via the Log view's own capture input (05-entries.js) —
 // the fourth and last "start tracking" entry point.
