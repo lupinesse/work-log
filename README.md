@@ -39,6 +39,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Live timer** — start a timer on any task, pause and resume, add a handoff note when stopping
 - **Billable tracking** — mark epics and individual entries as billable; totals shown per task and per day
 - **Quick pick** — recent tasks shown as chips for fast re-logging
+- **Long-running timer warning** — dismissible alert once a running timer passes 4 hours, with a one-click stop; also asks whether to stop if you return to the tab after it's sat hidden 30+ minutes mid-session
 
 ### Tasks
 - **Kanban board** — drag tasks between To Do / In Progress / Done columns with epic colour coding
@@ -47,10 +48,12 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Deadlines** — date picker with overdue (red) and due-today (amber) highlighting
 - **Auto-carry** — unfinished tasks roll over to the next day automatically
 - **Jira import** — paste a Jira CSV export to bulk-add tickets as tasks
+- **Weekly plan review** — a dismissible checklist appears once a new week begins for any task planned ahead ("upcoming") and dated within it, so you can confirm it's still accurate before the week starts
 
 ### Today's Flow
 - **Flow view** — chronological feed merging time entries, log notes, and task updates for the day
 - **Log view** — editable time log with duration, epic, billable flag, and ad-hoc entry row
+- **Proof links & notes** — attach a link (Confluence page, Zephyr key, filename, or a URL) and a one-line note to any entry; shown as 🔗/📝 indicators and carried into exports
 - **Blocks view** — visual 08:00–18:00 timeblock grid auto-filled from logged entries; drag to rearrange
 - **Month view** — heatmap of hours per day with intensity colouring; monthly summary and task inventory
 - **Rolling Summary** — AI-ready summary of recent activity across configurable days
@@ -68,6 +71,8 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
 - **Reflection** — end-of-day focus-quality and energy ratings with an optional note
+- **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
+- **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
 
 ### Bullet Journal (BuJo) features
 - **Rapid logging** — `✏️` button opens a floating capture panel; `Enter` starts the timer immediately
