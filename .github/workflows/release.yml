@@ -10,11 +10,16 @@ name: GitHub Release
 # "## [1.8.0] — 2026-05-01" (see the v1.9.0 consolidation, #216) — the tag's
 # "v" prefix is stripped before matching against the bracketed version.
 #
-# Can also be re-run manually (Actions tab -> Run workflow) against an
-# existing tag to re-sync its release notes with the current CHANGELOG.md —
-# e.g. after a post-publish correction like #332/#340. The "Create or update
-# GitHub Release" step below edits the existing release in place rather than
-# erroring, since --verify-tag alone can't overwrite one that already exists.
+# Can also be re-run manually (Actions tab -> Run workflow) to re-sync an
+# existing release's notes with the current CHANGELOG.md — e.g. after a
+# post-publish correction like #332/#340. Dispatch it from the branch where
+# the correction landed (main, the UI's default) — the checkout step doesn't
+# override ref for a dispatch run, so it reads whichever branch/tag was
+# selected there, not the tag itself; the "tag" input only picks which
+# CHANGELOG section to extract and which release to update. The "Create or
+# update GitHub Release" step below edits the existing release in place
+# rather than erroring, since gh release create refuses to create one for a
+# tag that already has a release.
 
 on:
   push:
@@ -36,7 +41,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0  # needed so the full CHANGELOG history is available
 
       - name: Set up Node.js
