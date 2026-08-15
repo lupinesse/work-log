@@ -83,10 +83,10 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 
 | Checklist item | Status | Evidence |
 |---|---|---|
-| Core functionality unit tested | ✅ Pass | `test/unit.mjs` — **634 tests across 98 suites**, 0 failures (up from 582/92 as of 2026-08-03) |
-| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **320 Playwright tests** as of 2026-06-26, 0 failures; not re-run for this update (sandbox has no matching browser build to verify against) — carried forward as the last-verified count |
-| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **248 tests across 50 suites**, 0 failures (up from 171/32 as of 2026-08-03, driven mainly by the new commitlint and actionlint self-test suites) |
-| Total test count | ✅ Pass | **1,202 tests** (634 unit + 320 smoke + 248 CI-scripts); up from 1,073 as of 2026-08-03 |
+| Core functionality unit tested | ✅ Pass | `test/unit.mjs` — **647 tests across 99 suites**, 0 failures (up from 634/98 as of 2026-08-13) |
+| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **320 Playwright tests**, 0 failures; locally re-verifiable via the `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` escape hatch added in v1.9.2, no longer dependent on a sandbox's pre-provisioned browser build matching Playwright's pinned version |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **248 tests across 50 suites**, 0 failures (unchanged since 2026-08-13) |
+| Total test count | ✅ Pass | **1,215 tests** (647 unit + 320 smoke + 248 CI-scripts); up from 1,202 as of 2026-08-13 |
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
 | No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |
