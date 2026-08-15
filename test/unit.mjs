@@ -1663,6 +1663,117 @@ describe('renderTagRow — colour sanitisation (regression, issue #267)', () => 
   });
 });
 
+// ── getCat / getCatColor — colour sanitisation (regression, issue #341) ─────
+// A code-review pass flagged the entry-row dot (04-render.js) and the
+// "track recent" chip dot (10a-tasks-render.js) as interpolating a category
+// colour into a `style="background:${color}"` attribute with no visible
+// escHtml/escAttr/safeCssColor call on the same line. Tracing getCatColor()
+// shows it already routes every caller through getCat()'s own
+// `safeCssColor(cat.color)` — so those two sites were never actually
+// unescaped, they just rely on this upstream sanitisation instead of a local
+// one. That upstream barrier had zero direct test coverage of its own before
+// this, despite being the single choke point every colour-rendering template
+// in the app depends on. These tests close that gap.
+
+describe('getCat / getCatColor — colour sanitisation', () => {
+  it('getCat() sanitises a malicious persisted colour', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: 'red; background:url(x)' }],
+    });
+    assert.equal(sandbox.getCat('work').color, '#888780');
+  });
+
+  it('getCatColor() sanitises a malicious persisted colour', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '"><script>alert(1)</script>' }],
+    });
+    assert.equal(sandbox.getCatColor('work'), '#888780');
+    assert.ok(!sandbox.getCatColor('work').includes('<script>'));
+  });
+
+  it('getCatColor() passes a legitimate hex colour through unchanged', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#ff00aa' }],
+    });
+    assert.equal(sandbox.getCatColor('work'), '#ff00aa');
+  });
+
+  it('getCatColor() sanitises the fallback "other" category too', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'other', label: 'other', color: 'javascript:alert(1)' }],
+    });
+    assert.equal(sandbox.getCatColor('missing-id'), '#888780');
+  });
+});
+
+// ── renderTrackRecent — colour sanitisation (regression, issue #341) ────────
+// End-to-end coverage for one of the two sites flagged above: the "+ track
+// recent" chip dot interpolates getCatColor()'s return value directly into a
+// style attribute. This proves that path specifically, not just the
+// sanitiser it happens to call.
+
+/**
+ * Loads pure-fns, 02-utils.js, and 10a-tasks-render.js into one VM sandbox
+ * with a minimal fake `#planTrackRecent` container, exposing
+ * renderTrackRecent() for direct testing.
+ * @param {Object} [overrides] - Properties merged into the sandbox before eval.
+ * @returns {{ sandbox: Object, container: Object }}
+ */
+function loadTrackRecentSandbox(overrides = {}) {
+  const pureSrc = loadPureFnsScriptSource();
+  const utilsSrc = readFileSync(join(__dirname, '../src/js/02-utils.js'), 'utf8');
+  const tasksRenderSrc = readFileSync(join(__dirname, '../src/js/10a-tasks-render.js'), 'utf8');
+
+  const container = {
+    style: {},
+    innerHTML: '',
+    querySelectorAll: () => [],
+  };
+
+  const sandbox = {
+    console,
+    wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    document: { getElementById: (id) => (id === 'planTrackRecent' ? container : null) },
+    categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+    entries: [],
+    activeTimer: null,
+    ...overrides,
+  };
+
+  vm.createContext(sandbox);
+  vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(utilsSrc, sandbox);
+  vm.runInContext(tasksRenderSrc, sandbox);
+  return { sandbox, container };
+}
+
+describe('renderTrackRecent — colour sanitisation', () => {
+  // dk() (imported at the top of this file, same as the sandboxed copy
+  // renderTrackRecent() calls internally) keys by local date components, not
+  // UTC — must match here or this flakes near midnight in any timezone
+  // behind/ahead of UTC.
+  const todayKey = () => dk(new Date());
+
+  it('never lets a malicious category colour reach the chip dot', () => {
+    const { sandbox, container } = loadTrackRecentSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '"><script>alert(1)</script>' }],
+      entries: [{ id: 'e1', date: todayKey(), text: 'Standup', tag: 'work' }],
+    });
+    sandbox.renderTrackRecent();
+    assert.ok(container.innerHTML.includes('background:#888780'));
+    assert.ok(!container.innerHTML.includes('<script>'));
+  });
+
+  it('renders a legitimate hex colour through unchanged', () => {
+    const { sandbox, container } = loadTrackRecentSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#4a90e2' }],
+      entries: [{ id: 'e1', date: todayKey(), text: 'Standup', tag: 'work' }],
+    });
+    sandbox.renderTrackRecent();
+    assert.ok(container.innerHTML.includes('background:#4a90e2'));
+  });
+});
+
 // ── viewEntries — sorts by start time, not insertion order (regression) ──────
 // Retroactively logging a missed morning slot after the rest of the day is
 // already filled in used to push it to the very top or bottom (whichever
