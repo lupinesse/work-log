@@ -98,5 +98,12 @@ jobs:
       - name: Workflow lint + self-test (silent-CI-breakage guard)
         run: npm run test:actionlint
 
+      # Two PRs documenting the same change insert their bullets at different
+      # line offsets, so git merges both without a conflict and the duplicate
+      # only shows up when someone reads the file. That happened on 2026-08-14
+      # (#331 and #332 both documented #326) and took a third PR to undo.
+      - name: CHANGELOG duplicate-entry check
+        run: npm run test:changelog
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
