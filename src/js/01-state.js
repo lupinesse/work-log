@@ -189,6 +189,53 @@ function saveLogNotes() {
   localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
 }
 
+// Reference to the currently-shown save-failure banner, or null when hidden.
+let saveFailBanner = null;
+
+/**
+ * Shows a persistent, dismissible banner warning that saving to localStorage
+ * is failing (e.g. quota exceeded), with a button to export a backup on the
+ * spot. Idempotent — a second failed save while the banner is already up
+ * does nothing, so repeat failures don't spam duplicate banners.
+ */
+function showSaveFailureBanner() {
+  if (saveFailBanner) return;
+
+  const banner = document.createElement('div');
+  banner.className = 'save-fail-banner';
+  banner.id = 'saveFailBanner';
+  banner.setAttribute('role', 'alert');
+
+  const msg = document.createElement('span');
+  msg.className = 'save-fail-banner__msg';
+  msg.textContent = '⚠ Saving failed — your data may not persist. Export a backup now.';
+
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'save-fail-banner__action';
+  exportBtn.textContent = 'Export backup';
+  exportBtn.addEventListener('click', () => exportBackup());
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
+  dismissBtn.className = 'save-fail-banner__dismiss';
+  dismissBtn.setAttribute('aria-label', 'Dismiss saving-failed warning');
+  dismissBtn.textContent = '×';
+  dismissBtn.addEventListener('click', () => hideSaveFailureBanner());
+
+  banner.appendChild(msg);
+  banner.appendChild(exportBtn);
+  banner.appendChild(dismissBtn);
+  document.body.prepend(banner);
+  saveFailBanner = banner;
+}
+
+/** Removes the save-failure banner, if one is currently shown. */
+function hideSaveFailureBanner() {
+  saveFailBanner?.remove();
+  saveFailBanner = null;
+}
+
 /**
  * Persists entries, active timer, and categories to localStorage.
  * Refuses to overwrite existing non-empty data with an empty array to guard against
@@ -198,6 +245,12 @@ function saveLogNotes() {
  * data means save() was called before load() finished (e.g. a race during init),
  * not that the user intentionally deleted everything. Intentional clearing goes
  * through a dedicated wipe path that bypasses this guard.
+ *
+ * If localStorage.setItem throws (e.g. QuotaExceededError), the failure is
+ * caught so it never propagates to save()'s many callers — silently losing
+ * data with no signal to the user is worse than a caught, logged, and
+ * surfaced failure. A persistent banner tells the user to export a backup;
+ * it clears itself automatically the next time a save() call succeeds.
  */
 function save() {
   // Never overwrite real data with empty arrays
@@ -206,7 +259,13 @@ function save() {
     wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
     return;
   }
-  localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
-  localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
-  localStorage.setItem(STORE_CATS, JSON.stringify(categories));
+  try {
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
+    localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
+    localStorage.setItem(STORE_CATS, JSON.stringify(categories));
+    hideSaveFailureBanner();
+  } catch (err) {
+    wlLog.error('save: localStorage.setItem failed — data is not persisting', err);
+    showSaveFailureBanner();
+  }
 }
