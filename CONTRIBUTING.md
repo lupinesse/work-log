@@ -15,7 +15,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ## Development Setup
 
 ### Prerequisites
-- Node.js ≥ 22.22.1 (matches `engines` in `package.json`; `.nvmrc` pins the dev version). This is the actual floor imposed by `lint-staged`'s own `engines.node` — the tightest constraint among all devDependencies as of 2026-08-15; no app code requires anything past Node 18. Not tested on Node 22 directly in CI (which is pinned to Node 24 across every workflow) — if you hit a Node-22-specific issue, please report it.
+- Node.js ≥ 22.22.1 (matches `engines` in `package.json`; `.nvmrc` pins the dev version). This is the actual floor imposed by `lint-staged`'s own `engines.node` — the tightest constraint among all devDependencies as of 2026-08-15. A repo-wide search found no Node-24-only APIs (`structuredClone`, `Array.fromAsync`, `Promise.withResolvers`, etc.) in use anywhere. Not tested on Node 22 directly in CI (which is pinned to Node 24 across every workflow) — if you hit a Node-22-specific issue, please report it.
 - A text editor or IDE (VS Code recommended)
 - Git
 
