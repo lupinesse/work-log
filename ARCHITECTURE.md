@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r1 |
-| Covers app version | v1.9.2 (main, 2026-08-14) |
-| Last reviewed | 2026-08-14 |
-| Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map line counts, the missing `12d-weeklyreport.js` entry, and test counts, per the 2026-08-14 QA review; not a full architectural re-review) |
+| Document version | 1.9.2-r2 |
+| Covers app version | v1.9.2 (main, 2026-08-15) |
+| Last reviewed | 2026-08-15 |
+| Reviewed by | Claude Sonnet 5 (doc-accuracy refresh — source file count and test counts, per issue #335; the 01-state.js entry in the Module Map was also refreshed since it changed in the same pass. Not a full re-audit of every per-module line count — see #335 for why that's out of scope here) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (52 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (53 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (202 lines) — Data Store
+#### **01-state.js** (253 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -820,7 +820,7 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (647 tests, 99 suites via Node built-in test runner):
+**Unit Tests** (659 tests, 102 suites via Node built-in test runner):
 - `test/unit.mjs` — covers pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, calendar recurrence, and `wlLog`; `.github/scripts/test/` covers CI auth/model helpers
 
 **Smoke Tests** (320 tests via Playwright):
@@ -829,10 +829,10 @@ async function fetchWeather() {
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**CI Script Tests** (248 tests, 50 suites via Node built-in test runner):
-- `.github/scripts/test/*.test.mjs` — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing
+**CI Script Tests** (276 tests, 56 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (30 of these 276, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 1,215 tests (647 unit + 320 smoke + 248 CI-script)**
+**Total: 1,255 tests (659 unit + 320 smoke + 276 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
