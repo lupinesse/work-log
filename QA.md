@@ -12,7 +12,7 @@ recorded" requirement of the UK Government Higher QA checklist.
 
 Assessed against: [Best Practice and Impact — Higher QA checklist](https://best-practice-and-impact.github.io/qa-of-code-guidance/checklist_higher.html)
 
-Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md`.
+Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md` (historical — this file was deleted 2026-08-15 as stale per issue #335; its recommendations had all since been implemented and superseded by `ARCHITECTURE.md`, `CONTRIBUTING.md`, and `src/js/logger.js`).
 
 | Checklist item | Status | Evidence |
 |---|---|---|
