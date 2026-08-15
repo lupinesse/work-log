@@ -3262,10 +3262,9 @@ describe('findGapReportEntries', () => {
   });
 
   it('includes an entry explicitly resolved as billable', () => {
-    assert.deepEqual(
-      findGapReportEntries([{ ...base, _billable: true }], WEEK_START, WEEK_END),
-      [{ ...base, _billable: true }]
-    );
+    assert.deepEqual(findGapReportEntries([{ ...base, _billable: true }], WEEK_START, WEEK_END), [
+      { ...base, _billable: true },
+    ]);
   });
 
   it('excludes an entry with a missing ts instead of throwing', () => {
@@ -3281,10 +3280,9 @@ describe('findGapReportEntries', () => {
   });
 
   it('treats a non-boolean truthy _billable (e.g. a string) as billable', () => {
-    assert.deepEqual(
-      findGapReportEntries([{ ...base, _billable: 'yes' }], WEEK_START, WEEK_END),
-      [{ ...base, _billable: 'yes' }]
-    );
+    assert.deepEqual(findGapReportEntries([{ ...base, _billable: 'yes' }], WEEK_START, WEEK_END), [
+      { ...base, _billable: 'yes' },
+    ]);
   });
 });
 
@@ -4701,6 +4699,151 @@ describe('createCategory', () => {
     sandbox.createCategory('WORK');
     assert.equal(warnCalls.length, 1);
     assert.match(warnCalls[0][0], /createCategory/);
+  });
+});
+
+// ── save() — localStorage failure handling ───────────────────────────────────
+// Regression coverage for save() silently losing data on QuotaExceededError:
+// three sequential localStorage.setItem calls with no try/catch meant a quota
+// failure on the first call skipped the other two and threw uncaught, with no
+// signal to the user that persistence had stopped working.
+
+/** Minimal fake DOM element sufficient for the save-failure banner. */
+function makeFakeElement(tag) {
+  return {
+    tagName: tag,
+    className: '',
+    id: '',
+    children: [],
+    removed: false,
+    setAttribute() {},
+    addEventListener() {},
+    appendChild(child) {
+      this.children.push(child);
+    },
+    remove() {
+      this.removed = true;
+    },
+  };
+}
+
+/** Fake `document` that records elements prepended to `body`. */
+function makeFakeDocument() {
+  const prepended = [];
+  return {
+    prepended,
+    createElement: (tag) => makeFakeElement(tag),
+    body: { prepend: (el) => prepended.push(el) },
+  };
+}
+
+describe('save() — localStorage failure handling', () => {
+  it('does not throw when localStorage.setItem throws', () => {
+    const sandbox = loadStateSandbox({
+      document: makeFakeDocument(),
+      exportBackup: () => {},
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('QuotaExceededError');
+        },
+      },
+    });
+    assert.doesNotThrow(() => sandbox.save());
+  });
+
+  it('logs the failure via wlLog.error instead of swallowing it', () => {
+    const errorCalls = [];
+    const sandbox = loadStateSandbox({
+      document: makeFakeDocument(),
+      exportBackup: () => {},
+      wlLog: {
+        warn: () => {},
+        error: (...args) => errorCalls.push(args),
+        info: () => {},
+        debug: () => {},
+      },
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('QuotaExceededError');
+        },
+      },
+    });
+    sandbox.save();
+    assert.equal(errorCalls.length, 1);
+    assert.match(errorCalls[0][0], /save/);
+  });
+
+  it('shows a persistent banner flagging the failure to the user', () => {
+    const doc = makeFakeDocument();
+    const sandbox = loadStateSandbox({
+      document: doc,
+      exportBackup: () => {},
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('QuotaExceededError');
+        },
+      },
+    });
+    sandbox.save();
+    assert.equal(doc.prepended.length, 1);
+    assert.equal(doc.prepended[0].id, 'saveFailBanner');
+    assert.equal(doc.prepended[0].removed, false);
+  });
+
+  it('does not stack a second banner on repeated failures', () => {
+    const doc = makeFakeDocument();
+    const sandbox = loadStateSandbox({
+      document: doc,
+      exportBackup: () => {},
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('QuotaExceededError');
+        },
+      },
+    });
+    sandbox.save();
+    sandbox.save();
+    assert.equal(doc.prepended.length, 1);
+  });
+
+  it('removes the banner once a later save() succeeds', () => {
+    const doc = makeFakeDocument();
+    let shouldThrow = true;
+    const sandbox = loadStateSandbox({
+      document: doc,
+      exportBackup: () => {},
+      localStorage: {
+        getItem: () => null,
+        setItem: () => {
+          if (shouldThrow) throw new Error('QuotaExceededError');
+        },
+      },
+    });
+    sandbox.save();
+    assert.equal(doc.prepended[0].removed, false);
+    shouldThrow = false;
+    sandbox.save();
+    assert.equal(doc.prepended[0].removed, true);
+  });
+
+  it('still refuses to overwrite existing entries with an empty array', () => {
+    const doc = makeFakeDocument();
+    const setItemCalls = [];
+    const sandbox = loadStateSandbox({
+      document: doc,
+      exportBackup: () => {},
+      localStorage: {
+        getItem: (key) => (key === 'wl_entries_v1' ? '[{"id":"e1"}]' : null),
+        setItem: (...args) => setItemCalls.push(args),
+      },
+    });
+    sandbox.save();
+    assert.equal(setItemCalls.length, 0);
+    assert.equal(doc.prepended.length, 0);
   });
 });
 
