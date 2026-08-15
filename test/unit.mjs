@@ -1748,9 +1748,10 @@ function loadTrackRecentSandbox(overrides = {}) {
 }
 
 describe('renderTrackRecent — colour sanitisation', () => {
-  // dk() (loaded into the sandbox from pure-fns) keys by local date
-  // components, not UTC — must match here or this flakes near midnight in
-  // any timezone behind/ahead of UTC.
+  // dk() (imported at the top of this file, same as the sandboxed copy
+  // renderTrackRecent() calls internally) keys by local date components, not
+  // UTC — must match here or this flakes near midnight in any timezone
+  // behind/ahead of UTC.
   const todayKey = () => dk(new Date());
 
   it('never lets a malicious category colour reach the chip dot', () => {
