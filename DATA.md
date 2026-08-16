@@ -196,7 +196,7 @@ transition-bridge banner in the current session.
 
 ### `wl_location_v1`
 Object mapping `YYYY-MM-DD` date strings to a location ID. Managed by
-`24-location.js`; the key constant `STORE_LOCATION` is declared in `01-state.js`.
+`24-location.js`; the key constant `STORE_LOCATION` is declared in `app-constants.js`.
 
 ```json
 { "2026-06-12": "office", "2026-06-11": "remote" }

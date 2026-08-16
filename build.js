@@ -1,5 +1,5 @@
 // Build script:
-//   src/js/pure-fns.js, src/js/logger.js  → imported as ES modules at top of script.js
+//   Leaf modules (LEAF_MODULES in build-config.js) → imported as ES modules at top of script.js
 //   src/js/*.js (others)  → concatenated into script.js ESM module, alphabetical order
 //   src/css/*.scss         → styles.css (compiled by Sass)
 
@@ -12,7 +12,7 @@ import {
   CSS_SRC,
   CSS_OUT,
   LEAF_MODULES,
-  readPureFnsExports,
+  readModuleExports,
 } from './build-config.js';
 
 function buildJS() {
@@ -22,8 +22,11 @@ function buildJS() {
     if (!existsSync(p)) throw new Error(`build.js: leaf module not found: ${p}`);
   }
 
-  const pureFnsExports = readPureFnsExports();
+  const pureFnsExports = readModuleExports('pure-fns.js');
   if (!pureFnsExports.length) throw new Error('build.js: no exports found in pure-fns.js');
+  const appConstantsExports = readModuleExports('app-constants.js');
+  if (!appConstantsExports.length)
+    throw new Error('build.js: no exports found in app-constants.js');
 
   const files = readdirSync(JS_SRC)
     .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
@@ -35,6 +38,7 @@ function buildJS() {
   const imports = [
     `import { ${pureFnsExports.join(', ')} } from './src/js/pure-fns.js';`,
     `import { wlLog } from './src/js/logger.js';`,
+    `import { ${appConstantsExports.join(', ')} } from './src/js/app-constants.js';`,
   ].join('\n');
   const output = `${imports}\n\n${parts.join('\n\n')}\n`;
   writeFileSync(JS_OUT, output);

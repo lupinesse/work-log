@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { compile } from 'sass';
-import { LEAF_MODULES, readPureFnsExports } from './build-config.js';
+import { LEAF_MODULES, readModuleExports } from './build-config.js';
 
 const JS_SRC = 'src/js';
 const JS_OUT = 'script.js';
@@ -15,8 +15,10 @@ function buildJS() {
     const p = join(JS_SRC, leaf);
     if (!existsSync(p)) throw new Error(`vite: leaf module not found: ${p}`);
   }
-  const pureFnsExports = readPureFnsExports();
+  const pureFnsExports = readModuleExports('pure-fns.js');
   if (!pureFnsExports.length) throw new Error('vite: no exports found in pure-fns.js');
+  const appConstantsExports = readModuleExports('app-constants.js');
+  if (!appConstantsExports.length) throw new Error('vite: no exports found in app-constants.js');
   const files = readdirSync(JS_SRC)
     .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
     .sort();
@@ -27,6 +29,7 @@ function buildJS() {
   const imports = [
     `import { ${pureFnsExports.join(', ')} } from './src/js/pure-fns.js';`,
     `import { wlLog } from './src/js/logger.js';`,
+    `import { ${appConstantsExports.join(', ')} } from './src/js/app-constants.js';`,
   ].join('\n');
   const output = imports + '\n\n' + parts.join('\n\n') + '\n';
   writeFileSync(JS_OUT, output);

@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (52 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (53 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (253 lines) — Data Store
+#### **01-state.js** (214 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -104,21 +104,25 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (323 lines) — Utilities
-**Responsibility**: Shared helper functions
+#### **02-utils.js** (323 lines) — Category Lookup, Epic Manager UI, and Date Helpers
+**Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of date/billing helpers that don't fit elsewhere.
 
 **Key Functions**:
-- `dk(date)` — Format date as 'YYYY-MM-DD'
-- `escHtml(str)` — HTML escape to prevent XSS
-- `roundToNearest30(ts)` — Round timestamp to nearest 30 min
-- `qa(selector)` — Query all (shorthand for querySelectorAll)
-- `qo(selector)` — Query one (shorthand for querySelector)
-- `fmtDurMs(ms)` — Format milliseconds as "5h 20min"
-- `getCat(id)` — Get category by ID with fallback
-- `getCatLabel(id)` — Get category display name
-- `safeCssColor(color)` — Validate/sanitize CSS color value
+- `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
+- `renderTagRow()` — renders and wires the epic dropdown, quick colour picker, and rename/delete/add manage row
+- `isToday(d)`, `fmtLabel(d)` — date-to-label helpers (`'today'` / `'yesterday'` / short date)
+- `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
+- `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
+- `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**No External Dependencies**: All pure functions
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. Splitting the genuinely stateless date helpers (`isToday`, `fmtLabel`) out on their own is a smaller, more promising follow-up than extracting the whole file.
+
+---
+
+#### **app-constants.js** (63 lines) — Static Config Constants (LEAF MODULE)
+**Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
+
+**Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
 
 ---
 
