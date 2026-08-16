@@ -70,6 +70,9 @@
 <li>The tracker opens automatically in your browser</li>
 </ol>
 <p>Your data is stored locally in your browser — nothing is sent anywhere.</p>
+<blockquote>
+<p><strong>Data lives per-origin, so keep the port stable.</strong> Your entries are stored in your browser's <code>localStorage</code>, which is scoped to the exact <code>origin:port</code> you loaded the page from. Both launchers use a fixed port (<code>8080</code>) for this reason — if you ever load the tracker from a different port, your previous data won't show up (it's not gone, it's just stranded on the old port). Reload <code>http://localhost:8080/work-log.html</code> to get it back.</p>
+</blockquote>
 <h2>Features</h2>
 <h3>Time tracking</h3>
 <ul>
@@ -168,7 +171,7 @@
 </tbody>
 </table>
 <h2>Testing</h2>
-<p>A smoke test suite is included. Requires Node.js ≥ 24.15.0 (matches <code>engines</code> in <code>package.json</code>; bumped to track <code>@commitlint/cli</code> v21).</p>
+<p>A smoke test suite is included. Requires Node.js ≥ 22.22.1 (matches <code>engines</code> in <code>package.json</code> — the actual floor imposed by <code>lint-staged</code>'s own minimum).</p>
 <pre class="prettyprint source"><code>node smoke-tests.cjs
 </code></pre>
 <p>Or double-click <code>run-tests.bat</code> on Windows.</p>
