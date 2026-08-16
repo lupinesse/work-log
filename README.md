@@ -33,6 +33,8 @@ ADHD-friendly work tracker — single HTML file, runs locally in your browser.
 
 Your data is stored locally in your browser — nothing is sent anywhere.
 
+> **Data lives per-origin, so keep the port stable.** Your entries are stored in your browser's `localStorage`, which is scoped to the exact `origin:port` you loaded the page from. Both launchers use a fixed port (`8080`) for this reason — if you ever load the tracker from a different port, your previous data won't show up (it's not gone, it's just stranded on the old port). Reload `http://localhost:8080/work-log.html` to get it back.
+
 ## Features
 
 ### Time tracking
@@ -101,7 +103,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ## Testing
 
-A smoke test suite is included. Requires Node.js ≥ 24.15.0 (matches `engines` in `package.json`; bumped to track `@commitlint/cli` v21).
+A smoke test suite is included. Requires Node.js ≥ 22.22.1 (matches `engines` in `package.json` — the actual floor imposed by `lint-staged`'s own minimum).
 
 ```
 node smoke-tests.cjs

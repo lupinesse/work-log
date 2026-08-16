@@ -4,8 +4,12 @@
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Find a free port on localhost only
-PORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); print(s.getsockname()[1]); s.close()")
+# Fixed port, matching start-server.ps1's Windows path (also 8080). Data lives
+# in per-origin localStorage — a port that changes between launches makes
+# previously-logged data appear to vanish (it's still there, just stranded on
+# the old origin). If 8080 is already in use, this fails loudly rather than
+# silently picking a different port.
+PORT=8080
 
 URL="http://127.0.0.1:$PORT/work-log.html"
 
