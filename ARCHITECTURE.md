@@ -825,7 +825,7 @@ async function fetchWeather() {
 ## Testing Strategy
 
 **Unit Tests** (659 tests, 102 suites via Node built-in test runner):
-- `test/unit.mjs` — covers pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, calendar recurrence, and `wlLog`; `.github/scripts/test/` covers CI auth/model helpers
+- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
 **Smoke Tests** (320 tests via Playwright):
 - Load test: Verify no JS errors

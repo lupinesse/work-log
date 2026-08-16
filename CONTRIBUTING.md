@@ -240,7 +240,7 @@ node smoke-tests.cjs
 
 ### Run Individual Test Categories
 ```bash
-npm run test:unit        # Unit tests (test/unit.mjs)
+npm run test:unit        # Unit tests (test/unit/*.test.mjs, one file per feature area)
 npm run test:scripts     # CI script tests (.github/scripts/test/*.test.mjs)
 npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlint.mjs)
 npm run test:actionlint  # Workflow lint + self-test (needs the actionlint binary)
