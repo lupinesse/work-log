@@ -36,7 +36,13 @@ export const DEFAULT_CATS = [
   { id: 'other', label: 'other', color: '#888780' },
 ];
 
-/** Palette offered when creating a new category, in preference order. */
+/**
+ * Fallback colour palette `nextDistinctColor()` (01-state.js) draws from when
+ * auto-generating a new category's colour, in preference order. Every value
+ * here is a plain hex string and does not itself need sanitising — but any
+ * *user-supplied* colour (e.g. from the category colour picker) must still
+ * pass through `safeCssColor()` before use, same as everywhere else in the app.
+ */
 export const CUSTOM_PALETTE = [
   '#7B61FF',
   '#E67E22',
