@@ -1,12 +1,5 @@
-const STORE_ENTRIES = 'wl_entries_v1';
-const STORE_TIMER = 'wl_timer_v1';
-const STORE_POMO_LOG = 'wl_pomoLog_v1';
-const STORE_CATS = 'wl_cats_v1';
-const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
-const STORE_LOGNOTES = 'wl_lognotes_v1';
-const STORE_TRACKERS = 'wl_trackers_v1';
-const STORE_MIGRATION = 'wl_migration_v1';
-const STORE_LOCATION = 'wl_location_v1';
+// STORE_* key constants are defined in app-constants.js (a leaf ES module
+// imported at the top of the built bundle), not here.
 
 // Lowercase task texts the user has dismissed from the recent-tasks list
 const qpHidden = (() => {
@@ -21,40 +14,8 @@ function saveQpHidden() {
   localStorage.setItem(STORE_QP_HIDDEN, JSON.stringify([...qpHidden]));
 }
 
-const DEFAULT_CATS = [
-  { id: 'work', label: 'work', color: '#378ADD' },
-  { id: 'meeting', label: 'meeting', color: '#7EC8E3' },
-  { id: 'focus', label: 'deep focus', color: '#1D9E75' },
-  { id: 'break', label: 'break', color: '#BA7517' },
-  { id: 'other', label: 'other', color: '#888780' },
-];
-const CUSTOM_PALETTE = [
-  '#7B61FF',
-  '#E67E22',
-  '#0d9488',
-  '#3F51B5',
-  '#16A085',
-  '#9B59B6',
-  '#F39C12',
-  '#00BCD4',
-  '#27AE60',
-  '#E91E63',
-  '#FF5722',
-  '#2ECC71',
-  '#C0392B',
-  '#1E88E5',
-  '#43A047',
-  '#FB8C00',
-  '#8E24AA',
-  '#039BE5',
-  '#6D4C41',
-  '#00897B',
-  '#F4511E',
-  '#D81B60',
-  '#546E7A',
-  '#FDD835',
-  '#5E35B1',
-];
+// DEFAULT_CATS and CUSTOM_PALETTE are defined in app-constants.js (a leaf
+// ES module imported at the top of the built bundle), not here.
 
 /**
  * Returns the next visually distinct colour from the palette for a new category.

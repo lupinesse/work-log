@@ -6,6 +6,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as pureFns from '../src/js/pure-fns.js';
 import { wlLog } from '../src/js/logger.js';
+import * as appConstants from '../src/js/app-constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -4754,6 +4755,7 @@ function loadStateSandbox(overrides = {}) {
     console,
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
+    ...appConstants,
     ...overrides,
   };
 
