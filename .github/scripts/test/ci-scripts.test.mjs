@@ -261,6 +261,27 @@ describe('collectTestFiles', () => {
     assert.deepEqual(found, ['unit.mjs']);
   });
 
+  it('skips directories whose name ends in .mjs/.cjs', () => {
+    // Contrived, but the caller does readFileSync on whatever comes back, and
+    // that throws EISDIR on a directory. Covers both scan levels.
+    const dir = makeTestTree({
+      '.': ['unit.mjs'],
+      'decoy.mjs': ['nested.test.mjs'],
+      unit: ['render.test.mjs'],
+      'unit/inner.cjs': [],
+    });
+    const found = collectTestFiles(dir, []);
+
+    // Order is asserted elsewhere; what matters here is that every returned
+    // path is a real file — `decoy.mjs` and `unit/inner.cjs` are directories.
+    assert.deepEqual(found.map((f) => path.basename(f)).sort(), [
+      'nested.test.mjs',
+      'render.test.mjs',
+      'unit.mjs',
+    ]);
+    for (const file of found) assert.ok(fs.statSync(file).isFile(), `${file} should be a file`);
+  });
+
   it('puts existing root suites first, and drops ones that do not exist', () => {
     // The root suite lives outside the scanned directory, mirroring the real
     // arrangement (smoke-tests.cjs at the repo root, unit suites under test/) —

@@ -83,18 +83,26 @@ export function toPosixPath(filePath) {
  * that number dropping is the signal, since this function cannot tell
  * "no suites here" apart from "did not look here".
  *
- * Only `.mjs`/`.cjs` files are returned, so `test/calendar.Tests.ps1` (Pester)
- * is skipped. Everything found under `testDir` is sorted together for a stable
- * report — a file directly in `testDir` gets no precedence over one in a
- * subdirectory. Only the `rootTestFiles` entries are pinned ahead of the scan,
- * which is what keeps `smoke-tests.cjs` searched first as it was before.
+ * Every `.mjs`/`.cjs` file is returned, which means shared fixtures such as
+ * `test/unit/_helpers.mjs` come back alongside the suites proper — harmless,
+ * since the caller only greps these paths for a module reference. Other
+ * extensions are skipped, so `test/calendar.Tests.ps1` (Pester) never appears.
+ *
+ * Everything found under `testDir` is sorted together for a stable report — a
+ * file directly in `testDir` gets no precedence over one in a subdirectory.
+ * Only the `rootTestFiles` entries are pinned ahead of the scan, which is what
+ * keeps `smoke-tests.cjs` searched first as it was before.
  *
  * @param {string} [testDir] - Directory holding the test suites.
  * @param {string[]} [rootTestFiles] - Suites outside `testDir`, searched first.
- * @returns {string[]} Existing test file paths, in search order.
+ * @returns {string[]} Paths of existing `.mjs`/`.cjs` files, in search order.
  */
 export function collectTestFiles(testDir = 'test', rootTestFiles = ['smoke-tests.cjs']) {
-  const isTestScript = (name) => name.endsWith('.mjs') || name.endsWith('.cjs');
+  // Directory entries, not bare names: a *directory* named `foo.mjs` would
+  // otherwise be collected as a file, and the caller's readFileSync on it
+  // throws EISDIR.
+  const isTestScript = (entry) =>
+    !entry.isDirectory() && (entry.name.endsWith('.mjs') || entry.name.endsWith('.cjs'));
 
   const discovered = [];
   if (fs.existsSync(testDir)) {
@@ -103,11 +111,11 @@ export function collectTestFiles(testDir = 'test', rootTestFiles = ['smoke-tests
       if (entry.isDirectory()) {
         discovered.push(
           ...fs
-            .readdirSync(entryPath)
+            .readdirSync(entryPath, { withFileTypes: true })
             .filter(isTestScript)
-            .map((name) => path.join(entryPath, name))
+            .map((child) => path.join(entryPath, child.name))
         );
-      } else if (isTestScript(entry.name)) {
+      } else if (isTestScript(entry)) {
         discovered.push(entryPath);
       }
     }
