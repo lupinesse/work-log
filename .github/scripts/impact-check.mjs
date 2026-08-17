@@ -84,8 +84,10 @@ export function toPosixPath(filePath) {
  * "no suites here" apart from "did not look here".
  *
  * Only `.mjs`/`.cjs` files are returned, so `test/calendar.Tests.ps1` (Pester)
- * is skipped. Discovered paths are sorted for a stable report, and the
- * root-level suites stay first to preserve the previous search precedence.
+ * is skipped. Everything found under `testDir` is sorted together for a stable
+ * report — a file directly in `testDir` gets no precedence over one in a
+ * subdirectory. Only the `rootTestFiles` entries are pinned ahead of the scan,
+ * which is what keeps `smoke-tests.cjs` searched first as it was before.
  *
  * @param {string} [testDir] - Directory holding the test suites.
  * @param {string[]} [rootTestFiles] - Suites outside `testDir`, searched first.
