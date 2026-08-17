@@ -52,6 +52,61 @@ export function firstLineContaining(filePath, term) {
   return idx === -1 ? null : idx + 1;
 }
 
+/**
+ * Rewrite a path with forward slashes for display.
+ *
+ * Paths are built with `path.join`, so on Windows they come back with
+ * backslashes — which read as escape characters once the report is rendered as
+ * markdown in a PR comment. The report is a document, not a filesystem call, so
+ * it always shows POSIX separators regardless of the host OS.
+ *
+ * @param {string} filePath - Path in host-OS form.
+ * @returns {string} The same path with `/` separators.
+ */
+export function toPosixPath(filePath) {
+  return filePath.split(path.sep).join('/');
+}
+
+/**
+ * Collect the test files to search for coverage of a changed module.
+ *
+ * Discovers the suites by reading `testDir` rather than naming files, because
+ * the previous hard-coded list silently stopped matching anything the moment
+ * `test/unit.mjs` was split into `test/unit/*.test.mjs` (#334): the dead path
+ * was filtered out by an `existsSync` check without a word, and every changed
+ * module started reporting "not found". Scanning survives the next reshuffle.
+ *
+ * Only `.mjs`/`.cjs` files are returned, so `test/calendar.Tests.ps1` (Pester)
+ * is skipped. Discovered paths are sorted for a stable report, and the
+ * root-level suites stay first to preserve the previous search precedence.
+ *
+ * @param {string} [testDir] - Directory holding the test suites.
+ * @param {string[]} [rootTestFiles] - Suites outside `testDir`, searched first.
+ * @returns {string[]} Existing test file paths, in search order.
+ */
+export function collectTestFiles(testDir = 'test', rootTestFiles = ['smoke-tests.cjs']) {
+  const isTestScript = (name) => name.endsWith('.mjs') || name.endsWith('.cjs');
+
+  const discovered = [];
+  if (fs.existsSync(testDir)) {
+    for (const entry of fs.readdirSync(testDir, { withFileTypes: true })) {
+      const entryPath = path.join(testDir, entry.name);
+      if (entry.isDirectory()) {
+        discovered.push(
+          ...fs
+            .readdirSync(entryPath)
+            .filter(isTestScript)
+            .map((name) => path.join(entryPath, name))
+        );
+      } else if (isTestScript(entry.name)) {
+        discovered.push(entryPath);
+      }
+    }
+  }
+
+  return [...rootTestFiles.filter((f) => fs.existsSync(f)), ...discovered.sort()];
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -95,11 +150,12 @@ if (isMain) {
 
   const buildFiles = ['build.js', 'build-portable.js'].filter((f) => fs.existsSync(f));
 
-  const testFiles = [
-    'smoke-tests.cjs',
-    path.join('test', 'unit.mjs'),
-    path.join('test', 'unit.cjs'),
-  ].filter((f) => fs.existsSync(f));
+  // Report the discovered suites on stderr — the workflow redirects only
+  // stdout into the PR comment, so this lands in the Actions log instead of
+  // the posted markdown. A count of 1 (smoke tests alone) is the signature of
+  // the discovery breaking again.
+  const testFiles = collectTestFiles();
+  console.error(`impact-check: searching ${testFiles.length} test file(s) for coverage`);
 
   const rows = changedFiles.map((changed) => {
     const basename = path.basename(changed, path.extname(changed));
@@ -120,7 +176,7 @@ if (isMain) {
     for (const tf of testFiles) {
       const lineNum = firstLineContaining(tf, basename);
       if (lineNum !== null) {
-        testCoverage = `✅ ${tf} line ${lineNum}`;
+        testCoverage = `✅ ${toPosixPath(tf)} line ${lineNum}`;
         break;
       }
     }
