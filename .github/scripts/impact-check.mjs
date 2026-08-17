@@ -68,6 +68,33 @@ export function toPosixPath(filePath) {
 }
 
 /**
+ * Whether a directory entry is a JavaScript test script.
+ *
+ * Takes a `Dirent`, not a bare name, so a *directory* called `foo.mjs` is
+ * rejected — collected as a file it would reach `firstLineContaining`, whose
+ * `readFileSync` then throws `EISDIR`.
+ *
+ * @param {import('fs').Dirent} entry - Directory entry from `readdirSync`.
+ * @returns {boolean} True for a `.mjs`/`.cjs` file.
+ */
+function isTestScript(entry) {
+  return !entry.isDirectory() && (entry.name.endsWith('.mjs') || entry.name.endsWith('.cjs'));
+}
+
+/**
+ * List the test scripts directly inside one directory.
+ *
+ * @param {string} dir - Directory to read.
+ * @returns {string[]} Paths of the `.mjs`/`.cjs` files it contains.
+ */
+function testScriptsIn(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(isTestScript)
+    .map((entry) => path.join(dir, entry.name));
+}
+
+/**
  * Collect the test files to search for coverage of a changed module.
  *
  * Discovers the suites by reading `testDir` rather than naming files, because
@@ -98,26 +125,12 @@ export function toPosixPath(filePath) {
  * @returns {string[]} Paths of existing `.mjs`/`.cjs` files, in search order.
  */
 export function collectTestFiles(testDir = 'test', rootTestFiles = ['smoke-tests.cjs']) {
-  // Directory entries, not bare names: a *directory* named `foo.mjs` would
-  // otherwise be collected as a file, and the caller's readFileSync on it
-  // throws EISDIR.
-  const isTestScript = (entry) =>
-    !entry.isDirectory() && (entry.name.endsWith('.mjs') || entry.name.endsWith('.cjs'));
-
   const discovered = [];
   if (fs.existsSync(testDir)) {
     for (const entry of fs.readdirSync(testDir, { withFileTypes: true })) {
       const entryPath = path.join(testDir, entry.name);
-      if (entry.isDirectory()) {
-        discovered.push(
-          ...fs
-            .readdirSync(entryPath, { withFileTypes: true })
-            .filter(isTestScript)
-            .map((child) => path.join(entryPath, child.name))
-        );
-      } else if (isTestScript(entry)) {
-        discovered.push(entryPath);
-      }
+      if (entry.isDirectory()) discovered.push(...testScriptsIn(entryPath));
+      else if (isTestScript(entry)) discovered.push(entryPath);
     }
   }
 
