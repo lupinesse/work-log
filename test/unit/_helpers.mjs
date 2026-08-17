@@ -12,10 +12,34 @@ import { fileURLToPath } from 'node:url';
 
 export const __dirname = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Builds a Date in the local timezone from calendar fields, avoiding the
+ * UTC-parsing pitfalls of `new Date(isoString)` in tests that assert on
+ * local wall-clock time.
+ *
+ * @param {number} y - Full year.
+ * @param {number} m - 1-based month (1 = January).
+ * @param {number} d - Day of month.
+ * @param {number} [hh] - Hours (0-23).
+ * @param {number} [mm] - Minutes.
+ * @param {number} [ss] - Seconds.
+ * @returns {Date}
+ */
 export function localDate(y, m, d, hh = 0, mm = 0, ss = 0) {
   return new Date(y, m - 1, d, hh, mm, ss, 0);
 }
 
+/**
+ * Same as {@link localDate}, returned as epoch milliseconds.
+ *
+ * @param {number} y - Full year.
+ * @param {number} m - 1-based month (1 = January).
+ * @param {number} d - Day of month.
+ * @param {number} [hh] - Hours (0-23).
+ * @param {number} [mm] - Minutes.
+ * @param {number} [ss] - Seconds.
+ * @returns {number}
+ */
 export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
   return localDate(y, m, d, hh, mm, ss).getTime();
 }

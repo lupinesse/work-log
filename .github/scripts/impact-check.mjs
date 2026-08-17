@@ -52,6 +52,27 @@ export function firstLineContaining(filePath, term) {
   return idx === -1 ? null : idx + 1;
 }
 
+/**
+ * Find the test files to search for coverage of a changed module: the smoke
+ * test script plus every unit-test file under test/unit/. Discovered by
+ * globbing the directory rather than a fixed filename list, so a future
+ * rename/split of the unit-test suite (like #334/#355's split of the former
+ * test/unit.mjs into test/unit/*.test.mjs) doesn't silently drop coverage.
+ *
+ * @returns {string[]} Existing test file paths, relative to the repo root.
+ */
+export function discoverTestFiles() {
+  const unitTestDir = path.join('test', 'unit');
+  const unitTestFiles = fs.existsSync(unitTestDir)
+    ? fs
+        .readdirSync(unitTestDir)
+        .filter((f) => f.endsWith('.test.mjs'))
+        .map((f) => path.join(unitTestDir, f))
+    : [];
+
+  return ['smoke-tests.cjs', ...unitTestFiles].filter((f) => fs.existsSync(f));
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -95,11 +116,7 @@ if (isMain) {
 
   const buildFiles = ['build.js', 'build-portable.js'].filter((f) => fs.existsSync(f));
 
-  const testFiles = [
-    'smoke-tests.cjs',
-    path.join('test', 'unit.mjs'),
-    path.join('test', 'unit.cjs'),
-  ].filter((f) => fs.existsSync(f));
+  const testFiles = discoverTestFiles();
 
   const rows = changedFiles.map((changed) => {
     const basename = path.basename(changed, path.extname(changed));

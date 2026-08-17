@@ -1,9 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 
 import { parseParamNames, jsdocBefore, isImplicitArrow, bodyHasReturn } from '../jsdoc-check.mjs';
 
-import { referencesModule } from '../impact-check.mjs';
+import { referencesModule, discoverTestFiles } from '../impact-check.mjs';
 
 // ---------------------------------------------------------------------------
 // parseParamNames
@@ -190,5 +191,30 @@ describe('referencesModule', () => {
 
   it('returns false for unrelated content', () => {
     assert.ok(!referencesModule('const x = 42;', 'pure-fns'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// discoverTestFiles
+// ---------------------------------------------------------------------------
+
+describe('discoverTestFiles', () => {
+  it('includes smoke-tests.cjs', () => {
+    assert.ok(discoverTestFiles().includes('smoke-tests.cjs'));
+  });
+
+  it('includes at least one test/unit/*.test.mjs file', () => {
+    const files = discoverTestFiles();
+    assert.ok(files.some((f) => /^test[/\\]unit[/\\].+\.test\.mjs$/.test(f)));
+  });
+
+  it('does not reference the deleted monolithic test/unit.mjs or test/unit.cjs', () => {
+    // Regression test for #360: these files were deleted in #355's split of
+    // test/unit.mjs into test/unit/*.test.mjs, but the old hardcoded path
+    // list still named them, so fs.existsSync silently dropped them and
+    // testCoverage collapsed to checking only smoke-tests.cjs.
+    const files = discoverTestFiles();
+    assert.ok(!files.includes(path.join('test', 'unit.mjs')));
+    assert.ok(!files.includes(path.join('test', 'unit.cjs')));
   });
 });
