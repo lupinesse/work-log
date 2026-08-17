@@ -46,7 +46,10 @@ export const DEST_FILE = '.portable-dest';
  * pure-fns.js barrel, though: order matters for the portable build, which
  * inlines files in list order, and the barrel strips down to comments only —
  * the sub-modules that actually declare the functions must already be in
- * scope when later files run.
+ * scope when later files run. `date-labels.js` imports `dk` from
+ * `pure-fns.js`, so it's listed after it too (not strictly required — `dk`
+ * is a hoisted function declaration — but keeps declaration order matching
+ * dependency order for readability).
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -58,6 +61,7 @@ export const LEAF_MODULES = [
   'pure-fns-tasks.js',
   'pure-fns-validate.js',
   'pure-fns.js',
+  'date-labels.js',
 ];
 
 /**
