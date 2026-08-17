@@ -74,7 +74,14 @@ export function toPosixPath(filePath) {
  * the previous hard-coded list silently stopped matching anything the moment
  * `test/unit.mjs` was split into `test/unit/*.test.mjs` (#334): the dead path
  * was filtered out by an `existsSync` check without a word, and every changed
- * module started reporting "not found". Scanning survives the next reshuffle.
+ * module started reporting "not found".
+ *
+ * The scan covers `testDir` itself and one level of subdirectory — enough for
+ * both the pre-#334 layout (`test/unit.mjs`) and the current one
+ * (`test/unit/*.test.mjs`), and no deeper. A suite nested further than that
+ * would be missed just as silently, so the caller logs the discovered count:
+ * that number dropping is the signal, since this function cannot tell
+ * "no suites here" apart from "did not look here".
  *
  * Only `.mjs`/`.cjs` files are returned, so `test/calendar.Tests.ps1` (Pester)
  * is skipped. Discovered paths are sorted for a stable report, and the

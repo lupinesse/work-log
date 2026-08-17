@@ -219,6 +219,12 @@ describe('toPosixPath', () => {
 // ---------------------------------------------------------------------------
 
 describe('collectTestFiles', () => {
+  const tempDirs = [];
+
+  after(() => {
+    for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   /**
    * Build a throwaway test-directory tree and return its path.
    *
@@ -236,11 +242,6 @@ describe('collectTestFiles', () => {
     tempDirs.push(dir);
     return dir;
   }
-
-  const tempDirs = [];
-  after(() => {
-    for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
-  });
 
   it('discovers suites one level down (the test/unit/*.test.mjs layout)', () => {
     const dir = makeTestTree({ unit: ['render.test.mjs', 'state.test.mjs', '_helpers.mjs'] });
@@ -261,11 +262,17 @@ describe('collectTestFiles', () => {
   });
 
   it('puts existing root suites first, and drops ones that do not exist', () => {
-    const dir = makeTestTree({ unit: ['render.test.mjs'] });
-    const root = path.join(dir, 'unit', 'render.test.mjs');
-    const found = collectTestFiles(dir, [root, path.join(dir, 'gone.cjs')]);
-    assert.equal(found[0], root);
-    assert.ok(!found.some((f) => f.endsWith('gone.cjs')));
+    // The root suite lives outside the scanned directory, mirroring the real
+    // arrangement (smoke-tests.cjs at the repo root, unit suites under test/) —
+    // so this asserts precedence rather than tolerating a duplicated entry.
+    const rootDir = makeTestTree({ '.': ['smoke-tests.cjs'] });
+    const testDir = makeTestTree({ unit: ['render.test.mjs'] });
+    const presentRoot = path.join(rootDir, 'smoke-tests.cjs');
+    const absentRoot = path.join(rootDir, 'gone.cjs');
+
+    const found = collectTestFiles(testDir, [presentRoot, absentRoot]);
+
+    assert.deepEqual(found, [presentRoot, path.join(testDir, 'unit', 'render.test.mjs')]);
   });
 
   it('returns an empty list when the test directory is missing', () => {
