@@ -15,10 +15,14 @@ function buildJS() {
     const p = join(JS_SRC, leaf);
     if (!existsSync(p)) throw new Error(`vite: leaf module not found: ${p}`);
   }
-  const pureFnsExports = readModuleExports('pure-fns.js');
-  if (!pureFnsExports.length) throw new Error('vite: no exports found in pure-fns.js');
-  const appConstantsExports = readModuleExports('app-constants.js');
-  if (!appConstantsExports.length) throw new Error('vite: no exports found in app-constants.js');
+  // pure-fns-*.js sub-modules are consumed only via the pure-fns.js barrel,
+  // so every other leaf module gets its own generated import line.
+  const importedLeaves = LEAF_MODULES.filter((f) => !f.startsWith('pure-fns-'));
+  const importLines = importedLeaves.map((f) => {
+    const exportsFound = readModuleExports(f);
+    if (!exportsFound.length) throw new Error(`vite: no exports found in ${f}`);
+    return `import { ${exportsFound.join(', ')} } from './src/js/${f}';`;
+  });
   const files = readdirSync(JS_SRC)
     .filter((f) => f.endsWith('.js') && !f.endsWith('.example.js') && !LEAF_MODULES.includes(f))
     .sort();
@@ -26,12 +30,7 @@ function buildJS() {
     const content = readFileSync(join(JS_SRC, f), 'utf8').replace(/\s+$/, '');
     return `// ── ${f} ──\n${content}`;
   });
-  const imports = [
-    `import { ${pureFnsExports.join(', ')} } from './src/js/pure-fns.js';`,
-    `import { wlLog } from './src/js/logger.js';`,
-    `import { ${appConstantsExports.join(', ')} } from './src/js/app-constants.js';`,
-  ].join('\n');
-  const output = imports + '\n\n' + parts.join('\n\n') + '\n';
+  const output = importLines.join('\n') + '\n\n' + parts.join('\n\n') + '\n';
   writeFileSync(JS_OUT, output);
   return files.length;
 }

@@ -260,27 +260,8 @@ function renderTagRow() {
 /* ── Utility ── */
 // dk(), fmtTime(), fmtElapsed(), roundToNearest30(), safeCssColor(), escHtml()
 // are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
-
-/**
- * Returns true if `d` falls on today's calendar date (UTC).
- * @param {Date} d
- * @returns {boolean}
- */
-function isToday(d) {
-  return dk(d) === dk(new Date());
-}
-/**
- * Returns a human-readable day label: 'today', 'yesterday', or a short locale date string.
- * @param {Date} d
- * @returns {string}
- */
-function fmtLabel(d) {
-  if (isToday(d)) return 'today';
-  const diffMs = new Date(dk(new Date())) - new Date(dk(d));
-  const diffDays = Math.round(diffMs / 86400000);
-  if (diffDays === 1) return 'yesterday';
-  return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
-}
+// isToday() and fmtLabel() are defined in date-labels.js (a leaf ES module
+// imported at the top of the built bundle), not here.
 
 /**
  * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.
