@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r2 |
-| Covers app version | v1.9.2 (main, 2026-08-15) |
-| Last reviewed | 2026-08-15 |
-| Reviewed by | Claude Sonnet 5 (doc-accuracy refresh — source file count and test counts, per issue #335; the 01-state.js entry in the Module Map was also refreshed since it changed in the same pass. Not a full re-audit of every per-module line count — see #335 for why that's out of scope here) |
+| Document version | 1.9.2-r3 |
+| Covers app version | v1.9.2 (main, 2026-08-16) |
+| Last reviewed | 2026-08-16 |
+| Reviewed by | Claude Sonnet 5 (extracted date-labels.js from 02-utils.js, issue #336 — updated the 02-utils.js and app-constants.js entries, added a date-labels.js entry, and refreshed the source file count and test counts touched by that change. Not a full re-audit of every per-module line count) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (53 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (54 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -104,18 +104,17 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (323 lines) — Category Lookup, Epic Manager UI, and Date Helpers
-**Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of date/billing helpers that don't fit elsewhere.
+#### **02-utils.js** (305 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+**Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
 - `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
 - `renderTagRow()` — renders and wires the epic dropdown, quick colour picker, and rename/delete/add manage row
-- `isToday(d)`, `fmtLabel(d)` — date-to-label helpers (`'today'` / `'yesterday'` / short date)
 - `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
 - `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. Splitting the genuinely stateless date helpers (`isToday`, `fmtLabel`) out on their own is a smaller, more promising follow-up than extracting the whole file.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js` — see below.
 
 ---
 
@@ -123,6 +122,13 @@ wl_snapshot        → backup (auto-restore on failure)
 **Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
 
 **Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
+
+---
+
+#### **date-labels.js** (31 lines) — Date-to-Label Helpers (LEAF MODULE)
+**Responsibility**: `isToday(d)` and `fmtLabel(d)` — stateless date helpers used across 8 files (`04-render.js`, `07-lifecycle.js`, `08-pomodoro.js`, `10a-tasks-render.js`, `11-timeblock.js`, `11-timeflow.js`, `11a-timeblock-render.js`, and formerly `02-utils.js` itself). Only depends on `dk()` from the `pure-fns.js` leaf module. Extracted from `02-utils.js` (issue #336) — the second ES-module extraction, and the model case for "pull the stateless part out, leave the entangled part alone" rather than forcing a whole-file extraction.
+
+**Exports**: `isToday`, `fmtLabel`
 
 ---
 
@@ -824,8 +830,8 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (659 tests, 102 suites via Node built-in test runner):
-- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
+**Unit Tests** (669 tests, 104 suites via Node built-in test runner):
+- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
 **Smoke Tests** (320 tests via Playwright):
 - Load test: Verify no JS errors
@@ -836,7 +842,7 @@ async function fetchWeather() {
 **CI Script Tests** (276 tests, 56 suites via Node built-in test runner):
 - `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (30 of these 276, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 1,255 tests (659 unit + 320 smoke + 276 CI-script)**
+**Total: 1,265 tests (669 unit + 320 smoke + 276 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)

@@ -1,10 +1,13 @@
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { parseParamNames, jsdocBefore, isImplicitArrow, bodyHasReturn } from '../jsdoc-check.mjs';
 
-import { referencesModule, discoverTestFiles } from '../impact-check.mjs';
+import { collectTestFiles, referencesModule, toPosixPath } from '../impact-check.mjs';
 
 // ---------------------------------------------------------------------------
 // parseParamNames
@@ -195,26 +198,120 @@ describe('referencesModule', () => {
 });
 
 // ---------------------------------------------------------------------------
-// discoverTestFiles
+// toPosixPath
 // ---------------------------------------------------------------------------
 
-describe('discoverTestFiles', () => {
-  it('includes smoke-tests.cjs', () => {
-    assert.ok(discoverTestFiles().includes('smoke-tests.cjs'));
+describe('toPosixPath', () => {
+  it('leaves an already-POSIX path untouched', () => {
+    assert.equal(toPosixPath('test/unit/render.test.mjs'), 'test/unit/render.test.mjs');
   });
 
-  it('includes at least one test/unit/*.test.mjs file', () => {
-    const files = discoverTestFiles();
-    assert.ok(files.some((f) => /^test[/\\]unit[/\\].+\.test\.mjs$/.test(f)));
+  it('normalises whatever path.join produced on this platform', () => {
+    assert.equal(
+      toPosixPath(path.join('test', 'unit', 'render.test.mjs')),
+      'test/unit/render.test.mjs'
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// collectTestFiles
+// ---------------------------------------------------------------------------
+
+describe('collectTestFiles', () => {
+  const tempDirs = [];
+
+  after(() => {
+    for (const dir of tempDirs) fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('does not reference the deleted monolithic test/unit.mjs or test/unit.cjs', () => {
-    // Regression test for #360: these files were deleted in #355's split of
-    // test/unit.mjs into test/unit/*.test.mjs, but the old hardcoded path
-    // list still named them, so fs.existsSync silently dropped them and
-    // testCoverage collapsed to checking only smoke-tests.cjs.
-    const files = discoverTestFiles();
-    assert.ok(!files.includes(path.join('test', 'unit.mjs')));
-    assert.ok(!files.includes(path.join('test', 'unit.cjs')));
+  /**
+   * Build a throwaway test-directory tree and return its path.
+   *
+   * @param {Record<string, string[]>} tree - Subdirectory name → filenames.
+   *   The `.` key holds files placed directly in the directory root.
+   * @returns {string} Absolute path to the created directory.
+   */
+  function makeTestTree(tree) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'impact-check-'));
+    for (const [subdir, names] of Object.entries(tree)) {
+      const target = subdir === '.' ? dir : path.join(dir, subdir);
+      fs.mkdirSync(target, { recursive: true });
+      for (const name of names) fs.writeFileSync(path.join(target, name), '');
+    }
+    tempDirs.push(dir);
+    return dir;
+  }
+
+  it('discovers suites one level down (the test/unit/*.test.mjs layout)', () => {
+    const dir = makeTestTree({ unit: ['render.test.mjs', 'state.test.mjs', '_helpers.mjs'] });
+    const found = collectTestFiles(dir, []).map((f) => path.basename(f));
+    assert.deepEqual(found, ['_helpers.mjs', 'render.test.mjs', 'state.test.mjs']);
+  });
+
+  it('discovers suites sitting directly in the test directory', () => {
+    const dir = makeTestTree({ '.': ['unit.mjs', 'legacy.cjs'] });
+    const found = collectTestFiles(dir, []).map((f) => path.basename(f));
+    assert.deepEqual(found, ['legacy.cjs', 'unit.mjs']);
+  });
+
+  it('skips non-JavaScript files such as the Pester suite', () => {
+    const dir = makeTestTree({ '.': ['calendar.Tests.ps1', 'unit.mjs'] });
+    const found = collectTestFiles(dir, []).map((f) => path.basename(f));
+    assert.deepEqual(found, ['unit.mjs']);
+  });
+
+  it('skips directories whose name ends in .mjs/.cjs', () => {
+    // Contrived, but the caller does readFileSync on whatever comes back, and
+    // that throws EISDIR on a directory. Covers both scan levels.
+    const dir = makeTestTree({
+      '.': ['unit.mjs'],
+      'decoy.mjs': ['nested.test.mjs'],
+      unit: ['render.test.mjs'],
+      'unit/inner.cjs': [],
+    });
+    const found = collectTestFiles(dir, []);
+
+    // Order is asserted elsewhere; what matters here is that every returned
+    // path is a real file — `decoy.mjs` and `unit/inner.cjs` are directories.
+    assert.deepEqual(found.map((f) => path.basename(f)).sort(), [
+      'nested.test.mjs',
+      'render.test.mjs',
+      'unit.mjs',
+    ]);
+    for (const file of found) assert.ok(fs.statSync(file).isFile(), `${file} should be a file`);
+  });
+
+  it('puts existing root suites first, and drops ones that do not exist', () => {
+    // The root suite lives outside the scanned directory, mirroring the real
+    // arrangement (smoke-tests.cjs at the repo root, unit suites under test/) —
+    // so this asserts precedence rather than tolerating a duplicated entry.
+    const rootDir = makeTestTree({ '.': ['smoke-tests.cjs'] });
+    const testDir = makeTestTree({ unit: ['render.test.mjs'] });
+    const presentRoot = path.join(rootDir, 'smoke-tests.cjs');
+    const absentRoot = path.join(rootDir, 'gone.cjs');
+
+    const found = collectTestFiles(testDir, [presentRoot, absentRoot]);
+
+    assert.deepEqual(found, [presentRoot, path.join(testDir, 'unit', 'render.test.mjs')]);
+  });
+
+  it('returns an empty list when the test directory is missing', () => {
+    assert.deepEqual(collectTestFiles(path.join(os.tmpdir(), 'impact-check-absent'), []), []);
+  });
+
+  /**
+   * Regression guard for the #334 test split: the old hard-coded
+   * ['smoke-tests.cjs', 'test/unit.mjs', 'test/unit.cjs'] list was filtered by
+   * existsSync, so when unit.mjs was split into test/unit/*.test.mjs the list
+   * silently collapsed to the smoke suite alone and every changed module
+   * reported "❌ not found". Asserting against the repo's own real layout is
+   * the only version of this test that would have failed before the fix.
+   */
+  it('finds the real repository unit suites, not just the smoke tests', () => {
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+    const found = collectTestFiles(path.join(repoRoot, 'test'), []);
+    assert.ok(found.length > 1, 'expected more than one suite to be discovered');
+    assert.ok(found.some((f) => f.endsWith('.test.mjs')));
   });
 });

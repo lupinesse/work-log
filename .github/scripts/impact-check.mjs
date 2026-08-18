@@ -53,24 +53,88 @@ export function firstLineContaining(filePath, term) {
 }
 
 /**
- * Find the test files to search for coverage of a changed module: the smoke
- * test script plus every unit-test file under test/unit/. Discovered by
- * globbing the directory rather than a fixed filename list, so a future
- * rename/split of the unit-test suite (like #334/#355's split of the former
- * test/unit.mjs into test/unit/*.test.mjs) doesn't silently drop coverage.
+ * Rewrite a path with forward slashes for display.
  *
- * @returns {string[]} Existing test file paths, relative to the repo root.
+ * Paths are built with `path.join`, so on Windows they come back with
+ * backslashes — which read as escape characters once the report is rendered as
+ * markdown in a PR comment. The report is a document, not a filesystem call, so
+ * it always shows POSIX separators regardless of the host OS.
+ *
+ * @param {string} filePath - Path in host-OS form.
+ * @returns {string} The same path with `/` separators.
  */
-export function discoverTestFiles() {
-  const unitTestDir = path.join('test', 'unit');
-  const unitTestFiles = fs.existsSync(unitTestDir)
-    ? fs
-        .readdirSync(unitTestDir)
-        .filter((f) => f.endsWith('.test.mjs'))
-        .map((f) => path.join(unitTestDir, f))
-    : [];
+export function toPosixPath(filePath) {
+  return filePath.split(path.sep).join('/');
+}
 
-  return ['smoke-tests.cjs', ...unitTestFiles].filter((f) => fs.existsSync(f));
+/**
+ * Whether a directory entry is a JavaScript test script.
+ *
+ * Takes a `Dirent`, not a bare name, so a *directory* called `foo.mjs` is
+ * rejected — collected as a file it would reach `firstLineContaining`, whose
+ * `readFileSync` then throws `EISDIR`.
+ *
+ * @param {import('fs').Dirent} entry - Directory entry from `readdirSync`.
+ * @returns {boolean} True for a `.mjs`/`.cjs` file.
+ */
+function isTestScript(entry) {
+  return !entry.isDirectory() && (entry.name.endsWith('.mjs') || entry.name.endsWith('.cjs'));
+}
+
+/**
+ * List the test scripts directly inside one directory.
+ *
+ * @param {string} dir - Directory to read.
+ * @returns {string[]} Paths of the `.mjs`/`.cjs` files it contains.
+ */
+function testScriptsIn(dir) {
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter(isTestScript)
+    .map((entry) => path.join(dir, entry.name));
+}
+
+/**
+ * Collect the test files to search for coverage of a changed module.
+ *
+ * Discovers the suites by reading `testDir` rather than naming files, because
+ * the previous hard-coded list silently stopped matching anything the moment
+ * `test/unit.mjs` was split into `test/unit/*.test.mjs` (#334): the dead path
+ * was filtered out by an `existsSync` check without a word, and every changed
+ * module started reporting "not found".
+ *
+ * The scan covers `testDir` itself and one level of subdirectory — enough for
+ * both the pre-#334 layout (`test/unit.mjs`) and the current one
+ * (`test/unit/*.test.mjs`), and no deeper. A suite nested further than that
+ * would be missed just as silently, so the caller logs the discovered count:
+ * that number dropping is the signal, since this function cannot tell
+ * "no suites here" apart from "did not look here".
+ *
+ * Every `.mjs`/`.cjs` file is returned, which means shared fixtures such as
+ * `test/unit/_helpers.mjs` come back alongside the suites proper — harmless,
+ * since the caller only greps these paths for a module reference. Other
+ * extensions are skipped, so `test/calendar.Tests.ps1` (Pester) never appears.
+ *
+ * Everything found under `testDir` is sorted together for a stable report — a
+ * file directly in `testDir` gets no precedence over one in a subdirectory.
+ * Only the `rootTestFiles` entries are pinned ahead of the scan, which is what
+ * keeps `smoke-tests.cjs` searched first as it was before.
+ *
+ * @param {string} [testDir] - Directory holding the test suites.
+ * @param {string[]} [rootTestFiles] - Suites outside `testDir`, searched first.
+ * @returns {string[]} Paths of existing `.mjs`/`.cjs` files, in search order.
+ */
+export function collectTestFiles(testDir = 'test', rootTestFiles = ['smoke-tests.cjs']) {
+  const discovered = [];
+  if (fs.existsSync(testDir)) {
+    for (const entry of fs.readdirSync(testDir, { withFileTypes: true })) {
+      const entryPath = path.join(testDir, entry.name);
+      if (entry.isDirectory()) discovered.push(...testScriptsIn(entryPath));
+      else if (isTestScript(entry)) discovered.push(entryPath);
+    }
+  }
+
+  return [...rootTestFiles.filter((f) => fs.existsSync(f)), ...discovered.sort()];
 }
 
 // ---------------------------------------------------------------------------
@@ -116,7 +180,12 @@ if (isMain) {
 
   const buildFiles = ['build.js', 'build-portable.js'].filter((f) => fs.existsSync(f));
 
-  const testFiles = discoverTestFiles();
+  // Report the discovered suites on stderr — the workflow redirects only
+  // stdout into the PR comment, so this lands in the Actions log instead of
+  // the posted markdown. A count of 1 (smoke tests alone) is the signature of
+  // the discovery breaking again.
+  const testFiles = collectTestFiles();
+  console.error(`impact-check: searching ${testFiles.length} test file(s) for coverage`);
 
   const rows = changedFiles.map((changed) => {
     const basename = path.basename(changed, path.extname(changed));
@@ -137,7 +206,7 @@ if (isMain) {
     for (const tf of testFiles) {
       const lineNum = firstLineContaining(tf, basename);
       if (lineNum !== null) {
-        testCoverage = `✅ ${tf} line ${lineNum}`;
+        testCoverage = `✅ ${toPosixPath(tf)} line ${lineNum}`;
         break;
       }
     }
