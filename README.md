@@ -100,6 +100,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 | [ROADMAP.md](ROADMAP.md) | Planned and in-progress features |
 | [CHANGELOG.md](CHANGELOG.md) | Full release history |
 | [QA.md](QA.md) | QA checklist and stakeholder sign-offs per release |
+| [JSDoc reference](https://lupinesse.github.io/work-log/) | Generated API docs for every exported function, rebuilt on every push to `main` |
 
 ## Testing
 
