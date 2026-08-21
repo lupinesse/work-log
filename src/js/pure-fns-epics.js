@@ -11,6 +11,22 @@
  * every past entry that used it as the grey "other" fallback.
  */
 
+/**
+ * A log entry or board task, seen only as evidence that an epic is in use.
+ * @typedef {Object} EpicUsageRecord
+ * @property {string} [tag] - Epic ID this record is tagged with, if any.
+ * @property {string} [date] - ISO date (YYYY-MM-DD) the record belongs to, if any.
+ */
+
+/**
+ * An epic (category) record as persisted in `wl_cats_v1`.
+ * @typedef {Object} EpicCategory
+ * @property {string} id - Unique epic ID.
+ * @property {string} label - Display name.
+ * @property {string} [color] - CSS colour.
+ * @property {boolean} [archived] - `true` hides the epic from the pickers.
+ */
+
 /** Days of inactivity after which an epic is offered up for archiving. */
 export const EPIC_STALE_DAYS = 21;
 
@@ -45,7 +61,7 @@ export function epicCutoffDate(todayIso, windowDays) {
  * dated on or after `cutoffIso`. Records with no `date` are ignored rather
  * than assumed recent — an undated record cannot vouch for an epic's
  * freshness, and treating it as recent would keep stale epics alive forever.
- * @param {{ entries?: Array<{tag?: string, date?: string}>, planTasks?: Array<{tag?: string, date?: string}> }} sources - Log entries and board tasks to scan.
+ * @param {{ entries: (Array<EpicUsageRecord>|undefined), planTasks: (Array<EpicUsageRecord>|undefined) }} sources - Log entries and board tasks to scan.
  * @param {string} cutoffIso - Inclusive start of the window, as YYYY-MM-DD.
  * @returns {Set<string>} Epic IDs used within the window.
  */
@@ -71,9 +87,9 @@ export function collectRecentlyUsedCatIds({ entries = [], planTasks = [] }, cuto
  * already archived, or a log entry or board task dated within the window
  * references it.
  * @param {Object} params - Inputs for the staleness decision.
- * @param {Array<{id: string, label: string, archived?: boolean}>} params.categories - All known epics.
- * @param {Array<{tag?: string, date?: string}>} [params.entries] - Log entries to scan for usage.
- * @param {Array<{tag?: string, date?: string}>} [params.planTasks] - Board tasks to scan for usage.
+ * @param {Array<EpicCategory>} params.categories - All known epics.
+ * @param {Array<EpicUsageRecord>} [params.entries] - Log entries to scan for usage.
+ * @param {Array<EpicUsageRecord>} [params.planTasks] - Board tasks to scan for usage.
  * @param {string} params.todayIso - Today's date as YYYY-MM-DD.
  * @param {number} [params.windowDays] - Inactivity window in days.
  * @param {string} [params.selectedTag] - Epic currently selected in the tag row; never archived.
@@ -107,9 +123,9 @@ export function findStaleCategories({
  * epics are hidden, except for `keepId` — the currently selected epic stays
  * visible even once archived so an entry already tagged with it still renders
  * its own selection instead of appearing untagged.
- * @param {Array<{id: string, archived?: boolean}>} categories - All known epics.
+ * @param {Array<EpicCategory>} categories - All known epics.
  * @param {string|null} [keepId] - Epic ID to keep regardless of archived state.
- * @returns {Array<{id: string, archived?: boolean}>} The epics to offer, in input order.
+ * @returns {Array<EpicCategory>} The epics to offer, in input order.
  */
 export function pickableCategories(categories = [], keepId = null) {
   return categories.filter((cat) => cat && (!cat.archived || cat.id === keepId));
@@ -119,9 +135,9 @@ export function pickableCategories(categories = [], keepId = null) {
  * Returns a copy of `categories` with `archived: true` stamped on every epic
  * whose ID is in `staleIds`. Non-destructive: no record is dropped and every
  * other field is preserved untouched.
- * @param {Array<{id: string}>} categories - All known epics.
+ * @param {Array<EpicCategory>} categories - All known epics.
  * @param {string[]} staleIds - Epic IDs to archive.
- * @returns {Array<Object>} A new array with the archived epics flagged.
+ * @returns {Array<EpicCategory>} A new array with the archived epics flagged.
  */
 export function applyEpicArchive(categories = [], staleIds = []) {
   const stale = new Set(staleIds);
@@ -131,9 +147,9 @@ export function applyEpicArchive(categories = [], staleIds = []) {
 /**
  * Returns a copy of `categories` with the `archived` flag cleared from one
  * epic, bringing it back into the pickers.
- * @param {Array<{id: string}>} categories - All known epics.
+ * @param {Array<EpicCategory>} categories - All known epics.
  * @param {string} catId - Epic ID to restore.
- * @returns {Array<Object>} A new array with the epic un-archived.
+ * @returns {Array<EpicCategory>} A new array with the epic un-archived.
  */
 export function restoreArchivedCategory(categories = [], catId) {
   return categories.map((cat) => {
