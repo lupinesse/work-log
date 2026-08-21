@@ -18,13 +18,17 @@
     "test:actionlint": "node .github/scripts/check-actionlint.mjs",
     "test:changelog": "node .github/scripts/check-changelog-duplicates.mjs",
     "test": "node --test \"test/unit/*.test.mjs\" && node smoke-tests.cjs && node .github/scripts/test/ci-scripts.test.mjs",
-    "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
+    "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
     "lint:css": "stylelint \"src/css/**/*.scss\"",
-    "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \".github/scripts/**/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \".github/scripts/**/*.mjs\"",
+    "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\"",
     "prepare": "husky",
     "docs": "jsdoc -c jsdoc.config.json",
-    "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1"
+    "clean-branches": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/clean-branches.ps1",
+    "session:claim": "node scripts/session-guard.mjs claim",
+    "session:check": "node scripts/session-guard.mjs check",
+    "session:list": "node scripts/session-guard.mjs list",
+    "session:release": "node scripts/session-guard.mjs release"
   },
   "lint-staged": {
     "src/js/*.js": [
@@ -40,6 +44,10 @@
       "prettier --write"
     ],
     "test/**/*.mjs": [
+      "eslint",
+      "prettier --write"
+    ],
+    "scripts/**/*.mjs": [
       "eslint",
       "prettier --write"
     ],

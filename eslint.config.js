@@ -105,6 +105,28 @@ export default [
     },
   },
 
+  // Workstation tooling — ES modules run by hand via `npm run`, not by CI.
+  // scripts/session-guard.mjs and its lib guard against concurrent sessions
+  // sharing this checkout (#268). They use Node globals (process, console).
+  // detect-non-literal-fs-filename: lock paths are built from the git common
+  // directory and a sanitised session id, never from untrusted input.
+  // detect-object-injection: the only bracket lookup is a static escape table
+  // keyed by a single character matched against that table first.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
+      'security/detect-object-injection': 'off',
+    },
+  },
+
   // CI dialogue scripts — ES modules running in Node (GitHub Actions).
   // These power the chatgpt/claude PR-review pipeline. They use Node globals
   // (process, console, fetch). detect-non-literal-fs-filename: any file paths
