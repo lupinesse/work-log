@@ -91,7 +91,7 @@ function renderTagRow() {
     manageHtml = `<div class="cat-inline-edit">
         <select class="cat-inline-input" id="catRestoreSelect" aria-label="archived epic to restore">
         ${archived
-          .map((cat) => `<option value="${cat.id}">${escHtml(cat.label)}</option>`)
+          .map((cat) => `<option value="${escHtml(cat.id)}">${escHtml(cat.label)}</option>`)
           .join('')}
         </select>
         <button class="cat-inline-ok" id="catRestoreOk" title="restore epic">&#10003;</button>

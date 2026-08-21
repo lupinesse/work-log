@@ -95,31 +95,35 @@
       const byKey = categories.find(
         (c) => c.label.startsWith(parentKey + ':') || c.label === parentKey
       );
-      if (byKey) return unarchiveMatchedCat(byKey);
+      if (byKey) return byKey;
     }
     // Fall back to exact label match only — no fuzzy substring matching
     const lower = label.toLowerCase().trim();
-    const byLabel = categories.find((c) => c.label.toLowerCase().trim() === lower);
-    return byLabel ? unarchiveMatchedCat(byLabel) : null;
+    return categories.find((c) => c.label.toLowerCase().trim() === lower) || null;
   }
 
   /**
-   * Brings an archived epic back into the pickers when a Jira import maps a
-   * ticket onto it — an incoming ticket is proof the epic is in use again, and
-   * leaving it archived would tag the imported task to an epic the user cannot
-   * see or select.
-   * @param {Object} cat - The matched category object (mutated in place).
-   * @returns {Object} The same category object, no longer archived.
+   * Brings archived epics back into the pickers when an import actually lands
+   * tasks on them — an imported ticket is proof the epic is in use again, and
+   * leaving it archived would tag the new task to an epic the user cannot see
+   * or select. Called from the import handler rather than from jiraMatchCat so
+   * that merely previewing a CSV never mutates persisted state.
+   * @param {Array<{id: string}>} mappedCats - Category objects the import mapped tickets onto.
+   * @returns {number} How many epics were un-archived.
    */
-  function unarchiveMatchedCat(cat) {
-    if (cat.archived) {
+  function unarchiveImportedCats(mappedCats) {
+    let restored = 0;
+    mappedCats.forEach((mapped) => {
+      const cat = categories.find((c) => c.id === mapped.id);
+      if (!cat || !cat.archived) return;
       delete cat.archived;
-      wlLog.info('jiraMatchCat: un-archived epic matched by Jira import', {
+      restored++;
+      wlLog.info('jiraImport: un-archived epic matched by import', {
         catId: cat.id,
         label: cat.label,
       });
-    }
-    return cat;
+    });
+    return restored;
   }
 
   /**
@@ -460,6 +464,8 @@
 
     let added = 0,
       skipped = 0;
+    // Epics that actually receive a task, so archived ones can be revived below
+    const importedCats = [];
     // Import in category-group order (same order as displayed)
     const grouped = [];
     const seen = {};
@@ -488,10 +494,14 @@
           tag: cat ? cat.id : 'other',
           date: today,
         });
+        if (cat) importedCats.push(cat);
         existing.add(text.toLowerCase().trim());
         added++;
       })
     );
+
+    // An epic that just received a task is in use again, archived or not
+    unarchiveImportedCats(importedCats);
 
     save();
     savePlan();
