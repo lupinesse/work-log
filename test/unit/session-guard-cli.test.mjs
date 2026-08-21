@@ -28,15 +28,14 @@ let repo;
  * Run the guard inside the test repository.
  *
  * @param {string[]} args Arguments to pass to the CLI.
- * @param {object} [env] Extra environment variables for the run.
+ * @param {string} [sessionId] Session to run as; defaults to this file's own.
  * @returns {{status: number, stdout: string, stderr: string}} Exit code and
  *   captured output, whichever way the process exited.
  */
-function runGuard(args, env = {}) {
-  const result = spawnSync(process.execPath, [GUARD, ...args], {
+function runGuard(args, sessionId = SESSION) {
+  const result = spawnSync(process.execPath, [GUARD, ...args, `--session=${sessionId}`], {
     cwd: repo,
     encoding: 'utf8',
-    env: { ...process.env, WORKLOG_SESSION_ID: SESSION, ...env },
   });
   if (result.error) throw result.error;
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
@@ -89,6 +88,12 @@ describe('session-guard CLI', () => {
     assert.match(result.stdout, /--ttl-hours=N/);
   });
 
+  it('names the flag when --ttl-hours carries a value it cannot use', () => {
+    const result = runGuard(['list', '--ttl-hours=zero']);
+    assert.equal(result.status, 2);
+    assert.match(result.stderr, /invalid value for --ttl-hours: "zero"/);
+  });
+
   it('tells an unclaimed session to claim before it can check', () => {
     const result = runGuard(['check']);
     assert.equal(result.status, 1);
@@ -133,7 +138,7 @@ describe('session-guard CLI', () => {
   });
 
   it('warns when another session holds the same working tree', () => {
-    assert.equal(runGuard(['claim'], { WORKLOG_SESSION_ID: 'second-session' }).status, 0);
+    assert.equal(runGuard(['claim'], 'second-session').status, 0);
     const result = runGuard(['check']);
 
     assert.equal(result.status, 1);
@@ -144,7 +149,7 @@ describe('session-guard CLI', () => {
     assert.match(listing.stdout, /second-session {2}main/);
     assert.match(listing.stdout, new RegExp(`${SESSION} {2}main`));
 
-    runGuard(['release'], { WORKLOG_SESSION_ID: 'second-session' });
+    runGuard(['release'], 'second-session');
   });
 
   it('reports a HEAD that moved under the session', () => {
@@ -175,19 +180,19 @@ describe('session-guard CLI', () => {
   });
 
   it('refuses to let --ttl-hours drop below the pruning floor', () => {
-    runGuard(['claim'], { WORKLOG_SESSION_ID: 'bystander' });
+    runGuard(['claim'], 'bystander');
     const result = runGuard(['list', '--ttl-hours=0.0001']);
 
     assert.equal(result.status, 0);
     assert.match(result.stdout, /stale after {6}0\.5h/);
     assert.match(result.stdout, /bystander/);
-    runGuard(['release'], { WORKLOG_SESSION_ID: 'bystander' });
+    runGuard(['release'], 'bystander');
   });
 
   it('fails with a git error outside a repository', () => {
     const notARepo = fs.mkdtempSync(path.join(os.tmpdir(), 'session-guard-bare-'));
     try {
-      const result = spawnSync(process.execPath, [GUARD, 'list'], {
+      const result = spawnSync(process.execPath, [GUARD, 'list', `--session=${SESSION}`], {
         cwd: notARepo,
         encoding: 'utf8',
       });

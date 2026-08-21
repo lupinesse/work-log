@@ -60,9 +60,11 @@ export function sessionLockDir(gitCommonDir) {
  *
  * @param {string[]} argv Arguments after the script name.
  * @returns {{verb: string|null, sessionId: string|null, accept: boolean,
- *   ttlMs: number|null, help: boolean, unknown: string[]}} The parsed options;
- *   `verb` is null when none was given, and `unknown` collects anything not
- *   recognised so the caller can refuse to act on a mistyped command.
+ *   ttlMs: number|null, help: boolean, unknown: string[],
+ *   invalid: Array<{flag: string, value: string}>}} The parsed options; `verb`
+ *   is null when none was given. A mistyped argument lands in `unknown` and a
+ *   recognised flag carrying a bad value in `invalid`, so the caller can say
+ *   which of the two went wrong instead of refusing with one vague message.
  */
 export function parseArgs(argv) {
   const parsed = {
@@ -72,6 +74,7 @@ export function parseArgs(argv) {
     ttlMs: null,
     help: false,
     unknown: [],
+    invalid: [],
   };
 
   for (const arg of argv) {
@@ -79,9 +82,10 @@ export function parseArgs(argv) {
     else if (arg === '--accept') parsed.accept = true;
     else if (arg.startsWith('--session=')) parsed.sessionId = arg.slice('--session='.length);
     else if (arg.startsWith('--ttl-hours=')) {
-      const hours = Number(arg.slice('--ttl-hours='.length));
+      const raw = arg.slice('--ttl-hours='.length);
+      const hours = Number(raw);
       if (Number.isFinite(hours) && hours > 0) parsed.ttlMs = hours * 60 * 60 * 1000;
-      else parsed.unknown.push(arg);
+      else parsed.invalid.push({ flag: '--ttl-hours', value: raw });
     } else if (parsed.verb === null && VERBS.includes(arg)) parsed.verb = arg;
     else parsed.unknown.push(arg);
   }
@@ -92,32 +96,31 @@ export function parseArgs(argv) {
 /**
  * Choose the identifier a session is registered under.
  *
- * An explicit flag wins, then the environment, then the working tree itself:
- * the convention is one worktree per session, so the directory name identifies
+ * An explicit `--session=` wins; otherwise the working tree names the session.
+ * The convention is one worktree per session, so its directory name identifies
  * the session well enough to stay stable across separate `npm run`
  * invocations, which a process id could not.
  *
+ * Deliberately not read from the environment: the identifier is printed in
+ * every report, and CodeQL rightly refuses to distinguish a session label from
+ * a session *token* when both arrive through a `*_SESSION_ID` variable. An
+ * explicit flag says the same thing without routing anything from the
+ * environment to a log line.
+ *
  * @param {string|null} flagValue Value of `--session=`, or null.
- * @param {object} env Environment to read `WORKLOG_SESSION_ID` and
- *   `CLAUDE_SESSION_ID` from.
  * @param {string} worktree Absolute path of the current working tree.
  * @param {string} hostName Name of the machine, to keep ids distinct when a
  *   checkout is shared over a network path.
  * @returns {string} The session identifier.
  */
-export function resolveSessionId(flagValue, env, worktree, hostName) {
-  return (
-    flagValue ||
-    env.WORKLOG_SESSION_ID ||
-    env.CLAUDE_SESSION_ID ||
-    `${hostName}-${path.basename(worktree)}`
-  );
+export function resolveSessionId(flagValue, worktree, hostName) {
+  return flagValue || `${hostName}-${path.basename(worktree)}`;
 }
 
 /**
  * Reduce a session identifier to a safe, stable file name stem.
  *
- * Session ids come from the environment and from worktree paths, so they can
+ * Session ids come from `--session=` and from worktree paths, so they can
  * carry separators and drive letters. Anything outside `[A-Za-z0-9._-]` is
  * collapsed to a hyphen, which keeps a lock file inside its own directory.
  *

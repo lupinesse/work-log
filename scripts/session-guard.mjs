@@ -22,6 +22,9 @@
  *
  * Options: `--session=ID`, `--ttl-hours=N`.
  *
+ * The session identifier is never read from the environment — see
+ * `resolveSessionId` in `lib/session-guard.mjs` for why.
+ *
  * Exit codes: 0 clean, 1 attention needed (drift, collision, or no baseline),
  * 2 usage or git error.
  */
@@ -226,15 +229,20 @@ function runList({ sessionId, others, existing, nowMs }) {
  * Orchestrate one run: read state, dispatch the verb, return an exit code.
  *
  * @param {string[]} argv Arguments after the script name.
- * @param {NodeJS.ProcessEnv} [env] Environment to read.
  * @returns {number} Process exit code.
  */
-function main(argv, env = process.env) {
+function main(argv) {
   const args = parseArgs(argv);
 
-  if (args.help || args.verb === null || args.unknown.length > 0) {
-    if (args.unknown.length > 0)
+  if (args.help || args.verb === null || args.unknown.length > 0 || args.invalid.length > 0) {
+    if (args.unknown.length > 0) {
       console.error(`unrecognised argument(s): ${args.unknown.join(' ')}`);
+    }
+    for (const bad of args.invalid) {
+      console.error(
+        `invalid value for ${bad.flag}: "${bad.value}" — expected a positive number of hours`
+      );
+    }
     console.log(`usage: node scripts/session-guard.mjs <${VERBS.join('|')}> [options]
 
   claim      record this session's baseline for the current checkout
@@ -242,7 +250,8 @@ function main(argv, env = process.env) {
   release    drop this session's lock
   list       show every session registered on this checkout
 
-  --session=ID     identify this session explicitly
+  --session=ID     identify this session explicitly (default: host and
+                   worktree directory name)
   --ttl-hours=N    treat a lock older than N hours as stale (floor: 0.5)
   --accept         (check only) adopt the current tree as the new baseline`);
     return args.help ? EXIT_CLEAN : EXIT_ERROR;
@@ -257,7 +266,7 @@ function main(argv, env = process.env) {
   }
 
   const lockDir = sessionLockDir(state.commonDir);
-  const sessionId = resolveSessionId(args.sessionId, env, state.worktree, hostname());
+  const sessionId = resolveSessionId(args.sessionId, state.worktree, hostname());
   // Floor the TTL: pruning deletes other sessions' baselines, and a guard
   // against destroying another session's state must not be the thing that
   // does it because of a mistyped flag.

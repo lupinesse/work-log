@@ -123,9 +123,12 @@ find out who else is working before running `git checkout --`, `git reset`, or
 Locks are JSON files under the repository's git common directory
 (`.git/worklog-session-locks/`), so every linked worktree sees the same set and
 nothing reaches the repository itself. A lock unrefreshed for 8 hours is
-treated as abandoned and pruned; override with `--ttl-hours=N`. Sessions are
-identified by `WORKLOG_SESSION_ID` or `CLAUDE_SESSION_ID` when set, otherwise
-by host name and worktree directory name.
+treated as abandoned and pruned; override with `--ttl-hours=N` (floored at 30
+minutes, because pruning deletes other sessions' baselines). A session is
+identified by `--session=ID` when given, otherwise by host name and worktree
+directory name — deliberately not by an environment variable, since the
+identifier is printed in every report and nothing that reaches a log line
+should arrive from the environment.
 
 ### Commit messages — Conventional Commits
 

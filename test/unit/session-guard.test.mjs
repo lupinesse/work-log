@@ -398,6 +398,7 @@ describe('parseArgs', () => {
       ttlMs: null,
       help: false,
       unknown: [],
+      invalid: [],
     });
   });
 
@@ -414,8 +415,18 @@ describe('parseArgs', () => {
   });
 
   it('collects anything it does not recognise', () => {
-    const args = parseArgs(['check', '--ttl-hours=zero', 'claim', '--force']);
-    assert.deepEqual(args.unknown, ['--ttl-hours=zero', 'claim', '--force']);
+    const args = parseArgs(['check', 'claim', '--force']);
+    assert.deepEqual(args.unknown, ['claim', '--force']);
+    assert.deepEqual(args.invalid, []);
+  });
+
+  it('separates a bad --ttl-hours value from a mistyped argument', () => {
+    for (const value of ['zero', '-3', '0', '']) {
+      const args = parseArgs(['check', `--ttl-hours=${value}`]);
+      assert.deepEqual(args.invalid, [{ flag: '--ttl-hours', value }]);
+      assert.deepEqual(args.unknown, []);
+      assert.equal(args.ttlMs, null);
+    }
   });
 
   it('treats -h and --help as help', () => {
@@ -428,16 +439,17 @@ describe('resolveSessionId', () => {
   const worktree = path.join(os.tmpdir(), 'worklog-issue-268');
 
   it('prefers the explicit flag', () => {
-    assert.equal(resolveSessionId('flag', { WORKLOG_SESSION_ID: 'env' }, worktree, 'host'), 'flag');
-  });
-
-  it('falls back to WORKLOG_SESSION_ID, then CLAUDE_SESSION_ID', () => {
-    assert.equal(resolveSessionId(null, { WORKLOG_SESSION_ID: 'w' }, worktree, 'host'), 'w');
-    assert.equal(resolveSessionId(null, { CLAUDE_SESSION_ID: 'c' }, worktree, 'host'), 'c');
+    assert.equal(resolveSessionId('flag', worktree, 'host'), 'flag');
   });
 
   it('derives a stable id from the host and worktree name', () => {
-    assert.equal(resolveSessionId(null, {}, worktree, 'laptop'), 'laptop-worklog-issue-268');
+    assert.equal(resolveSessionId(null, worktree, 'laptop'), 'laptop-worklog-issue-268');
+    assert.equal(resolveSessionId('', worktree, 'laptop'), 'laptop-worklog-issue-268');
+  });
+
+  it('returns the same id on every call, so a later run finds its own lock', () => {
+    const first = resolveSessionId(null, worktree, 'laptop');
+    assert.equal(resolveSessionId(null, worktree, 'laptop'), first);
   });
 });
 
