@@ -84,6 +84,49 @@ The repository uses a trunk-based workflow with **no direct commits to `main`** 
 - **Feature branches** branch from `main` and merge back via squash-merge. Keep them short-lived (days, not weeks).
 - **Releases** are tagged commits on `main` following [Semantic Versioning](https://semver.org/) (see `CHANGELOG.md`).
 
+### Working on a shared checkout
+
+Several Claude Code sessions and tools drive this repository from the same
+checkout at once. Git records *what* changed in a working tree but never *who*
+changed it, so one session can see another's in-flight edits in its own
+`git status` — and stage, discard, or `reset --hard` them without either side
+noticing (issue #268).
+
+Two rules keep that from happening:
+
+1. **One working tree per session.** Give each concurrent session its own
+   worktree instead of sharing the main checkout:
+
+   ```bash
+   git worktree add ../worklog-<topic> -b fix/issue-N-description origin/main
+   ```
+
+   Remove it with `git worktree remove ../worklog-<topic>` when the branch has
+   merged.
+
+2. **Claim the tree, then check before anything destructive.**
+
+   | Command | What it does |
+   |---|---|
+   | `npm run session:claim` | Record this session's baseline: branch, HEAD, and every dirty path |
+   | `npm run session:check` | Report what moved since that baseline, and who else is active |
+   | `npm run session:check -- --accept` | Adopt the current tree as the new baseline, once you have reviewed it |
+   | `npm run session:list` | Show every session registered on this checkout |
+   | `npm run session:release` | Drop this session's lock when the work is done |
+
+`session:check` exits `0` when nothing moved and `1` when something did, so it
+can gate a script. It only ever reports — it never touches the working tree,
+and it cannot stop another process from writing. Treat a warning as a signal to
+find out who else is working before running `git checkout --`, `git reset`, or
+`git stash`.
+
+Locks are JSON files under the repository's git common directory
+(`.git/worklog-session-locks/`), so every linked worktree sees the same set and
+nothing reaches the repository itself. A lock unrefreshed for 8 hours is
+treated as abandoned and pruned; override with `--ttl-hours=N`. Sessions are
+identified by `WORKLOG_SESSION_ID` or `CLAUDE_SESSION_ID` when set, otherwise
+by host name and worktree directory name.
+
 ### Commit messages — Conventional Commits
 
 Every commit must follow the [Conventional Commits 1.0](https://www.conventionalcommits.org/en/v1.0.0/) spec. A Husky `commit-msg` hook (`.husky/commit-msg`) enforces this locally via [`@commitlint/config-conventional`](https://github.com/conventional-changelog/commitlint) — non-conformant messages are rejected before the commit lands.

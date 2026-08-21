@@ -126,6 +126,30 @@ You write all the code in this project. The user reviews your work through
 pull requests. Follow these steps for every task that involves code changes.
 Never push directly to `main`.
 
+### Step 0 — Claim the checkout
+
+This working directory is shared by concurrent sessions, and a working-tree
+change carries no attribution — `git status` may be showing you someone else's
+in-flight work (#268). At the start of a session:
+
+```bash
+npm run session:claim
+```
+
+Then run `npm run session:check` before anything destructive (`git checkout --`,
+`git reset`, `git stash`, `git restore`) and whenever `git status` shows
+something you do not recognise. It reports what moved since your baseline and
+which other sessions are active; `npm run session:list` shows them on their own.
+Never discard, stash, or commit a change you cannot account for — find out whose
+it is first. Run `npm run session:release` when the work is done.
+
+If another session is already active in this same directory, work in your own
+worktree instead of switching this one's HEAD:
+
+```bash
+git worktree add ../worklog-<topic> -b fix/issue-N-description origin/main
+```
+
 ### Step 1 — Create a branch
 ```bash
 git checkout -b fix/issue-N-description    # bug fixes and QA items
