@@ -122,7 +122,7 @@ function renderTagRow() {
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
-        <select class="cat-select" id="catSelect">
+        <select class="cat-select" id="catSelect" aria-label="Select epic">
         ${pickableCategories([...categories], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(

@@ -19,6 +19,13 @@
  */
 
 /**
+ * The two record collections scanned for evidence that an epic is in use.
+ * @typedef {Object} EpicUsageSources
+ * @property {Array<EpicUsageRecord>} [entries] - Log entries to scan.
+ * @property {Array<EpicUsageRecord>} [planTasks] - Board tasks to scan.
+ */
+
+/**
  * An epic (category) record as persisted in `wl_cats_v1`.
  * @typedef {Object} EpicCategory
  * @property {string} id - Unique epic ID.
@@ -61,7 +68,7 @@ export function epicCutoffDate(todayIso, windowDays) {
  * dated on or after `cutoffIso`. Records with no `date` are ignored rather
  * than assumed recent — an undated record cannot vouch for an epic's
  * freshness, and treating it as recent would keep stale epics alive forever.
- * @param {{ entries: (Array<EpicUsageRecord>|undefined), planTasks: (Array<EpicUsageRecord>|undefined) }} sources - Log entries and board tasks to scan.
+ * @param {EpicUsageSources} sources - Log entries and board tasks to scan.
  * @param {string} cutoffIso - Inclusive start of the window, as YYYY-MM-DD.
  * @returns {Set<string>} Epic IDs used within the window.
  */
@@ -124,7 +131,7 @@ export function findStaleCategories({
  * visible even once archived so an entry already tagged with it still renders
  * its own selection instead of appearing untagged.
  * @param {Array<EpicCategory>} categories - All known epics.
- * @param {string|null} [keepId] - Epic ID to keep regardless of archived state.
+ * @param {(string|null)} keepId - Epic ID to keep regardless of archived state; omit or pass null to hide every archived epic.
  * @returns {Array<EpicCategory>} The epics to offer, in input order.
  */
 export function pickableCategories(categories = [], keepId = null) {
