@@ -38,7 +38,9 @@ import {
   findWorktreeCollisions,
   formatDriftReport,
   formatSessionList,
+  formatAge,
   isDriftEmpty,
+  isLockStale,
   lockStatusMap,
   parseArgs,
   parsePorcelainStatus,
@@ -54,6 +56,9 @@ import {
 const EXIT_CLEAN = 0;
 const EXIT_ATTENTION = 1;
 const EXIT_ERROR = 2;
+
+/** Shortest TTL `--ttl-hours` may set, in milliseconds. */
+const MINIMUM_TTL_MS = 30 * 60 * 1000;
 
 /**
  * Run a git command and return its output.
@@ -97,6 +102,7 @@ function readGitState() {
  * @property {object|null} existing This session's lock, or null when unclaimed.
  * @property {object[]} others Live locks belonging to other sessions.
  * @property {boolean} accept Whether `--accept` was passed.
+ * @property {number} ttlMs Age after which a lock counts as stale.
  */
 
 /**
@@ -124,27 +130,13 @@ function runClaim({ lockDir, sessionId, state, nowIso, existing }) {
 }
 
 /**
- * Compare the checkout against this session's baseline and report what moved.
+ * Rewrite this session's lock, either as a heartbeat or as a new baseline.
  *
- * @param {RunContext} context Resolved run context.
- * @returns {number} Process exit code.
+ * @param {RunContext} context Resolved run context. `accept` decides whether
+ *   the current tree replaces the recorded baseline or only its timestamp.
+ * @returns {void}
  */
-function runCheck({ lockDir, sessionId, state, nowMs, nowIso, existing, others, accept }) {
-  if (!existing) {
-    console.error(`no baseline for session ${sessionId} — run \`npm run session:claim\` first`);
-    return EXIT_ATTENTION;
-  }
-
-  const drift = diffWorkingTree(lockStatusMap(existing), state.status);
-  const headMoved = existing.head === state.head ? null : { from: existing.head, to: state.head };
-  const branchMoved =
-    existing.branch === state.branch ? null : { from: existing.branch, to: state.branch };
-  const collisions = findWorktreeCollisions(others, state.worktree);
-
-  console.log(formatDriftReport({ drift, headMoved, branchMoved, others, collisions, nowMs }));
-
-  // Refresh the lock either way: `--accept` adopts the current tree as the new
-  // baseline, a plain check only proves this session is still alive.
+function refreshLock({ lockDir, sessionId, state, nowIso, existing, accept }) {
   writeLock(
     lockDir,
     buildLock({
@@ -157,6 +149,45 @@ function runCheck({ lockDir, sessionId, state, nowMs, nowIso, existing, others, 
       claimedAt: existing.claimedAt,
     })
   );
+}
+
+/**
+ * Compare the checkout against this session's baseline and report what moved.
+ *
+ * @param {RunContext} context Resolved run context.
+ * @returns {number} Process exit code.
+ */
+function runCheck(context) {
+  const { state, nowMs, existing, others, accept, ttlMs } = context;
+
+  if (!existing) {
+    console.error(
+      `no baseline for session ${context.sessionId} — run \`npm run session:claim\` first`
+    );
+    return EXIT_ATTENTION;
+  }
+
+  // Say so before the drift list: against a baseline this old, every ordinary
+  // hour of work reads as drift, and the age is the finding rather than the
+  // paths are.
+  if (isLockStale(existing, nowMs, ttlMs)) {
+    console.warn(
+      `⚠ this session's baseline is ${formatAge(nowMs - Date.parse(existing.updatedAt))} old — ` +
+        're-claim before trusting what follows'
+    );
+  }
+
+  const drift = diffWorkingTree(lockStatusMap(existing), state.status);
+  const headMoved = existing.head === state.head ? null : { from: existing.head, to: state.head };
+  const branchMoved =
+    existing.branch === state.branch ? null : { from: existing.branch, to: state.branch };
+  const collisions = findWorktreeCollisions(others, state.worktree);
+
+  console.log(formatDriftReport({ drift, headMoved, branchMoved, others, collisions, nowMs }));
+
+  // Refresh either way: `--accept` adopts the current tree as the new baseline,
+  // a plain check only proves this session is still alive.
+  refreshLock(context);
 
   if (accept) {
     console.log('baseline updated to the current working tree');
@@ -212,7 +243,7 @@ function main(argv, env = process.env) {
   list       show every session registered on this checkout
 
   --session=ID     identify this session explicitly
-  --ttl-hours=N    treat a lock older than N hours as stale
+  --ttl-hours=N    treat a lock older than N hours as stale (floor: 0.5)
   --accept         (check only) adopt the current tree as the new baseline`);
     return args.help ? EXIT_CLEAN : EXIT_ERROR;
   }
@@ -227,7 +258,10 @@ function main(argv, env = process.env) {
 
   const lockDir = sessionLockDir(state.commonDir);
   const sessionId = resolveSessionId(args.sessionId, env, state.worktree, hostname());
-  const ttlMs = args.ttlMs ?? DEFAULT_STALE_AFTER_MS;
+  // Floor the TTL: pruning deletes other sessions' baselines, and a guard
+  // against destroying another session's state must not be the thing that
+  // does it because of a mistyped flag.
+  const ttlMs = Math.max(args.ttlMs ?? DEFAULT_STALE_AFTER_MS, MINIMUM_TTL_MS);
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
 
@@ -236,7 +270,7 @@ function main(argv, env = process.env) {
       `session          ${sessionId}\n` +
       `worktree         ${state.worktree}\n` +
       `lock directory   ${lockDir}\n` +
-      `stale after      ${Math.round(ttlMs / 3600000)}h\n`
+      `stale after      ${(ttlMs / 3600000).toFixed(1)}h\n`
   );
 
   const { locks, malformed } = readLocks(lockDir);
@@ -255,6 +289,7 @@ function main(argv, env = process.env) {
     existing: mine,
     others,
     accept: args.accept,
+    ttlMs,
   };
 
   switch (args.verb) {
