@@ -433,7 +433,7 @@ function render() {
             ? `<span class="etime-end">&#8627; ${fmtTime(entry.tsEnd)}</span>${durLabel(entry.ts, entry.tsEnd)}`
             : `<span class="etime-end" style="color:var(--text3);font-style:italic;font-size:10px;">+ end time</span>`;
 
-        const catOpts = buildEntryCatPickerHtml(entry, categories);
+        const catOpts = buildEntryCatPickerHtml(entry, pickableCategories(categories, entry.tag));
 
         const startVal = toTimeInput(entry.ts);
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';

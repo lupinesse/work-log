@@ -95,11 +95,31 @@
       const byKey = categories.find(
         (c) => c.label.startsWith(parentKey + ':') || c.label === parentKey
       );
-      if (byKey) return byKey;
+      if (byKey) return unarchiveMatchedCat(byKey);
     }
     // Fall back to exact label match only — no fuzzy substring matching
     const lower = label.toLowerCase().trim();
-    return categories.find((c) => c.label.toLowerCase().trim() === lower) || null;
+    const byLabel = categories.find((c) => c.label.toLowerCase().trim() === lower);
+    return byLabel ? unarchiveMatchedCat(byLabel) : null;
+  }
+
+  /**
+   * Brings an archived epic back into the pickers when a Jira import maps a
+   * ticket onto it — an incoming ticket is proof the epic is in use again, and
+   * leaving it archived would tag the imported task to an epic the user cannot
+   * see or select.
+   * @param {Object} cat - The matched category object (mutated in place).
+   * @returns {Object} The same category object, no longer archived.
+   */
+  function unarchiveMatchedCat(cat) {
+    if (cat.archived) {
+      delete cat.archived;
+      wlLog.info('jiraMatchCat: un-archived epic matched by Jira import', {
+        catId: cat.id,
+        label: cat.label,
+      });
+    }
+    return cat;
   }
 
   /**

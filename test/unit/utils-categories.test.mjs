@@ -49,6 +49,10 @@ function loadTagRowSandbox(overrides = {}) {
     categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
     selectedTag: 'work',
     planTasks: [],
+    entries: [],
+    // tidyStaleEpics() gates on confirm(); tests override these to drive the
+    // accept / decline paths and to capture the message shown to the user.
+    window: { confirm: () => true, alert: () => {} },
     save: () => {},
     savePlan: () => {},
     render: () => {},
@@ -175,5 +179,117 @@ describe('viewEntries — sorts by start time (regression)', () => {
       result.map((e) => e.id),
       ['a']
     );
+  });
+});
+
+describe('renderTagRow — archived epics', () => {
+  const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
+  const FRESH = { id: 'cat_fresh', label: 'AITO-222: Live epic', color: '#1D9E75' };
+
+  /**
+   * Builds a sandbox holding one built-in, one recently used and one long-idle
+   * epic, with today pinned via a fake system clock so the 21-day window is
+   * deterministic.
+   * @param {Object} [overrides] - Extra sandbox properties.
+   * @returns {Object} The populated sandbox.
+   */
+  function staleSandbox(overrides = {}) {
+    return loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }, { ...STALE }],
+      entries: [{ id: 'e1', text: 'live work', tag: FRESH.id, date: '2026-08-20' }],
+      planTasks: [],
+      ...overrides,
+    });
+  }
+
+  it('omits an archived epic from the dropdown but keeps it resolvable for history', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+    });
+    sandbox.renderTagRow();
+    const html = sandbox._elements.get('tagRow').innerHTML;
+    assert.ok(!html.includes('AITO-111'), 'archived epic is not offered in the picker');
+    assert.equal(
+      sandbox.getCatLabel(STALE.id),
+      STALE.label,
+      'label still resolves for old entries'
+    );
+    assert.equal(sandbox.getCatColor(STALE.id), STALE.color, 'colour still resolves too');
+  });
+
+  it('keeps the selected epic in the dropdown even once archived', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+      selectedTag: STALE.id,
+    });
+    sandbox.renderTagRow();
+    assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
+  });
+
+  it('archives only the idle epic when tidy is confirmed', (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+    const saves = [];
+    const sandbox = staleSandbox({ save: () => saves.push(true) });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catTidyBtn')._listeners.click();
+
+    const byId = Object.fromEntries(sandbox.categories.map((c) => [c.id, c]));
+    assert.equal(byId[STALE.id].archived, true, 'idle epic is archived');
+    assert.equal(byId[FRESH.id].archived, undefined, 'recently used epic is untouched');
+    assert.equal(byId.work.archived, undefined, 'built-in epic is never archived');
+    assert.equal(sandbox.categories.length, 3, 'no record is deleted');
+    assert.equal(saves.length, 1, 'the change is persisted once');
+  });
+
+  it('leaves every epic alone when the user declines the confirm', (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+    const sandbox = staleSandbox({ window: { confirm: () => false, alert: () => {} } });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catTidyBtn')._listeners.click();
+    assert.ok(sandbox.categories.every((c) => !c.archived));
+  });
+
+  it('alerts instead of archiving when nothing is stale', (t) => {
+    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+    const alerts = [];
+    const sandbox = staleSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }],
+      window: { confirm: () => true, alert: (msg) => alerts.push(msg) },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catTidyBtn')._listeners.click();
+    assert.equal(alerts.length, 1);
+    assert.ok(alerts[0].includes('2026-08-01'), 'the alert names the cutoff date');
+    assert.ok(sandbox.categories.every((c) => !c.archived));
+  });
+
+  it('restores an archived epic and selects it', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+    });
+    sandbox.renderTagRow();
+    assert.ok(
+      sandbox._elements.get('tagRow').innerHTML.includes('1 archived'),
+      'the archived count is surfaced'
+    );
+
+    sandbox._elements.get('catRestoreBtn')._listeners.click();
+    // The restore <select> is only reached via getElementById at click time,
+    // so ask the mock DOM for it rather than the already-rendered element map.
+    sandbox.document.getElementById('catRestoreSelect').value = STALE.id;
+    sandbox._elements.get('catRestoreOk')._listeners.click();
+
+    const restored = sandbox.categories.find((c) => c.id === STALE.id);
+    assert.equal('archived' in restored, false);
+    assert.equal(sandbox.selectedTag, STALE.id);
   });
 });
