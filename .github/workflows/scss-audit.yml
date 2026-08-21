@@ -5,8 +5,8 @@ name: SCSS Architecture Audit
 # magic numbers, and undeclared variables.
 #
 # Required secrets:
-#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token; optional if ANTHROPIC_API_KEY is set
-#   ANTHROPIC_API_KEY           — Anthropic API key; fallback when OAuth token is absent or expired
+#   CLAUDE_CODE_OAUTH_TOKEN     — Claude subscription token; the preferred credential
+#   ANTHROPIC_API_KEY           — Anthropic API key; used only when the OAuth token is absent
 #   CLAUDE_REVIEWER_APP_ID      — App ID of the "Claude Reviewer" GitHub App
 #   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 
@@ -59,20 +59,61 @@ jobs:
           fi
 
       - name: Run SCSS audit
+        id: scss-run
         if: steps.key-check.outputs.present == 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            unset CLAUDE_CODE_OAUTH_TOKEN
+          # Prefer the OAuth subscription token; fall back to the API key.
+          # The reverse order used to be in force here, which silently routed
+          # every run through a pay-as-you-go account that had exhausted its
+          # credit — the CLI exited 1 with "Credit balance is too low" while a
+          # perfectly good OAuth token sat unused. pr-review.yml never
+          # referenced ANTHROPIC_API_KEY and kept working throughout, which is
+          # what isolated the cause. The header comment above always documented
+          # this order; only the code disagreed.
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            unset ANTHROPIC_API_KEY
+            echo "Auth: CLAUDE_CODE_OAUTH_TOKEN (subscription)"
+          else
+            echo "Auth: ANTHROPIC_API_KEY (pay-as-you-go)"
           fi
+
+          # The report is captured to a file because the comment step below
+          # posts it verbatim. Capture the exit status explicitly rather than
+          # letting `bash -e` abort here: on a non-zero exit that abort skipped
+          # every later step, so the CLI's only diagnostic stayed sealed in an
+          # unread file and the job reported a bare "exit code 1". That is how
+          # this breakage went unnoticed for six days.
+          set +e
           claude -p "/scss-audit" \
             --model claude-sonnet-4-6 \
             --allowedTools "Read" "Grep" "Glob" \
                            "Bash(cat:*)" "Bash(wc:*)" \
             > scss-output.txt 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            echo "::group::claude CLI output (exit $status)"
+            cat scss-output.txt || echo "(the CLI produced no output at all)"
+            echo "::endgroup::"
+            echo "::error::claude CLI exited $status — expand the 'claude CLI output' group above, or download the scss-audit-output artifact."
+            exit "$status"
+          fi
           echo "SCSS audit complete ($(wc -l < scss-output.txt) lines)"
+
+      # Belt and braces: the log group above is enough for a short error, but a
+      # long report gets truncated in the web log view. The artifact keeps the
+      # untruncated output on both the success and failure paths.
+      - name: Upload raw CLI output
+        if: always() && steps.scss-run.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: scss-audit-output
+          path: scss-output.txt
+          if-no-files-found: warn
 
       - name: Mint Claude Reviewer App token
         id: claude-token
