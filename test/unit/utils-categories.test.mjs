@@ -269,6 +269,32 @@ describe('renderTagRow — archived epics', () => {
     assert.ok(sandbox.categories.every((c) => !c.archived));
   });
 
+  it('ignores a restore for an epic id that is not in the category list', () => {
+    // The picked id must be resolved against known epics, not trusted straight
+    // from the select — otherwise DOM text flows into selectedTag and on into
+    // the rendered markup (CodeQL js/xss-through-dom).
+    const saves = [];
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+      save: () => saves.push(true),
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catRestoreBtn')._listeners.click();
+    sandbox.document.getElementById('catRestoreSelect').value = '"><img src=x onerror=alert(1)>';
+    sandbox._elements.get('catRestoreOk')._listeners.click();
+
+    assert.equal(sandbox.selectedTag, 'work', 'selection is untouched by an unknown id');
+    assert.equal(saves.length, 0, 'nothing is persisted');
+    assert.equal(sandbox.categories.find((c) => c.id === STALE.id).archived, true);
+    assert.ok(
+      !sandbox._elements.get('tagRow').innerHTML.includes('onerror'),
+      'the rejected value never reaches the rendered markup'
+    );
+  });
+
   it('restores an archived epic and selects it', () => {
     const sandbox = loadTagRowSandbox({
       categories: [

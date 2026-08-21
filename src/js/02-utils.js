@@ -280,18 +280,24 @@ function renderTagRow() {
   if (restoreOk)
     restoreOk.addEventListener('click', () => {
       const select = document.getElementById('catRestoreSelect');
-      const catId = select ? select.value : '';
-      if (!catId) {
+      const chosenId = select ? select.value : '';
+      // Resolve the picked id against the known epics rather than trusting the
+      // select's own value: everything downstream then flows from our own data,
+      // and a stale or unrecognised id closes the picker instead of selecting
+      // an epic that does not exist.
+      const cat = categories.find((c) => c.id === chosenId);
+      if (!cat) {
+        if (chosenId) wlLog.warn('renderTagRow: restore ignored unknown epic id', { chosenId });
         restoringArchived = false;
         renderTagRow();
         return;
       }
-      categories = restoreArchivedCategory(categories, catId);
-      selectedTag = catId;
+      categories = restoreArchivedCategory(categories, cat.id);
+      selectedTag = cat.id;
       restoringArchived = false;
       catManageOpen = false;
       save();
-      wlLog.info('renderTagRow: restored archived epic', { catId });
+      wlLog.info('renderTagRow: restored archived epic', { catId: cat.id });
       renderTagRow();
       render();
     });
