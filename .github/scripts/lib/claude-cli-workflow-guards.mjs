@@ -53,6 +53,23 @@ const REVEALING_COMMANDS = ['cat', 'tail', 'head', 'tee'];
 const REVEALING_COMMAND = /\b(?:cat|tail|head|tee)\b/;
 
 /**
+ * A `>` / `>>` redirect target.
+ *
+ * Requires a dotted file name, which is what keeps shell and Actions specials
+ * out: `2>&1`, `>> "$GITHUB_OUTPUT"` and `> /dev/null` all lack a `.` and are
+ * correctly ignored. The tradeoff is deliberate and worth stating plainly —
+ * **a redirect to an extension-less path is not detected.** Nothing in this
+ * repository does that, and the alternative (matching any token after `>`)
+ * mistakes `$GITHUB_OUTPUT` for captured output on almost every step. Use
+ * `| tee`, matched unconditionally by {@link TEE_TARGET}, when a capture must
+ * be recognised regardless of its name.
+ */
+const REDIRECT_TARGET = />[ \t]*(\S+\.[A-Za-z0-9]+)\b/g;
+
+/** A `| tee <file>` target. Any file name, extension or not. */
+const TEE_TARGET = /\|[ \t]*tee[ \t]+(\S+)/g;
+
+/**
  * Split a workflow's source into its individual `- name:` step blocks.
  *
  * Splitting on the six-space `- name:` marker rather than parsing YAML keeps
@@ -116,15 +133,21 @@ export function discardsOAuthToken(stepText) {
 /**
  * The files a step sends the CLI's output to, via `>` redirect or `| tee`.
  *
+ * Redirects are matched by {@link REDIRECT_TARGET}, which requires a dotted
+ * file name — see that constant for why, and for the one case this does not
+ * cover (a redirect to an extension-less path).
+ *
  * @param {string} stepText - A single step block.
- * @returns {string[]} Deduplicated file names, in first-seen order.
+ * @returns {string[]} Deduplicated file names, in first-seen order. Empty when
+ *   the step lets its output go to the step log.
  * @example
  * captureFiles('claude -p "/x" > a.txt 2>b.log\n') // → ['a.txt', 'b.log']
+ * captureFiles('claude -p "/x" >> "$GITHUB_OUTPUT" 2>&1\n') // → [] (not a capture)
  */
 export function captureFiles(stepText) {
   const found = [];
-  const patterns = [/>[ \t]*(\S+\.(?:txt|json|log))\b/g, /\|[ \t]*tee[ \t]+(\S+)/g];
-  for (const pattern of patterns) {
+  for (const pattern of [REDIRECT_TARGET, TEE_TARGET]) {
+    pattern.lastIndex = 0;
     let match;
     while ((match = pattern.exec(stepText)) !== null) {
       if (!found.includes(match[1])) found.push(match[1]);

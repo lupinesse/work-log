@@ -168,6 +168,28 @@ describe('captureFiles', () => {
   test('does not report the same file twice', () => {
     assert.deepEqual(captureFiles('claude -p "/x" > a.txt\ncat a.txt > a.txt\n'), ['a.txt']);
   });
+
+  test('is not limited to .txt/.json/.log — any extension counts', () => {
+    assert.deepEqual(captureFiles('claude -p "/x" > report.md\n'), ['report.md']);
+    assert.deepEqual(captureFiles('claude -p "/x" > out.diff\n'), ['out.diff']);
+  });
+
+  test('ignores shell and Actions specials that are not captures', () => {
+    // `2>&1`, `$GITHUB_OUTPUT` and `/dev/null` have no dotted file name, which
+    // is exactly how they are excluded — see REDIRECT_TARGET.
+    assert.deepEqual(captureFiles('claude -p "/x" 2>&1\n'), []);
+    assert.deepEqual(captureFiles('echo "k=v" >> "$GITHUB_OUTPUT"\nclaude -p "/x"\n'), []);
+    assert.deepEqual(captureFiles('claude -p "/x" > /dev/null\n'), []);
+  });
+
+  test('a tee target needs no extension at all', () => {
+    assert.deepEqual(captureFiles('claude -p "/x" | tee capture\n'), ['capture']);
+  });
+
+  test('is repeatable — the module-level /g patterns do not carry lastIndex', () => {
+    const step = 'claude -p "/x" > a.txt\n';
+    assert.deepEqual(captureFiles(step), captureFiles(step));
+  });
 });
 
 describe('toleratesNonZeroExit', () => {
