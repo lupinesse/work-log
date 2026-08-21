@@ -97,7 +97,11 @@ jobs:
 
           if [ "$status" -ne 0 ]; then
             echo "::group::claude CLI output (exit $status)"
-            cat scss-output.txt || echo "(the CLI produced no output at all)"
+            if [ -s scss-output.txt ]; then
+              cat scss-output.txt
+            else
+              echo "(the CLI wrote nothing to stdout or stderr — it most likely failed to start at all)"
+            fi
             echo "::endgroup::"
             echo "::error::claude CLI exited $status — expand the 'claude CLI output' group above, or download the scss-audit-output artifact."
             exit "$status"

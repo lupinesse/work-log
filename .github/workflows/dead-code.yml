@@ -79,6 +79,8 @@ jobs:
           set -e
 
           if [ "$status" -ne 0 ]; then
+            [ -s dead-code-output.txt ] ||
+              echo "(the CLI wrote nothing to stdout or stderr — it most likely failed to start at all)"
             echo "::error::claude CLI exited $status — its output is in the step log above, and in the dead-code-output artifact."
             exit "$status"
           fi
