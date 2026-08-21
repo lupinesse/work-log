@@ -14,7 +14,8 @@
  * what moved since, and who else is active.
  *
  * Usage:
- *   npm run session:claim                start (or re-baseline) this session
+ *   npm run session:claim                start this session
+ *   npm run session:claim -- --accept    re-baseline a session already claimed
  *   npm run session:check                what changed since the baseline
  *   npm run session:check -- --accept    adopt the current tree as the baseline
  *   npm run session:list                 every session active on this checkout
@@ -109,22 +110,52 @@ function readGitState() {
  */
 
 /**
- * Record, or re-record, this session's baseline.
+ * Record this session's baseline, refusing to overwrite a live one.
+ *
+ * A default identifier is host name plus worktree directory name, so two
+ * sessions sharing one directory — the #268 condition, and the only case
+ * `findWorktreeCollisions` exists to catch — derive the *same* id. Overwriting
+ * on a second claim would fold the first session's uncommitted work into the
+ * second's trusted baseline, and the check that followed would report a clean
+ * tree: the guard reproducing the very failure it was written to prevent.
+ *
+ * No derived identifier can avoid this, since anything stable enough to find
+ * the same lock on the next invocation is also shared by whoever else is in
+ * that directory. Uniqueness has to be stated, so a live claim is refused and
+ * both remedies are named.
  *
  * @param {RunContext} context Resolved run context.
  * @returns {number} Process exit code.
  */
-function runClaim({ lockDir, sessionId, state, nowIso, existing }) {
-  const lock = buildLock({
-    sessionId,
-    worktree: state.worktree,
-    branch: state.branch,
-    head: state.head,
-    status: state.status,
-    nowIso,
-    claimedAt: existing?.claimedAt,
-  });
-  writeLock(lockDir, lock);
+function runClaim({ lockDir, sessionId, state, nowIso, existing, accept, nowMs, ttlMs }) {
+  if (existing && !accept && !isLockStale(existing, nowMs, ttlMs)) {
+    const age = formatAge(nowMs - Date.parse(existing.updatedAt));
+    const dirty = Array.isArray(existing.status) ? existing.status.length : 0;
+    console.error(
+      [
+        `✖ session ${sessionId} already holds this checkout — claimed ${age} ago on ` +
+          `${existing.branch}, ${dirty} dirty path(s) recorded`,
+        '  same session, deliberately re-baselining:  npm run session:claim -- --accept',
+        '  a different session in this directory:     npm run session:claim -- --session=<id>',
+        '  Two sessions in one directory derive the same default identifier, so this',
+        "  refusal is what stops one baseline from swallowing the other's work.",
+      ].join('\n')
+    );
+    return EXIT_ATTENTION;
+  }
+
+  writeLock(
+    lockDir,
+    buildLock({
+      sessionId,
+      worktree: state.worktree,
+      branch: state.branch,
+      head: state.head,
+      status: state.status,
+      nowIso,
+      claimedAt: existing?.claimedAt,
+    })
+  );
   console.log(
     `${existing ? 're-baselined' : 'claimed'} — ${state.status.size} dirty path(s) recorded on ` +
       `${state.branch} at ${state.head.slice(0, 7)}`
@@ -253,7 +284,7 @@ function main(argv) {
   --session=ID     identify this session explicitly (default: host and
                    worktree directory name)
   --ttl-hours=N    treat a lock older than N hours as stale (floor: 0.5)
-  --accept         (check only) adopt the current tree as the new baseline`);
+  --accept         adopt the current tree as the new baseline (claim, check)`);
     return args.help ? EXIT_CLEAN : EXIT_ERROR;
   }
 

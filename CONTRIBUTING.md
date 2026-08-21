@@ -120,6 +120,15 @@ and it cannot stop another process from writing. Treat a warning as a signal to
 find out who else is working before running `git checkout --`, `git reset`, or
 `git stash`.
 
+Two limits are worth knowing. Drift is measured at `git status` granularity, so
+a file that was *already* modified in the baseline and is modified again keeps
+the status code `M` and is not reported — use `git diff` when the question is
+what changed inside a file. And a second `session:claim` under an identifier
+that already holds the checkout is refused rather than silently re-baselined,
+because two sessions in one directory derive the same default identifier;
+re-baseline deliberately with `--accept`, or register separately with
+`--session=ID`.
+
 Locks are JSON files under the repository's git common directory
 (`.git/worklog-session-locks/`), so every linked worktree sees the same set and
 nothing reaches the repository itself. A lock unrefreshed for 8 hours is

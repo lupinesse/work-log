@@ -18,6 +18,16 @@
  * `.git`. That makes the lock set visible to every session on the checkout,
  * and keeps it out of the repository itself.
  *
+ * Known limitation: drift is measured at the granularity of `git status`
+ * itself — a path appearing, disappearing, or changing status code. A file
+ * already modified in the baseline that is modified *again* keeps the code
+ * `M`, so a second actor editing an already-dirty file goes unreported. The
+ * contents are not hashed: `git status --porcelain` collapses untracked
+ * directories to a single entry, which cannot be hashed without walking them,
+ * and the check is meant to be cheap enough to run before every destructive
+ * command. Reach for `git diff` when the question is what changed inside a
+ * file rather than which files changed.
+ *
  * @module session-guard
  */
 
@@ -204,6 +214,10 @@ export function parsePorcelainStatus(porcelainText) {
 
 /**
  * Compare two working-tree snapshots.
+ *
+ * Compares status codes, not contents: a path already `M` in the baseline and
+ * modified again still reads as `M` and is reported as unchanged. See the
+ * module docstring for why the contents are not hashed.
  *
  * @param {Map<string, string>} before Baseline snapshot.
  * @param {Map<string, string>} after Current snapshot.

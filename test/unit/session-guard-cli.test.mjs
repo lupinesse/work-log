@@ -107,6 +107,50 @@ describe('session-guard CLI', () => {
     assert.deepEqual(fs.readdirSync(lockDir()), [`${SESSION}.json`]);
   });
 
+  it('refuses a second claim under the same identifier instead of absorbing its work', () => {
+    // Regression for the collision the derived default identifier makes
+    // possible: two sessions in one directory resolve to the same id, so an
+    // overwriting claim would fold session A's uncommitted file into session
+    // B's baseline and the next check would call the tree clean.
+    runGuard(['claim', '--accept']); // session A already holds the checkout
+    fs.writeFileSync(path.join(repo, 'work-in-progress.txt'), 'session A is mid-edit\n');
+
+    const second = runGuard(['claim']);
+    assert.equal(second.status, 1);
+    assert.match(second.stderr, /already holds this checkout/);
+    assert.match(second.stderr, /npm run session:claim -- --session=<id>/);
+
+    // The first session's baseline survived, so the file is still reported.
+    const check = runGuard(['check']);
+    assert.equal(check.status, 1);
+    assert.match(check.stdout, /appeared {2}\[\?\?\] work-in-progress\.txt/);
+
+    fs.rmSync(path.join(repo, 'work-in-progress.txt'));
+  });
+
+  it('re-baselines when a repeat claim says --accept', () => {
+    fs.writeFileSync(path.join(repo, 'accepted.txt'), 'mine, and I know it\n');
+    const claimed = runGuard(['claim', '--accept']);
+
+    assert.equal(claimed.status, 0);
+    assert.match(claimed.stdout, /re-baselined — 1 dirty path\(s\)/);
+    assert.equal(runGuard(['check']).status, 0);
+
+    fs.rmSync(path.join(repo, 'accepted.txt'));
+    runGuard(['claim', '--accept']);
+  });
+
+  it('claims over a lock that has gone stale', () => {
+    const lockFile = path.join(lockDir(), `${SESSION}.json`);
+    const lock = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
+    lock.updatedAt = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+    fs.writeFileSync(lockFile, JSON.stringify(lock, null, 2));
+
+    const result = runGuard(['claim']);
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /re-baselined/);
+  });
+
   it('reports a clean tree after claiming', () => {
     const result = runGuard(['check']);
     assert.equal(result.status, 0);
