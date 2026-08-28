@@ -186,15 +186,46 @@ describe('renderTagRow — archived epics', () => {
   const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
   const FRESH = { id: 'cat_fresh', label: 'AITO-222: Live epic', color: '#1D9E75' };
 
+  // Local noon, so dk() — which reads local calendar components — reports
+  // 2026-08-21 in every timezone the suite might run in.
+  const TODAY_MS = new Date(2026, 7, 21, 12, 0, 0).getTime();
+
+  /**
+   * Builds a `Date` replacement whose argument-less form is pinned to
+   * `fixedMs`, leaving `new Date(value)` and the static helpers untouched so
+   * the cutoff arithmetic in pure-fns-epics.js still works.
+   *
+   * The code under test runs in its own realm (`vm.createContext`), and
+   * `mock.timers` patches only the test realm's globals — so it never reached
+   * the sandbox and `tidyStaleEpics()` silently read the real clock. Injecting
+   * the clock as a sandbox global is what actually pins it (regression: the
+   * suite passed only on 2026-08-21, the day it was written).
+   * @param {number} fixedMs - The instant to report as "now", in epoch ms.
+   * @returns {typeof Date} A Date subclass to install as the sandbox's `Date`.
+   */
+  function fixedDateAt(fixedMs) {
+    return class FixedDate extends Date {
+      constructor(...args) {
+        if (args.length === 0) super(fixedMs);
+        else super(...args);
+      }
+
+      static now() {
+        return fixedMs;
+      }
+    };
+  }
+
   /**
    * Builds a sandbox holding one built-in, one recently used and one long-idle
-   * epic, with today pinned via a fake system clock so the 21-day window is
+   * epic, with today pinned inside the sandbox realm so the 21-day window is
    * deterministic.
    * @param {Object} [overrides] - Extra sandbox properties.
    * @returns {Object} The populated sandbox.
    */
   function staleSandbox(overrides = {}) {
     return loadTagRowSandbox({
+      Date: fixedDateAt(TODAY_MS),
       categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }, { ...STALE }],
       entries: [{ id: 'e1', text: 'live work', tag: FRESH.id, date: '2026-08-20' }],
       planTasks: [],
@@ -232,8 +263,7 @@ describe('renderTagRow — archived epics', () => {
     assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
   });
 
-  it('archives only the idle epic when tidy is confirmed', (t) => {
-    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+  it('archives only the idle epic when tidy is confirmed', () => {
     const saves = [];
     const sandbox = staleSandbox({ save: () => saves.push(true) });
     sandbox.renderTagRow();
@@ -247,16 +277,14 @@ describe('renderTagRow — archived epics', () => {
     assert.equal(saves.length, 1, 'the change is persisted once');
   });
 
-  it('leaves every epic alone when the user declines the confirm', (t) => {
-    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+  it('leaves every epic alone when the user declines the confirm', () => {
     const sandbox = staleSandbox({ window: { confirm: () => false, alert: () => {} } });
     sandbox.renderTagRow();
     sandbox._elements.get('catTidyBtn')._listeners.click();
     assert.ok(sandbox.categories.every((c) => !c.archived));
   });
 
-  it('alerts instead of archiving when nothing is stale', (t) => {
-    t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 7, 21, 12, 0, 0) });
+  it('alerts instead of archiving when nothing is stale', () => {
     const alerts = [];
     const sandbox = staleSandbox({
       categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }],
