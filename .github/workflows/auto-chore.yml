@@ -124,6 +124,21 @@ jobs:
           echo "exit_code=$CLAUDE_EXIT" >> "$GITHUB_OUTPUT"
           echo "Claude run complete (exit $CLAUDE_EXIT, $(wc -l < chore-output.txt) output lines)"
 
+          # Print the output when the CLI errored. `wc -l` above reports a line
+          # count and shows none of them, so without this the diagnostic never
+          # reached the logs the failure annotation points at. Deliberately does
+          # not exit non-zero: the job is failed by a later step, after the
+          # outcome has been commented on the issue.
+          if [ "$CLAUDE_EXIT" -ne 0 ]; then
+            echo "::group::claude CLI output (exit $CLAUDE_EXIT)"
+            if [ -s chore-output.txt ]; then
+              cat chore-output.txt
+            else
+              echo "(the CLI wrote nothing to stdout or stderr — it most likely failed to start at all)"
+            fi
+            echo "::endgroup::"
+          fi
+
       - name: Push branch and open PR (if Claude committed)
         if: steps.guard.outputs.skip != 'true'
         id: push
@@ -172,5 +187,5 @@ jobs:
           steps.claude.outputs.exit_code != '' &&
           steps.claude.outputs.exit_code != '0'
         run: |
-          echo "::error::Claude CLI exited with code ${{ steps.claude.outputs.exit_code }} — see chore-output.txt in this run's logs, not a case of Claude declining to act"
+          echo "::error::Claude CLI exited with code ${{ steps.claude.outputs.exit_code }} — see the claude CLI output group logged by the Run Claude step above, not a case of Claude declining to act"
           exit 1
