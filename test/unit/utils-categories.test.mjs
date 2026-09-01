@@ -31,6 +31,12 @@ function loadTagRowSandbox(overrides = {}) {
         value: '',
         innerHTML: '',
         _listeners: {},
+        _classes: new Set(),
+        classList: {
+          add: (cls) => elements.get(id)._classes.add(cls),
+          remove: (cls) => elements.get(id)._classes.delete(cls),
+          contains: (cls) => elements.get(id)._classes.has(cls),
+        },
         focus: () => {},
         select: () => {},
         addEventListener: (type, handler) => {
@@ -182,7 +188,7 @@ describe('viewEntries — sorts by start time (regression)', () => {
   });
 });
 
-describe('renderTagRow — archived epics', () => {
+describe('epics modal — archive and restore', () => {
   const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
   const FRESH = { id: 'cat_fresh', label: 'AITO-222: Live epic', color: '#1D9E75' };
 
@@ -219,18 +225,39 @@ describe('renderTagRow — archived epics', () => {
   /**
    * Builds a sandbox holding one built-in, one recently used and one long-idle
    * epic, with today pinned inside the sandbox realm so the 21-day window is
-   * deterministic.
+   * deterministic. The epics modal is wired up ready to drive.
    * @param {Object} [overrides] - Extra sandbox properties.
    * @returns {Object} The populated sandbox.
    */
   function staleSandbox(overrides = {}) {
-    return loadTagRowSandbox({
+    const sandbox = loadTagRowSandbox({
       Date: fixedDateAt(TODAY_MS),
       categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }, { ...STALE }],
       entries: [{ id: 'e1', text: 'live work', tag: FRESH.id, date: '2026-08-20' }],
       planTasks: [],
       ...overrides,
     });
+    sandbox.bindEpicsManager();
+    return sandbox;
+  }
+
+  /**
+   * Builds a sandbox whose only non-built-in epic is already archived, with
+   * the modal wired and opened so its restore rows are rendered.
+   * @param {Object} [overrides] - Extra sandbox properties.
+   * @returns {Object} The populated sandbox.
+   */
+  function archivedSandbox(overrides = {}) {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+      ...overrides,
+    });
+    sandbox.bindEpicsManager();
+    sandbox._elements.get('epicsBtn')._listeners.click();
+    return sandbox;
   }
 
   it('omits an archived epic from the dropdown but keeps it resolvable for history', () => {
@@ -263,11 +290,37 @@ describe('renderTagRow — archived epics', () => {
     assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
   });
 
+  it('opens the modal and lists each archived epic with a restore button', () => {
+    const sandbox = archivedSandbox();
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'), 'the overlay is shown');
+    const html = sandbox._elements.get('epicsManagerBody').innerHTML;
+    assert.ok(html.includes('AITO-111'), 'the archived epic is listed');
+    assert.ok(html.includes('id="epicRestore-0"'), 'it has an index-keyed restore button');
+  });
+
+  it('shows an empty state when no epic is archived', () => {
+    const sandbox = loadTagRowSandbox();
+    sandbox.bindEpicsManager();
+    sandbox._elements.get('epicsBtn')._listeners.click();
+    assert.ok(sandbox._elements.get('epicsManagerBody').innerHTML.includes('No archived epics'));
+  });
+
+  it('escapes an archived epic label instead of rendering it as markup', () => {
+    const sandbox = archivedSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: '"><img src=x onerror=alert(1)>', color: '#E8A33D', archived: true },
+      ],
+    });
+    const html = sandbox._elements.get('epicsManagerBody').innerHTML;
+    assert.ok(!html.includes('<img'), 'the label never reaches the markup as a tag');
+    assert.ok(html.includes('&lt;img'), 'it is escaped instead');
+  });
+
   it('archives only the idle epic when tidy is confirmed', () => {
     const saves = [];
     const sandbox = staleSandbox({ save: () => saves.push(true) });
-    sandbox.renderTagRow();
-    sandbox._elements.get('catTidyBtn')._listeners.click();
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
 
     const byId = Object.fromEntries(sandbox.categories.map((c) => [c.id, c]));
     assert.equal(byId[STALE.id].archived, true, 'idle epic is archived');
@@ -279,8 +332,7 @@ describe('renderTagRow — archived epics', () => {
 
   it('leaves every epic alone when the user declines the confirm', () => {
     const sandbox = staleSandbox({ window: { confirm: () => false, alert: () => {} } });
-    sandbox.renderTagRow();
-    sandbox._elements.get('catTidyBtn')._listeners.click();
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
     assert.ok(sandbox.categories.every((c) => !c.archived));
   });
 
@@ -290,60 +342,35 @@ describe('renderTagRow — archived epics', () => {
       categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }],
       window: { confirm: () => true, alert: (msg) => alerts.push(msg) },
     });
-    sandbox.renderTagRow();
-    sandbox._elements.get('catTidyBtn')._listeners.click();
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
     assert.equal(alerts.length, 1);
     assert.ok(alerts[0].includes('2026-08-01'), 'the alert names the cutoff date');
     assert.ok(sandbox.categories.every((c) => !c.archived));
   });
 
-  it('ignores a restore for an epic id that is not in the category list', () => {
-    // The picked id must be resolved against known epics, not trusted straight
-    // from the select — otherwise DOM text flows into selectedTag and on into
-    // the rendered markup (CodeQL js/xss-through-dom).
+  it('restores an archived epic back into the pickers', () => {
     const saves = [];
-    const sandbox = loadTagRowSandbox({
-      categories: [
-        { id: 'work', label: 'Work', color: '#378ADD' },
-        { ...STALE, archived: true },
-      ],
-      save: () => saves.push(true),
-    });
-    sandbox.renderTagRow();
-    sandbox._elements.get('catRestoreBtn')._listeners.click();
-    sandbox.document.getElementById('catRestoreSelect').value = '"><img src=x onerror=alert(1)>';
-    sandbox._elements.get('catRestoreOk')._listeners.click();
+    const sandbox = archivedSandbox({ save: () => saves.push(true) });
+    sandbox._elements.get('epicRestore-0')._listeners.click();
 
-    assert.equal(sandbox.selectedTag, 'work', 'selection is untouched by an unknown id');
-    assert.equal(saves.length, 0, 'nothing is persisted');
-    assert.equal(sandbox.categories.find((c) => c.id === STALE.id).archived, true);
+    const restored = sandbox.categories.find((c) => c.id === STALE.id);
+    assert.equal('archived' in restored, false, 'the archived flag is cleared');
+    assert.equal(saves.length, 1, 'the restore is persisted');
+    sandbox.renderTagRow();
     assert.ok(
-      !sandbox._elements.get('tagRow').innerHTML.includes('onerror'),
-      'the rejected value never reaches the rendered markup'
+      sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'),
+      'the epic is offered in the picker again'
     );
   });
 
-  it('restores an archived epic and selects it', () => {
-    const sandbox = loadTagRowSandbox({
-      categories: [
-        { id: 'work', label: 'Work', color: '#378ADD' },
-        { ...STALE, archived: true },
-      ],
-    });
+  it('archived epics stay out of the pickers until restored (round trip)', () => {
+    const sandbox = staleSandbox();
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
     sandbox.renderTagRow();
-    assert.ok(
-      sandbox._elements.get('tagRow').innerHTML.includes('1 archived'),
-      'the archived count is surfaced'
-    );
+    assert.ok(!sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
 
-    sandbox._elements.get('catRestoreBtn')._listeners.click();
-    // The restore <select> is only reached via getElementById at click time,
-    // so ask the mock DOM for it rather than the already-rendered element map.
-    sandbox.document.getElementById('catRestoreSelect').value = STALE.id;
-    sandbox._elements.get('catRestoreOk')._listeners.click();
-
-    const restored = sandbox.categories.find((c) => c.id === STALE.id);
-    assert.equal('archived' in restored, false);
-    assert.equal(sandbox.selectedTag, STALE.id);
+    sandbox._elements.get('epicRestore-0')._listeners.click();
+    sandbox.renderTagRow();
+    assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
   });
 });

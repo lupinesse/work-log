@@ -23,6 +23,7 @@ selectedTag =
   pickableCategories([...categories]).sort((a, b) => a.label.localeCompare(b.label))[0]?.id ||
   'work';
 renderTagRow();
+bindEpicsManager();
 checkNewDay();
 render();
 renderSodBtn();
