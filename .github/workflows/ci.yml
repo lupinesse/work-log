@@ -31,6 +31,36 @@ jobs:
       - name: Smoke tests
         run: npm test
 
+  # .nvmrc/package.json's engines.node declare a floor of 22.22.1 (#353), but
+  # every other job here pins Node 24 — so nothing actually ran the suite
+  # under the declared minimum. Flagged as an open gap across three
+  # consecutive weekly QA reviews (2026-08-17 through 2026-08-31). Reads the
+  # floor from .nvmrc itself rather than a second hardcoded version number,
+  # so this job tracks the floor automatically if it ever moves.
+  node22-compat:
+    name: Node 22 compatibility (matches .nvmrc floor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit + CI-script tests
+        run: npm run test:unit && npm run test:scripts
+
   scripts-test:
     runs-on: ubuntu-latest
     steps:
