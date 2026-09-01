@@ -314,7 +314,7 @@ describe('regression: non-billable relabeled as "internal"', () => {
     assert.match(html, /title="mark billable"/);
   });
 
-  it('the entry-row toggle, category-manager button, chart legend, and export summary all say "internal", not "non-billable"', () => {
+  it('the entry-row toggle, category-manager button, and export summary all say "internal", not "non-billable"', () => {
     // Checks the specific literals this PR changed — NOT a blanket absence of
     // "non-billable" in these files, since 02-utils.js still legitimately uses
     // that word in developer comments describing the underlying boolean
@@ -328,8 +328,6 @@ describe('regression: non-billable relabeled as "internal"', () => {
     assert.doesNotMatch(utilsSrcCheck, /💸 non-billable/);
 
     assert.match(renderSrcCheck, /title="toggle billable\/internal"/);
-    assert.match(renderSrcCheck, /title="mixed billable\/internal"/);
-    assert.match(renderSrcCheck, /title="internal">💸/);
     assert.doesNotMatch(renderSrcCheck, /title="[^"]*non-billable/);
 
     assert.match(exportSrcCheck, /💸 Internal:/);

@@ -255,15 +255,3 @@ function renderMonthlyLog() {
   renderMonthlySummary(sumEl, monthPrefix);
   renderMonthlyTasks(taskEl, monthPrefix);
 }
-
-/**
- * Bootstraps the Monthly Log feature.
- * The Monthly Log is now the "Month" tab in Today's Flow; its visibility and
- * rendering are driven by renderTodayFlow(). Month sync happens in initTodayFlow()
- * when the Month tab is clicked. This function is kept as a no-op so the call
- * site in 07-lifecycle.js does not need to change.
- * @returns {void}
- */
-function initMonthlyLog() {
-  // no-op: see initTodayFlow() in 11-timeflow.js
-}

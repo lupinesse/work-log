@@ -63,8 +63,6 @@ let activeTimer = null;
 // eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04-render.js
 let timerInterval = null;
 let categories = [...DEFAULT_CATS];
-// eslint-disable-next-line prefer-const -- reassigned by 04-render.js
-let chartMode = 'task';
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
 

@@ -306,7 +306,6 @@ initBoardColumnDnD();
 initBoardTabs();
 initRapid();
 initTodayFlow();
-initMonthlyLog();
 initMigration();
 initSprints();
 initTrackers();

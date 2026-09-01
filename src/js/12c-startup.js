@@ -24,7 +24,6 @@ selectedTag =
   'work';
 renderTagRow();
 bindEpicsManager();
-checkNewDay();
 render();
 renderSodBtn();
 renderEodBtn();

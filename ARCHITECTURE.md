@@ -166,7 +166,6 @@ render() → {
   renderPlan()               // Today's tasks section
   renderCompleted()          // Recently completed tasks
   renderParked()             // Parked thoughts
-  renderChart()              // Activity chart
   renderNowNext()            // Timer display
   renderCalStrip()           // Calendar meetings
   // ... others

@@ -3359,7 +3359,8 @@ async function runTests() {
   // ── Hero Card idle panel reflects completed entries ───────────────────────
   // The top-zone redesign moved the tracked-total and last-session display
   // from the header into the Hero Card idle panel (heroLoggedToday /
-  // heroIdleLastSession). The header's updateHeaderTracking() is now a no-op.
+  // heroIdleLastSession). The header's now-dead updateHeaderTracking() was
+  // removed (#388).
   console.log('\nHero Card logged-today tracking');
   {
     const today = dk(new Date());
