@@ -89,6 +89,7 @@ function tidyStaleEpics() {
 function deleteSelectedEpic() {
   if (PROTECTED_CAT_IDS.includes(selectedTag)) {
     wlLog.warn('deleteSelectedEpic: refused to delete a built-in epic', { selectedTag });
+    window.alert(`"${getCatLabel(selectedTag)}" is a built-in epic and can't be deleted.`);
     return false;
   }
   const cat = getCat(selectedTag);

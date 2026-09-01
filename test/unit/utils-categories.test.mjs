@@ -291,11 +291,12 @@ describe('deleteSelectedEpic — confirm before hard delete (regression)', () =>
 
   it('refuses to delete a built-in epic, even if somehow selected', () => {
     const saves = [];
+    const alerts = [];
     const sandbox = loadTagRowSandbox({
       categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
       selectedTag: 'work',
       save: () => saves.push(true),
-      window: { confirm: () => true, alert: () => {} },
+      window: { confirm: () => true, alert: (msg) => alerts.push(msg) },
     });
     sandbox.renderTagRow();
     sandbox._elements.get('catDelBtn')._listeners.click();
@@ -305,6 +306,12 @@ describe('deleteSelectedEpic — confirm before hard delete (regression)', () =>
       'work is never removed'
     );
     assert.equal(saves.length, 0, 'nothing is persisted');
+    assert.equal(
+      alerts.length,
+      1,
+      'the user is told why, rather than the click doing nothing visible'
+    );
+    assert.ok(alerts[0].includes('Work'));
   });
 });
 describe('epics modal — archive and restore', () => {
