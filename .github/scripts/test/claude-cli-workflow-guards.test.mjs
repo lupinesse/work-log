@@ -26,6 +26,7 @@ import {
   captureFiles,
   discardsOAuthToken,
   findClaudeCliSteps,
+  hasAllowedTools,
   revealsFile,
   splitWorkflowSteps,
   stepName,
@@ -58,7 +59,7 @@ const FIXED_STEP = [
   '            unset ANTHROPIC_API_KEY',
   '          fi',
   '          set +e',
-  '          claude -p "/scss-audit" > scss-output.txt 2>&1',
+  '          claude -p "/scss-audit" --allowedTools "Read" > scss-output.txt 2>&1',
   '          status=$?',
   '          set -e',
   '          if [ "$status" -ne 0 ]; then',
@@ -73,7 +74,7 @@ const TEE_STEP = [
   '      - name: Run dead code detection',
   '        run: |',
   '          set +e',
-  '          claude -p "/dead-code" 2>&1 | tee dead-code-output.txt',
+  '          claude -p "/dead-code" --allowedTools "Read" 2>&1 | tee dead-code-output.txt',
   '          status=${PIPESTATUS[0]}',
   '          set -e',
   '',
@@ -84,7 +85,7 @@ const COUNTS_BUT_NEVER_PRINTS_STEP = [
   '      - name: Run Claude on the issue',
   '        run: |',
   '          set +e',
-  '          claude -p "/chore-start" > chore-output.txt 2>&1',
+  '          claude -p "/chore-start" --allowedTools "Read" > chore-output.txt 2>&1',
   '          CLAUDE_EXIT=$?',
   '          set -e',
   '          echo "complete ($(wc -l < chore-output.txt) output lines)"',
@@ -95,11 +96,27 @@ const COUNTS_BUT_NEVER_PRINTS_STEP = [
 const REVEALED_IN_A_LATER_STEP = [
   '      - name: Run Claude auto-fix',
   '        run: |',
-  '          claude -p "/ci-fix" > fix-output.txt 2>&1 || true',
+  '          claude -p "/ci-fix" --allowedTools "Read" > fix-output.txt 2>&1 || true',
   '',
   '      - name: Comment on the PR',
   '        run: |',
   '          tail -200 fix-output.txt',
+  '',
+].join('\n');
+
+/** pr-review.yml as it shipped: indentation implies --allowedTools, but the
+ *  flag is never written, so the quoted tool names are dangling positional
+ *  arguments to `-p` rather than an allowlist. No output capture here — that
+ *  is a separate concern already covered by the other fixtures above. */
+const MISSING_ALLOWED_TOOLS_STEP = [
+  '      - name: Run PR review',
+  "        if: steps.key-check.outputs.present == 'true'",
+  '        run: |',
+  '          claude -p "/pr-review" \\',
+  '            --model claude-sonnet-4-6 \\',
+  '            --max-turns 20 \\',
+  '                           "Bash(git log:*)" "Bash(git diff:*)" \\',
+  '                           "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)"',
   '',
 ].join('\n');
 
@@ -149,6 +166,16 @@ describe('discardsOAuthToken', () => {
 
   test('accepts the fixed credential order', () => {
     assert.equal(discardsOAuthToken(FIXED_STEP), false);
+  });
+});
+
+describe('hasAllowedTools', () => {
+  test('accepts a step that passes --allowedTools', () => {
+    assert.equal(hasAllowedTools(FIXED_STEP), true);
+  });
+
+  test('flags a step where the flag is missing, even with quoted strings that look like a tool list', () => {
+    assert.equal(hasAllowedTools(MISSING_ALLOWED_TOOLS_STEP), false);
   });
 });
 
@@ -236,6 +263,12 @@ describe('auditClaudeCliSteps', () => {
 
   test('does not flag a reveal that happens in a later step', () => {
     assert.deepEqual(auditClaudeCliSteps(wrap(REVEALED_IN_A_LATER_STEP)), []);
+  });
+
+  test('reports a step whose --allowedTools flag is missing, as pr-review.yml shipped', () => {
+    const problems = auditClaudeCliSteps(wrap(MISSING_ALLOWED_TOOLS_STEP));
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /invokes the CLI without --allowedTools/);
   });
 
   test('reports nothing for the fixed steps', () => {
