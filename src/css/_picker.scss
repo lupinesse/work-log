@@ -188,6 +188,11 @@
   border-color: #c62828;
 }
 
+.cat-manage-btn.tidy:hover {
+  color: var(--info-text);
+  border-color: var(--info-text);
+}
+
 .cat-manage-btn.add {
   margin-left: auto;
   border-style: dashed;

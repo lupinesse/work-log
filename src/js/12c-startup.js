@@ -18,8 +18,10 @@ loadBlocks();
 loadPlan();
 const carried = autoCarryTasks();
 patchCarriedTasks();
-// Default to alphabetically first epic
-selectedTag = [...categories].sort((a, b) => a.label.localeCompare(b.label))[0]?.id || 'work';
+// Default to the alphabetically first epic that is still active (not archived)
+selectedTag =
+  pickableCategories([...categories]).sort((a, b) => a.label.localeCompare(b.label))[0]?.id ||
+  'work';
 renderTagRow();
 checkNewDay();
 render();

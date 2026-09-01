@@ -188,7 +188,7 @@ function _qcRenderCatChips() {
     `<button class="qc-cat-chip${!_qcFilterCat ? ' active' : ''}"` +
     ` data-cat="" aria-pressed="${!_qcFilterCat}">All</button>`;
 
-  const catBtns = categories
+  const catBtns = pickableCategories(categories, _qcFilterCat)
     .map(
       (c) =>
         `<button class="qc-cat-chip${_qcFilterCat === c.id ? ' active' : ''}"` +

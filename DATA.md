@@ -38,8 +38,12 @@ Array of category (epic) objects:
 | `label` | string | Display name |
 | `color` | string | CSS hex colour |
 | `billable` | boolean | Default billable flag for entries in this category |
+| `archived` | boolean? | `true` hides the epic from every epic picker while keeping the record, so historical entries still resolve its label and colour. Absent = active. Set by ⚙ → 🧹 tidy (epics with no entry and no board task in the last 21 days), cleared by ⚙ → 🗃 restore or by a Jira import that maps a ticket onto the epic |
 
 Lifetime: persistent. Modified by the category editor and Jira importer.
+Archiving never deletes a record — an epic is only ever removed by the explicit
+`× delete` button, which is what would orphan past entries onto the grey
+`other` fallback.
 
 ---
 

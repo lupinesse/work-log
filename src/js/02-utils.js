@@ -23,10 +23,59 @@ let editingCatId = null;
 let addingNewCat = false;
 /** Controls whether the epic manage row (rename/delete/add) is expanded. */
 let catManageOpen = false;
+/** Controls whether the manage row is showing the archived-epic restore picker. */
+let restoringArchived = false;
+
+/**
+ * Archives every epic with no log entry and no board task in the last
+ * EPIC_STALE_DAYS days, after confirming the list with the user. Archived
+ * epics drop out of the pickers but keep their record, so historical entries
+ * still resolve their label and colour through getCat().
+ *
+ * Impure by design: it reads the module-level state the tag row already owns
+ * (categories, entries, planTasks, selectedTag) and persists through save().
+ * The decision itself lives in findStaleCategories (pure-fns-epics.js).
+ * @returns {number} How many epics were archived (0 when none were stale or the user cancelled).
+ */
+function tidyStaleEpics() {
+  const { staleIds, cutoffIso } = findStaleCategories({
+    categories,
+    entries,
+    planTasks,
+    todayIso: dk(new Date()),
+    windowDays: EPIC_STALE_DAYS,
+    selectedTag,
+  });
+  wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
+    total: categories.length,
+    stale: staleIds.length,
+    cutoffIso,
+    windowDays: EPIC_STALE_DAYS,
+  });
+  if (!staleIds.length) {
+    window.alert(`No epics to tidy — every epic has been used since ${cutoffIso}.`);
+    return 0;
+  }
+  const labels = staleIds.map((id) => `  • ${getCatLabel(id)}`).join('\n');
+  const proceed = window.confirm(
+    `Archive ${staleIds.length} epic(s) unused since ${cutoffIso}?\n\n${labels}\n\n` +
+      'They will be hidden from the epic pickers. Past log entries keep their ' +
+      'label and colour, and you can restore any of them from ⚙ → archived.'
+  );
+  if (!proceed) {
+    wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
+    return 0;
+  }
+  categories = applyEpicArchive(categories, staleIds);
+  save();
+  wlLog.info('tidyStaleEpics: archived stale epics', { archived: staleIds.length, cutoffIso });
+  return staleIds.length;
+}
 
 function renderTagRow() {
   const row = document.getElementById('tagRow');
   const selCat = getCat(selectedTag);
+  const archivedCount = categories.filter((cat) => cat.archived).length;
 
   // Build manage row content based on state
   let manageHtml;
@@ -36,6 +85,17 @@ function renderTagRow() {
         <input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
         <button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&#10003;</button>
         <button class="cat-inline-cancel" id="catEditCancel">&#10005;</button>
+      </div>`;
+  } else if (restoringArchived) {
+    const archived = categories.filter((cat) => cat.archived);
+    manageHtml = `<div class="cat-inline-edit">
+        <select class="cat-inline-input" id="catRestoreSelect" aria-label="archived epic to restore">
+        ${archived
+          .map((cat) => `<option value="${escHtml(cat.id)}">${escHtml(cat.label)}</option>`)
+          .join('')}
+        </select>
+        <button class="cat-inline-ok" id="catRestoreOk" title="restore epic">&#10003;</button>
+        <button class="cat-inline-cancel" id="catRestoreCancel">&#10005;</button>
       </div>`;
   } else if (addingNewCat) {
     manageHtml = `<div class="cat-inline-edit">
@@ -48,19 +108,22 @@ function renderTagRow() {
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
         <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
-        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>`;
+        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>
+        <button class="cat-manage-btn tidy" id="catTidyBtn"
+                title="Archive epics unused for ${EPIC_STALE_DAYS} days">&#129529; tidy</button>
+        ${archivedCount ? `<button class="cat-manage-btn" id="catRestoreBtn" title="Restore an archived epic">&#128451; ${archivedCount} archived</button>` : ''}`;
   }
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
-  const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
+  const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat || restoringArchived;
 
   row.innerHTML = `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
-        <select class="cat-select" id="catSelect">
-        ${[...categories]
+        <select class="cat-select" id="catSelect" aria-label="Select epic">
+        ${pickableCategories([...categories], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (c) =>
@@ -81,12 +144,13 @@ function renderTagRow() {
     selectedTag = e.target.value;
     editingCatId = null;
     addingNewCat = false;
+    restoringArchived = false;
     renderTagRow();
   });
 
   // Settings toggle — opens/closes the manage row (disabled while an inline edit is active)
   document.getElementById('catSettingsBtn')?.addEventListener('click', () => {
-    if (editingCatId || addingNewCat) return;
+    if (editingCatId || addingNewCat || restoringArchived) return;
     catManageOpen = !catManageOpen;
     renderTagRow();
   });
@@ -188,6 +252,61 @@ function renderTagRow() {
     addBtn.addEventListener('click', () => {
       addingNewCat = true;
       editingCatId = null;
+      renderTagRow();
+    });
+
+  // Tidy: archive every epic unused for EPIC_STALE_DAYS days
+  const tidyBtn = document.getElementById('catTidyBtn');
+  if (tidyBtn)
+    tidyBtn.addEventListener('click', () => {
+      if (tidyStaleEpics() > 0) {
+        renderTagRow();
+        render();
+      }
+    });
+
+  // Restore: open the archived-epic picker
+  const restoreBtn = document.getElementById('catRestoreBtn');
+  if (restoreBtn)
+    restoreBtn.addEventListener('click', () => {
+      restoringArchived = true;
+      editingCatId = null;
+      addingNewCat = false;
+      renderTagRow();
+    });
+
+  // Restore: confirm
+  const restoreOk = document.getElementById('catRestoreOk');
+  if (restoreOk)
+    restoreOk.addEventListener('click', () => {
+      const select = document.getElementById('catRestoreSelect');
+      const chosenId = select ? select.value : '';
+      // Resolve the picked id against the known epics rather than trusting the
+      // select's own value: everything downstream then flows from our own data,
+      // and a stale or unrecognised id closes the picker instead of selecting
+      // an epic that does not exist.
+      const cat = categories.find((c) => c.id === chosenId);
+      if (!cat) {
+        if (chosenId) wlLog.warn('renderTagRow: restore ignored unknown epic id', { chosenId });
+        restoringArchived = false;
+        renderTagRow();
+        return;
+      }
+      categories = restoreArchivedCategory(categories, cat.id);
+      selectedTag = cat.id;
+      restoringArchived = false;
+      catManageOpen = false;
+      save();
+      wlLog.info('renderTagRow: restored archived epic', { catId: cat.id });
+      renderTagRow();
+      render();
+    });
+
+  // Restore: cancel
+  const restoreCancel = document.getElementById('catRestoreCancel');
+  if (restoreCancel)
+    restoreCancel.addEventListener('click', () => {
+      restoringArchived = false;
       renderTagRow();
     });
   const billBtn = document.getElementById('catBillBtn');
