@@ -79,14 +79,14 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **282 Playwright tests** across 43 sections |
 | Total test count | ✅ Pass | **711 tests** (429 unit + 282 smoke); up from 344 at v1.8.4 |
 
-### v1.9.0+ delta (as of 2026-08-13)
+### v1.9.0+ delta (as of 2026-09-01)
 
 | Checklist item | Status | Evidence |
 |---|---|---|
-| Core functionality unit tested | ✅ Pass | `test/unit.mjs` — **647 tests across 99 suites**, 0 failures (up from 634/98 as of 2026-08-13) |
+| Core functionality unit tested | ✅ Pass | `test/unit/*.test.mjs` — **698 tests across 112 suites**, 0 failures (up from 634/98 as of 2026-08-13) |
 | Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **320 Playwright tests**, 0 failures; locally re-verifiable via the `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` escape hatch added in v1.9.2, no longer dependent on a sandbox's pre-provisioned browser build matching Playwright's pinned version |
-| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **248 tests across 50 suites**, 0 failures (unchanged since 2026-08-13) |
-| Total test count | ✅ Pass | **1,215 tests** (647 unit + 320 smoke + 248 CI-scripts); up from 1,202 as of 2026-08-13 |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **324 tests across 68 suites**, 0 failures (up from 248/50 as of 2026-08-13) |
+| Total test count | ✅ Pass | **1,342 tests** (698 unit + 320 smoke + 324 CI-scripts); up from 1,215 as of 2026-08-17 |
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
 | No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |
