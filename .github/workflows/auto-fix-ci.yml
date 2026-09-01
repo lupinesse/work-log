@@ -32,10 +32,24 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # gh api runs under this step's own errexit (bash -e is the default
+          # `run:` shell on Linux runners), so a non-2xx response — a 404, a
+          # transient 5xx, a rate limit — used to abort the whole step before
+          # the "no PR" fallback below ever ran, crashing the one workflow
+          # that exists to handle failures gracefully. set +e/-e around just
+          # the API call lets a failed lookup fall through to the same
+          # skip-with-a-message path as a genuinely PR-less run.
+          set +e
           PR=$(gh api \
             "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/pulls" \
-            --jq '.[0].number // empty')
-          if [ -z "$PR" ]; then
+            --jq '.[0].number // empty' 2>gh-api-error.log)
+          STATUS=$?
+          set -e
+
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::warning::PR lookup failed (gh api exit $STATUS) — skipping auto-fix for this run: $(cat gh-api-error.log)"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$PR" ]; then
             echo "No PR associated with this run — skipping"
             echo "found=false" >> "$GITHUB_OUTPUT"
           else
