@@ -1,5 +1,6 @@
 /* ── Epic helpers ── */
 // safeCssColor() and escHtml() are defined in 00-pure-fns.js.
+// EpicCategory is declared in pure-fns-epics.js (concatenated earlier).
 
 /**
  * Returns the category object for `id`, falling back to 'other' if not found.
@@ -24,43 +25,216 @@ let addingNewCat = false;
 /** Controls whether the epic manage row (rename/delete/add) is expanded. */
 let catManageOpen = false;
 
-function renderTagRow() {
-  const row = document.getElementById('tagRow');
-  const selCat = getCat(selectedTag);
+/**
+ * Archives every epic with no log entry and no board task in the last
+ * EPIC_STALE_DAYS days, after confirming the list with the user. Archived
+ * epics drop out of the pickers but keep their record, so historical entries
+ * still resolve their label and colour through getCat().
+ *
+ * Impure by design: it reads the module-level state the tag row already owns
+ * (categories, entries, planTasks, selectedTag) and persists through save().
+ * The decision itself lives in findStaleCategories (pure-fns-epics.js).
+ * @returns {number} How many epics were archived (0 when none were stale or the user cancelled).
+ */
+function tidyStaleEpics() {
+  const { staleIds, cutoffIso } = findStaleCategories({
+    categories,
+    entries,
+    planTasks,
+    todayIso: dk(new Date()),
+    windowDays: EPIC_STALE_DAYS,
+    selectedTag,
+  });
+  wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
+    total: categories.length,
+    stale: staleIds.length,
+    cutoffIso,
+    windowDays: EPIC_STALE_DAYS,
+  });
+  if (!staleIds.length) {
+    window.alert(`No epics to tidy — every epic has been used since ${cutoffIso}.`);
+    return 0;
+  }
+  const labels = staleIds.map((id) => `  • ${getCatLabel(id)}`).join('\n');
+  const proceed = window.confirm(
+    `Archive ${staleIds.length} epic(s) unused since ${cutoffIso}?\n\n${labels}\n\n` +
+      'They will be hidden from the epic pickers. Past log entries keep their ' +
+      'label and colour, and you can restore any of them from ⚙ → archived.'
+  );
+  if (!proceed) {
+    wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
+    return 0;
+  }
+  categories = applyEpicArchive(categories, staleIds);
+  save();
+  wlLog.info('tidyStaleEpics: archived stale epics', { archived: staleIds.length, cutoffIso });
+  return staleIds.length;
+}
 
-  // Build manage row content based on state
-  let manageHtml;
+/**
+ * Re-renders every surface that offers an epic picker, so an archive or
+ * restore is reflected everywhere at once rather than only in the modal.
+ * @returns {void}
+ */
+function refreshEpicPickers() {
+  renderTagRow();
+  render();
+  renderPlan();
+}
+
+/**
+ * Fills the epics modal with the archived-epic list and binds one restore
+ * button per row.
+ *
+ * Rows are keyed by list index (`epicRestore-0`, `epicRestore-1`, …) rather
+ * than by epic ID: IDs come from persisted data and would need escaping to be
+ * safe in an attribute *and* matching unescaped for the lookup, so an index
+ * sidesteps that mismatch entirely.
+ * @returns {void}
+ */
+function renderEpicsManager() {
+  const body = document.getElementById('epicsManagerBody');
+  if (!body) return;
+
+  const archived = categories.filter((cat) => cat.archived);
+  body.innerHTML = archived.length
+    ? `<ul class="epics-list">` +
+      archived
+        .map(
+          (cat, idx) =>
+            `<li class="epics-list__item">` +
+            `<span class="epics-list__dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
+            `<span class="epics-list__label">${escHtml(cat.label)}</span>` +
+            `<button class="epics-list__restore" id="epicRestore-${idx}"` +
+            ` aria-label="Restore ${escHtml(cat.label)}">restore</button>` +
+            `</li>`
+        )
+        .join('') +
+      `</ul>`
+    : `<p class="epics-list__empty">No archived epics — every epic is showing in the pickers.</p>`;
+
+  archived.forEach((cat, idx) => {
+    const btn = document.getElementById(`epicRestore-${idx}`);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      categories = restoreArchivedCategory(categories, cat.id);
+      save();
+      wlLog.info('renderEpicsManager: restored archived epic', { catId: cat.id });
+      renderEpicsManager();
+      refreshEpicPickers();
+    });
+  });
+}
+
+/**
+ * Wires the epics modal: the toolbar button that opens it, the tidy action,
+ * and the close button. Called once at startup (12c-startup.js).
+ *
+ * These controls used to live in the epic manage strip inside #tagRow, which
+ * is `display:none` in work-log.html — so archiving could be triggered from
+ * five pickers but never undone. The modal is the reachable home for them.
+ * @returns {void}
+ */
+function bindEpicsManager() {
+  const openBtn = document.getElementById('epicsBtn');
+  const overlay = document.getElementById('epicsOverlay');
+  const closeBtn = document.getElementById('epicsClose');
+  const tidyBtn = document.getElementById('epicsTidyBtn');
+  if (!openBtn || !overlay) return;
+
+  /**
+   * Hides the modal and hands focus back to the button that opened it, so a
+   * keyboard user is not dropped at the top of the document.
+   * @returns {void}
+   */
+  const closeEpicsModal = () => {
+    overlay.classList.remove('show');
+    openBtn.focus();
+  };
+
+  openBtn.addEventListener('click', () => {
+    renderEpicsManager();
+    overlay.classList.add('show');
+    if (closeBtn) closeBtn.focus();
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeEpicsModal);
+
+  // Escape and backdrop-click dismissal, matching the other modals built on
+  // this overlay shell (12a-changelog.js's expiry modal, 12c-gapreport.js).
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeEpicsModal();
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeEpicsModal();
+  });
+
+  if (tidyBtn)
+    tidyBtn.addEventListener('click', () => {
+      if (tidyStaleEpics() > 0) {
+        renderEpicsManager();
+        refreshEpicPickers();
+      }
+    });
+}
+
+/**
+ * Builds the inner markup of the epic manage row for whichever inline mode
+ * is active. The modes are mutually exclusive and tested in priority order:
+ * rename, add-new, then the idle button strip.
+ *
+ * Reads the module-level mode flags (editingCatId, addingNewCat) rather than
+ * taking them as parameters, matching how the rest of this concatenated file
+ * owns that state. Archive and restore are not handled here - #385 moved them
+ * into the epics manager modal (renderEpicsManager/bindEpicsManager above).
+ * @param {EpicCategory} selCat - The currently selected epic, already colour-sanitised by getCat().
+ * @returns {string} HTML for the inside of #catManageRow.
+ */
+function buildManageRowHtml(selCat) {
   if (editingCatId) {
     const c = getCat(editingCatId);
-    manageHtml = `<div class="cat-inline-edit">
+    return `<div class="cat-inline-edit">
         <input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
         <button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&#10003;</button>
         <button class="cat-inline-cancel" id="catEditCancel">&#10005;</button>
       </div>`;
   } else if (addingNewCat) {
-    manageHtml = `<div class="cat-inline-edit">
+    return `<div class="cat-inline-edit">
         <input class="cat-inline-input" id="catNewInput" placeholder="new epic name" style="flex:1" />
         <button class="cat-inline-ok" id="catNewOk">&#10003;</button>
         <button class="cat-inline-cancel" id="catNewCancel">&#10005;</button>
       </div>`;
   } else {
-    manageHtml = `
+    return `
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
         <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
         <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>`;
   }
+}
+
+/**
+ * Builds the complete #tagRow markup: the epic dropdown row plus the manage
+ * row. Touches no DOM of its own - it reads module state and returns a string,
+ * so the markup can be produced and asserted on independently of the listener
+ * wiring in bindTagRowEvents().
+ * @returns {string} HTML to assign to #tagRow.
+ */
+function buildTagRowHtml() {
+  const selCat = getCat(selectedTag);
+  const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
   const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
 
-  row.innerHTML = `
+  return `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
-        <select class="cat-select" id="catSelect">
-        ${[...categories]
+        <select class="cat-select" id="catSelect" aria-label="Select epic">
+        ${pickableCategories([...categories], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (c) =>
@@ -75,7 +249,17 @@ function renderTagRow() {
                 aria-expanded="${manageRowOpen}">⚙</button>
       </div>
       <div class="cat-manage-row${manageRowOpen ? ' open' : ''}" id="catManageRow">${manageHtml}</div>`;
+}
 
+/**
+ * Wires every listener for the markup buildTagRowHtml() just produced.
+ *
+ * Each lookup past the always-present dropdown controls is null-guarded: only
+ * one inline mode is in the DOM at a time, so most of these elements are
+ * absent on any given render.
+ * @returns {void}
+ */
+function bindTagRowEvents() {
   // Select change
   document.getElementById('catSelect').addEventListener('change', (e) => {
     selectedTag = e.target.value;
@@ -190,6 +374,7 @@ function renderTagRow() {
       editingCatId = null;
       renderTagRow();
     });
+
   const billBtn = document.getElementById('catBillBtn');
   if (billBtn)
     billBtn.addEventListener('click', () => {
@@ -257,30 +442,23 @@ function renderTagRow() {
     });
 }
 
+/**
+ * Renders the epic tag row and rebinds its listeners. Every state change in the
+ * handlers below funnels back through here, so the row is always rebuilt
+ * wholesale rather than patched in place.
+ * @returns {void}
+ */
+function renderTagRow() {
+  const row = document.getElementById('tagRow');
+  row.innerHTML = buildTagRowHtml();
+  bindTagRowEvents();
+}
+
 /* ── Utility ── */
 // dk(), fmtTime(), fmtElapsed(), roundToNearest30(), safeCssColor(), escHtml()
 // are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
-
-/**
- * Returns true if `d` falls on today's calendar date (UTC).
- * @param {Date} d
- * @returns {boolean}
- */
-function isToday(d) {
-  return dk(d) === dk(new Date());
-}
-/**
- * Returns a human-readable day label: 'today', 'yesterday', or a short locale date string.
- * @param {Date} d
- * @returns {string}
- */
-function fmtLabel(d) {
-  if (isToday(d)) return 'today';
-  const diffMs = new Date(dk(new Date())) - new Date(dk(d));
-  const diffDays = Math.round(diffMs / 86400000);
-  if (diffDays === 1) return 'yesterday';
-  return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
-}
+// isToday() and fmtLabel() are defined in date-labels.js (a leaf ES module
+// imported at the top of the built bundle), not here.
 
 /**
  * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.

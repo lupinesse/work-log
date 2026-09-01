@@ -160,3 +160,65 @@ body {
   white-space: nowrap;
   border: 0;
 }
+
+// Persistent data-loss warning banner — shown when save() fails to write to
+// localStorage. Deliberately red/danger, not the amber "heads up" tone of
+// .wip-warn/.eod-reminder, since this signals actual data loss risk.
+.save-fail-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fee2e2;
+  border-bottom: 1px solid #fecaca;
+  font-size: 13px;
+  color: #991b1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .save-fail-banner {
+    background: rgba(220, 38, 38, 0.14);
+    border-bottom-color: rgba(220, 38, 38, 0.35);
+    color: #fca5a5;
+  }
+}
+
+.save-fail-banner__msg {
+  flex: 1;
+}
+
+.save-fail-banner__action {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 0.5px solid #b91c1c;
+  cursor: pointer;
+  background: none;
+  color: #991b1b;
+  font-family: var(--font);
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .save-fail-banner__action {
+    border-color: #f87171;
+    color: #fca5a5;
+  }
+}
+
+.save-fail-banner__dismiss {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  color: #991b1b;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .save-fail-banner__dismiss {
+    color: #fca5a5;
+  }
+}

@@ -38,8 +38,12 @@ Array of category (epic) objects:
 | `label` | string | Display name |
 | `color` | string | CSS hex colour |
 | `billable` | boolean | Default billable flag for entries in this category |
+| `archived` | boolean? | `true` hides the epic from every epic picker while keeping the record, so historical entries still resolve its label and colour. Absent = active. Set by ⚙ → 🧹 tidy (epics with no entry and no board task in the last 21 days), cleared by ⚙ → 🗃 restore or by a Jira import that maps a ticket onto the epic |
 
 Lifetime: persistent. Modified by the category editor and Jira importer.
+Archiving never deletes a record — an epic is only ever removed by the explicit
+`× delete` button, which is what would orphan past entries onto the grey
+`other` fallback.
 
 ---
 
@@ -196,7 +200,7 @@ transition-bridge banner in the current session.
 
 ### `wl_location_v1`
 Object mapping `YYYY-MM-DD` date strings to a location ID. Managed by
-`24-location.js`; the key constant `STORE_LOCATION` is declared in `01-state.js`.
+`24-location.js`; the key constant `STORE_LOCATION` is declared in `app-constants.js`.
 
 ```json
 { "2026-06-12": "office", "2026-06-11": "remote" }

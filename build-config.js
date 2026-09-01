@@ -41,34 +41,44 @@ export const DEST_FILE = '.portable-dest';
  * Leaf ES modules imported at the top of script.js and inlined first in the
  * portable build (leaf modules first, then others). Excluded from the main
  * concatenation step in all build scripts.
- * The list now includes the pure-fns sub-modules followed by the pure-fns.js
- * barrel. Order matters for the portable build: it inlines files in list
- * order, and the barrel strips down to comments only — the sub-modules that
- * actually declare the functions must already be in scope when later files run.
+ * `app-constants.js` has no dependencies on anything else in the list, so its
+ * position doesn't matter. The pure-fns sub-modules must precede the
+ * pure-fns.js barrel, though: order matters for the portable build, which
+ * inlines files in list order, and the barrel strips down to comments only —
+ * the sub-modules that actually declare the functions must already be in
+ * scope when later files run. `date-labels.js` imports `dk` from
+ * `pure-fns.js`, so it's listed after it too (not strictly required — `dk`
+ * is a hoisted function declaration — but keeps declaration order matching
+ * dependency order for readability).
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
 export const LEAF_MODULES = [
+  'app-constants.js',
   'logger.js',
+  'pure-fns-epics.js',
   'pure-fns-export.js',
   'pure-fns-format.js',
   'pure-fns-tasks.js',
   'pure-fns-validate.js',
   'pure-fns.js',
+  'date-labels.js',
 ];
 
 /**
- * Reads named exports from pure-fns.js so the import statement in script.js
+ * Reads a leaf module's named exports so the import statement in script.js
  * stays in sync without a hand-maintained list. Parses both declaration
  * exports (regular and async functions, const/let/class) and barrel
- * `export { … } from …` re-export lines — pure-fns.js is now a barrel over
- * the pure-fns-*.js sub-modules.
+ * `export { … } from …` re-export lines — used for pure-fns.js, which is a
+ * barrel over the pure-fns-*.js sub-modules, as well as plain leaf modules
+ * like app-constants.js that only have declaration exports.
+ * @param {string} filename - Leaf module filename, relative to JS_SRC (e.g. 'pure-fns.js').
  * @returns {string[]} Exported symbol names.
  */
-export function readPureFnsExports() {
-  const src = readFileSync(join(JS_SRC, 'pure-fns.js'), 'utf8');
+export function readModuleExports(filename) {
+  const src = readFileSync(join(JS_SRC, filename), 'utf8');
   const declared = [
-    // eslint-disable-next-line security/detect-unsafe-regex -- matches our own pure-fns.js export lines; trusted input, no nested quantifiers
+    // eslint-disable-next-line security/detect-unsafe-regex -- matches our own leaf-module export lines; trusted input, no nested quantifiers
     ...src.matchAll(/^export (?:async\s+)?(?:function|const|let|class) (\w+)/gm),
   ].map((m) => m[1]);
   const reExported = [...src.matchAll(/export\s*\{([^}]*)\}\s*from/g)].flatMap((m) =>

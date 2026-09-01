@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.0-r3 |
-| Covers app version | v1.9.0+ (main, 2026-08-03) |
-| Last reviewed | 2026-08-03 |
-| Reviewed by | Claude Sonnet 5 (automated doc-accuracy refresh — module map and line counts only, per the 2026-08-03 QA review; not a full architectural re-review) |
+| Document version | 1.9.2-r4 |
+| Covers app version | v1.9.2 (main, 2026-09-01) |
+| Last reviewed | 2026-09-01 |
+| Reviewed by | Claude (split 04-render.js into five files — QA finding: module size, flagged five consecutive weekly reviews — updated its entry and the source file count touched by that change. Not a full re-audit of every per-module line count) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (50 source files across 30+ numbered modules) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (59 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (202 lines) — Data Store
+#### **01-state.js** (214 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -93,32 +93,45 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (62 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (520 lines) — Entry grouping, export helpers, rolling summary, backup retention: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`
+- `pure-fns-export.js` (745 lines) — Entry grouping, export helpers, rolling summary, backup retention, weekly ticket summary, and gap-report/export-warning entry filters: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`, `findGapReportEntries`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
 ---
 
-#### **02-utils.js** (319 lines) — Utilities
-**Responsibility**: Shared helper functions
+#### **02-utils.js** (488 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+**Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
-- `dk(date)` — Format date as 'YYYY-MM-DD'
-- `escHtml(str)` — HTML escape to prevent XSS
-- `roundToNearest30(ts)` — Round timestamp to nearest 30 min
-- `qa(selector)` — Query all (shorthand for querySelectorAll)
-- `qo(selector)` — Query one (shorthand for querySelector)
-- `fmtDurMs(ms)` — Format milliseconds as "5h 20min"
-- `getCat(id)` — Get category by ID with fallback
-- `getCatLabel(id)` — Get category display name
-- `safeCssColor(color)` — Validate/sanitize CSS color value
+- `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
+- `renderTagRow()` — orchestrates the epic row: assigns the markup from `buildTagRowHtml()`, then calls `bindTagRowEvents()`
+- `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
+- `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
+- `tidyStaleEpics()`, `refreshEpicPickers()`, `renderEpicsManager()`, `bindEpicsManager()` — the epics manager modal that owns archive and restore (#385); these moved out of the manage row, so `renderTagRow()` no longer renders tidy/restore controls
+- `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
+- `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
+- `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**No External Dependencies**: All pure functions
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js` — see below.
+
+---
+
+#### **app-constants.js** (63 lines) — Static Config Constants (LEAF MODULE)
+**Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
+
+**Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
+
+---
+
+#### **date-labels.js** (31 lines) — Date-to-Label Helpers (LEAF MODULE)
+**Responsibility**: `isToday(d)` and `fmtLabel(d)` — stateless date helpers used across 8 files (`04-render.js`, `07-lifecycle.js`, `08-pomodoro.js`, `10a-tasks-render.js`, `11-timeblock.js`, `11-timeflow.js`, `11a-timeblock-render.js`, and formerly `02-utils.js` itself). Only depends on `dk()` from the `pure-fns.js` leaf module. Extracted from `02-utils.js` (issue #336) — the second ES-module extraction, and the model case for "pull the stateless part out, leave the entangled part alone" rather than forcing a whole-file extraction.
+
+**Exports**: `isToday`, `fmtLabel`
 
 ---
 
@@ -142,26 +155,24 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (848 lines) — Top-Level UI Rendering
-**Responsibility**: Orchestrate rendering of all visible sections
+#### **04-render.js** (56 lines) — Top-Level Render Orchestrator
+**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. The one non-mechanical change: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returns null and the guard clause always returns first. Deleted rather than moved; the function stays as a no-op stub since `render()` and `03-timer.js`'s timer tick both still call it unconditionally.
 
-**Main Function**:
-- `render()` — Master render function called after every state change
-
-**Sections Rendered**:
 ```
 render() → {
-  renderStats()              // Top bar: today's counts
-  renderEntries()            // Entries timeline
-  renderPlan()               // Today's tasks section
-  renderCompleted()          // Recently completed tasks
-  renderParked()             // Parked thoughts
-  renderChart()              // Activity chart
-  renderNowNext()            // Timer display
-  renderCalStrip()           // Calendar meetings
-  // ... others
+  renderHeroCard()                       // 06a-hero.js
+  renderHeaderAndTimerSection()          // 04-render.js — date/nav/location/EOD/timer bar
+  renderHeaderStatTiles()                // 04b-render-stats.js
+  renderSubStatTiles()                   // 04b-render-stats.js
+  renderTimelineSection(viewEntries())   // 04c-render-timeline.js
 }
 ```
+
+**Sibling files** (alphabetical, same order the build concatenates them in):
+- `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
+- `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
+- `04c-render-timeline.js` (418 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`), the inert `renderChart()` stub, and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
 1. Gather data from state
@@ -389,7 +400,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (273 lines) — Task Rendering
+#### **10a-tasks-render.js** (267 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
@@ -403,7 +414,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (340 lines) — Task Event Binding
+#### **10b-tasks-events.js** (334 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -485,13 +496,14 @@ upcoming    → Scheduled for future date
 **Sub-modules**:
 - `12b-changelog-data.js` (631 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
 - `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
-- `12c-gapreport.js` (113 lines) — End-of-week gap report: lists this week's finished, non-cancelled entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
+- `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
+- `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
 ---
 
-#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (537 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -510,8 +522,19 @@ upcoming    → Scheduled for future date
 
 **Hidden Meetings** (localStorage):
 ```
-wl_hidden_meetings_YYYY-MM-DD → [subject1, subject2, ...]
+wl_hidden_meetings_YYYY-MM-DD → ["subject|start", ...]
 ```
+Keyed per occurrence, so hiding one instance of a recurring meeting leaves the
+day's other instances on the strip. Entries written before this were bare
+subjects and are still honoured; the store is keyed by date, so they expire on
+their own.
+
+**Collection rules** (`server-helpers.ps1`, exercised by `test/calendar.Tests.ps1`):
+the decisions that determine which meetings arrive — day overlap, when a folder
+scan may stop early, dedup identity, subject and Teams-link normalisation, the
+recursive calendar-folder walk, and the recurring-occurrence probe — live in the
+shared helpers file rather than inside `start-server.ps1`'s COM runspace, so they
+are unit-tested with PSCustomObject stand-ins and need no Outlook install.
 
 **Account Label Mapping** (configured in `src/js/00-config.js`):
 ```javascript
@@ -819,19 +842,19 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (449 tests, 63 suites via Node built-in test runner):
-- `test/unit.mjs` — covers pure functions in `pure-fns.js`, `validateBackupFile`, schema migrations, kanban DnD, rolling summary, location helpers, calendar recurrence, and `wlLog`; `.github/scripts/test/` covers CI auth/model helpers
+**Unit Tests** (698 tests, 112 suites via Node built-in test runner):
+- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
-**Smoke Tests** (~317 tests via Playwright):
+**Smoke Tests** (320 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**CI Script Tests** (30 tests via Node built-in test runner):
-- `test/parse-phase4-response.test.mjs`, `test/github-threads.test.mjs`, `test/anthropic-auth.test.mjs`
+**CI Script Tests** (324 tests, 68 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 324, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 796 tests (449 unit + 317 smoke + 30 CI-script)**
+**Total: 1,342 tests (698 unit + 320 smoke + 324 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)

@@ -15,7 +15,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ## Development Setup
 
 ### Prerequisites
-- Node.js ≥ 24.15.0 (matches `engines` in `package.json`; `.nvmrc` pins the dev version)
+- Node.js ≥ 22.22.1 (matches `engines` in `package.json`; `.nvmrc` pins the dev version). This is the actual floor imposed by `lint-staged`'s own `engines.node` — the tightest constraint among all devDependencies as of 2026-08-15. A repo-wide search found no Node-24-only APIs (`structuredClone`, `Array.fromAsync`, `Promise.withResolvers`, etc.) in use anywhere. Not tested on Node 22 directly in CI (which is pinned to Node 24 across every workflow) — if you hit a Node-22-specific issue, please report it.
 - A text editor or IDE (VS Code recommended)
 - Git
 
@@ -51,7 +51,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ```
 worklog/
 ├── src/
-│   ├── js/           # Source JavaScript modules (15 files)
+│   ├── js/           # Source JavaScript modules (54 files)
 │   │   ├── 01-state.js
 │   │   ├── 02-utils.js
 │   │   ├── 03-timer.js
@@ -83,6 +83,61 @@ The repository uses a trunk-based workflow with **no direct commits to `main`** 
 - **`main`** is always releasable. CI runs on every PR; merge only when checks are green.
 - **Feature branches** branch from `main` and merge back via squash-merge. Keep them short-lived (days, not weeks).
 - **Releases** are tagged commits on `main` following [Semantic Versioning](https://semver.org/) (see `CHANGELOG.md`).
+
+### Working on a shared checkout
+
+Several Claude Code sessions and tools drive this repository from the same
+checkout at once. Git records *what* changed in a working tree but never *who*
+changed it, so one session can see another's in-flight edits in its own
+`git status` — and stage, discard, or `reset --hard` them without either side
+noticing (issue #268).
+
+Two rules keep that from happening:
+
+1. **One working tree per session.** Give each concurrent session its own
+   worktree instead of sharing the main checkout:
+
+   ```bash
+   git worktree add ../worklog-<topic> -b fix/issue-N-description origin/main
+   ```
+
+   Remove it with `git worktree remove ../worklog-<topic>` when the branch has
+   merged.
+
+2. **Claim the tree, then check before anything destructive.**
+
+   | Command | What it does |
+   |---|---|
+   | `npm run session:claim` | Record this session's baseline: branch, HEAD, and every dirty path |
+   | `npm run session:check` | Report what moved since that baseline, and who else is active |
+   | `npm run session:check -- --accept` | Adopt the current tree as the new baseline, once you have reviewed it |
+   | `npm run session:list` | Show every session registered on this checkout |
+   | `npm run session:release` | Drop this session's lock when the work is done |
+
+`session:check` exits `0` when nothing moved and `1` when something did, so it
+can gate a script. It only ever reports — it never touches the working tree,
+and it cannot stop another process from writing. Treat a warning as a signal to
+find out who else is working before running `git checkout --`, `git reset`, or
+`git stash`.
+
+Two limits are worth knowing. Drift is measured at `git status` granularity, so
+a file that was *already* modified in the baseline and is modified again keeps
+the status code `M` and is not reported — use `git diff` when the question is
+what changed inside a file. And a second `session:claim` under an identifier
+that already holds the checkout is refused rather than silently re-baselined,
+because two sessions in one directory derive the same default identifier;
+re-baseline deliberately with `--accept`, or register separately with
+`--session=ID`.
+
+Locks are JSON files under the repository's git common directory
+(`.git/worklog-session-locks/`), so every linked worktree sees the same set and
+nothing reaches the repository itself. A lock unrefreshed for 8 hours is
+treated as abandoned and pruned; override with `--ttl-hours=N` (floored at 30
+minutes, because pruning deletes other sessions' baselines). A session is
+identified by `--session=ID` when given, otherwise by host name and worktree
+directory name — deliberately not by an environment variable, since the
+identifier is printed in every report and nothing that reaches a log line
+should arrive from the environment.
 
 ### Commit messages — Conventional Commits
 
@@ -240,7 +295,7 @@ node smoke-tests.cjs
 
 ### Run Individual Test Categories
 ```bash
-npm run test:unit        # Unit tests (test/unit.mjs)
+npm run test:unit        # Unit tests (test/unit/*.test.mjs, one file per feature area)
 npm run test:scripts     # CI script tests (.github/scripts/test/*.test.mjs)
 npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlint.mjs)
 npm run test:actionlint  # Workflow lint + self-test (needs the actionlint binary)

@@ -5,8 +5,8 @@ name: Dead Code Detection
 # that are never consumed. Commits the dated report to docs/dead-code-reports/.
 #
 # Required secrets:
-#   CLAUDE_CODE_OAUTH_TOKEN — Claude subscription token; optional if ANTHROPIC_API_KEY is set
-#   ANTHROPIC_API_KEY       — Anthropic API key; fallback when OAuth token is absent or expired
+#   CLAUDE_CODE_OAUTH_TOKEN — Claude subscription token; the preferred credential
+#   ANTHROPIC_API_KEY       — Anthropic API key; used only when the OAuth token is absent
 
 on:
   schedule:
@@ -47,18 +47,51 @@ jobs:
           fi
 
       - name: Run dead code detection
+        id: dead-code-run
         if: steps.key-check.outputs.present == 'true'
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           ANTHROPIC_API_KEY:       ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          if [ -n "$ANTHROPIC_API_KEY" ]; then
-            unset CLAUDE_CODE_OAUTH_TOKEN
+          # Prefer the OAuth subscription token; fall back to the API key. See
+          # scss-audit.yml for the full account — in short, the reverse order
+          # forced every run onto an API key with no credit left, and the CLI
+          # exited 1 with "Credit balance is too low".
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            unset ANTHROPIC_API_KEY
+            echo "Auth: CLAUDE_CODE_OAUTH_TOKEN (subscription)"
+          else
+            echo "Auth: ANTHROPIC_API_KEY (pay-as-you-go)"
           fi
+
+          # Unlike scss-audit.yml, this skill writes its report to
+          # docs/dead-code-reports/ and uses stdout only for progress, so tee is
+          # the better fit: the output stays visible in the step log while still
+          # being captured for the artifact. PIPESTATUS[0] is the CLI's exit
+          # code — a plain $? would be tee's, which is always 0 and would
+          # mask every failure.
+          set +e
           claude -p "/dead-code" \
             --model claude-sonnet-4-6 \
             --allowedTools "Read" "Grep" "Glob" "Write" \
-                           "Bash(cat:*)" "Bash(wc:*)"
+                           "Bash(cat:*)" "Bash(wc:*)" 2>&1 | tee dead-code-output.txt
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            [ -s dead-code-output.txt ] ||
+              echo "(the CLI wrote nothing to stdout or stderr — it most likely failed to start at all)"
+            echo "::error::claude CLI exited $status — its output is in the step log above, and in the dead-code-output artifact."
+            exit "$status"
+          fi
+
+      - name: Upload raw CLI output
+        if: always() && steps.dead-code-run.outcome != 'skipped'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dead-code-output
+          path: dead-code-output.txt
+          if-no-files-found: warn
 
       - name: Commit the report and open a PR
         env:

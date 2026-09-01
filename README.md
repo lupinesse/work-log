@@ -33,12 +33,15 @@ ADHD-friendly work tracker — single HTML file, runs locally in your browser.
 
 Your data is stored locally in your browser — nothing is sent anywhere.
 
+> **Data lives per-origin, so keep the port stable.** Your entries are stored in your browser's `localStorage`, which is scoped to the exact `origin:port` you loaded the page from. Both launchers use a fixed port (`8080`) for this reason — if you ever load the tracker from a different port, your previous data won't show up (it's not gone, it's just stranded on the old port). Reload `http://localhost:8080/work-log.html` to get it back.
+
 ## Features
 
 ### Time tracking
 - **Live timer** — start a timer on any task, pause and resume, add a handoff note when stopping
 - **Billable tracking** — mark epics and individual entries as billable; totals shown per task and per day
 - **Quick pick** — recent tasks shown as chips for fast re-logging
+- **Long-running timer warning** — dismissible alert once a running timer passes 4 hours, with a one-click stop; also asks whether to stop if you return to the tab after it's sat hidden 30+ minutes mid-session
 
 ### Tasks
 - **Kanban board** — drag tasks between To Do / In Progress / Done columns with epic colour coding
@@ -47,10 +50,12 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Deadlines** — date picker with overdue (red) and due-today (amber) highlighting
 - **Auto-carry** — unfinished tasks roll over to the next day automatically
 - **Jira import** — paste a Jira CSV export to bulk-add tickets as tasks
+- **Weekly plan review** — a dismissible checklist appears once a new week begins for any task planned ahead ("upcoming") and dated within it, so you can confirm it's still accurate before the week starts
 
 ### Today's Flow
 - **Flow view** — chronological feed merging time entries, log notes, and task updates for the day
 - **Log view** — editable time log with duration, epic, billable flag, and ad-hoc entry row
+- **Proof links & notes** — attach a link (Confluence page, Zephyr key, filename, or a URL) and a one-line note to any entry; shown as 🔗/📝 indicators and carried into exports
 - **Blocks view** — visual 08:00–18:00 timeblock grid auto-filled from logged entries; drag to rearrange
 - **Month view** — heatmap of hours per day with intensity colouring; monthly summary and task inventory
 - **Rolling Summary** — AI-ready summary of recent activity across configurable days
@@ -61,13 +66,20 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Pomodoro timer** — 5 / 10 / 20 min ring timer with session log; visible in focus mode
 
 ### Planning
-- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link
+- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link.
+  Every calendar in every account is read, including secondary calendars nested inside another folder, and
+  a meeting counts as today's if it overlaps today at all — so multi-day events and meetings that run past
+  midnight appear too. `✕` hides a single meeting for the rest of the day, not every meeting sharing its title.
+  If long-running recurring meetings are missing, raise `$CalendarLookBackYears` in `config.local.ps1`
+  (see `config.local.example.ps1`); `http://localhost:8080/api/calendar?debug=1` reports what the collector found.
 - **Day streak** — consecutive days with logged work
 
 ### Export & review
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
 - **Reflection** — end-of-day focus-quality and energy ratings with an optional note
+- **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
+- **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
 
 ### Bullet Journal (BuJo) features
 - **Rapid logging** — `✏️` button opens a floating capture panel; `Enter` starts the timer immediately
@@ -93,10 +105,11 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 | [ROADMAP.md](ROADMAP.md) | Planned and in-progress features |
 | [CHANGELOG.md](CHANGELOG.md) | Full release history |
 | [QA.md](QA.md) | QA checklist and stakeholder sign-offs per release |
+| [JSDoc reference](https://lupinesse.github.io/work-log/) | Generated API docs for every exported function, rebuilt on every push to `main` |
 
 ## Testing
 
-A smoke test suite is included. Requires Node.js ≥ 24.15.0 (matches `engines` in `package.json`; bumped to track `@commitlint/cli` v21).
+A smoke test suite is included. Requires Node.js ≥ 22.22.1 (matches `engines` in `package.json` — the actual floor imposed by `lint-staged`'s own minimum).
 
 ```
 node smoke-tests.cjs

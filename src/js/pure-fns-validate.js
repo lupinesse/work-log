@@ -244,6 +244,76 @@ export function validCalendarMeeting(meeting) {
 }
 
 /**
+ * Returns a copy of `meeting` with a subject the rest of the app can rely on.
+ *
+ * Outlook returns no subject at all for an appointment saved without a title,
+ * so the meeting arrives with `subject: null` and `validCalendarMeeting`
+ * rejects it — an untitled meeting used to disappear from the strip entirely
+ * rather than showing up unnamed. Normalising first keeps it, since its times
+ * are what the strip actually needs.
+ *
+ * The input is not modified; a non-object is returned unchanged so the caller's
+ * validator still gets to reject it.
+ *
+ * @param {*} meeting - Candidate meeting object from the calendar API response.
+ * @returns {*} A copy with a non-empty string subject, or the input unchanged.
+ * @example
+ * normalizeCalendarMeeting({ subject: null, start: 'a', end: 'b' })
+ *   // → { subject: '(no title)', start: 'a', end: 'b' }
+ * normalizeCalendarMeeting({ subject: '  Standup  ', start: 'a', end: 'b' })
+ *   // → { subject: 'Standup', start: 'a', end: 'b' }
+ */
+export function normalizeCalendarMeeting(meeting) {
+  if (!meeting || typeof meeting !== 'object') return meeting;
+  const subject = typeof meeting.subject === 'string' ? meeting.subject.trim() : '';
+  return { ...meeting, subject: subject || '(no title)' };
+}
+
+/**
+ * Returns the stable per-occurrence key for a meeting.
+ *
+ * Subject alone is not an identity: a recurring meeting has the same subject at
+ * every occurrence, so anything keyed on it treats them all as one. Pairing the
+ * subject with the start time identifies the single occurrence on screen.
+ *
+ * @param {*} meeting - Meeting object from the calendar API response.
+ * @returns {string} Key of the form `subject|start`, or '' for a non-object.
+ * @example
+ * calendarMeetingKey({ subject: 'Standup', start: '2026-05-28T09:00' })
+ *   // → 'Standup|2026-05-28T09:00'
+ */
+export function calendarMeetingKey(meeting) {
+  if (!meeting || typeof meeting !== 'object') return '';
+  return `${meeting.subject ?? ''}|${meeting.start ?? ''}`;
+}
+
+/**
+ * Returns true if the user has hidden this meeting for the day.
+ *
+ * Hidden meetings are stored per day as occurrence keys. Entries saved before
+ * that were bare subjects, which hid every meeting sharing a title — the whole
+ * day's standups would vanish on hiding one. Those legacy entries are still
+ * honoured so a meeting hidden earlier today stays hidden; the store is keyed by
+ * date, so they clear on their own overnight.
+ *
+ * @param {*} meeting - Meeting object from the calendar API response.
+ * @param {string[]} hiddenKeys - Stored keys for the day.
+ * @returns {boolean} True if this meeting should stay off the strip.
+ * @example
+ * isMeetingHidden({ subject: 'Standup', start: '09:00' }, ['Standup|09:00'])  // → true
+ * isMeetingHidden({ subject: 'Standup', start: '14:00' }, ['Standup|09:00'])  // → false
+ */
+export function isMeetingHidden(meeting, hiddenKeys) {
+  if (!Array.isArray(hiddenKeys) || hiddenKeys.length === 0) return false;
+  const key = calendarMeetingKey(meeting);
+  const subject = meeting && typeof meeting === 'object' ? meeting.subject : undefined;
+  return hiddenKeys.some(
+    (entry) =>
+      typeof entry === 'string' && (entry === key || (!entry.includes('|') && entry === subject))
+  );
+}
+
+/**
  * Returns true if `row` — a single object produced by `parseCSV()` — contains
  * at least the key and summary columns that `jiraParseAndRender()` expects.
  *

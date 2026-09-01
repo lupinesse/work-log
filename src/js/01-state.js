@@ -1,12 +1,5 @@
-const STORE_ENTRIES = 'wl_entries_v1';
-const STORE_TIMER = 'wl_timer_v1';
-const STORE_POMO_LOG = 'wl_pomoLog_v1';
-const STORE_CATS = 'wl_cats_v1';
-const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
-const STORE_LOGNOTES = 'wl_lognotes_v1';
-const STORE_TRACKERS = 'wl_trackers_v1';
-const STORE_MIGRATION = 'wl_migration_v1';
-const STORE_LOCATION = 'wl_location_v1';
+// STORE_* key constants are defined in app-constants.js (a leaf ES module
+// imported at the top of the built bundle), not here.
 
 // Lowercase task texts the user has dismissed from the recent-tasks list
 const qpHidden = (() => {
@@ -21,40 +14,8 @@ function saveQpHidden() {
   localStorage.setItem(STORE_QP_HIDDEN, JSON.stringify([...qpHidden]));
 }
 
-const DEFAULT_CATS = [
-  { id: 'work', label: 'work', color: '#378ADD' },
-  { id: 'meeting', label: 'meeting', color: '#7EC8E3' },
-  { id: 'focus', label: 'deep focus', color: '#1D9E75' },
-  { id: 'break', label: 'break', color: '#BA7517' },
-  { id: 'other', label: 'other', color: '#888780' },
-];
-const CUSTOM_PALETTE = [
-  '#7B61FF',
-  '#E67E22',
-  '#0d9488',
-  '#3F51B5',
-  '#16A085',
-  '#9B59B6',
-  '#F39C12',
-  '#00BCD4',
-  '#27AE60',
-  '#E91E63',
-  '#FF5722',
-  '#2ECC71',
-  '#C0392B',
-  '#1E88E5',
-  '#43A047',
-  '#FB8C00',
-  '#8E24AA',
-  '#039BE5',
-  '#6D4C41',
-  '#00897B',
-  '#F4511E',
-  '#D81B60',
-  '#546E7A',
-  '#FDD835',
-  '#5E35B1',
-];
+// DEFAULT_CATS and CUSTOM_PALETTE are defined in app-constants.js (a leaf
+// ES module imported at the top of the built bundle), not here.
 
 /**
  * Returns the next visually distinct colour from the palette for a new category.
@@ -90,20 +51,18 @@ function createCategory(rawLabel) {
   return category;
 }
 
-// eslint-disable-next-line prefer-const -- reassigned by 04-render.js, 05-entries.js, 07-lifecycle.js
+// eslint-disable-next-line prefer-const -- reassigned by 04c-render-timeline.js, 05-entries.js, 07-lifecycle.js, and others
 let viewDate = new Date();
-// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04-render.js
+// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04d-render-quickpick.js
 let selectedTag = 'work';
 let logNotes = [];
 // eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
 let trackers = [];
 let entries = [];
 let activeTimer = null;
-// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04-render.js
+// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04c-render-timeline.js
 let timerInterval = null;
 let categories = [...DEFAULT_CATS];
-// eslint-disable-next-line prefer-const -- reassigned by 04-render.js
-let chartMode = 'task';
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
 
@@ -189,6 +148,53 @@ function saveLogNotes() {
   localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
 }
 
+// Reference to the currently-shown save-failure banner, or null when hidden.
+let saveFailBanner = null;
+
+/**
+ * Shows a persistent, dismissible banner warning that saving to localStorage
+ * is failing (e.g. quota exceeded), with a button to export a backup on the
+ * spot. Idempotent — a second failed save while the banner is already up
+ * does nothing, so repeat failures don't spam duplicate banners.
+ */
+function showSaveFailureBanner() {
+  if (saveFailBanner) return;
+
+  const banner = document.createElement('div');
+  banner.className = 'save-fail-banner';
+  banner.id = 'saveFailBanner';
+  banner.setAttribute('role', 'alert');
+
+  const msg = document.createElement('span');
+  msg.className = 'save-fail-banner__msg';
+  msg.textContent = '⚠ Saving failed — your data may not persist. Export a backup now.';
+
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'save-fail-banner__action';
+  exportBtn.textContent = 'Export backup';
+  exportBtn.addEventListener('click', () => exportBackup());
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
+  dismissBtn.className = 'save-fail-banner__dismiss';
+  dismissBtn.setAttribute('aria-label', 'Dismiss saving-failed warning');
+  dismissBtn.textContent = '×';
+  dismissBtn.addEventListener('click', () => hideSaveFailureBanner());
+
+  banner.appendChild(msg);
+  banner.appendChild(exportBtn);
+  banner.appendChild(dismissBtn);
+  document.body.prepend(banner);
+  saveFailBanner = banner;
+}
+
+/** Removes the save-failure banner, if one is currently shown. */
+function hideSaveFailureBanner() {
+  saveFailBanner?.remove();
+  saveFailBanner = null;
+}
+
 /**
  * Persists entries, active timer, and categories to localStorage.
  * Refuses to overwrite existing non-empty data with an empty array to guard against
@@ -198,6 +204,12 @@ function saveLogNotes() {
  * data means save() was called before load() finished (e.g. a race during init),
  * not that the user intentionally deleted everything. Intentional clearing goes
  * through a dedicated wipe path that bypasses this guard.
+ *
+ * If localStorage.setItem throws (e.g. QuotaExceededError), the failure is
+ * caught so it never propagates to save()'s many callers — silently losing
+ * data with no signal to the user is worse than a caught, logged, and
+ * surfaced failure. A persistent banner tells the user to export a backup;
+ * it clears itself automatically the next time a save() call succeeds.
  */
 function save() {
   // Never overwrite real data with empty arrays
@@ -206,7 +218,13 @@ function save() {
     wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
     return;
   }
-  localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
-  localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
-  localStorage.setItem(STORE_CATS, JSON.stringify(categories));
+  try {
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
+    localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
+    localStorage.setItem(STORE_CATS, JSON.stringify(categories));
+    hideSaveFailureBanner();
+  } catch (err) {
+    wlLog.error('save: localStorage.setItem failed — data is not persisting', err);
+    showSaveFailureBanner();
+  }
 }

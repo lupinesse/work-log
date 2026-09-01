@@ -2,6 +2,20 @@ import js from '@eslint/js';
 import globals from 'globals';
 import security from 'eslint-plugin-security';
 
+// Flags a new single-letter arrow-function parameter, e.g. `(a) => a.x`.
+// Doesn't touch the ~294 existing instances across src/js/ (severity 'warn',
+// not 'error' — retroactively failing lint on unrelated pre-existing code
+// isn't this rule's job) or arrow functions with more than one parameter,
+// where a short name in a `.map`/`.reduce`/`.sort` comparator chain reads
+// fine. Flagged as unaddressed across seven consecutive weekly QA reviews;
+// this is the "stop the pile from growing" fix those reviews recommended,
+// not a bulk rename.
+const NO_SINGLE_LETTER_ARROW_PARAM = {
+  selector: 'ArrowFunctionExpression[params.length=1] > Identifier.params[name=/^[a-z]$/]',
+  message:
+    'Single-letter arrow-function parameter — use an informative name (CLAUDE.md: "Names are informative, concise, and explicit — no cryptic abbreviations").',
+};
+
 export default [
   js.configs.recommended,
   security.configs.recommended,
@@ -39,13 +53,19 @@ export default [
     },
   },
 
-  // Extracted ES-module files — logger.js and the pure-fns barrel plus its
-  // pure-fns-*.js sub-modules use 'export' syntax and are imported directly by
-  // unit tests. They run in the browser context.
+  // Extracted ES-module files — logger.js, app-constants.js, date-labels.js,
+  // and the pure-fns barrel plus its pure-fns-*.js sub-modules use 'export'
+  // syntax and are imported directly by unit tests. They run in the browser
+  // context.
   // detect-object-injection: bracket-notation keys are internal constants,
   // never from untrusted external input.
   {
-    files: ['src/js/logger.js', 'src/js/pure-fns*.js'],
+    files: [
+      'src/js/logger.js',
+      'src/js/app-constants.js',
+      'src/js/date-labels.js',
+      'src/js/pure-fns*.js',
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -57,6 +77,7 @@ export default [
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-object-injection': 'off',
+      'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
 
@@ -75,7 +96,12 @@ export default [
   // untrusted external input at that point.
   {
     files: ['src/js/*.js'],
-    ignores: ['src/js/logger.js', 'src/js/pure-fns*.js'],
+    ignores: [
+      'src/js/logger.js',
+      'src/js/app-constants.js',
+      'src/js/date-labels.js',
+      'src/js/pure-fns*.js',
+    ],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -90,6 +116,29 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-object-injection': 'off',
+      'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
+    },
+  },
+
+  // Workstation tooling — ES modules run by hand via `npm run`, not by CI.
+  // scripts/session-guard.mjs and its lib guard against concurrent sessions
+  // sharing this checkout (#268). They use Node globals (process, console).
+  // detect-non-literal-fs-filename: lock paths are built from the git common
+  // directory and a sanitised session id, never from untrusted input.
+  // detect-object-injection: the only bracket lookup is a static escape table
+  // keyed by a single character matched against that table first.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
+      'security/detect-non-literal-fs-filename': 'off',
       'security/detect-object-injection': 'off',
     },
   },

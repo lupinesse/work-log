@@ -12,7 +12,7 @@ recorded" requirement of the UK Government Higher QA checklist.
 
 Assessed against: [Best Practice and Impact — Higher QA checklist](https://best-practice-and-impact.github.io/qa-of-code-guidance/checklist_higher.html)
 
-Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md`.
+Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md` (historical — this file was deleted 2026-08-15 as stale per issue #335; its recommendations had all since been implemented and superseded by `ARCHITECTURE.md`, `CONTRIBUTING.md`, and `src/js/logger.js`).
 
 | Checklist item | Status | Evidence |
 |---|---|---|
@@ -79,14 +79,14 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 | Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **282 Playwright tests** across 43 sections |
 | Total test count | ✅ Pass | **711 tests** (429 unit + 282 smoke); up from 344 at v1.8.4 |
 
-### v1.9.0+ delta (as of 2026-08-13)
+### v1.9.0+ delta (as of 2026-09-01)
 
 | Checklist item | Status | Evidence |
 |---|---|---|
-| Core functionality unit tested | ✅ Pass | `test/unit.mjs` — **634 tests across 98 suites**, 0 failures (up from 582/92 as of 2026-08-03) |
-| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **320 Playwright tests** as of 2026-06-26, 0 failures; not re-run for this update (sandbox has no matching browser build to verify against) — carried forward as the last-verified count |
-| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **248 tests across 50 suites**, 0 failures (up from 171/32 as of 2026-08-03, driven mainly by the new commitlint and actionlint self-test suites) |
-| Total test count | ✅ Pass | **1,202 tests** (634 unit + 320 smoke + 248 CI-scripts); up from 1,073 as of 2026-08-03 |
+| Core functionality unit tested | ✅ Pass | `test/unit/*.test.mjs` — **698 tests across 112 suites**, 0 failures (up from 634/98 as of 2026-08-13) |
+| Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **320 Playwright tests**, 0 failures; locally re-verifiable via the `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` escape hatch added in v1.9.2, no longer dependent on a sandbox's pre-provisioned browser build matching Playwright's pinned version |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **324 tests across 68 suites**, 0 failures (up from 248/50 as of 2026-08-13) |
+| Total test count | ✅ Pass | **1,342 tests** (698 unit + 320 smoke + 324 CI-scripts); up from 1,215 as of 2026-08-17 |
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
 | No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |

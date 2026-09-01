@@ -447,6 +447,7 @@
     <div style="display:flex;gap:8px;align-items:center">
       <button class="expiry-btn" id="mergeBackupBtn" title="Merge entries from a backup made on another machine">⇣ merge backup</button>
       <button class="expiry-btn" id="expiryBtn" aria-haspopup="dialog" title="Edit iteration expiry dates">📅 iterations</button>
+      <button class="expiry-btn" id="epicsBtn" aria-haspopup="dialog" title="Archive unused epics, or restore an archived one">🗂 epics</button>
       <button class="expiry-btn" id="gapReportBtn" aria-haspopup="dialog" title="Entries missing a proof link or note this week">🔍 gap report</button>
       <button class="expiry-btn" id="weeklyReportBtn" aria-haspopup="dialog" title="Copyable weekly status-report draft, grouped by ticket">📝 weekly report</button>
       <button class="eod-btn" id="eodBtn">🌙 end the day</button>
@@ -464,6 +465,20 @@
     <div class="expiry-footer">
       <button class="eod-close" id="expiryCancel">Cancel</button>
       <button class="eod-close" id="expirySave" style="background:var(--bg3)">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Epic archive manager modal — the only reachable home for tidy/restore.
+     The legacy #tagRow manage strip is display:none, so these controls live here. -->
+<div class="expiry-overlay" id="epicsOverlay" role="dialog" aria-modal="true" aria-labelledby="epicsModalTitle">
+  <div class="expiry-modal">
+    <div class="expiry-modal-title" id="epicsModalTitle">🗂 Epics</div>
+    <div class="expiry-modal-sub" id="epicsModalDesc">Archiving hides an epic from the pickers but never changes past log entries — they keep their label and colour. Restore one at any time.</div>
+    <div class="epics-body" id="epicsManagerBody"></div>
+    <div class="expiry-footer">
+      <button class="eod-close" id="epicsTidyBtn">🧹 Archive unused</button>
+      <button class="eod-close" id="epicsClose" style="background:var(--bg3)">Close</button>
     </div>
   </div>
 </div>
