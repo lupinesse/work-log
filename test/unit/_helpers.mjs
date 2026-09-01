@@ -53,7 +53,13 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  */
 export function loadPureFnsScriptSource() {
   return (
-    ['pure-fns-format.js', 'pure-fns-validate.js', 'pure-fns-tasks.js', 'pure-fns-export.js']
+    [
+      'pure-fns-format.js',
+      'pure-fns-validate.js',
+      'pure-fns-tasks.js',
+      'pure-fns-export.js',
+      'pure-fns-epics.js',
+    ]
       .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
       .join('\n')
       .replace(/^import\s[^;]*;\s*$/gm, '') // single-line imports only; all sub-module imports are single-line

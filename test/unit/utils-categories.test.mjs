@@ -31,6 +31,12 @@ function loadTagRowSandbox(overrides = {}) {
         value: '',
         innerHTML: '',
         _listeners: {},
+        _classes: new Set(),
+        classList: {
+          add: (cls) => elements.get(id)._classes.add(cls),
+          remove: (cls) => elements.get(id)._classes.delete(cls),
+          contains: (cls) => elements.get(id)._classes.has(cls),
+        },
         focus: () => {},
         select: () => {},
         addEventListener: (type, handler) => {
@@ -49,6 +55,10 @@ function loadTagRowSandbox(overrides = {}) {
     categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
     selectedTag: 'work',
     planTasks: [],
+    entries: [],
+    // tidyStaleEpics() gates on confirm(); tests override these to drive the
+    // accept / decline paths and to capture the message shown to the user.
+    window: { confirm: () => true, alert: () => {} },
     save: () => {},
     savePlan: () => {},
     render: () => {},
@@ -175,5 +185,253 @@ describe('viewEntries — sorts by start time (regression)', () => {
       result.map((e) => e.id),
       ['a']
     );
+  });
+});
+
+describe('epics modal — archive and restore', () => {
+  const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
+  const FRESH = { id: 'cat_fresh', label: 'AITO-222: Live epic', color: '#1D9E75' };
+
+  // Local noon, so dk() — which reads local calendar components — reports
+  // 2026-08-21 in every timezone the suite might run in.
+  const TODAY_MS = new Date(2026, 7, 21, 12, 0, 0).getTime();
+
+  /**
+   * Builds a `Date` replacement whose argument-less form is pinned to
+   * `fixedMs`, leaving `new Date(value)` and the static helpers untouched so
+   * the cutoff arithmetic in pure-fns-epics.js still works.
+   *
+   * The code under test runs in its own realm (`vm.createContext`), and
+   * `mock.timers` patches only the test realm's globals — so it never reached
+   * the sandbox and `tidyStaleEpics()` silently read the real clock. Injecting
+   * the clock as a sandbox global is what actually pins it (regression: the
+   * suite passed only on 2026-08-21, the day it was written).
+   * @param {number} fixedMs - The instant to report as "now", in epoch ms.
+   * @returns {typeof Date} A Date subclass to install as the sandbox's `Date`.
+   */
+  function fixedDateAt(fixedMs) {
+    return class FixedDate extends Date {
+      constructor(...args) {
+        if (args.length === 0) super(fixedMs);
+        else super(...args);
+      }
+
+      static now() {
+        return fixedMs;
+      }
+    };
+  }
+
+  /**
+   * Builds a sandbox holding one built-in, one recently used and one long-idle
+   * epic, with today pinned inside the sandbox realm so the 21-day window is
+   * deterministic. The epics modal is wired up ready to drive.
+   * @param {Object} [overrides] - Extra sandbox properties.
+   * @returns {Object} The populated sandbox.
+   */
+  function staleSandbox(overrides = {}) {
+    const sandbox = loadTagRowSandbox({
+      Date: fixedDateAt(TODAY_MS),
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }, { ...STALE }],
+      entries: [{ id: 'e1', text: 'live work', tag: FRESH.id, date: '2026-08-20' }],
+      planTasks: [],
+      ...overrides,
+    });
+    sandbox.bindEpicsManager();
+    return sandbox;
+  }
+
+  /**
+   * Builds a sandbox whose only non-built-in epic is already archived, with
+   * the modal wired and opened so its restore rows are rendered.
+   * @param {Object} [overrides] - Extra sandbox properties.
+   * @returns {Object} The populated sandbox.
+   */
+  function archivedSandbox(overrides = {}) {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+      ...overrides,
+    });
+    sandbox.bindEpicsManager();
+    sandbox._elements.get('epicsBtn')._listeners.click();
+    return sandbox;
+  }
+
+  it('omits an archived epic from the dropdown but keeps it resolvable for history', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+    });
+    sandbox.renderTagRow();
+    const html = sandbox._elements.get('tagRow').innerHTML;
+    assert.ok(!html.includes('AITO-111'), 'archived epic is not offered in the picker');
+    assert.equal(
+      sandbox.getCatLabel(STALE.id),
+      STALE.label,
+      'label still resolves for old entries'
+    );
+    assert.equal(sandbox.getCatColor(STALE.id), STALE.color, 'colour still resolves too');
+  });
+
+  it('keeps the selected epic in the dropdown even once archived', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+      selectedTag: STALE.id,
+    });
+    sandbox.renderTagRow();
+    assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
+  });
+
+  it('opens the modal and lists each archived epic with a restore button', () => {
+    const sandbox = archivedSandbox();
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'), 'the overlay is shown');
+    const html = sandbox._elements.get('epicsManagerBody').innerHTML;
+    assert.ok(html.includes('AITO-111'), 'the archived epic is listed');
+    assert.ok(html.includes('id="epicRestore-0"'), 'it has an index-keyed restore button');
+  });
+
+  it('shows an empty state when no epic is archived', () => {
+    const sandbox = loadTagRowSandbox();
+    sandbox.bindEpicsManager();
+    sandbox._elements.get('epicsBtn')._listeners.click();
+    assert.ok(sandbox._elements.get('epicsManagerBody').innerHTML.includes('No archived epics'));
+  });
+
+  it('escapes an archived epic label instead of rendering it as markup', () => {
+    const sandbox = archivedSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: '"><img src=x onerror=alert(1)>', color: '#E8A33D', archived: true },
+      ],
+    });
+    const html = sandbox._elements.get('epicsManagerBody').innerHTML;
+    assert.ok(!html.includes('<img'), 'the label never reaches the markup as a tag');
+    assert.ok(html.includes('&lt;img'), 'it is escaped instead');
+  });
+
+  it('archives only the idle epic when tidy is confirmed', () => {
+    const saves = [];
+    const sandbox = staleSandbox({ save: () => saves.push(true) });
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
+
+    const byId = Object.fromEntries(sandbox.categories.map((c) => [c.id, c]));
+    assert.equal(byId[STALE.id].archived, true, 'idle epic is archived');
+    assert.equal(byId[FRESH.id].archived, undefined, 'recently used epic is untouched');
+    assert.equal(byId.work.archived, undefined, 'built-in epic is never archived');
+    assert.equal(sandbox.categories.length, 3, 'no record is deleted');
+    assert.equal(saves.length, 1, 'the change is persisted once');
+  });
+
+  it('leaves every epic alone when the user declines the confirm', () => {
+    const sandbox = staleSandbox({ window: { confirm: () => false, alert: () => {} } });
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
+    assert.ok(sandbox.categories.every((c) => !c.archived));
+  });
+
+  it('alerts instead of archiving when nothing is stale', () => {
+    const alerts = [];
+    const sandbox = staleSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }, { ...FRESH }],
+      window: { confirm: () => true, alert: (msg) => alerts.push(msg) },
+    });
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
+    assert.equal(alerts.length, 1);
+    assert.ok(alerts[0].includes('2026-08-01'), 'the alert names the cutoff date');
+    assert.ok(sandbox.categories.every((c) => !c.archived));
+  });
+
+  it('restores an archived epic back into the pickers', () => {
+    const saves = [];
+    const sandbox = archivedSandbox({ save: () => saves.push(true) });
+    sandbox._elements.get('epicRestore-0')._listeners.click();
+
+    const restored = sandbox.categories.find((c) => c.id === STALE.id);
+    assert.equal('archived' in restored, false, 'the archived flag is cleared');
+    assert.equal(saves.length, 1, 'the restore is persisted');
+    sandbox.renderTagRow();
+    assert.ok(
+      sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'),
+      'the epic is offered in the picker again'
+    );
+  });
+
+  it('archived epics stay out of the pickers until restored (round trip)', () => {
+    const sandbox = staleSandbox();
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
+    sandbox.renderTagRow();
+    assert.ok(!sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
+
+    sandbox._elements.get('epicRestore-0')._listeners.click();
+    sandbox.renderTagRow();
+    assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
+  });
+});
+
+describe('epics modal — dismissal', () => {
+  const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
+
+  /**
+   * Builds a sandbox with one archived epic, the modal wired and opened, and
+   * focus calls on the open button recorded so the tests can assert that
+   * dismissal hands focus back.
+   * @returns {{sandbox: Object, focusCalls: number[]}} The sandbox and a
+   *   one-element counter array holding how many times #epicsBtn was focused.
+   */
+  function openedSandbox() {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+    });
+    sandbox.bindEpicsManager();
+    const openBtn = sandbox._elements.get('epicsBtn');
+    const focusCalls = [0];
+    openBtn.focus = () => {
+      focusCalls[0] += 1;
+    };
+    openBtn._listeners.click();
+    return { sandbox, focusCalls };
+  }
+
+  it('closes on the Close button and returns focus to the toolbar button', () => {
+    const { sandbox, focusCalls } = openedSandbox();
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'));
+
+    sandbox._elements.get('epicsClose')._listeners.click();
+    assert.ok(!sandbox._elements.get('epicsOverlay')._classes.has('show'), 'the overlay is hidden');
+    assert.equal(focusCalls[0], 1, 'focus returns to the button that opened it');
+  });
+
+  it('closes on Escape', () => {
+    const { sandbox, focusCalls } = openedSandbox();
+    sandbox._elements.get('epicsOverlay')._listeners.keydown({ key: 'Escape' });
+    assert.ok(!sandbox._elements.get('epicsOverlay')._classes.has('show'));
+    assert.equal(focusCalls[0], 1);
+  });
+
+  it('ignores other keys', () => {
+    const { sandbox } = openedSandbox();
+    sandbox._elements.get('epicsOverlay')._listeners.keydown({ key: 'a' });
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'), 'still open');
+  });
+
+  it('closes on a backdrop click but not on a click inside the modal', () => {
+    const { sandbox } = openedSandbox();
+    const overlay = sandbox._elements.get('epicsOverlay');
+
+    overlay._listeners.click({ target: sandbox._elements.get('epicsManagerBody') });
+    assert.ok(overlay._classes.has('show'), 'a click inside the modal does not dismiss it');
+
+    overlay._listeners.click({ target: overlay });
+    assert.ok(!overlay._classes.has('show'), 'a click on the backdrop dismisses it');
   });
 });
