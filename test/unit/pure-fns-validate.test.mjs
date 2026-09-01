@@ -16,6 +16,9 @@ import {
   filterNewBackupEntries,
   validWeatherResponse,
   validCalendarMeeting,
+  normalizeCalendarMeeting,
+  calendarMeetingKey,
+  isMeetingHidden,
   validJiraCsvRow,
 } from '../../src/js/pure-fns.js';
 
@@ -301,6 +304,74 @@ describe('validCalendarMeeting', () => {
     ));
   it('rejects a plain string (not an object)', () =>
     assert.equal(validCalendarMeeting('Standup'), false));
+});
+
+describe('normalizeCalendarMeeting', () => {
+  const base = { subject: 'Standup', start: '2026-05-28T09:00', end: '2026-05-28T09:30' };
+
+  it('leaves a normal subject unchanged', () =>
+    assert.equal(normalizeCalendarMeeting(base).subject, 'Standup'));
+  it('names an untitled meeting so it survives validation', () =>
+    assert.equal(normalizeCalendarMeeting({ ...base, subject: null }).subject, '(no title)'));
+  it('names a meeting with a missing subject', () =>
+    assert.equal(normalizeCalendarMeeting({ start: 'a', end: 'b' }).subject, '(no title)'));
+  it('names a meeting with a blank subject', () =>
+    assert.equal(normalizeCalendarMeeting({ ...base, subject: '   ' }).subject, '(no title)'));
+  it('names a meeting with a non-string subject', () =>
+    assert.equal(normalizeCalendarMeeting({ ...base, subject: 42 }).subject, '(no title)'));
+  it('trims surrounding whitespace', () =>
+    assert.equal(normalizeCalendarMeeting({ ...base, subject: '  Standup  ' }).subject, 'Standup'));
+  it('keeps the other fields', () => {
+    const normalized = normalizeCalendarMeeting({ ...base, subject: null, joinUrl: 'https://x' });
+    assert.equal(normalized.start, base.start);
+    assert.equal(normalized.end, base.end);
+    assert.equal(normalized.joinUrl, 'https://x');
+  });
+  it('does not modify the input', () => {
+    const input = { ...base, subject: null };
+    normalizeCalendarMeeting(input);
+    assert.equal(input.subject, null);
+  });
+  it('passes a normalised untitled meeting through the validator', () =>
+    assert.ok(validCalendarMeeting(normalizeCalendarMeeting({ ...base, subject: null }))));
+  it('returns null unchanged', () => assert.equal(normalizeCalendarMeeting(null), null));
+  it('returns a non-object unchanged', () => assert.equal(normalizeCalendarMeeting('x'), 'x'));
+});
+
+describe('calendarMeetingKey', () => {
+  it('pairs subject and start', () =>
+    assert.equal(
+      calendarMeetingKey({ subject: 'Standup', start: '2026-05-28T09:00' }),
+      'Standup|2026-05-28T09:00'
+    ));
+  it('separates two occurrences of one recurring meeting', () =>
+    assert.notEqual(
+      calendarMeetingKey({ subject: 'Standup', start: '2026-05-28T09:00' }),
+      calendarMeetingKey({ subject: 'Standup', start: '2026-05-28T14:00' })
+    ));
+  it('tolerates a missing start', () =>
+    assert.equal(calendarMeetingKey({ subject: 'Standup' }), 'Standup|'));
+  it('returns an empty string for null', () => assert.equal(calendarMeetingKey(null), ''));
+});
+
+describe('isMeetingHidden', () => {
+  const standupMorning = { subject: 'Standup', start: '2026-05-28T09:00' };
+  const standupAfternoon = { subject: 'Standup', start: '2026-05-28T14:00' };
+
+  it('hides the meeting whose key was stored', () =>
+    assert.ok(isMeetingHidden(standupMorning, ['Standup|2026-05-28T09:00'])));
+  it('leaves another occurrence of the same meeting visible', () =>
+    assert.equal(isMeetingHidden(standupAfternoon, ['Standup|2026-05-28T09:00']), false));
+  it('leaves an unrelated meeting visible', () =>
+    assert.equal(isMeetingHidden({ subject: 'Retro', start: 'x' }, ['Standup|y']), false));
+  it('still honours a legacy subject-only entry', () =>
+    assert.ok(isMeetingHidden(standupMorning, ['Standup'])));
+  it('returns false for an empty list', () =>
+    assert.equal(isMeetingHidden(standupMorning, []), false));
+  it('returns false when the stored value is not an array', () =>
+    assert.equal(isMeetingHidden(standupMorning, null), false));
+  it('ignores non-string entries', () =>
+    assert.equal(isMeetingHidden(standupMorning, [42, null]), false));
 });
 
 describe('validJiraCsvRow', () => {

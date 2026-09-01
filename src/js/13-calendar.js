@@ -3,6 +3,54 @@
 // CAL_ACCOUNT_LABELS is defined in 00-config.js
 let _calMeetingsCache = null;
 
+/** localStorage key prefix for the meetings a user has hidden on a given day. */
+const HIDDEN_MEETINGS_PREFIX = 'wl_hidden_meetings_';
+
+/**
+ * Reads the occurrence keys of the meetings hidden for one day.
+ * @param {string} dayKey - Day key from `dk()`, e.g. '2026-09-01'.
+ * @returns {string[]} Stored keys, or an empty array if none are stored.
+ */
+function readHiddenMeetingKeys(dayKey) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(HIDDEN_MEETINGS_PREFIX + dayKey) || '[]');
+    if (Array.isArray(stored)) return stored;
+    wlLog.warn('readHiddenMeetingKeys: stored value is not an array — ignoring it', stored);
+    return [];
+  } catch (err) {
+    wlLog.warn('readHiddenMeetingKeys: stored value is not valid JSON — ignoring it', err);
+    return [];
+  }
+}
+
+/**
+ * Hides one meeting for the rest of the day.
+ *
+ * Stores the occurrence key rather than the subject, so hiding one instance of a
+ * recurring meeting leaves that day's other instances on the strip.
+ *
+ * @param {string} dayKey - Day key from `dk()`.
+ * @param {{subject: string, start: string}} meeting - The meeting to hide.
+ * @returns {void}
+ */
+function hideMeetingForDay(dayKey, meeting) {
+  const key = calendarMeetingKey(meeting);
+  const keys = readHiddenMeetingKeys(dayKey);
+  if (keys.includes(key)) return;
+  keys.push(key);
+  localStorage.setItem(HIDDEN_MEETINGS_PREFIX + dayKey, JSON.stringify(keys));
+}
+
+/**
+ * Drops the meetings the user has hidden today.
+ * @param {Array<Object>} meetings - Validated meetings from the calendar API.
+ * @returns {Array<Object>} The meetings still to be shown.
+ */
+function visibleMeetings(meetings) {
+  const hidden = readHiddenMeetingKeys(dk(new Date()));
+  return meetings.filter((meeting) => !isMeetingHidden(meeting, hidden));
+}
+
 /**
  * Resolves a human-readable account label for an Outlook calendar account.
  * The PowerShell server sends the raw `DisplayName` which may be an email
@@ -147,30 +195,16 @@ function renderCalStrip(meetings) {
 
   // Wire up delete buttons
   const todayKey = dk(new Date());
-  const hiddenMeetings = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (err) {
-      return [];
-    }
-  })();
-
   el.querySelectorAll('.cal-delete-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.meetingIdx);
-      const meeting = meetings[idx];
-      if (meeting) {
-        // Add to hidden list
-        if (!hiddenMeetings.includes(meeting.subject)) {
-          hiddenMeetings.push(meeting.subject);
-          localStorage.setItem('wl_hidden_meetings_' + todayKey, JSON.stringify(hiddenMeetings));
-        }
-        // Remove from display
-        btn.closest('.cal-meeting').style.opacity = '0.5';
-        btn.closest('.cal-meeting').style.textDecoration = 'line-through';
-        btn.disabled = true;
-        btn.textContent = '✓';
-      }
+      const meeting = meetings[parseInt(btn.dataset.meetingIdx, 10)];
+      if (!meeting) return;
+      hideMeetingForDay(todayKey, meeting);
+      // Show it as struck through until the next render drops it entirely
+      btn.closest('.cal-meeting').style.opacity = '0.5';
+      btn.closest('.cal-meeting').style.textDecoration = 'line-through';
+      btn.disabled = true;
+      btn.textContent = '✓';
     });
   });
 
@@ -209,28 +243,19 @@ async function fetchAndRenderCalendar() {
       wlLog.warn('fetchAndRenderCalendar: response is not an array — skipping render', data);
       return;
     }
-    const invalidMeetings = data.filter((m) => !validCalendarMeeting(m));
+    // Normalise first: an untitled Outlook appointment arrives with no subject,
+    // which the validator would reject even though its times are perfectly good.
+    const meetings = data.map(normalizeCalendarMeeting);
+    const invalidMeetings = meetings.filter((m) => !validCalendarMeeting(m));
     if (invalidMeetings.length) {
       wlLog.warn(
         `fetchAndRenderCalendar: dropped ${invalidMeetings.length} malformed meeting(s)`,
         invalidMeetings
       );
     }
-    const validMeetings = data.filter(validCalendarMeeting);
+    const validMeetings = meetings.filter(validCalendarMeeting);
     _calMeetingsCache = validMeetings;
-
-    // Filter out hidden meetings for today
-    const todayKey = dk(new Date());
-    const hiddenMeetings = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-      } catch (err) {
-        return [];
-      }
-    })();
-    const filteredData = validMeetings.filter((m) => !hiddenMeetings.includes(m.subject));
-
-    renderCalStrip(filteredData);
+    renderCalStrip(visibleMeetings(validMeetings));
   } catch (err) {
     console.warn('[wl] Calendar unavailable:', err.message);
     const el = document.getElementById('calMeetings');
@@ -262,15 +287,6 @@ function getSeenEnded() {
  */
 function setSeenEnded(s) {
   localStorage.setItem(STORE_SEEN_ENDED, JSON.stringify([...s]));
-}
-
-/**
- * Returns a stable string key for a meeting used to deduplicate bridge banners.
- * @param {{subject: string, start: string}} m - Meeting object.
- * @returns {string}
- */
-function getMeetingKey(m) {
-  return `${m.subject}|${m.start}`;
 }
 
 const bannerQueue = [];
@@ -411,22 +427,14 @@ fetchAndRenderCalendar();
 setInterval(fetchAndRenderCalendar, 10 * 60 * 1000);
 setInterval(() => {
   if (!_calMeetingsCache) return;
-  const todayKey = dk(new Date());
-  const hiddenMeetings = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('wl_hidden_meetings_' + todayKey) || '[]');
-    } catch (err) {
-      return [];
-    }
-  })();
-  const filteredData = _calMeetingsCache.filter((m) => !hiddenMeetings.includes(m.subject));
+  const filteredData = visibleMeetings(_calMeetingsCache);
   renderCalStrip(filteredData);
 
   // Detect newly-ended meetings and offer a bridge
   const seen = getSeenEnded();
   const now = new Date();
   filteredData.forEach((m) => {
-    const key = getMeetingKey(m);
+    const key = calendarMeetingKey(m);
     const endTime = new Date(m.end);
     if (endTime > now || seen.has(key)) return;
     seen.add(key);
@@ -465,6 +473,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     renderPlan,
     renderCompleted,
     renderCalStrip,
+    calendarMeetingKey,
+    isMeetingHidden,
     renderParked,
     openEodModal,
     parkedThoughts,

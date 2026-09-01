@@ -502,7 +502,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (537 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -521,8 +521,19 @@ upcoming    → Scheduled for future date
 
 **Hidden Meetings** (localStorage):
 ```
-wl_hidden_meetings_YYYY-MM-DD → [subject1, subject2, ...]
+wl_hidden_meetings_YYYY-MM-DD → ["subject|start", ...]
 ```
+Keyed per occurrence, so hiding one instance of a recurring meeting leaves the
+day's other instances on the strip. Entries written before this were bare
+subjects and are still honoured; the store is keyed by date, so they expire on
+their own.
+
+**Collection rules** (`server-helpers.ps1`, exercised by `test/calendar.Tests.ps1`):
+the decisions that determine which meetings arrive — day overlap, when a folder
+scan may stop early, dedup identity, subject and Teams-link normalisation, the
+recursive calendar-folder walk, and the recurring-occurrence probe — live in the
+shared helpers file rather than inside `start-server.ps1`'s COM runspace, so they
+are unit-tested with PSCustomObject stand-ins and need no Outlook install.
 
 **Account Label Mapping** (configured in `src/js/00-config.js`):
 ```javascript

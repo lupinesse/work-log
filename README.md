@@ -66,7 +66,12 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Pomodoro timer** — 5 / 10 / 20 min ring timer with session log; visible in focus mode
 
 ### Planning
-- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link
+- **Today's meetings** — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link.
+  Every calendar in every account is read, including secondary calendars nested inside another folder, and
+  a meeting counts as today's if it overlaps today at all — so multi-day events and meetings that run past
+  midnight appear too. `✕` hides a single meeting for the rest of the day, not every meeting sharing its title.
+  If long-running recurring meetings are missing, raise `$CalendarLookBackYears` in `config.local.ps1`
+  (see `config.local.example.ps1`); `http://localhost:8080/api/calendar?debug=1` reports what the collector found.
 - **Day streak** — consecutive days with logged work
 
 ### Export & review
