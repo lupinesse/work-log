@@ -1322,6 +1322,42 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 25b. Calendar — hiding one occurrence keeps the others ─────────────────
+  // Regression: hidden meetings were stored by subject, so hiding one instance
+  // of a recurring meeting hid every instance of it that day.
+  console.log('\n25b. Calendar hide is per occurrence');
+  {
+    const page = await freshPage(ctx);
+    const meetings = await page.evaluate(() => {
+      const today = new Date();
+      const at = (hour) =>
+        new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour).toISOString();
+      const list = [
+        { subject: 'Standup', start: at(9), end: at(10) },
+        { subject: 'Standup', start: at(14), end: at(15) },
+      ];
+      window.__wl.renderCalStrip(list);
+      document.querySelectorAll('.cal-delete-btn')[0].click();
+      return list;
+    });
+    const stored = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem('wl_hidden_meetings_' + key) || '[]'),
+      dk(new Date())
+    );
+    assert(
+      'hiding a meeting stores its occurrence key, not just its subject',
+      stored.length === 1 && stored[0] === `Standup|${meetings[0].start}`,
+      JSON.stringify(stored)
+    );
+    const hiddenFlags = await page.evaluate(
+      ([list, keys]) => list.map((meeting) => window.__wl.isMeetingHidden(meeting, keys)),
+      [meetings, stored]
+    );
+    assert('the hidden occurrence stays hidden', hiddenFlags[0] === true);
+    assert('the other occurrence of the same meeting stays visible', hiddenFlags[1] === false);
+    await page.close();
+  }
+
   // ── 32. Task checkpoints ───────────────────────────────────────────────────
   console.log('\n32. Task checkpoints');
   {

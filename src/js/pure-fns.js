@@ -35,6 +35,9 @@ export {
   filterNewBackupEntries,
   validWeatherResponse,
   validCalendarMeeting,
+  normalizeCalendarMeeting,
+  calendarMeetingKey,
+  isMeetingHidden,
   validJiraCsvRow,
 } from './pure-fns-validate.js';
 
