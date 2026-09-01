@@ -71,6 +71,50 @@ function tidyStaleEpics() {
 }
 
 /**
+ * Deletes the currently selected epic after confirming with the user, unless
+ * it is a built-in (PROTECTED_CAT_IDS) — those are never offered for
+ * deletion at all, since 'work' is the hardcoded startup/reset fallback and
+ * 'other' is getCat()'s own fallback for unknown tags.
+ *
+ * Unlike tidyStaleEpics()/archiving, this is a hard delete: the category
+ * record itself is removed, not flagged. Any log entry or board task still
+ * tagged with this epic keeps that tag string, but getCat() can no longer
+ * resolve it and falls back to 'other' — permanently, since there is nothing
+ * left to restore. The confirm text says so explicitly and names how many
+ * entries/tasks would be affected, mirroring tidyStaleEpics()'s pattern of
+ * showing the user what is about to happen before it happens.
+ * @returns {boolean} True if the epic was deleted, false if blocked or the
+ *   user declined the confirm.
+ */
+function deleteSelectedEpic() {
+  if (PROTECTED_CAT_IDS.includes(selectedTag)) {
+    wlLog.warn('deleteSelectedEpic: refused to delete a built-in epic', { selectedTag });
+    return false;
+  }
+  const cat = getCat(selectedTag);
+  const usageCount =
+    entries.filter((e) => e.tag === selectedTag).length +
+    planTasks.filter((t) => t.tag === selectedTag).length;
+
+  const warning =
+    usageCount > 0
+      ? `${usageCount} log entr${usageCount === 1 ? 'y' : 'ies'}/task(s) tagged with it will ` +
+        `permanently fall back to "other" — this cannot be undone.`
+      : `It has no log entries or tasks tagged with it. This cannot be undone.`;
+  const proceed = window.confirm(`Delete the epic "${cat.label}"?\n\n${warning}`);
+  if (!proceed) {
+    wlLog.info('deleteSelectedEpic: user cancelled', { catId: cat.id });
+    return false;
+  }
+
+  categories = categories.filter((c) => c.id !== selectedTag);
+  selectedTag = 'work';
+  save();
+  wlLog.info('deleteSelectedEpic: deleted epic', { catId: cat.id, usageCount });
+  return true;
+}
+
+/**
  * Re-renders every surface that offers an epic picker, so an archive or
  * restore is reflected everywhere at once rather than only in the modal.
  * @returns {void}
@@ -329,11 +373,10 @@ function renderTagRow() {
   const delBtn = document.getElementById('catDelBtn');
   if (delBtn)
     delBtn.addEventListener('click', () => {
-      categories = categories.filter((c) => c.id !== selectedTag);
-      selectedTag = 'work';
-      save();
-      renderTagRow();
-      render();
+      if (deleteSelectedEpic()) {
+        renderTagRow();
+        render();
+      }
     });
 
   // Add: open
