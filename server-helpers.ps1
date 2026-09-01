@@ -685,17 +685,29 @@ function Add-RecurringOccurrence {
     if ($null -ne $masterStart) {
         $occurrence = $null
         try { $occurrence = & $Track $pattern.GetOccurrence($Day.Date.Add($masterStart.TimeOfDay)) } catch {}
-        if ($null -ne $occurrence -and (Add-MeetingForDay $occurrence $AccountKey $Day $SeenKeys $Sink)) { $added++ }
+        if ($null -ne $occurrence -and
+            (Add-MeetingForDay -Item $occurrence -AccountKey $AccountKey -Day $Day -SeenKeys $SeenKeys -Sink $Sink)) {
+            $added++
+        }
     }
 
     try {
         $exceptions = & $Track (Read-ComProperty $pattern 'Exceptions')
         foreach ($exception in $exceptions) {
-            $Diagnostics.exceptionsScanned++
-            $isDeleted = [bool](Read-ComProperty $exception 'Deleted')
-            if ($isDeleted) { continue }
-            $moved = & $Track (Read-ComProperty $exception 'AppointmentItem')
-            if ($null -ne $moved -and (Add-MeetingForDay $moved $AccountKey $Day $SeenKeys $Sink)) { $added++ }
+            # Guarded per exception rather than per collection: one unreadable
+            # entry must not hide the rest, which is the failure mode this probe
+            # exists to fix.
+            try {
+                $Diagnostics.exceptionsScanned++
+                # A deleted occurrence has no AppointmentItem to read.
+                $isDeleted = [bool](Read-ComProperty $exception 'Deleted')
+                if ($isDeleted) { continue }
+                $moved = & $Track (Read-ComProperty $exception 'AppointmentItem')
+                if ($null -ne $moved -and
+                    (Add-MeetingForDay -Item $moved -AccountKey $AccountKey -Day $Day -SeenKeys $SeenKeys -Sink $Sink)) {
+                    $added++
+                }
+            } catch { continue }
         }
     } catch { $Diagnostics.pass2Error += "Exceptions($subject): $($_.Exception.Message); " }
 

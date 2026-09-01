@@ -597,6 +597,24 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
         $dbg.pass2Error | Should Match 'Broken series'
     }
 
+    It 'keeps scanning after one exception entry blows up' {
+        # Every property read is already guarded, so the reachable throw inside the
+        # loop is the tracking callback (the live server's Add-ComRef, on a dead
+        # reference). Without a per-iteration guard that aborts the whole scan and
+        # loses the occurrences after it.
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $poison = New-MockAppointment 'Poison' ([DateTime]'2026-09-01 11:00') ([DateTime]'2026-09-01 11:30') 'S8'
+        $good   = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 14:00') ([DateTime]'2026-09-01 14:30') 'S1'
+        $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(
+            [pscustomobject]@{ Deleted = $false; AppointmentItem = $poison },
+            [pscustomobject]@{ Deleted = $false; AppointmentItem = $good }
+        )
+        $track = { param($ComObject) if ($ComObject -eq $poison) { throw 'dead COM reference' }; $ComObject }
+        Add-RecurringOccurrence -Master $master -AccountKey 'acct' -Day $day -SeenKeys $seen `
+                                -Sink $sink -Diagnostics $dbg -Track $track | Should Be 1
+        $sink[0].subject | Should Be 'Weekly 1:1'
+    }
+
     It 'counts the exceptions it scanned' {
         $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(

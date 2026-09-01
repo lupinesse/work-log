@@ -242,7 +242,8 @@ function Get-TodayMeetings {
                         $action = Get-ScanAction -Start $itemStart -End $itemEnd -Day $today -Sorted $incRecurOk
                         if ($action -eq 'stop') { break }
                         if ($null -eq $itemStart) { $dbg.unreadableItems++ }
-                        if ($action -eq 'take' -and (Add-MeetingForDay $cur $accountKey $today $seen $results)) {
+                        if ($action -eq 'take' -and
+                            (Add-MeetingForDay -Item $cur -AccountKey $accountKey -Day $today -SeenKeys $seen -Sink $results)) {
                             $dbg.pass1Count++
                         }
                         $cur = if ($useGetNext) {
@@ -285,7 +286,7 @@ function Get-TodayMeetings {
                         try {
                             $itemStart = Read-ComDate $item 'Start'
                             if ($null -eq $itemStart) { $dbg.unreadableItems++; continue }
-                            if (Add-MeetingForDay $item $accountKey $today $seen $results) {
+                            if (Add-MeetingForDay -Item $item -AccountKey $accountKey -Day $today -SeenKeys $seen -Sink $results) {
                                 $dbg.pass2Count++
                                 continue
                             }
