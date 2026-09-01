@@ -1,5 +1,6 @@
 /* ── Epic helpers ── */
 // safeCssColor() and escHtml() are defined in 00-pure-fns.js.
+// EpicCategory is declared in pure-fns-epics.js (concatenated earlier).
 
 /**
  * Returns the category object for `id`, falling back to 'other' if not found.
@@ -187,8 +188,7 @@ function bindEpicsManager() {
  * taking them as parameters, matching how the rest of this concatenated file
  * owns that state. Archive and restore are not handled here - #385 moved them
  * into the epics manager modal (renderEpicsManager/bindEpicsManager above).
- * @param {{id: string, label: string, color: string, billable?: boolean}} selCat -
- *   The currently selected epic, already colour-sanitised by getCat().
+ * @param {EpicCategory} selCat - The currently selected epic, already colour-sanitised by getCat().
  * @returns {string} HTML for the inside of #catManageRow.
  */
 function buildManageRowHtml(selCat) {

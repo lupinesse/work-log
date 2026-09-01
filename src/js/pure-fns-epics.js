@@ -32,6 +32,7 @@
  * @property {string} label - Display name.
  * @property {string} [color] - CSS colour.
  * @property {boolean} [archived] - `true` hides the epic from the pickers.
+ * @property {boolean} [billable] - Default billable flag; absent or `true` means billable.
  */
 
 /** Days of inactivity after which an epic is offered up for archiving. */
