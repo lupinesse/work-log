@@ -51,20 +51,18 @@ function createCategory(rawLabel) {
   return category;
 }
 
-// eslint-disable-next-line prefer-const -- reassigned by 04-render.js, 05-entries.js, 07-lifecycle.js
+// eslint-disable-next-line prefer-const -- reassigned by 04c-render-timeline.js, 05-entries.js, 07-lifecycle.js, and others
 let viewDate = new Date();
-// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04-render.js
+// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04d-render-quickpick.js
 let selectedTag = 'work';
 let logNotes = [];
 // eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
 let trackers = [];
 let entries = [];
 let activeTimer = null;
-// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04-render.js
+// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04c-render-timeline.js
 let timerInterval = null;
 let categories = [...DEFAULT_CATS];
-// eslint-disable-next-line prefer-const -- reassigned by 04-render.js
-let chartMode = 'task';
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
 

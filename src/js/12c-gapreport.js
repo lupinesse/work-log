@@ -8,7 +8,7 @@
  * entries are never flagged — there's nothing to bill, so nothing to prove.
  * Clicking a flagged entry jumps straight to it in the Log view with its
  * proof-link/note editor already open — see
- * buildEntryMetaHtml()/bindEntryMetaEvents() in 04-render.js for the editor
+ * buildEntryMetaHtml()/bindEntryMetaEvents() in 04a-render-entry-meta.js for the editor
  * itself (added alongside the entry.link/note fields this report reads).
  */
 
