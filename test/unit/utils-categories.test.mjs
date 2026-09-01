@@ -188,6 +188,132 @@ describe('viewEntries — sorts by start time (regression)', () => {
   });
 });
 
+describe('deleteSelectedEpic — confirm before hard delete (regression)', () => {
+  // Regression: catDelBtn used to hard-delete with zero confirmation, so one
+  // misclick silently and permanently orphaned every log entry/task tagged
+  // with that epic (they fall back to grey "other" forever, since delete —
+  // unlike tidyStaleEpics()/archive — removes the record rather than flagging
+  // it). These tests drive the real click handler end to end.
+
+  it('deletes the selected epic when the user confirms, and resets selectedTag to work', () => {
+    const saves = [];
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: 'AITO-111', color: '#E8A33D' },
+      ],
+      selectedTag: 'cat_x',
+      save: () => saves.push(true),
+      window: { confirm: () => true, alert: () => {} },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catDelBtn')._listeners.click();
+
+    assert.equal(
+      sandbox.categories.find((c) => c.id === 'cat_x'),
+      undefined,
+      'the category record is removed entirely'
+    );
+    assert.equal(sandbox.selectedTag, 'work');
+    assert.equal(saves.length, 1);
+  });
+
+  it('leaves the epic alone when the user declines the confirm', () => {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: 'AITO-111', color: '#E8A33D' },
+      ],
+      selectedTag: 'cat_x',
+      window: { confirm: () => false, alert: () => {} },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catDelBtn')._listeners.click();
+
+    assert.ok(
+      sandbox.categories.some((c) => c.id === 'cat_x'),
+      'the epic still exists'
+    );
+    assert.equal(sandbox.selectedTag, 'cat_x', 'selection is untouched');
+  });
+
+  it('names the epic and counts affected entries/tasks in the confirm text', () => {
+    let confirmText = '';
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: 'AITO-111', color: '#E8A33D' },
+      ],
+      selectedTag: 'cat_x',
+      entries: [
+        { id: 'e1', tag: 'cat_x', date: '2026-08-10' },
+        { id: 'e2', tag: 'cat_x', date: '2026-08-11' },
+        { id: 'e3', tag: 'work', date: '2026-08-11' },
+      ],
+      planTasks: [{ id: 't1', tag: 'cat_x', status: 'todo', date: '2026-08-11' }],
+      window: {
+        confirm: (msg) => {
+          confirmText = msg;
+          return false;
+        },
+        alert: () => {},
+      },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catDelBtn')._listeners.click();
+
+    assert.ok(confirmText.includes('AITO-111'), 'names the epic being deleted');
+    assert.ok(confirmText.includes('3 log entr'), 'counts 2 entries + 1 task as 3');
+    assert.ok(/cannot be undone/i.test(confirmText));
+  });
+
+  it('says an unused epic has no entries or tasks, rather than "0 log entries"', () => {
+    let confirmText = '';
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { id: 'cat_x', label: 'AITO-111', color: '#E8A33D' },
+      ],
+      selectedTag: 'cat_x',
+      window: {
+        confirm: (msg) => {
+          confirmText = msg;
+          return false;
+        },
+        alert: () => {},
+      },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catDelBtn')._listeners.click();
+
+    assert.ok(confirmText.includes('no log entries or tasks'));
+  });
+
+  it('refuses to delete a built-in epic, even if somehow selected', () => {
+    const saves = [];
+    const alerts = [];
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+      selectedTag: 'work',
+      save: () => saves.push(true),
+      window: { confirm: () => true, alert: (msg) => alerts.push(msg) },
+    });
+    sandbox.renderTagRow();
+    sandbox._elements.get('catDelBtn')._listeners.click();
+
+    assert.ok(
+      sandbox.categories.some((c) => c.id === 'work'),
+      'work is never removed'
+    );
+    assert.equal(saves.length, 0, 'nothing is persisted');
+    assert.equal(
+      alerts.length,
+      1,
+      'the user is told why, rather than the click doing nothing visible'
+    );
+    assert.ok(alerts[0].includes('Work'));
+  });
+});
 describe('epics modal — archive and restore', () => {
   const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
   const FRESH = { id: 'cat_fresh', label: 'AITO-222: Live epic', color: '#1D9E75' };
