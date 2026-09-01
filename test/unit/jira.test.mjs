@@ -112,3 +112,50 @@ describe('jiraRenderTasks', () => {
     assert.ok(!getContainerHtml().includes('background:'));
   });
 });
+
+describe('Jira import — archived epics', () => {
+  const ARCHIVED = {
+    id: 'cat_old',
+    label: 'AITO-111: Dormant epic',
+    color: '#7F77DD',
+    archived: true,
+  };
+  const TASK = { key: 'AITO-112', summary: 'Child task', status: 'todo', parentKey: 'AITO-111' };
+
+  it('previewing a CSV never mutates a matched epic (regression)', () => {
+    // jiraBuildCatMap runs while the user is still deciding what to import, and
+    // save() only runs on Import. Mutating here would either strand the change
+    // in memory or persist it on some later unrelated save.
+    const { sandbox } = loadJiraSandbox({ categories: [{ ...ARCHIVED }] });
+    sandbox.jiraBuildCatMap([{ ...TASK, parentSummary: 'Dormant epic' }]);
+    assert.equal(
+      sandbox.categories[0].archived,
+      true,
+      'the epic must still be archived after a preview'
+    );
+  });
+
+  it('jiraBuildCatMap still matches an archived epic rather than duplicating it', () => {
+    const { sandbox } = loadJiraSandbox({ categories: [{ ...ARCHIVED }] });
+    sandbox.jiraBuildCatMap([{ ...TASK, parentSummary: 'Dormant epic' }]);
+    const mapped = Object.values(sandbox.jiraCatMap)[0];
+    assert.equal(mapped.id, ARCHIVED.id);
+    assert.equal(mapped.isNew, false, 'an archived epic is reused, not recreated');
+  });
+
+  it('un-archives only the epics that actually received an imported task', () => {
+    const other = { id: 'cat_other_old', label: 'Untouched', color: '#111111', archived: true };
+    const { sandbox } = loadJiraSandbox({ categories: [{ ...ARCHIVED }, { ...other }] });
+    const restored = sandbox.unarchiveImportedCats([{ id: ARCHIVED.id }]);
+    assert.equal(restored, 1);
+    assert.equal('archived' in sandbox.categories[0], false, 'the imported-onto epic is revived');
+    assert.equal(sandbox.categories[1].archived, true, 'an unrelated archived epic is left alone');
+  });
+
+  it('is a no-op for epics that were never archived', () => {
+    const { sandbox } = loadJiraSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+    });
+    assert.equal(sandbox.unarchiveImportedCats([{ id: 'work' }, { id: 'gone' }]), 0);
+  });
+});

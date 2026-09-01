@@ -1,11 +1,12 @@
 /**
  * @file pure-fns.js
- * Barrel module for the pure-function helpers, which live in four themed leaf
+ * Barrel module for the pure-function helpers, which live in five themed leaf
  * sub-modules: pure-fns-format.js (CSS/HTML safety, date/time/duration
  * formatting, billing rounding), pure-fns-validate.js (schema, backup, and
  * external-API validators), pure-fns-tasks.js (rapid-capture grammar,
  * carry-forward status, work location), and pure-fns-export.js (billable
- * export grouping, rolling summary, backup retention). Re-exports every public
+ * export grouping, rolling summary, backup retention), and pure-fns-epics.js
+ * (epic staleness and archiving). Re-exports every public
  * symbol so existing imports of './pure-fns.js' keep working unchanged.
  */
 
@@ -70,3 +71,14 @@ export {
   buildWeeklyTicketSummary,
   formatWeeklyTicketSummaryText,
 } from './pure-fns-export.js';
+
+export {
+  EPIC_STALE_DAYS,
+  PROTECTED_CAT_IDS,
+  epicCutoffDate,
+  collectRecentlyUsedCatIds,
+  findStaleCategories,
+  pickableCategories,
+  applyEpicArchive,
+  restoreArchivedCategory,
+} from './pure-fns-epics.js';

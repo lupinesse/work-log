@@ -24,6 +24,160 @@ let addingNewCat = false;
 /** Controls whether the epic manage row (rename/delete/add) is expanded. */
 let catManageOpen = false;
 
+/**
+ * Archives every epic with no log entry and no board task in the last
+ * EPIC_STALE_DAYS days, after confirming the list with the user. Archived
+ * epics drop out of the pickers but keep their record, so historical entries
+ * still resolve their label and colour through getCat().
+ *
+ * Impure by design: it reads the module-level state the tag row already owns
+ * (categories, entries, planTasks, selectedTag) and persists through save().
+ * The decision itself lives in findStaleCategories (pure-fns-epics.js).
+ * @returns {number} How many epics were archived (0 when none were stale or the user cancelled).
+ */
+function tidyStaleEpics() {
+  const { staleIds, cutoffIso } = findStaleCategories({
+    categories,
+    entries,
+    planTasks,
+    todayIso: dk(new Date()),
+    windowDays: EPIC_STALE_DAYS,
+    selectedTag,
+  });
+  wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
+    total: categories.length,
+    stale: staleIds.length,
+    cutoffIso,
+    windowDays: EPIC_STALE_DAYS,
+  });
+  if (!staleIds.length) {
+    window.alert(`No epics to tidy — every epic has been used since ${cutoffIso}.`);
+    return 0;
+  }
+  const labels = staleIds.map((id) => `  • ${getCatLabel(id)}`).join('\n');
+  const proceed = window.confirm(
+    `Archive ${staleIds.length} epic(s) unused since ${cutoffIso}?\n\n${labels}\n\n` +
+      'They will be hidden from the epic pickers. Past log entries keep their ' +
+      'label and colour, and you can restore any of them from ⚙ → archived.'
+  );
+  if (!proceed) {
+    wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
+    return 0;
+  }
+  categories = applyEpicArchive(categories, staleIds);
+  save();
+  wlLog.info('tidyStaleEpics: archived stale epics', { archived: staleIds.length, cutoffIso });
+  return staleIds.length;
+}
+
+/**
+ * Re-renders every surface that offers an epic picker, so an archive or
+ * restore is reflected everywhere at once rather than only in the modal.
+ * @returns {void}
+ */
+function refreshEpicPickers() {
+  renderTagRow();
+  render();
+  renderPlan();
+}
+
+/**
+ * Fills the epics modal with the archived-epic list and binds one restore
+ * button per row.
+ *
+ * Rows are keyed by list index (`epicRestore-0`, `epicRestore-1`, …) rather
+ * than by epic ID: IDs come from persisted data and would need escaping to be
+ * safe in an attribute *and* matching unescaped for the lookup, so an index
+ * sidesteps that mismatch entirely.
+ * @returns {void}
+ */
+function renderEpicsManager() {
+  const body = document.getElementById('epicsManagerBody');
+  if (!body) return;
+
+  const archived = categories.filter((cat) => cat.archived);
+  body.innerHTML = archived.length
+    ? `<ul class="epics-list">` +
+      archived
+        .map(
+          (cat, idx) =>
+            `<li class="epics-list__item">` +
+            `<span class="epics-list__dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
+            `<span class="epics-list__label">${escHtml(cat.label)}</span>` +
+            `<button class="epics-list__restore" id="epicRestore-${idx}"` +
+            ` aria-label="Restore ${escHtml(cat.label)}">restore</button>` +
+            `</li>`
+        )
+        .join('') +
+      `</ul>`
+    : `<p class="epics-list__empty">No archived epics — every epic is showing in the pickers.</p>`;
+
+  archived.forEach((cat, idx) => {
+    const btn = document.getElementById(`epicRestore-${idx}`);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      categories = restoreArchivedCategory(categories, cat.id);
+      save();
+      wlLog.info('renderEpicsManager: restored archived epic', { catId: cat.id });
+      renderEpicsManager();
+      refreshEpicPickers();
+    });
+  });
+}
+
+/**
+ * Wires the epics modal: the toolbar button that opens it, the tidy action,
+ * and the close button. Called once at startup (12c-startup.js).
+ *
+ * These controls used to live in the epic manage strip inside #tagRow, which
+ * is `display:none` in work-log.html — so archiving could be triggered from
+ * five pickers but never undone. The modal is the reachable home for them.
+ * @returns {void}
+ */
+function bindEpicsManager() {
+  const openBtn = document.getElementById('epicsBtn');
+  const overlay = document.getElementById('epicsOverlay');
+  const closeBtn = document.getElementById('epicsClose');
+  const tidyBtn = document.getElementById('epicsTidyBtn');
+  if (!openBtn || !overlay) return;
+
+  /**
+   * Hides the modal and hands focus back to the button that opened it, so a
+   * keyboard user is not dropped at the top of the document.
+   * @returns {void}
+   */
+  const closeEpicsModal = () => {
+    overlay.classList.remove('show');
+    openBtn.focus();
+  };
+
+  openBtn.addEventListener('click', () => {
+    renderEpicsManager();
+    overlay.classList.add('show');
+    if (closeBtn) closeBtn.focus();
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeEpicsModal);
+
+  // Escape and backdrop-click dismissal, matching the other modals built on
+  // this overlay shell (12a-changelog.js's expiry modal, 12c-gapreport.js).
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeEpicsModal();
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeEpicsModal();
+  });
+
+  if (tidyBtn)
+    tidyBtn.addEventListener('click', () => {
+      if (tidyStaleEpics() > 0) {
+        renderEpicsManager();
+        refreshEpicPickers();
+      }
+    });
+}
+
 function renderTagRow() {
   const row = document.getElementById('tagRow');
   const selCat = getCat(selectedTag);
@@ -59,8 +213,8 @@ function renderTagRow() {
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
-        <select class="cat-select" id="catSelect">
-        ${[...categories]
+        <select class="cat-select" id="catSelect" aria-label="Select epic">
+        ${pickableCategories([...categories], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (c) =>
@@ -190,6 +344,7 @@ function renderTagRow() {
       editingCatId = null;
       renderTagRow();
     });
+
   const billBtn = document.getElementById('catBillBtn');
   if (billBtn)
     billBtn.addEventListener('click', () => {
