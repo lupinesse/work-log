@@ -1,5 +1,6 @@
 /* ── Epic helpers ── */
 // safeCssColor() and escHtml() are defined in 00-pure-fns.js.
+// EpicCategory is declared in pure-fns-epics.js (concatenated earlier).
 
 /**
  * Returns the category object for `id`, falling back to 'other' if not found.
@@ -178,37 +179,56 @@ function bindEpicsManager() {
     });
 }
 
-function renderTagRow() {
-  const row = document.getElementById('tagRow');
-  const selCat = getCat(selectedTag);
-
-  // Build manage row content based on state
-  let manageHtml;
+/**
+ * Builds the inner markup of the epic manage row for whichever inline mode
+ * is active. The modes are mutually exclusive and tested in priority order:
+ * rename, add-new, then the idle button strip.
+ *
+ * Reads the module-level mode flags (editingCatId, addingNewCat) rather than
+ * taking them as parameters, matching how the rest of this concatenated file
+ * owns that state. Archive and restore are not handled here - #385 moved them
+ * into the epics manager modal (renderEpicsManager/bindEpicsManager above).
+ * @param {EpicCategory} selCat - The currently selected epic, already colour-sanitised by getCat().
+ * @returns {string} HTML for the inside of #catManageRow.
+ */
+function buildManageRowHtml(selCat) {
   if (editingCatId) {
     const c = getCat(editingCatId);
-    manageHtml = `<div class="cat-inline-edit">
+    return `<div class="cat-inline-edit">
         <input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
         <button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&#10003;</button>
         <button class="cat-inline-cancel" id="catEditCancel">&#10005;</button>
       </div>`;
   } else if (addingNewCat) {
-    manageHtml = `<div class="cat-inline-edit">
+    return `<div class="cat-inline-edit">
         <input class="cat-inline-input" id="catNewInput" placeholder="new epic name" style="flex:1" />
         <button class="cat-inline-ok" id="catNewOk">&#10003;</button>
         <button class="cat-inline-cancel" id="catNewCancel">&#10005;</button>
       </div>`;
   } else {
-    manageHtml = `
+    return `
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
         <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
         <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>`;
   }
+}
+
+/**
+ * Builds the complete #tagRow markup: the epic dropdown row plus the manage
+ * row. Touches no DOM of its own - it reads module state and returns a string,
+ * so the markup can be produced and asserted on independently of the listener
+ * wiring in bindTagRowEvents().
+ * @returns {string} HTML to assign to #tagRow.
+ */
+function buildTagRowHtml() {
+  const selCat = getCat(selectedTag);
+  const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
   const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
 
-  row.innerHTML = `
+  return `
       <div class="cat-dropdown-row">
         <label class="cat-color-swatch cat-dot-preview" id="catDotPreview" title="click to change colour" style="background:${safeCssColor(selCat.color)}">
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
@@ -229,7 +249,17 @@ function renderTagRow() {
                 aria-expanded="${manageRowOpen}">⚙</button>
       </div>
       <div class="cat-manage-row${manageRowOpen ? ' open' : ''}" id="catManageRow">${manageHtml}</div>`;
+}
 
+/**
+ * Wires every listener for the markup buildTagRowHtml() just produced.
+ *
+ * Each lookup past the always-present dropdown controls is null-guarded: only
+ * one inline mode is in the DOM at a time, so most of these elements are
+ * absent on any given render.
+ * @returns {void}
+ */
+function bindTagRowEvents() {
   // Select change
   document.getElementById('catSelect').addEventListener('change', (e) => {
     selectedTag = e.target.value;
@@ -410,6 +440,18 @@ function renderTagRow() {
       catManageOpen = false;
       renderTagRow();
     });
+}
+
+/**
+ * Renders the epic tag row and rebinds its listeners. Every state change in the
+ * handlers below funnels back through here, so the row is always rebuilt
+ * wholesale rather than patched in place.
+ * @returns {void}
+ */
+function renderTagRow() {
+  const row = document.getElementById('tagRow');
+  row.innerHTML = buildTagRowHtml();
+  bindTagRowEvents();
 }
 
 /* ── Utility ── */

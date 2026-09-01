@@ -104,12 +104,15 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (305 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (488 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
 - `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
-- `renderTagRow()` — renders and wires the epic dropdown, quick colour picker, and rename/delete/add manage row
+- `renderTagRow()` — orchestrates the epic row: assigns the markup from `buildTagRowHtml()`, then calls `bindTagRowEvents()`
+- `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
+- `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
+- `tidyStaleEpics()`, `refreshEpicPickers()`, `renderEpicsManager()`, `bindEpicsManager()` — the epics manager modal that owns archive and restore (#385); these moved out of the manage row, so `renderTagRow()` no longer renders tidy/restore controls
 - `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
 - `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
