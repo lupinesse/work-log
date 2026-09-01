@@ -23,8 +23,6 @@ let editingCatId = null;
 let addingNewCat = false;
 /** Controls whether the epic manage row (rename/delete/add) is expanded. */
 let catManageOpen = false;
-/** Controls whether the manage row is showing the archived-epic restore picker. */
-let restoringArchived = false;
 
 /**
  * Archives every epic with no log entry and no board task in the last
@@ -72,10 +70,117 @@ function tidyStaleEpics() {
   return staleIds.length;
 }
 
+/**
+ * Re-renders every surface that offers an epic picker, so an archive or
+ * restore is reflected everywhere at once rather than only in the modal.
+ * @returns {void}
+ */
+function refreshEpicPickers() {
+  renderTagRow();
+  render();
+  renderPlan();
+}
+
+/**
+ * Fills the epics modal with the archived-epic list and binds one restore
+ * button per row.
+ *
+ * Rows are keyed by list index (`epicRestore-0`, `epicRestore-1`, …) rather
+ * than by epic ID: IDs come from persisted data and would need escaping to be
+ * safe in an attribute *and* matching unescaped for the lookup, so an index
+ * sidesteps that mismatch entirely.
+ * @returns {void}
+ */
+function renderEpicsManager() {
+  const body = document.getElementById('epicsManagerBody');
+  if (!body) return;
+
+  const archived = categories.filter((cat) => cat.archived);
+  body.innerHTML = archived.length
+    ? `<ul class="epics-list">` +
+      archived
+        .map(
+          (cat, idx) =>
+            `<li class="epics-list__item">` +
+            `<span class="epics-list__dot" style="background:${safeCssColor(cat.color)}" aria-hidden="true"></span>` +
+            `<span class="epics-list__label">${escHtml(cat.label)}</span>` +
+            `<button class="epics-list__restore" id="epicRestore-${idx}"` +
+            ` aria-label="Restore ${escHtml(cat.label)}">restore</button>` +
+            `</li>`
+        )
+        .join('') +
+      `</ul>`
+    : `<p class="epics-list__empty">No archived epics — every epic is showing in the pickers.</p>`;
+
+  archived.forEach((cat, idx) => {
+    const btn = document.getElementById(`epicRestore-${idx}`);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      categories = restoreArchivedCategory(categories, cat.id);
+      save();
+      wlLog.info('renderEpicsManager: restored archived epic', { catId: cat.id });
+      renderEpicsManager();
+      refreshEpicPickers();
+    });
+  });
+}
+
+/**
+ * Wires the epics modal: the toolbar button that opens it, the tidy action,
+ * and the close button. Called once at startup (12c-startup.js).
+ *
+ * These controls used to live in the epic manage strip inside #tagRow, which
+ * is `display:none` in work-log.html — so archiving could be triggered from
+ * five pickers but never undone. The modal is the reachable home for them.
+ * @returns {void}
+ */
+function bindEpicsManager() {
+  const openBtn = document.getElementById('epicsBtn');
+  const overlay = document.getElementById('epicsOverlay');
+  const closeBtn = document.getElementById('epicsClose');
+  const tidyBtn = document.getElementById('epicsTidyBtn');
+  if (!openBtn || !overlay) return;
+
+  /**
+   * Hides the modal and hands focus back to the button that opened it, so a
+   * keyboard user is not dropped at the top of the document.
+   * @returns {void}
+   */
+  const closeEpicsModal = () => {
+    overlay.classList.remove('show');
+    openBtn.focus();
+  };
+
+  openBtn.addEventListener('click', () => {
+    renderEpicsManager();
+    overlay.classList.add('show');
+    if (closeBtn) closeBtn.focus();
+  });
+
+  if (closeBtn) closeBtn.addEventListener('click', closeEpicsModal);
+
+  // Escape and backdrop-click dismissal, matching the other modals built on
+  // this overlay shell (12a-changelog.js's expiry modal, 12c-gapreport.js).
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeEpicsModal();
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeEpicsModal();
+  });
+
+  if (tidyBtn)
+    tidyBtn.addEventListener('click', () => {
+      if (tidyStaleEpics() > 0) {
+        renderEpicsManager();
+        refreshEpicPickers();
+      }
+    });
+}
+
 function renderTagRow() {
   const row = document.getElementById('tagRow');
   const selCat = getCat(selectedTag);
-  const archivedCount = categories.filter((cat) => cat.archived).length;
 
   // Build manage row content based on state
   let manageHtml;
@@ -85,17 +190,6 @@ function renderTagRow() {
         <input class="cat-inline-input" id="catEditInput" value="${escHtml(c.label)}" data-id="${editingCatId}" />
         <button class="cat-inline-ok" id="catEditOk" data-id="${editingCatId}">&#10003;</button>
         <button class="cat-inline-cancel" id="catEditCancel">&#10005;</button>
-      </div>`;
-  } else if (restoringArchived) {
-    const archived = categories.filter((cat) => cat.archived);
-    manageHtml = `<div class="cat-inline-edit">
-        <select class="cat-inline-input" id="catRestoreSelect" aria-label="archived epic to restore">
-        ${archived
-          .map((cat) => `<option value="${escHtml(cat.id)}">${escHtml(cat.label)}</option>`)
-          .join('')}
-        </select>
-        <button class="cat-inline-ok" id="catRestoreOk" title="restore epic">&#10003;</button>
-        <button class="cat-inline-cancel" id="catRestoreCancel">&#10005;</button>
       </div>`;
   } else if (addingNewCat) {
     manageHtml = `<div class="cat-inline-edit">
@@ -108,14 +202,11 @@ function renderTagRow() {
         <button class="cat-manage-btn" id="catRenBtn">&#9998; rename</button>
         <button class="cat-manage-btn danger" id="catDelBtn">&#215; delete</button>
         <button class="cat-manage-btn add" id="catAddBtn">+ add epic</button>
-        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>
-        <button class="cat-manage-btn tidy" id="catTidyBtn"
-                title="Archive epics unused for ${EPIC_STALE_DAYS} days">&#129529; tidy</button>
-        ${archivedCount ? `<button class="cat-manage-btn" id="catRestoreBtn" title="Restore an archived epic">&#128451; ${archivedCount} archived</button>` : ''}`;
+        <button class="cat-manage-btn" id="catBillBtn">${selCat.billable === false ? '💸 internal' : '💰 billable'}</button>`;
   }
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
-  const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat || restoringArchived;
+  const manageRowOpen = catManageOpen || !!editingCatId || addingNewCat;
 
   row.innerHTML = `
       <div class="cat-dropdown-row">
@@ -144,13 +235,12 @@ function renderTagRow() {
     selectedTag = e.target.value;
     editingCatId = null;
     addingNewCat = false;
-    restoringArchived = false;
     renderTagRow();
   });
 
   // Settings toggle — opens/closes the manage row (disabled while an inline edit is active)
   document.getElementById('catSettingsBtn')?.addEventListener('click', () => {
-    if (editingCatId || addingNewCat || restoringArchived) return;
+    if (editingCatId || addingNewCat) return;
     catManageOpen = !catManageOpen;
     renderTagRow();
   });
@@ -255,60 +345,6 @@ function renderTagRow() {
       renderTagRow();
     });
 
-  // Tidy: archive every epic unused for EPIC_STALE_DAYS days
-  const tidyBtn = document.getElementById('catTidyBtn');
-  if (tidyBtn)
-    tidyBtn.addEventListener('click', () => {
-      if (tidyStaleEpics() > 0) {
-        renderTagRow();
-        render();
-      }
-    });
-
-  // Restore: open the archived-epic picker
-  const restoreBtn = document.getElementById('catRestoreBtn');
-  if (restoreBtn)
-    restoreBtn.addEventListener('click', () => {
-      restoringArchived = true;
-      editingCatId = null;
-      addingNewCat = false;
-      renderTagRow();
-    });
-
-  // Restore: confirm
-  const restoreOk = document.getElementById('catRestoreOk');
-  if (restoreOk)
-    restoreOk.addEventListener('click', () => {
-      const select = document.getElementById('catRestoreSelect');
-      const chosenId = select ? select.value : '';
-      // Resolve the picked id against the known epics rather than trusting the
-      // select's own value: everything downstream then flows from our own data,
-      // and a stale or unrecognised id closes the picker instead of selecting
-      // an epic that does not exist.
-      const cat = categories.find((c) => c.id === chosenId);
-      if (!cat) {
-        if (chosenId) wlLog.warn('renderTagRow: restore ignored unknown epic id', { chosenId });
-        restoringArchived = false;
-        renderTagRow();
-        return;
-      }
-      categories = restoreArchivedCategory(categories, cat.id);
-      selectedTag = cat.id;
-      restoringArchived = false;
-      catManageOpen = false;
-      save();
-      wlLog.info('renderTagRow: restored archived epic', { catId: cat.id });
-      renderTagRow();
-      render();
-    });
-
-  // Restore: cancel
-  const restoreCancel = document.getElementById('catRestoreCancel');
-  if (restoreCancel)
-    restoreCancel.addEventListener('click', () => {
-      restoringArchived = false;
-      renderTagRow();
-    });
   const billBtn = document.getElementById('catBillBtn');
   if (billBtn)
     billBtn.addEventListener('click', () => {
