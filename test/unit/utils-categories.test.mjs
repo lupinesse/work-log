@@ -374,3 +374,64 @@ describe('epics modal — archive and restore', () => {
     assert.ok(sandbox._elements.get('tagRow').innerHTML.includes('AITO-111'));
   });
 });
+
+describe('epics modal — dismissal', () => {
+  const STALE = { id: 'cat_stale', label: 'AITO-111: Old epic', color: '#E8A33D' };
+
+  /**
+   * Builds a sandbox with one archived epic, the modal wired and opened, and
+   * focus calls on the open button recorded so the tests can assert that
+   * dismissal hands focus back.
+   * @returns {{sandbox: Object, focusCalls: number[]}} The sandbox and a
+   *   one-element counter array holding how many times #epicsBtn was focused.
+   */
+  function openedSandbox() {
+    const sandbox = loadTagRowSandbox({
+      categories: [
+        { id: 'work', label: 'Work', color: '#378ADD' },
+        { ...STALE, archived: true },
+      ],
+    });
+    sandbox.bindEpicsManager();
+    const openBtn = sandbox._elements.get('epicsBtn');
+    const focusCalls = [0];
+    openBtn.focus = () => {
+      focusCalls[0] += 1;
+    };
+    openBtn._listeners.click();
+    return { sandbox, focusCalls };
+  }
+
+  it('closes on the Close button and returns focus to the toolbar button', () => {
+    const { sandbox, focusCalls } = openedSandbox();
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'));
+
+    sandbox._elements.get('epicsClose')._listeners.click();
+    assert.ok(!sandbox._elements.get('epicsOverlay')._classes.has('show'), 'the overlay is hidden');
+    assert.equal(focusCalls[0], 1, 'focus returns to the button that opened it');
+  });
+
+  it('closes on Escape', () => {
+    const { sandbox, focusCalls } = openedSandbox();
+    sandbox._elements.get('epicsOverlay')._listeners.keydown({ key: 'Escape' });
+    assert.ok(!sandbox._elements.get('epicsOverlay')._classes.has('show'));
+    assert.equal(focusCalls[0], 1);
+  });
+
+  it('ignores other keys', () => {
+    const { sandbox } = openedSandbox();
+    sandbox._elements.get('epicsOverlay')._listeners.keydown({ key: 'a' });
+    assert.ok(sandbox._elements.get('epicsOverlay')._classes.has('show'), 'still open');
+  });
+
+  it('closes on a backdrop click but not on a click inside the modal', () => {
+    const { sandbox } = openedSandbox();
+    const overlay = sandbox._elements.get('epicsOverlay');
+
+    overlay._listeners.click({ target: sandbox._elements.get('epicsManagerBody') });
+    assert.ok(overlay._classes.has('show'), 'a click inside the modal does not dismiss it');
+
+    overlay._listeners.click({ target: overlay });
+    assert.ok(!overlay._classes.has('show'), 'a click on the backdrop dismisses it');
+  });
+});

@@ -141,17 +141,33 @@ function bindEpicsManager() {
   const tidyBtn = document.getElementById('epicsTidyBtn');
   if (!openBtn || !overlay) return;
 
+  /**
+   * Hides the modal and hands focus back to the button that opened it, so a
+   * keyboard user is not dropped at the top of the document.
+   * @returns {void}
+   */
+  const closeEpicsModal = () => {
+    overlay.classList.remove('show');
+    openBtn.focus();
+  };
+
   openBtn.addEventListener('click', () => {
     renderEpicsManager();
     overlay.classList.add('show');
     if (closeBtn) closeBtn.focus();
   });
 
-  if (closeBtn)
-    closeBtn.addEventListener('click', () => {
-      overlay.classList.remove('show');
-      openBtn.focus();
-    });
+  if (closeBtn) closeBtn.addEventListener('click', closeEpicsModal);
+
+  // Escape and backdrop-click dismissal, matching the other modals built on
+  // this overlay shell (12a-changelog.js's expiry modal, 12c-gapreport.js).
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeEpicsModal();
+  });
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeEpicsModal();
+  });
 
   if (tidyBtn)
     tidyBtn.addEventListener('click', () => {
