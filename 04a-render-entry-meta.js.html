@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: app-constants.js</title>
+    <title>JSDoc: Source: 04a-render-entry-meta.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: app-constants.js</h1>
+    <h1 class="page-title">Source: 04a-render-entry-meta.js</h1>
 
     
 
@@ -26,78 +26,203 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file app-constants.js
- * Static configuration constants: localStorage key names, the built-in
- * category seed list, and the palette offered when creating a new category.
- * Pure literal values with no dependencies on other modules or app state.
- * Extracted from 01-state.js (issue #336) as the first step of the ongoing
- * ES-module extraction — see ARCHITECTURE.md and build-config.js's
- * LEAF_MODULES comment for why this matters.
- */
+            <pre class="prettyprint source linenums"><code>/* ── Render — entry proof-link/note editor and category picker ── */
+// Split out of 04-render.js (QA finding: module size, flagged five
+// consecutive weekly reviews). Everything here builds or wires per-entry
+// widgets that render() embeds into each timeline row; none of it touches
+// render()'s own control flow.
 
-/** localStorage key for logged work entries. */
-export const STORE_ENTRIES = 'wl_entries_v1';
-/** localStorage key for the active timer state. */
-export const STORE_TIMER = 'wl_timer_v1';
-/** localStorage key for the pomodoro session log. */
-export const STORE_POMO_LOG = 'wl_pomoLog_v1';
-/** localStorage key for custom work categories. */
-export const STORE_CATS = 'wl_cats_v1';
-/** localStorage key for quick-pick items the user has dismissed. */
-export const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
-/** localStorage key for ad-hoc log notes. */
-export const STORE_LOGNOTES = 'wl_lognotes_v1';
-/** localStorage key for tracker progress grids. */
-export const STORE_TRACKERS = 'wl_trackers_v1';
-/** localStorage key for the end-of-month migration record. */
-export const STORE_MIGRATION = 'wl_migration_v1';
-/** localStorage key for the per-day work-location record. */
-export const STORE_LOCATION = 'wl_location_v1';
+// Entry whose proof-link/note editor is currently open (`entry.id`), or null
+// when none is open. Survives render() since the editor panel's open/closed
+// state can't live in the DOM — render() rebuilds #timeline's innerHTML from
+// `entries` on every call, same as `_flowNoteEditId` in 11-timeflow.js.
+let _entryMetaEditId = null;
 
-/** Built-in categories seeded on first run. */
-export const DEFAULT_CATS = [
-  { id: 'work', label: 'work', color: '#378ADD' },
-  { id: 'meeting', label: 'meeting', color: '#7EC8E3' },
-  { id: 'focus', label: 'deep focus', color: '#1D9E75' },
-  { id: 'break', label: 'break', color: '#BA7517' },
-  { id: 'other', label: 'other', color: '#888780' },
-];
+// Pending "same note as last time?" confirmation for a just-restarted entry
+// (see createRestartedEntry in 05-entries.js): `{ id, note }` for the entry
+// awaiting a yes/no answer, or null when nothing is pending. Cleared by any
+// meta-editor action (save/clear/cancel/yes/no) so it never resurfaces on a
+// later, unrelated edit of the same entry.
+let _pendingNoteConfirm = null;
 
 /**
- * Fallback colour palette `nextDistinctColor()` (01-state.js) draws from when
- * auto-generating a new category's colour, in preference order. Every value
- * here is a plain hex string and does not itself need sanitising — but any
- * *user-supplied* colour (e.g. from the category colour picker) must still
- * pass through `safeCssColor()` before use, same as everywhere else in the app.
+ * Builds the proof-link / note indicator and inline editor for a log entry.
+ * Read-only state shows a 🔗 and/or 📝 indicator (title = full value) plus a
+ * toggle button; editing state additionally shows the link/note inputs. Both
+ * fields are optional and independent — either can be filled in on its own.
+ * When this entry has a pending restart confirmation (`_pendingNoteConfirm`,
+ * set by createRestartedEntry in 05-entries.js), the editor also shows a
+ * "same note as last time?" banner above the inputs.
+ * @param {{ id: string, link: (string|undefined), note: (string|undefined) }} entry - The log entry.
+ * @param {boolean} isEditing - Whether this entry's link/note panel is open.
+ * @returns {string} HTML string.
  */
-export const CUSTOM_PALETTE = [
-  '#7B61FF',
-  '#E67E22',
-  '#0d9488',
-  '#3F51B5',
-  '#16A085',
-  '#9B59B6',
-  '#F39C12',
-  '#00BCD4',
-  '#27AE60',
-  '#E91E63',
-  '#FF5722',
-  '#2ECC71',
-  '#C0392B',
-  '#1E88E5',
-  '#43A047',
-  '#FB8C00',
-  '#8E24AA',
-  '#039BE5',
-  '#6D4C41',
-  '#00897B',
-  '#F4511E',
-  '#D81B60',
-  '#546E7A',
-  '#FDD835',
-  '#5E35B1',
-];
+function buildEntryMetaHtml(entry, isEditing) {
+  const hasLink = !!(entry.link &amp;&amp; entry.link.trim());
+  const hasNote = !!(entry.note &amp;&amp; entry.note.trim());
+  const linkIndicator = hasLink
+    ? /^https?:\/\//i.test(entry.link.trim())
+      ? `&lt;a class="emeta-ind emeta-link-view" href="${escHtml(entry.link.trim())}" target="_blank" rel="noopener" title="${escHtml(entry.link)}" onclick="event.stopPropagation()">🔗&lt;/a>`
+      : `&lt;span class="emeta-ind" title="${escHtml(entry.link)}">🔗&lt;/span>`
+    : '';
+  const noteIndicator = hasNote
+    ? `&lt;span class="emeta-ind" title="${escHtml(entry.note)}">📝&lt;/span>`
+    : '';
+  // Indicators render as siblings of the toggle button, not inside it — an
+  // &lt;a> nested in a &lt;button> is invalid HTML and the anchor's own click
+  // handler would be unreachable behind the button's.
+  const indicators =
+    linkIndicator || noteIndicator
+      ? `&lt;span class="emeta-inds">${linkIndicator}${noteIndicator}&lt;/span>`
+      : '';
+  const label = hasLink || hasNote ? 'edit proof link / note' : 'add proof link / note';
+  const toggle = `&lt;button class="emeta-btn" data-id="${entry.id}" title="${label}" aria-label="${label}">${hasLink || hasNote ? '✎' : '📎'}&lt;/button>`;
+  if (!isEditing) return `&lt;div class="emeta">${indicators}${toggle}&lt;/div>`;
+  const pendingNote =
+    _pendingNoteConfirm &amp;&amp; _pendingNoteConfirm.id === entry.id ? _pendingNoteConfirm.note : '';
+  const restartConfirmHtml = pendingNote
+    ? `&lt;div class="emeta-restart-confirm">
+        &lt;div class="emeta-restart-q">Same note as last time?&lt;/div>
+        &lt;div class="emeta-restart-prev">"${escHtml(pendingNote)}"&lt;/div>
+        &lt;div class="emeta-restart-actions">
+          &lt;button class="emeta-restart-yes" data-id="${entry.id}">Yes, keep it&lt;/button>
+          &lt;button class="emeta-restart-no" data-id="${entry.id}">No, clear&lt;/button>
+        &lt;/div>
+      &lt;/div>`
+    : '';
+  return `&lt;div class="emeta">
+      ${indicators}${toggle}
+      &lt;div class="emeta-editor open" id="em-${entry.id}">
+        ${restartConfirmHtml}
+        &lt;label class="emeta-lbl" for="emli-${entry.id}">proof link&lt;/label>
+        &lt;input class="emeta-link-input" type="text" id="emli-${entry.id}" data-id="${entry.id}"
+               value="${escHtml(entry.link || '')}"
+               placeholder="Confluence page id, Zephyr key, filename…" />
+        &lt;label class="emeta-lbl" for="emno-${entry.id}">note&lt;/label>
+        &lt;textarea class="emeta-note-input" id="emno-${entry.id}" data-id="${entry.id}" rows="2"
+                  placeholder="what did you do?">${escHtml(entry.note || '')}&lt;/textarea>
+        &lt;div class="emeta-actions">
+          &lt;button class="emeta-save" data-id="${entry.id}">save&lt;/button>
+          ${hasLink || hasNote ? `&lt;button class="emeta-del" data-id="${entry.id}">clear&lt;/button>` : ''}
+          &lt;button class="emeta-cancel" data-id="${entry.id}">cancel&lt;/button>
+        &lt;/div>
+      &lt;/div>
+    &lt;/div>`;
+}
+
+/**
+ * Builds the category picker contents for a single log entry: one button
+ * per existing category, a cancel button, and an inline "+ new epic"
+ * creator so a brand-new epic can be added without leaving the entry —
+ * mirrors the board's task-card picker (catOpts in 10a-tasks-row.js's
+ * renderRow), which previously was the only place epics could be created.
+ * @param {{ id: string, tag: (string|undefined) }} entry - The log entry.
+ * @param {Array&lt;{id: string, label: string, color: string}>} categoryList - Available categories.
+ * @returns {string} HTML string for the picker's contents.
+ */
+function buildEntryCatPickerHtml(entry, categoryList) {
+  const catOpts = categoryList
+    .map(
+      (cat) =>
+        `&lt;button class="cat-opt${entry.tag === cat.id ? ' sel' : ''}" data-id="${entry.id}" data-cat="${cat.id}" style="${entry.tag === cat.id ? `background:${safeCssColor(cat.color)};` : ''}color:${entry.tag === cat.id ? '#fff' : safeCssColor(cat.color)}">${escHtml(cat.label)}&lt;/button>`
+    )
+    .join('');
+  return (
+    catOpts +
+    `&lt;button class="cat-cancel" data-id="${entry.id}">cancel&lt;/button>` +
+    `&lt;div class="pcat-add-row">` +
+    `&lt;button class="pcat-add-btn" data-id="${entry.id}">+ new epic&lt;/button>` +
+    `&lt;div class="pcat-add-form" id="ecaf-${entry.id}">` +
+    `&lt;input class="pcat-add-input" placeholder="name…" aria-label="new epic name" />` +
+    `&lt;button class="pcat-add-ok" data-id="${entry.id}" aria-label="save">&amp;#10003;&lt;/button>` +
+    `&lt;button class="pcat-add-cancel2" data-id="${entry.id}" aria-label="cancel">&amp;#10005;&lt;/button>` +
+    `&lt;/div>&lt;/div>`
+  );
+}
+
+/**
+ * Binds open/save/clear/cancel events for each entry's proof-link/note
+ * editor, plus the yes/no handlers for its restart note-confirmation banner
+ * (see createRestartedEntry in 05-entries.js). Re-attached after every
+ * render() call since #timeline's innerHTML is fully replaced each time,
+ * same pattern as the other entry-row bindings in render() (time editor,
+ * category picker, billable toggle).
+ * @param {HTMLElement} timelineEl - The #timeline element.
+ */
+function bindEntryMetaEvents(timelineEl) {
+  timelineEl.querySelectorAll('.emeta-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _entryMetaEditId = _entryMetaEditId === id ? null : id;
+      _pendingNoteConfirm = null;
+      render();
+      if (_entryMetaEditId === id) {
+        setTimeout(() => document.getElementById('emli-' + id)?.focus(), 0);
+      }
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-save').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        const linkVal = document.getElementById('emli-' + id).value.trim();
+        const noteVal = document.getElementById('emno-' + id).value.trim();
+        if (linkVal) entry.link = linkVal;
+        else delete entry.link;
+        if (noteVal) entry.note = noteVal;
+        else delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-del').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry) {
+        delete entry.link;
+        delete entry.note;
+        save();
+      }
+      _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
+      render();
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      _entryMetaEditId = null;
+      _pendingNoteConfirm = null;
+      render();
+    });
+  });
+  /* restart note-confirmation: "same note as last time?" */
+  timelineEl.querySelectorAll('.emeta-restart-yes').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const entry = entries.find((logEntry) => logEntry.id === id);
+      if (entry &amp;&amp; _pendingNoteConfirm &amp;&amp; _pendingNoteConfirm.id === id) {
+        entry.note = _pendingNoteConfirm.note;
+        save();
+      }
+      _pendingNoteConfirm = null;
+      render();
+      setTimeout(() => document.getElementById('emno-' + id)?.focus(), 0);
+    });
+  });
+  timelineEl.querySelectorAll('.emeta-restart-no').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      _pendingNoteConfirm = null;
+      render();
+      setTimeout(() => document.getElementById('emno-' + id)?.focus(), 0);
+    });
+  });
+}
 </code></pre>
         </article>
     </section>

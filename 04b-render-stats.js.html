@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: app-constants.js</title>
+    <title>JSDoc: Source: 04b-render-stats.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: app-constants.js</h1>
+    <h1 class="page-title">Source: 04b-render-stats.js</h1>
 
     
 
@@ -26,78 +26,148 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file app-constants.js
- * Static configuration constants: localStorage key names, the built-in
- * category seed list, and the palette offered when creating a new category.
- * Pure literal values with no dependencies on other modules or app state.
- * Extracted from 01-state.js (issue #336) as the first step of the ongoing
- * ES-module extraction — see ARCHITECTURE.md and build-config.js's
- * LEAF_MODULES comment for why this matters.
- */
-
-/** localStorage key for logged work entries. */
-export const STORE_ENTRIES = 'wl_entries_v1';
-/** localStorage key for the active timer state. */
-export const STORE_TIMER = 'wl_timer_v1';
-/** localStorage key for the pomodoro session log. */
-export const STORE_POMO_LOG = 'wl_pomoLog_v1';
-/** localStorage key for custom work categories. */
-export const STORE_CATS = 'wl_cats_v1';
-/** localStorage key for quick-pick items the user has dismissed. */
-export const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
-/** localStorage key for ad-hoc log notes. */
-export const STORE_LOGNOTES = 'wl_lognotes_v1';
-/** localStorage key for tracker progress grids. */
-export const STORE_TRACKERS = 'wl_trackers_v1';
-/** localStorage key for the end-of-month migration record. */
-export const STORE_MIGRATION = 'wl_migration_v1';
-/** localStorage key for the per-day work-location record. */
-export const STORE_LOCATION = 'wl_location_v1';
-
-/** Built-in categories seeded on first run. */
-export const DEFAULT_CATS = [
-  { id: 'work', label: 'work', color: '#378ADD' },
-  { id: 'meeting', label: 'meeting', color: '#7EC8E3' },
-  { id: 'focus', label: 'deep focus', color: '#1D9E75' },
-  { id: 'break', label: 'break', color: '#BA7517' },
-  { id: 'other', label: 'other', color: '#888780' },
-];
+            <pre class="prettyprint source linenums"><code>/* ── Render — header stat tiles and sub-stat tiles ── */
+// Split out of 04-render.js (QA finding: module size). Both functions only
+// read entries/document and write into the #stat* elements render() already
+// expects to exist; neither depends on render()'s other sections running
+// first or after.
 
 /**
- * Fallback colour palette `nextDistinctColor()` (01-state.js) draws from when
- * auto-generating a new category's colour, in preference order. Every value
- * here is a plain hex string and does not itself need sanitising — but any
- * *user-supplied* colour (e.g. from the category colour picker) must still
- * pass through `safeCssColor()` before use, same as everywhere else in the app.
+ * Renders the three header stat tiles (distinct tasks today / distinct epics
+ * this week / current streak) and the collapsed one-line summary that
+ * mirrors them.
  */
-export const CUSTOM_PALETTE = [
-  '#7B61FF',
-  '#E67E22',
-  '#0d9488',
-  '#3F51B5',
-  '#16A085',
-  '#9B59B6',
-  '#F39C12',
-  '#00BCD4',
-  '#27AE60',
-  '#E91E63',
-  '#FF5722',
-  '#2ECC71',
-  '#C0392B',
-  '#1E88E5',
-  '#43A047',
-  '#FB8C00',
-  '#8E24AA',
-  '#039BE5',
-  '#6D4C41',
-  '#00897B',
-  '#F4511E',
-  '#D81B60',
-  '#546E7A',
-  '#FDD835',
-  '#5E35B1',
-];
+function renderHeaderStatTiles() {
+  const todayKey = dk(new Date());
+  document.getElementById('statToday').textContent = new Set(
+    entries.filter((entry) => entry.date === todayKey).map((entry) => entry.text.toLowerCase())
+  ).size;
+  document.getElementById('statWeek').textContent = (() => {
+    const weekStart = mondayOfWeek();
+    return new Set(
+      entries.filter((entry) => entry.ts >= weekStart).map((entry) => entry.tag || 'other')
+    ).size;
+  })();
+  document.getElementById('statStreak').textContent = calcStreak();
+
+  // Collapsed summary: mirrors the three values into a single header line so
+  // the section communicates its data without needing to be opened.
+  document.getElementById('analyticsSummary').textContent = [
+    `${document.getElementById('statToday').textContent} tasks today`,
+    `${document.getElementById('statWeek').textContent} epics this week`,
+    `${document.getElementById('statStreak').textContent}-day streak`,
+  ].join(' · ');
+}
+
+/**
+ * Builds the HTML for a sub-stat tile's task line: a Jira ticket link (when
+ * the label parses as one) plus the task name, or the raw label when it
+ * doesn't, followed by the formatted duration.
+ * @param {string} label - Task text, possibly Jira-prefixed.
+ * @param {number} ms - Tracked duration in milliseconds.
+ * @returns {string} HTML string for the tile body.
+ */
+function buildStatSubHtml(label, ms) {
+  const { ticket, name } = parseJiraLabel(label);
+  const keyHtml = ticket
+    ? `&lt;a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}&lt;/a>`
+    : null;
+  return keyHtml
+    ? `${keyHtml}${name ? `&lt;div class="stat-sub-title">${escHtml(name)}&lt;/div>` : ''}&lt;div class="stat-sub-value">${fmtDur(ms)}&lt;/div>`
+    : `&lt;div class="stat-sub-title">${escHtml(label)}&lt;/div>&lt;div class="stat-sub-value">${fmtDur(ms)}&lt;/div>`;
+}
+
+/**
+ * Renders the three sub-stat tiles beneath the header stats: today's
+ * most-tracked task, this week's most-tracked task, and the streak day with
+ * the longest tracked time. Hides each tile when there's no data for it.
+ */
+function renderSubStatTiles() {
+  const todayKey = dk(new Date());
+
+  // Today: task with most tracked time
+  const todayTimed = entries.filter(
+    (entry) => entry.date === todayKey &amp;&amp; entry.tsEnd &amp;&amp; entry.tsEnd > entry.ts
+  );
+  const todayByTask = {};
+  todayTimed.forEach((entry) => {
+    const taskKey = entry.text.toLowerCase();
+    if (!todayByTask[taskKey]) todayByTask[taskKey] = { label: entry.text, ms: 0 };
+    todayByTask[taskKey].ms += entry.tsEnd - entry.ts;
+  });
+  const topTask = Object.values(todayByTask).sort((a, b) => b.ms - a.ms)[0];
+  const todaySub = document.getElementById('statTodaySub');
+  if (topTask) {
+    todaySub.innerHTML = buildStatSubHtml(topTask.label, topTask.ms);
+    todaySub.style.display = '';
+  } else {
+    todaySub.style.display = 'none';
+  }
+
+  // This week: task with most tracked time
+  const thisWeekStart = new Date();
+  thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
+  thisWeekStart.setHours(0, 0, 0, 0);
+  const weekTimed = entries.filter(
+    (entry) => new Date(entry.ts) >= thisWeekStart &amp;&amp; entry.tsEnd &amp;&amp; entry.tsEnd > entry.ts
+  );
+  const weekByTask = {};
+  weekTimed.forEach((entry) => {
+    const taskKey = entry.text.toLowerCase();
+    if (!weekByTask[taskKey]) weekByTask[taskKey] = { label: entry.text, ms: 0 };
+    weekByTask[taskKey].ms += entry.tsEnd - entry.ts;
+  });
+  const topWeekTask = Object.values(weekByTask).sort((a, b) => b.ms - a.ms)[0];
+  const weekSub = document.getElementById('statWeekSub');
+  if (topWeekTask) {
+    weekSub.innerHTML = buildStatSubHtml(topWeekTask.label, topWeekTask.ms);
+    weekSub.style.display = '';
+  } else {
+    weekSub.style.display = 'none';
+  }
+
+  // Streak: day with longest tracked time
+  const streakDays = [];
+  {
+    const streakCursor = new Date();
+    streakCursor.setDate(streakCursor.getDate() - 1);
+    const daysWithEntries = new Set(entries.map((entry) => entry.date));
+    while (daysWithEntries.has(dk(streakCursor))) {
+      streakDays.push(dk(streakCursor));
+      streakCursor.setDate(streakCursor.getDate() - 1);
+    }
+  }
+  const streakSub = document.getElementById('statStreakSub');
+  if (streakDays.length > 0) {
+    let bestDay = null,
+      bestMs = 0;
+    streakDays.forEach((dateKey2) => {
+      const ms = entries
+        .filter((entry) => entry.date === dateKey2 &amp;&amp; entry.tsEnd &amp;&amp; entry.tsEnd > entry.ts)
+        .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
+      if (ms > bestMs) {
+        bestMs = ms;
+        bestDay = dateKey2;
+      }
+    });
+    if (bestDay &amp;&amp; bestMs > 0) {
+      const bestStreakDay = new Date(bestDay + 'T12:00:00');
+      const dayName = isToday(bestStreakDay)
+        ? 'today'
+        : bestStreakDay.toLocaleDateString('en', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+          });
+      streakSub.innerHTML = `&lt;div class="stat-sub-title">Longest date tracked&lt;/div>&lt;div class="stat-sub-title">${escHtml(dayName)}&lt;/div>&lt;div class="stat-sub-value">${fmtDur(bestMs)}&lt;/div>`;
+      streakSub.style.display = '';
+    } else {
+      streakSub.style.display = 'none';
+    }
+  } else {
+    streakSub.style.display = 'none';
+  }
+}
 </code></pre>
         </article>
     </section>
