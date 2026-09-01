@@ -155,7 +155,7 @@ function openTrackerForm() {
       <div class="tr-form-row">
         <label class="tr-form-lbl">Categories to count</label>
         <div class="tr-form-tags" id="trFormTags">
-          ${categories
+          ${pickableCategories(categories)
             .map(
               (c) =>
                 `<label class="tr-tag-check">

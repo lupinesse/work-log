@@ -16,6 +16,8 @@ name: ChatGPT PR Review
 #
 #   merge-gate: Queries all unresolved ChatGPT threads. Fails if any remain,
 #   blocking merge. Succeeds only when ChatGPT has no outstanding findings.
+#   Runs on every trigger, including a push where the dialogue itself is
+#   skipped, so its verdict always belongs to the current head commit.
 #
 # Note: Claude's standalone pr-review.yml is gated to skip PRs that meet the
 # size threshold — this workflow handles Claude's review for those PRs instead.
@@ -42,7 +44,7 @@ name: ChatGPT PR Review
 
 on:
   pull_request:
-    types: [labeled, opened, reopened]
+    types: [labeled, opened, reopened, synchronize]
 
 # One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
@@ -364,9 +366,13 @@ jobs:
   merge-gate:
     name: All ChatGPT findings resolved
     needs: [chatgpt-review, chatgpt-responds]
-    # always() so the gate runs even if an earlier job failed or was skipped,
-    # and can report the actual thread state rather than staying pending forever.
-    if: always() && needs.chatgpt-review.outputs.should_run == 'true'
+    # always(), with no should_run condition: the gate is a single GraphQL query
+    # over the PR's threads, not part of the dialogue, and it has to report on
+    # whatever commit is currently at the head. Gating it on should_run made it
+    # skip on every push to an already-reviewed PR — and a skipped required check
+    # counts as passed, so the gate silently stopped gating. On a PR the dialogue
+    # never ran for, there are no ChatGPT threads and it passes on an empty set.
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read

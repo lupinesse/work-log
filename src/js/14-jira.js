@@ -103,6 +103,30 @@
   }
 
   /**
+   * Brings archived epics back into the pickers when an import actually lands
+   * tasks on them — an imported ticket is proof the epic is in use again, and
+   * leaving it archived would tag the new task to an epic the user cannot see
+   * or select. Called from the import handler rather than from jiraMatchCat so
+   * that merely previewing a CSV never mutates persisted state.
+   * @param {Array<{id: string}>} mappedCats - Category objects the import mapped tickets onto.
+   * @returns {number} How many epics were un-archived.
+   */
+  function unarchiveImportedCats(mappedCats) {
+    let restored = 0;
+    mappedCats.forEach((mapped) => {
+      const cat = categories.find((c) => c.id === mapped.id);
+      if (!cat || !cat.archived) return;
+      delete cat.archived;
+      restored++;
+      wlLog.info('jiraImport: un-archived epic matched by import', {
+        catId: cat.id,
+        label: cat.label,
+      });
+    });
+    return restored;
+  }
+
+  /**
    * Builds `jiraCatMap` — a lookup from "parentKey|parentSummary" to a category
    * object (existing or newly generated). New categories get unique auto-colours
    * not already used by existing ones.
@@ -440,6 +464,8 @@
 
     let added = 0,
       skipped = 0;
+    // Epics that actually receive a task, so archived ones can be revived below
+    const importedCats = [];
     // Import in category-group order (same order as displayed)
     const grouped = [];
     const seen = {};
@@ -468,10 +494,14 @@
           tag: cat ? cat.id : 'other',
           date: today,
         });
+        if (cat) importedCats.push(cat);
         existing.add(text.toLowerCase().trim());
         added++;
       })
     );
+
+    // An epic that just received a task is in use again, archived or not
+    unarchiveImportedCats(importedCats);
 
     save();
     savePlan();

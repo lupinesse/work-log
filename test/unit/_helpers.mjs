@@ -53,11 +53,41 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  */
 export function loadPureFnsScriptSource() {
   return (
-    ['pure-fns-format.js', 'pure-fns-validate.js', 'pure-fns-tasks.js', 'pure-fns-export.js']
+    [
+      'pure-fns-format.js',
+      'pure-fns-validate.js',
+      'pure-fns-tasks.js',
+      'pure-fns-export.js',
+      'pure-fns-epics.js',
+    ]
       .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
       .join('\n')
       .replace(/^import\s[^;]*;\s*$/gm, '') // single-line imports only; all sub-module imports are single-line
       // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own pure-fns source; trusted input, no nested quantifiers
       .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1')
   );
+}
+
+/**
+ * Reads the render-family classic-script files as one concatenated source,
+ * in the same order build.js's alphabetical `readdirSync().sort()` puts them
+ * in the real bundle. Split from the former monolithic 04-render.js (QA
+ * finding: module size) into five sibling files that share one script-scope
+ * — render() itself, plus renderHeaderAndTimerSection(), live in
+ * 04-render.js; the rest are grouped by concern in 04a-04d. A VM sandbox
+ * that only loads 04-render.js no longer sees the functions it calls, so
+ * every render.test.mjs sandbox needs all five, exactly as the real bundle
+ * does.
+ * @returns {string} Concatenated render-family source, safe for vm.runInContext.
+ */
+export function loadRenderScriptSource() {
+  return [
+    '04-render.js',
+    '04a-render-entry-meta.js',
+    '04b-render-stats.js',
+    '04c-render-timeline.js',
+    '04d-render-quickpick.js',
+  ]
+    .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
+    .join('\n');
 }

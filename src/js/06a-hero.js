@@ -407,7 +407,7 @@ function _heroSetCategory(elId, tag, interactive = false) {
   }
 
   const panelId = `${elId}-panel`;
-  const itemsHtml = categories
+  const itemsHtml = pickableCategories(categories, tag)
     .map(
       (c) =>
         `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(c.id)}"` +

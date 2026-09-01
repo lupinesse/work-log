@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r3 |
-| Covers app version | v1.9.2 (main, 2026-08-16) |
-| Last reviewed | 2026-08-16 |
-| Reviewed by | Claude Sonnet 5 (extracted date-labels.js from 02-utils.js, issue #336 — updated the 02-utils.js and app-constants.js entries, added a date-labels.js entry, and refreshed the source file count and test counts touched by that change. Not a full re-audit of every per-module line count) |
+| Document version | 1.9.2-r4 |
+| Covers app version | v1.9.2 (main, 2026-09-01) |
+| Last reviewed | 2026-09-01 |
+| Reviewed by | Claude (split 04-render.js into five files — QA finding: module size, flagged five consecutive weekly reviews — updated its entry and the source file count touched by that change. Not a full re-audit of every per-module line count) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (54 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (59 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -152,26 +152,24 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04-render.js** (892 lines) — Top-Level UI Rendering
-**Responsibility**: Orchestrate rendering of all visible sections
+#### **04-render.js** (56 lines) — Top-Level Render Orchestrator
+**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. The one non-mechanical change: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returns null and the guard clause always returns first. Deleted rather than moved; the function stays as a no-op stub since `render()` and `03-timer.js`'s timer tick both still call it unconditionally.
 
-**Main Function**:
-- `render()` — Master render function called after every state change
-
-**Sections Rendered**:
 ```
 render() → {
-  renderStats()              // Top bar: today's counts
-  renderEntries()            // Entries timeline
-  renderPlan()               // Today's tasks section
-  renderCompleted()          // Recently completed tasks
-  renderParked()             // Parked thoughts
-  renderChart()              // Activity chart
-  renderNowNext()            // Timer display
-  renderCalStrip()           // Calendar meetings
-  // ... others
+  renderHeroCard()                       // 06a-hero.js
+  renderHeaderAndTimerSection()          // 04-render.js — date/nav/location/EOD/timer bar
+  renderHeaderStatTiles()                // 04b-render-stats.js
+  renderSubStatTiles()                   // 04b-render-stats.js
+  renderTimelineSection(viewEntries())   // 04c-render-timeline.js
 }
 ```
+
+**Sibling files** (alphabetical, same order the build concatenates them in):
+- `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
+- `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
+- `04c-render-timeline.js` (418 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`), the inert `renderChart()` stub, and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
 1. Gather data from state
@@ -502,7 +500,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (494 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (537 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -521,8 +519,19 @@ upcoming    → Scheduled for future date
 
 **Hidden Meetings** (localStorage):
 ```
-wl_hidden_meetings_YYYY-MM-DD → [subject1, subject2, ...]
+wl_hidden_meetings_YYYY-MM-DD → ["subject|start", ...]
 ```
+Keyed per occurrence, so hiding one instance of a recurring meeting leaves the
+day's other instances on the strip. Entries written before this were bare
+subjects and are still honoured; the store is keyed by date, so they expire on
+their own.
+
+**Collection rules** (`server-helpers.ps1`, exercised by `test/calendar.Tests.ps1`):
+the decisions that determine which meetings arrive — day overlap, when a folder
+scan may stop early, dedup identity, subject and Teams-link normalisation, the
+recursive calendar-folder walk, and the recurring-occurrence probe — live in the
+shared helpers file rather than inside `start-server.ps1`'s COM runspace, so they
+are unit-tested with PSCustomObject stand-ins and need no Outlook install.
 
 **Account Label Mapping** (configured in `src/js/00-config.js`):
 ```javascript
@@ -830,7 +839,7 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (669 tests, 104 suites via Node built-in test runner):
+**Unit Tests** (698 tests, 112 suites via Node built-in test runner):
 - `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
 **Smoke Tests** (320 tests via Playwright):
@@ -839,10 +848,10 @@ async function fetchWeather() {
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
 
-**CI Script Tests** (276 tests, 56 suites via Node built-in test runner):
-- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (30 of these 276, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
+**CI Script Tests** (324 tests, 68 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 324, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 1,265 tests (669 unit + 320 smoke + 276 CI-script)**
+**Total: 1,342 tests (698 unit + 320 smoke + 324 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)

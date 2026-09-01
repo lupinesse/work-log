@@ -61,7 +61,7 @@ function findMostRecentEntryForText(text) {
  * automatically. Its note is deliberately not copied onto the new entry
  * directly — a note written for an earlier session may no longer describe
  * this one — instead `_entryMetaEditId` and `_pendingNoteConfirm` (both in
- * 04-render.js) are set so the new entry's proof-link/note editor opens with
+ * 04a-render-entry-meta.js) are set so the new entry's proof-link/note editor opens with
  * a "same note as last time?" prompt for the user to confirm or clear.
  * @param {string} text - Entry text.
  * @param {string} tag - Category id.
