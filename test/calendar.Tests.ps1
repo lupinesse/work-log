@@ -626,6 +626,48 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
     }
 }
 
+Describe 'Late-bound COM access (Invoke-ComMethod and Set-ComProperty)' {
+    # Regression: on this repository's own author machine every member of
+    # Outlook's Items collection was invisible to PowerShell's COM adapter —
+    # "[System.__ComObject] does not contain a method named 'Sort'" — so Pass 1
+    # could not sort, could not expand recurrences, and could not even obtain a
+    # cursor. Reflection reaches the same members through IDispatch.
+    #
+    # These drive the reflection path against ordinary .NET objects, which is
+    # exactly the mechanism used against a COM object; no Outlook is involved.
+
+    It 'invokes a method with no arguments' {
+        Invoke-ComMethod -Target 'abc' -Name 'ToUpper' | Should Be 'ABC'
+    }
+
+    It 'invokes a method with arguments' {
+        Invoke-ComMethod -Target 'a,b,c' -Name 'Replace' -Arguments @(',', '-') | Should Be 'a-b-c'
+    }
+
+    It 'throws for a member that does not exist, so the caller can fall back' {
+        { Invoke-ComMethod -Target 'abc' -Name 'NoSuchMember' } | Should Throw
+    }
+
+    It 'rejects a null target rather than failing obscurely later' {
+        { Invoke-ComMethod -Target $null -Name 'ToUpper' } | Should Throw
+    }
+
+    It 'sets a property' {
+        $builder = [System.Text.StringBuilder]::new()
+        Set-ComProperty -Target $builder -Name 'Capacity' -Value 128
+        $builder.Capacity | Should Be 128
+    }
+
+    It 'throws when setting a property that does not exist' {
+        { Set-ComProperty -Target ([System.Text.StringBuilder]::new()) -Name 'NoSuchProperty' -Value 1 } |
+            Should Throw
+    }
+
+    It 'rejects a null target when setting' {
+        { Set-ComProperty -Target $null -Name 'Capacity' -Value 1 } | Should Throw
+    }
+}
+
 Describe 'Finding calendars (Get-CalendarSubFolder)' {
     # Regression: the walk used to look only one level below the mailbox root, so
     # a secondary calendar nested inside the default Calendar folder — and every

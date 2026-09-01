@@ -774,3 +774,98 @@ function Get-CalendarSubFolder {
     }
     return ,$found
 }
+
+function Invoke-ComMethod {
+    <#
+    .SYNOPSIS
+        Calls a COM method that PowerShell's adapter refuses to expose.
+
+    .DESCRIPTION
+        PowerShell binds COM members through an adapter that needs type
+        information. Outlook's Items collection frequently arrives as a bare
+        System.__ComObject on Exchange and delegate stores, and every member call
+        on it then fails with "[System.__ComObject] does not contain a method
+        named 'Sort'" — even though the member exists on the COM interface and
+        Outlook itself uses it. Late-bound invocation goes through IDispatch
+        instead of the adapter and reaches the same member.
+
+        Callers try the ordinary call first and fall back to this, so a machine
+        where the adapter works is unaffected.
+
+    .PARAMETER Target
+        The COM object to call the method on.
+
+    .PARAMETER Name
+        Name of the method, e.g. 'Sort' or 'GetFirst'.
+
+    .PARAMETER Arguments
+        Positional arguments for the method. Empty for the no-argument cursor
+        methods.
+
+    .OUTPUTS
+        Whatever the method returns.
+
+    .EXAMPLE
+        Invoke-ComMethod -Target $items -Name 'Sort' -Arguments @('[Start]')
+
+    .EXAMPLE
+        Invoke-ComMethod -Target $items -Name 'GetFirst'
+    #>
+    param(
+        [AllowNull()][object]$Target,
+        [Parameter(Mandatory)][string]$Name,
+        [object[]]$Arguments = @()
+    )
+    Set-StrictMode -Version Latest
+    if ($null -eq $Target) { throw 'Invoke-ComMethod requires a non-null -Target.' }
+    return $Target.GetType().InvokeMember(
+        $Name,
+        [System.Reflection.BindingFlags]::InvokeMethod,
+        $null,
+        $Target,
+        $Arguments
+    )
+}
+
+function Set-ComProperty {
+    <#
+    .SYNOPSIS
+        Sets a COM property that PowerShell's adapter refuses to expose.
+
+    .DESCRIPTION
+        The property counterpart of {@link Invoke-ComMethod}, for the same
+        reason: on a bare System.__ComObject, `$items.IncludeRecurrences = $true`
+        fails with "The property 'IncludeRecurrences' cannot be found on this
+        object", which silently costs every recurring meeting in that folder.
+        Callers try direct assignment first and fall back to this.
+
+    .PARAMETER Target
+        The COM object to set the property on.
+
+    .PARAMETER Name
+        Name of the property, e.g. 'IncludeRecurrences'.
+
+    .PARAMETER Value
+        The value to assign.
+
+    .OUTPUTS
+        None.
+
+    .EXAMPLE
+        Set-ComProperty -Target $items -Name 'IncludeRecurrences' -Value $true
+    #>
+    param(
+        [AllowNull()][object]$Target,
+        [Parameter(Mandatory)][string]$Name,
+        [AllowNull()][object]$Value
+    )
+    Set-StrictMode -Version Latest
+    if ($null -eq $Target) { throw 'Set-ComProperty requires a non-null -Target.' }
+    [void]$Target.GetType().InvokeMember(
+        $Name,
+        [System.Reflection.BindingFlags]::SetProperty,
+        $null,
+        $Target,
+        @($Value)
+    )
+}

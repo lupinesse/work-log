@@ -29,7 +29,7 @@ if (Test-Path $configFile) { . $configFile }
 # not, never echoed.
 $effectiveLookBack = Get-CalendarLookBackYears -Requested $CalendarLookBackYears
 if ($effectiveLookBack -ne $CalendarLookBackYears) {
-    Write-Host "[cfg] CalendarLookBackYears=$CalendarLookBackYears is outside the supported 0-20 range — using $effectiveLookBack" -ForegroundColor Yellow
+    Write-Host "[cfg] CalendarLookBackYears=$CalendarLookBackYears is outside the supported 0-20 range; using $effectiveLookBack" -ForegroundColor Yellow
 }
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
@@ -102,6 +102,28 @@ function Get-TodayMeetings {
         # bound stops a pathological folder tree from stalling a request.
         $maxCalendarFolderDepth = 4
 
+        # Advances a cursor-style Items method (Find / FindNext / GetFirst /
+        # GetNext). PowerShell's COM adapter is tried first; when it throws — as
+        # it does on a store where Items arrives as a bare System.__ComObject,
+        # taking every member with it — the call is retried late-bound through
+        # IDispatch. A $null from a working adapter means end-of-collection and is
+        # returned as-is; only a throw triggers the fallback. When neither route
+        # produces an item the walk ends rather than the pass aborting.
+        function Get-ComCursorItem($collection, [string]$member, [object[]]$parameters = @()) {
+            $adapterWorked = $false
+            $item = $null
+            try {
+                $item = if ($parameters.Count) { $collection.$member($parameters[0]) } else { $collection.$member() }
+                $adapterWorked = $true
+            } catch {}
+            if ($adapterWorked) { return $item }
+            try {
+                $item = Invoke-ComMethod -Target $collection -Name $member -Arguments $parameters
+                $dbg.lateBoundMembers++
+                return $item
+            } catch { return $null }
+        }
+
         # Wraps Add-ComRef as a callback for the shared helpers in
         # server-helpers.ps1: they acquire COM objects (folders, recurrence
         # patterns) but must stay runnable without this runspace, so they take the
@@ -116,6 +138,8 @@ function Get-TodayMeetings {
             pass2Count        = 0
             pass1UsedGetFirst = $false
             pass1Degraded     = 0
+            pass1Walked       = 0
+            lateBoundMembers  = 0
             unreadableItems   = 0
             exceptionsScanned = 0
             lookBackYears     = 0
@@ -205,8 +229,9 @@ function Get-TodayMeetings {
                 $calFolder  = $entry.folder
                 $accountKey = $entry.label
                 $folderName = [string](Read-ComProperty $calFolder 'Name')
-                # Declared before Pass 1 so Pass 2 can read it even if Pass 1 throws.
-                $incRecurOk = $false
+                # Declared before Pass 1 so Pass 2 can read them even if Pass 1 throws.
+                $incRecurOk   = $false
+                $pass1Started = $true
 
                 # Pass 1 — recurring occurrences via Find/FindNext.
                 # Sort+IncludeRecurrences must be set before Find per Outlook COM docs.
@@ -221,21 +246,44 @@ function Get-TodayMeetings {
                 try {
                     $items = Add-ComRef ($calFolder.Items)
                     $sortOk = $false
-                    try { $items.Sort('[Start]'); $sortOk = $true } catch { $dbg.pass1Error += "Sort: $($_.Exception.Message); " }
+                    # Each member is tried through PowerShell's COM adapter, then
+                    # late-bound. On stores where Items has no type information the
+                    # adapter exposes nothing at all — Sort, IncludeRecurrences and
+                    # the cursor methods alike — which leaves Pass 1 unable to run
+                    # and every recurring meeting resting on Pass 2's probe.
+                    try { $items.Sort('[Start]'); $sortOk = $true }
+                    catch {
+                        try {
+                            [void](Invoke-ComMethod -Target $items -Name 'Sort' -Arguments @('[Start]'))
+                            $sortOk = $true
+                            $dbg.lateBoundMembers++
+                        } catch { $dbg.pass1Error += "Sort: $($_.Exception.Message); " }
+                    }
                     if ($sortOk) {
-                        try { $items.IncludeRecurrences = $true; $incRecurOk = $true } catch { $dbg.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                        try { $items.IncludeRecurrences = $true; $incRecurOk = $true }
+                        catch {
+                            try {
+                                Set-ComProperty -Target $items -Name 'IncludeRecurrences' -Value $true
+                                $incRecurOk = $true
+                                $dbg.lateBoundMembers++
+                            } catch { $dbg.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                        }
                     }
                     $useGetNext = $false  # overridden to $true in the GetFirst fallback below
                     $cur = $null
                     if ($incRecurOk) {
-                        $cur = try { Add-ComRef ($items.Find("[Start] >= '$yearAnchor'")) } catch { $null }
+                        $cur = Add-ComRef (Get-ComCursorItem $items 'Find' @("[Start] >= '$yearAnchor'"))
                     }
                     if ($null -eq $cur) {
                         Write-Host '[cal] Pass 1: using GetFirst fallback (Sort/IncludeRecurrences unavailable or Find returned null)' -ForegroundColor Yellow
                         $useGetNext = $true
                         $dbg.pass1UsedGetFirst = $true
-                        $cur = try { Add-ComRef ($items.GetFirst()) } catch { $null }
+                        $cur = Add-ComRef (Get-ComCursorItem $items 'GetFirst')
                     }
+                    # Whether the walk ever started. A cursor that is null from the
+                    # outset means Pass 1 contributed nothing, which Pass 2 has to
+                    # know about even when the properties above were settable.
+                    if ($null -ne $cur) { $dbg.pass1Walked++ } else { $pass1Started = $false }
                     while ($null -ne $cur) {
                         $itemStart = Read-ComDate $cur 'Start'
                         $itemEnd   = Read-ComDate $cur 'End'
@@ -249,11 +297,7 @@ function Get-TodayMeetings {
                             (Add-MeetingForDay -Item $cur -AccountKey $accountKey -Day $today -SeenKeys $seen -Sink $results)) {
                             $dbg.pass1Count++
                         }
-                        $cur = if ($useGetNext) {
-                            try { Add-ComRef ($items.GetNext()) } catch { $null }
-                        } else {
-                            try { Add-ComRef ($items.FindNext()) } catch { $null }
-                        }
+                        $cur = Add-ComRef (Get-ComCursorItem $items $(if ($useGetNext) { 'GetNext' } else { 'FindNext' }))
                     }
                 } catch { $dbg.pass1Error += "$($_.Exception.Message); " }
 
@@ -268,22 +312,30 @@ function Get-TodayMeetings {
                 # degraded, because the probe exists solely to compensate for
                 # unexpanded recurrences and scanning years of history costs a
                 # COM round-trip per item.
-                $pass1Degraded = -not $incRecurOk
+                # Degraded covers both shapes of failure: recurrences that could not
+                # be expanded, and a walk that never got a cursor to start from.
+                $pass1Degraded = (-not $incRecurOk) -or (-not $pass1Started)
                 if ($pass1Degraded) { $dbg.pass1Degraded++ }
                 $scanFromYear = if ($pass1Degraded) { $today.Year - $lookBack } else { $today.Year }
                 if ($pass1Degraded) {
-                    Write-Host "[cal] '$folderName': pass 1 could not expand recurrences — pass 2 probing series from $scanFromYear" -ForegroundColor Yellow
+                    Write-Host "[cal] '$folderName': pass 1 could not expand recurrences; pass 2 probing series from $scanFromYear" -ForegroundColor Yellow
                 }
                 try {
                     $items2 = Add-ComRef ($calFolder.Items)
-                    try { $items2.IncludeRecurrences = $false } catch { $dbg.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                    try { $items2.IncludeRecurrences = $false }
+                    catch {
+                        try {
+                            Set-ComProperty -Target $items2 -Name 'IncludeRecurrences' -Value $false
+                            $dbg.lateBoundMembers++
+                        } catch { $dbg.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                    }
                     $fromAnchor     = Get-YearAnchor -Year $scanFromYear -Separator $sep
                     $nextYearAnchor = Get-YearAnchor -Year ($today.Year + 1) -Separator $sep
-                    $filtered = try {
-                        Add-ComRef ($items2.Restrict("[Start] >= '$fromAnchor' AND [Start] < '$nextYearAnchor'"))
-                    } catch {
-                        Write-Host "[cal] Pass 2: Restrict failed ($($_.Exception.Message)), iterating all items" -ForegroundColor Yellow
-                        $items2
+                    $restriction = "[Start] >= '$fromAnchor' AND [Start] < '$nextYearAnchor'"
+                    $filtered = Add-ComRef (Get-ComCursorItem $items2 'Restrict' @($restriction))
+                    if ($null -eq $filtered) {
+                        Write-Host '[cal] Pass 2: Restrict unavailable, iterating all items' -ForegroundColor Yellow
+                        $filtered = $items2
                     }
                     foreach ($item in $filtered) {
                         try {
