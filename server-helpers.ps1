@@ -302,8 +302,11 @@ function Get-MeetingSubject {
         [AllowNull()][object]$Raw
     )
     Set-StrictMode -Version Latest
-    if ($null -eq $Raw) { return '(no title)' }
-    $text = ([string]$Raw).Trim()
+    # One return path for the placeholder, so the string it substitutes is written
+    # once. It cannot be shared with the browser's own copy in
+    # normalizeCalendarMeeting — that lives in a separate JS bundle — so the two
+    # are kept in step by the tests on either side.
+    $text = if ($null -eq $Raw) { '' } else { ([string]$Raw).Trim() }
     if ($text.Length -eq 0) { return '(no title)' }
     return $text
 }

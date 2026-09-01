@@ -28,6 +28,9 @@ if (Test-Path $configFile) { . $configFile }
 # Log the configuration this run is using. Secrets are reported as configured or
 # not, never echoed.
 $effectiveLookBack = Get-CalendarLookBackYears -Requested $CalendarLookBackYears
+if ($effectiveLookBack -ne $CalendarLookBackYears) {
+    Write-Host "[cfg] CalendarLookBackYears=$CalendarLookBackYears is outside the supported 0-20 range — using $effectiveLookBack" -ForegroundColor Yellow
+}
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
