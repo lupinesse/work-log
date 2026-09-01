@@ -8,18 +8,22 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, loadRenderScriptSource } from './_helpers.mjs';
 
-const entryMetaSrc = readFileSync(join(__dirname, '../../src/js/04-render.js'), 'utf8');
+// buildEntryMetaHtml moved to 04a-render-entry-meta.js in the 04-render.js
+// split (QA finding: module size) — read that file directly rather than the
+// full render-family concat, since the regex below extracts just this one
+// function block.
+const entryMetaSrc = readFileSync(join(__dirname, '../../src/js/04a-render-entry-meta.js'), 'utf8');
 
 /**
- * Evaluates just the buildEntryMetaHtml function from 04-render.js in a
- * minimal VM sandbox. The function only touches escHtml and the module-level
- * `_pendingNoteConfirm` state — both stubbed as plain, externally-mutable
- * sandbox properties (the source's own `let _pendingNoteConfirm` declaration
- * is deliberately excluded from the extracted snippet, since a `let` binding
- * created inside a vm context isn't reachable as a sandbox property from the
- * host afterwards).
+ * Evaluates just the buildEntryMetaHtml function from 04a-render-entry-meta.js
+ * in a minimal VM sandbox. The function only touches escHtml and the
+ * module-level `_pendingNoteConfirm` state — both stubbed as plain,
+ * externally-mutable sandbox properties (the source's own
+ * `let _pendingNoteConfirm` declaration is deliberately excluded from the
+ * extracted snippet, since a `let` binding created inside a vm context isn't
+ * reachable as a sandbox property from the host afterwards).
  * @param {Record<string, unknown>} [overrides]
  * @returns {Object} Populated VM sandbox.
  */
@@ -27,7 +31,7 @@ function loadEntryMetaSandbox(overrides = {}) {
   const match = entryMetaSrc.match(
     /\/\*\*\r?\n \* Builds the proof-link[\s\S]*?(?=\/\*\*\r?\n \* Builds the category picker)/
   );
-  if (!match) throw new Error('buildEntryMetaHtml block not found in 04-render.js');
+  if (!match) throw new Error('buildEntryMetaHtml block not found in 04a-render-entry-meta.js');
   const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const sandbox = {
     escHtml: (s) => String(s).replace(/[&<>"']/g, (c) => escapeMap[c]),
@@ -71,13 +75,14 @@ describe('buildEntryMetaHtml — restart note-confirmation banner', () => {
 });
 
 /**
- * Creates a VM sandbox with pure-fns.js and 04-render.js loaded, exposing
- * buildEntryCatPickerHtml for direct testing.
+ * Creates a VM sandbox with pure-fns.js and the render-family files loaded,
+ * exposing buildEntryCatPickerHtml (04a-render-entry-meta.js) for direct
+ * testing.
  * @param {Object} [overrides] - Properties merged into the sandbox before eval.
  * @returns {Object} The populated sandbox.
  */
 function loadRenderSandbox(overrides = {}) {
-  const renderSrc = readFileSync(join(__dirname, '../../src/js/04-render.js'), 'utf8');
+  const renderSrc = loadRenderScriptSource();
   const pureSrc = loadPureFnsScriptSource();
 
   const sandbox = {
@@ -140,12 +145,12 @@ describe('buildEntryCatPickerHtml', () => {
   });
 });
 
-const renderSrc = readFileSync(join(__dirname, '../../src/js/04-render.js'), 'utf8');
+const renderSrc = loadRenderScriptSource();
 
 describe('regression: ad-hoc log row binds even when render() takes the empty-state branch', () => {
   /**
    * Creates a mock DOM element supporting the subset of the Element API that
-   * 04-render.js touches: style/classList/dataset stubs, an addEventListener
+   * the render-family files touch: style/classList/dataset stubs, an addEventListener
    * that records handlers by event type (so tests can invoke them directly),
    * and a querySelectorAll that returns no nodes (the non-empty render branch
    * is never exercised by these tests).
@@ -178,8 +183,9 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
   }
 
   /**
-   * Builds a vm sandbox with 04-render.js loaded and every cross-file global
-   * it calls (renderHeroCard, renderPlan, etc. — each defined in a different
+   * Builds a vm sandbox with the render-family files (04-render.js plus its
+   * 04a-04d siblings) loaded and every cross-file global they call
+   * (renderHeroCard, renderPlan, etc. — each defined in a different
    * concatenated source file in the real build) stubbed as a no-op, same
    * pattern as loadTimeflowSandbox above. `entries` and `document` are real,
    * mutable objects so the ad-hoc commit flow can be observed end to end.
@@ -314,22 +320,28 @@ describe('regression: non-billable relabeled as "internal"', () => {
     assert.match(html, /title="mark billable"/);
   });
 
-  it('the entry-row toggle, category-manager button, chart legend, and export summary all say "internal", not "non-billable"', () => {
+  it('the entry-row toggle, category-manager button, and export summary all say "internal", not "non-billable"', () => {
     // Checks the specific literals this PR changed — NOT a blanket absence of
     // "non-billable" in these files, since 02-utils.js still legitimately uses
     // that word in developer comments describing the underlying boolean
     // (e.g. "Non-billable entries keep their exact timestamps…"), which is
     // accurate and was intentionally left as-is; only the UI-facing copy moved.
+    //
+    // This used to also check the chart legend's "mixed billable/internal" /
+    // "internal">💸 titles, but that markup lived entirely inside
+    // renderChart()'s dead body — unreachable ever since the standalone
+    // #chart element was removed (see CLAUDE.md's June 2026 architecture
+    // note) — and was deleted along with the rest of that body when
+    // 04-render.js was split (QA finding: module size). Nothing renders it
+    // any more, so there's nothing left to assert here.
     const utilsSrcCheck = readFileSync(join(__dirname, '../../src/js/02-utils.js'), 'utf8');
-    const renderSrcCheck = readFileSync(join(__dirname, '../../src/js/04-render.js'), 'utf8');
+    const renderSrcCheck = loadRenderScriptSource();
     const exportSrcCheck = readFileSync(join(__dirname, '../../src/js/05a-export.js'), 'utf8');
 
     assert.match(utilsSrcCheck, /💸 internal/);
     assert.doesNotMatch(utilsSrcCheck, /💸 non-billable/);
 
     assert.match(renderSrcCheck, /title="toggle billable\/internal"/);
-    assert.match(renderSrcCheck, /title="mixed billable\/internal"/);
-    assert.match(renderSrcCheck, /title="internal">💸/);
     assert.doesNotMatch(renderSrcCheck, /title="[^"]*non-billable/);
 
     assert.match(exportSrcCheck, /💸 Internal:/);
