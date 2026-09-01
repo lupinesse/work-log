@@ -22,11 +22,16 @@
  *     happens in a *later* step (`auto-fix-ci.yml` tails its output into a PR
  *     comment). Counting lines with `wc` is not revealing.
  *
+ * A third, unrelated mistake gets the same treatment: `pr-review.yml`
+ * shipped a `claude -p` step whose indentation implied a continuation of
+ * `--allowedTools`, but the flag itself was never written, so the intended
+ * tool allowlist was silently dropped and the step ran unsandboxed.
+ *
  * These predicates are pure functions over a workflow's YAML source, kept in
  * their own module so they can be unit-tested without a YAML parser, a network
  * call, or a live Actions run. The companion test applies them to every real
- * workflow in `.github/workflows/`, so a *new* workflow that repeats either
- * mistake fails CI too — the guard is not pinned to the files that broke.
+ * workflow in `.github/workflows/`, so a *new* workflow that repeats any of
+ * these mistakes fails CI too — the guard is not pinned to the files that broke.
  */
 
 /** A `claude -p …` invocation at the start of a line. */
@@ -34,6 +39,9 @@ const CLAUDE_INVOCATION = /^[ \t]*claude[ \t]+-p\b/m;
 
 /** `unset CLAUDE_CODE_OAUTH_TOKEN` — the credential-selection bug itself. */
 const DISCARDS_OAUTH = /\bunset[ \t]+CLAUDE_CODE_OAUTH_TOKEN\b/;
+
+/** `--allowedTools` restricts the CLI to an explicit tool allowlist. */
+const HAS_ALLOWED_TOOLS = /--allowedTools\b/;
 
 /** `x=$?` or `x=${PIPESTATUS[0]}` — an explicit exit-status capture. */
 const STATUS_CAPTURE = /^[ \t]*[A-Za-z_][A-Za-z0-9_]*=\$(?:\?|\{PIPESTATUS\[\d+\]\})/m;
@@ -131,6 +139,23 @@ export function discardsOAuthToken(stepText) {
 }
 
 /**
+ * Whether a step restricts the CLI to an explicit `--allowedTools` list.
+ *
+ * `pr-review.yml` shipped a step whose indentation implied a continuation of
+ * this flag onto the next line, but the flag itself was never written — the
+ * quoted tool names were silently swallowed as dangling positional arguments
+ * to `-p`, so the CLI ran with no tool sandboxing at all. Every other
+ * `claude -p` step in this repo passes `--allowedTools` explicitly; this
+ * guard keeps that true.
+ *
+ * @param {string} stepText - A single step block.
+ * @returns {boolean} True when the step passes --allowedTools.
+ */
+export function hasAllowedTools(stepText) {
+  return HAS_ALLOWED_TOOLS.test(stepText);
+}
+
+/**
  * The files a step sends the CLI's output to, via `>` redirect or `| tee`.
  *
  * Redirects are matched by {@link REDIRECT_TARGET}, which requires a dotted
@@ -209,6 +234,13 @@ export function auditClaudeCliSteps(workflowText) {
       problems.push(
         `step "${name}" unsets CLAUDE_CODE_OAUTH_TOKEN, making ANTHROPIC_API_KEY the ` +
           'primary credential — prefer the OAuth token and fall back to the key'
+      );
+    }
+
+    if (!hasAllowedTools(step)) {
+      problems.push(
+        `step "${name}" invokes the CLI without --allowedTools, so it runs with no tool ` +
+          'sandboxing — pass an explicit allowlist'
       );
     }
 

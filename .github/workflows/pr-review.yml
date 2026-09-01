@@ -129,7 +129,8 @@ jobs:
           claude -p "/pr-review" \
             --model claude-sonnet-4-6 \
             --max-turns 20 \
-                           "Bash(git log:*)" "Bash(git diff:*)" \
+            --output-format json \
+            --allowedTools "Grep" "Bash(git log:*)" "Bash(git diff:*)" \
                            "Bash(git show:*)" "Bash(cat:*)" "Bash(wc:*)" \
             > review-raw.json 2>review-stderr.txt || true
           [ -s review-stderr.txt ] && echo "--- claude stderr ---" && cat review-stderr.txt
