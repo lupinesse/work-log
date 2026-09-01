@@ -435,3 +435,54 @@ describe('epics modal — dismissal', () => {
     assert.ok(!overlay._classes.has('show'), 'a click on the backdrop dismisses it');
   });
 });
+
+describe('buildTagRowHtml / bindTagRowEvents — markup and wiring are separable', () => {
+  it('buildTagRowHtml() returns the row markup without touching the DOM', () => {
+    const sandbox = loadTagRowSandbox();
+    const html = sandbox.buildTagRowHtml();
+
+    assert.match(html, /id="catSelect"/);
+    assert.match(html, /id="catManageRow"/);
+    assert.equal(
+      sandbox._elements.size,
+      0,
+      'building markup must not resolve or mutate any element'
+    );
+  });
+
+  it('renderTagRow() assigns exactly what buildTagRowHtml() produced', () => {
+    const sandbox = loadTagRowSandbox();
+    const built = sandbox.buildTagRowHtml();
+    sandbox.renderTagRow();
+
+    assert.equal(sandbox._elements.get('tagRow').innerHTML, built);
+  });
+
+  it('buildManageRowHtml() renders each inline mode from the module-level flags', () => {
+    const sandbox = loadTagRowSandbox();
+    const selCat = sandbox.getCat('work');
+
+    // Idle: the button strip, and no inline editor.
+    const idle = sandbox.buildManageRowHtml(selCat);
+    assert.match(idle, /id="catRenBtn"/);
+    assert.equal(idle.includes('id="catEditInput"'), false);
+
+    // Archive/restore moved to the epics modal in #385, so the manage row must
+    // no longer offer them — this is the regression guard for that boundary.
+    assert.equal(idle.includes('id="catTidyBtn"'), false);
+    assert.equal(idle.includes('id="catRestoreBtn"'), false);
+  });
+
+  it('bindTagRowEvents() runs standalone, without renderTagRow() having built the row', () => {
+    const sandbox = loadTagRowSandbox();
+    // This sandbox's getElementById auto-creates any id on demand, so the point
+    // here is only that the binder no longer depends on the builder having run
+    // first - not that the markup exists. Whether the two halves still agree on
+    // ids is what the suites above cover, since those drive the real handlers
+    // through rendered markup.
+    sandbox.bindTagRowEvents();
+
+    assert.ok(sandbox._elements.get('catSelect')._listeners.change, 'select change is wired');
+    assert.ok(sandbox._elements.get('catSettingsBtn')._listeners.click, 'settings click is wired');
+  });
+});
