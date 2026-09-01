@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 25-rollingsummary.js</title>
+    <title>JSDoc: Source: pure-fns-epics.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 25-rollingsummary.js</h1>
+    <h1 class="page-title">Source: pure-fns-epics.js</h1>
 
     
 
@@ -27,181 +27,171 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * @file 25-rollingsummary.js — Rolling 7-day summary tab inside Today's Flow.
+ * @file pure-fns-epics.js
+ * Pure helpers for epic (category) lifecycle management: deciding which epics
+ * have gone stale and should be archived out of the pickers, and filtering a
+ * category list down to the ones a user should be offered.
  *
- * Shows per-day rows (date · location · session times · tracked total · top 3 tasks)
- * and a week total. Includes a "Copy" button for standup use.
+ * Archiving is deliberately non-destructive. A stale epic keeps its record in
+ * the categories array with `archived: true`, so `getCat()` (02-utils.js) can
+ * still resolve its label and colour for historical log entries, timesheets,
+ * and the monthly/weekly reports. Hard-deleting instead would silently repaint
+ * every past entry that used it as the grey "other" fallback.
+ */
+
+/**
+ * A log entry or board task, seen only as evidence that an epic is in use.
+ * @typedef {Object} EpicUsageRecord
+ * @property {string} [tag] - Epic ID this record is tagged with, if any.
+ * @property {string} [date] - ISO date (YYYY-MM-DD) the record belongs to, if any.
+ */
+
+/**
+ * The two record collections scanned for evidence that an epic is in use.
+ * @typedef {Object} EpicUsageSources
+ * @property {Array&lt;EpicUsageRecord>} [entries] - Log entries to scan.
+ * @property {Array&lt;EpicUsageRecord>} [planTasks] - Board tasks to scan.
+ */
+
+/**
+ * An epic (category) record as persisted in `wl_cats_v1`.
+ * @typedef {Object} EpicCategory
+ * @property {string} id - Unique epic ID.
+ * @property {string} label - Display name.
+ * @property {string} [color] - CSS colour.
+ * @property {boolean} [archived] - `true` hides the epic from the pickers.
+ */
+
+/** Days of inactivity after which an epic is offered up for archiving. */
+export const EPIC_STALE_DAYS = 21;
+
+/**
+ * Built-in epic IDs that must never be archived. They are seeded on first run
+ * (DEFAULT_CATS in app-constants.js) and 'other' doubles as the fallback that
+ * `getCat()` resolves unknown tags to, so removing it from the pickers would
+ * leave orphaned entries with nothing to point at.
+ * @type {string[]}
+ */
+export const PROTECTED_CAT_IDS = ['work', 'meeting', 'focus', 'break', 'other'];
+
+/**
+ * Returns the ISO date (YYYY-MM-DD) that starts an inactivity window ending
+ * today. The window is inclusive of both ends: with `windowDays` of 21 and a
+ * `todayIso` of 2026-08-21, the cutoff is 2026-08-01 and an epic last used on
+ * exactly that date still counts as active.
+ * @param {string} todayIso - Today's date as YYYY-MM-DD.
+ * @param {number} windowDays - Length of the activity window in days.
+ * @returns {string} The inclusive cutoff date as YYYY-MM-DD.
+ * @example
+ * epicCutoffDate('2026-08-21', 21) // → '2026-08-01'
+ */
+export function epicCutoffDate(todayIso, windowDays) {
+  const cutoff = new Date(`${todayIso}T00:00:00Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() - (windowDays - 1));
+  return cutoff.toISOString().slice(0, 10);
+}
+
+/**
+ * Collects the IDs of every epic referenced by a log entry or a board task
+ * dated on or after `cutoffIso`. Records with no `date` are ignored rather
+ * than assumed recent — an undated record cannot vouch for an epic's
+ * freshness, and treating it as recent would keep stale epics alive forever.
+ * @param {EpicUsageSources} sources - Log entries and board tasks to scan.
+ * @param {string} cutoffIso - Inclusive start of the window, as YYYY-MM-DD.
+ * @returns {Set&lt;string>} Epic IDs used within the window.
+ */
+export function collectRecentlyUsedCatIds({ entries = [], planTasks = [] }, cutoffIso) {
+  const used = new Set();
+  const scan = (records) => {
+    records.forEach((record) => {
+      if (!record || !record.tag || !record.date) return;
+      if (record.date >= cutoffIso) used.add(record.tag);
+    });
+  };
+  scan(entries);
+  scan(planTasks);
+  return used;
+}
+
+/**
+ * Works out which epics have had no recorded activity inside the window and
+ * are therefore safe to archive out of the pickers.
  *
- * Pure data calculation lives in buildRollingSummary (pure-fns.js) and is
- * unit-tested there. This module is the localStorage + DOM glue around it.
+ * An epic is kept when any of these hold: it is a built-in
+ * (PROTECTED_CAT_IDS), it is the epic currently selected in the tag row, it is
+ * already archived, or a log entry or board task dated within the window
+ * references it.
+ * @param {Object} params - Inputs for the staleness decision.
+ * @param {Array&lt;EpicCategory>} params.categories - All known epics.
+ * @param {Array&lt;EpicUsageRecord>} [params.entries] - Log entries to scan for usage.
+ * @param {Array&lt;EpicUsageRecord>} [params.planTasks] - Board tasks to scan for usage.
+ * @param {string} params.todayIso - Today's date as YYYY-MM-DD.
+ * @param {number} [params.windowDays] - Inactivity window in days.
+ * @param {string} [params.selectedTag] - Epic currently selected in the tag row; never archived.
+ * @returns {{ staleIds: string[], cutoffIso: string }} IDs to archive (in `categories` order) and the cutoff date used.
  */
-
-/**
- * Returns the last `n` YYYY-MM-DD date keys ending at (and including) today,
- * ordered most-recent-first.
- * @param {number} [n=7]
- * @returns {string[]}
- */
-function rollingDateKeys(n = 7) {
-  const keys = [];
-  const d = new Date();
-  for (let i = 0; i &lt; n; i++) {
-    keys.push(dk(d));
-    d.setDate(d.getDate() - 1);
-  }
-  return keys;
+export function findStaleCategories({
+  categories = [],
+  entries = [],
+  planTasks = [],
+  todayIso,
+  windowDays = EPIC_STALE_DAYS,
+  selectedTag = null,
+}) {
+  const cutoffIso = epicCutoffDate(todayIso, windowDays);
+  const used = collectRecentlyUsedCatIds({ entries, planTasks }, cutoffIso);
+  const staleIds = categories
+    .filter(
+      (cat) =>
+        cat &amp;&amp;
+        !cat.archived &amp;&amp;
+        !PROTECTED_CAT_IDS.includes(cat.id) &amp;&amp;
+        cat.id !== selectedTag &amp;&amp;
+        !used.has(cat.id)
+    )
+    .map((cat) => cat.id);
+  return { staleIds, cutoffIso };
 }
 
 /**
- * Reads the SOD timestamp for a date key from localStorage.
- * @param {string} dateKey
- * @returns {number|null}
+ * Filters a category list down to the epics a picker should offer. Archived
+ * epics are hidden, except for `keepId` — the currently selected epic stays
+ * visible even once archived so an entry already tagged with it still renders
+ * its own selection instead of appearing untagged.
+ * @param {Array&lt;EpicCategory>} categories - All known epics.
+ * @param {(string|null)} keepId - Epic ID to keep regardless of archived state; omit or pass null to hide every archived epic.
+ * @returns {Array&lt;EpicCategory>} The epics to offer, in input order.
  */
-function summaryGetSodTs(dateKey) {
-  return parseInt(localStorage.getItem('wl_sod_' + dateKey) || '0') || null;
+export function pickableCategories(categories = [], keepId = null) {
+  return categories.filter((cat) => cat &amp;&amp; (!cat.archived || cat.id === keepId));
 }
 
 /**
- * Reads the EOD timestamp for a date key from localStorage.
- * @param {string} dateKey
- * @returns {number|null}
+ * Returns a copy of `categories` with `archived: true` stamped on every epic
+ * whose ID is in `staleIds`. Non-destructive: no record is dropped and every
+ * other field is preserved untouched.
+ * @param {Array&lt;EpicCategory>} categories - All known epics.
+ * @param {string[]} staleIds - Epic IDs to archive.
+ * @returns {Array&lt;EpicCategory>} A new array with the archived epics flagged.
  */
-function summaryGetEodTs(dateKey) {
-  return parseInt(localStorage.getItem('wl_eod_' + dateKey) || '0') || null;
-}
-
-/** Day-of-week abbreviations used by fmtDateLabel — module-level to avoid per-call allocation. */
-const DATE_LABEL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-/** Month abbreviations used by fmtDateLabel — module-level to avoid per-call allocation. */
-const DATE_LABEL_MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
-/**
- * Formats a YYYY-MM-DD date key as a short day-of-week + date label.
- * e.g. '2026-06-04' → 'Wed 04 Jun'
- * @param {string} dateKey
- * @returns {string}
- */
-function fmtDateLabel(dateKey) {
-  const [y, m, d] = dateKey.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  return `${DATE_LABEL_DAYS[date.getDay()]} ${String(d).padStart(2, '0')} ${DATE_LABEL_MONTHS[m - 1]}`;
+export function applyEpicArchive(categories = [], staleIds = []) {
+  const stale = new Set(staleIds);
+  return categories.map((cat) => (stale.has(cat.id) ? { ...cat, archived: true } : cat));
 }
 
 /**
- * Builds the plain-text standup block from computed rows and copies it to the
- * clipboard. Shows a brief "Copied!" confirmation on success, or logs a warning
- * on failure.
- * @param {object[]} rows - Output of buildRollingSummary.
- * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
- * @param {Record&lt;string, string>} locationMap - Pre-read location map (avoids a redundant read).
- * @returns {void}
+ * Returns a copy of `categories` with the `archived` flag cleared from one
+ * epic, bringing it back into the pickers.
+ * @param {Array&lt;EpicCategory>} categories - All known epics.
+ * @param {string} catId - Epic ID to restore.
+ * @returns {Array&lt;EpicCategory>} A new array with the epic un-archived.
  */
-function copySummaryText(rows, weekTotalMs, locationMap) {
-  const lines = rows
-    .filter((r) => r.sodTs || r.totalMs > 0)
-    .map((row) => {
-      const locLabel = WORK_LOCATIONS[locationFor(locationMap, row.dateKey)].label;
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
-      const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
-      let line = `${row.locationEmoji} ${fmtDateLabel(row.dateKey)} ${locLabel} · ${sodStr}–${eodStr} · ${totalStr}`;
-      if (row.topTasks.length) {
-        const tasks = row.topTasks.map((t) => `${t.text} (${fmtDur(t.totalMs)})`).join(', ');
-        line += `\n  ${tasks}`;
-      }
-      return line;
-    });
-
-  if (weekTotalMs > 0) lines.push(`\nWeek total: ${fmtDur(weekTotalMs)}`);
-
-  const text = lines.join('\n');
-  navigator.clipboard
-    .writeText(text)
-    .then(() => {
-      const fb = document.getElementById('rsCopyFeedback');
-      if (fb) {
-        fb.textContent = 'Copied!';
-        setTimeout(() => {
-          fb.textContent = '';
-        }, 2000);
-      }
-    })
-    .catch((err) => {
-      wlLog.warn('copySummaryText: clipboard write failed', err);
-    });
-}
-
-/**
- * Renders the 7-day rolling summary into #tfSummaryPane.
- * No-ops when the pane element is absent (e.g. reduced test DOM).
- * @returns {void}
- */
-function renderRollingSummary() {
-  const el = document.getElementById('tfSummaryPane');
-  if (!el) return;
-
-  // Read the location map once; the closure below and copySummaryText both share it.
-  const locationMap = loadLocationMap();
-  const dateKeys = rollingDateKeys(7);
-  const rows = buildRollingSummary(dateKeys, {
-    entries,
-    getDayStartTs: summaryGetSodTs,
-    getDayEodTs: summaryGetEodTs,
-    getLocationEmoji: (dateKey) => WORK_LOCATIONS[locationFor(locationMap, dateKey)].emoji,
-  });
-
-  const weekTotalMs = rows.reduce((sum, r) => sum + r.totalMs, 0);
-
-  const rowsHtml = rows
-    .map((row) => {
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
-      const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
-      const hasData = !!(row.sodTs || row.totalMs > 0);
-
-      const tasksHtml = row.topTasks.length
-        ? row.topTasks
-            .map(
-              (t) =>
-                `&lt;span class="rs-task">${escHtml(t.text)}&lt;span class="rs-task-dur"> ${fmtDur(t.totalMs)}&lt;/span>&lt;/span>`
-            )
-            .join('')
-        : '&lt;span class="rs-no-tasks">no tracked entries&lt;/span>';
-
-      return `&lt;div class="rs-row${hasData ? '' : ' rs-row--empty'}">
-        &lt;div class="rs-row-head">
-          &lt;span class="rs-emoji" aria-hidden="true">${row.locationEmoji}&lt;/span>
-          &lt;span class="rs-date">${fmtDateLabel(row.dateKey)}&lt;/span>
-          &lt;span class="rs-session">${sodStr} – ${eodStr}&lt;/span>
-          &lt;span class="rs-total">${totalStr}&lt;/span>
-        &lt;/div>
-        &lt;div class="rs-tasks" aria-label="Top tasks">${tasksHtml}&lt;/div>
-      &lt;/div>`;
-    })
-    .join('');
-
-  el.innerHTML = `&lt;div class="rs-wrap">
-    &lt;div class="rs-rows">${rowsHtml}&lt;/div>
-    &lt;div class="rs-week-total">Week total: &lt;strong>${fmtDur(weekTotalMs)}&lt;/strong>&lt;/div>
-    &lt;button type="button" class="rs-copy-btn" id="rsCopyBtn">📋 Copy for standup&lt;/button>
-    &lt;div class="rs-copy-feedback" id="rsCopyFeedback" aria-live="polite">&lt;/div>
-  &lt;/div>`;
-
-  document.getElementById('rsCopyBtn')?.addEventListener('click', () => {
-    copySummaryText(rows, weekTotalMs, locationMap);
+export function restoreArchivedCategory(categories = [], catId) {
+  return categories.map((cat) => {
+    if (cat.id !== catId) return cat;
+    const restored = { ...cat };
+    delete restored.archived;
+    return restored;
   });
 }
 </code></pre>
