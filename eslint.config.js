@@ -2,6 +2,20 @@ import js from '@eslint/js';
 import globals from 'globals';
 import security from 'eslint-plugin-security';
 
+// Flags a new single-letter arrow-function parameter, e.g. `(a) => a.x`.
+// Doesn't touch the ~294 existing instances across src/js/ (severity 'warn',
+// not 'error' — retroactively failing lint on unrelated pre-existing code
+// isn't this rule's job) or arrow functions with more than one parameter,
+// where a short name in a `.map`/`.reduce`/`.sort` comparator chain reads
+// fine. Flagged as unaddressed across seven consecutive weekly QA reviews;
+// this is the "stop the pile from growing" fix those reviews recommended,
+// not a bulk rename.
+const NO_SINGLE_LETTER_ARROW_PARAM = {
+  selector: 'ArrowFunctionExpression[params.length=1] > Identifier.params[name=/^[a-z]$/]',
+  message:
+    'Single-letter arrow-function parameter — use an informative name (CLAUDE.md: "Names are informative, concise, and explicit — no cryptic abbreviations").',
+};
+
 export default [
   js.configs.recommended,
   security.configs.recommended,
@@ -63,6 +77,7 @@ export default [
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-object-injection': 'off',
+      'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
 
@@ -102,6 +117,7 @@ export default [
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-object-injection': 'off',
+      'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
 
