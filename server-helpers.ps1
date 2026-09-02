@@ -162,6 +162,104 @@ function Get-CalendarLookBackYears {
     return $Requested
 }
 
+function Test-PersonalCalendarStore {
+    <#
+    .SYNOPSIS
+        Tests whether an Outlook store is the signed-in user's own mail, as
+        opposed to a shared/delegate mailbox or a public-folder store.
+
+    .DESCRIPTION
+        Get-TodayMeetings walks every store in $ns.Stores looking for calendar
+        folders. Left unfiltered, that picks up a colleague's shared calendar or
+        an opened delegate mailbox exactly as readily as the user's own — both
+        are ordinary stores from Outlook's point of view, so meetings the user
+        has no personal stake in end up on their strip. This centralises which
+        OlExchangeStoreType values count as "personal" so Get-TodayMeetings and
+        its tests share one rule:
+
+          0  olExchangeMailbox        own primary mailbox        -> personal
+          1  olExchangePublicFolder   an individual public store -> not personal
+          2  olExchangeDelegate       another mailbox opened via
+                                       delegate access / "Open Shared
+                                       Calendar"                  -> not personal
+          3  olExchangePublicFolders  the public-folders root     -> not personal
+          4  olExchangeMailboxArchive own online archive          -> personal
+          5  olExchangeUnknown        type Outlook could not report
+                                                                   -> not personal (safest default)
+          -1 (not a real Outlook value — used here for a non-Exchange store,
+              e.g. a local .pst) -> personal
+
+    .PARAMETER StoreType
+        The store's ExchangeStoreType, or -1 for a non-Exchange store.
+
+    .OUTPUTS
+        System.Boolean
+
+    .EXAMPLE
+        Test-PersonalCalendarStore -StoreType 0     # -> $true (own mailbox)
+
+    .EXAMPLE
+        Test-PersonalCalendarStore -StoreType 2     # -> $false (shared/delegate mailbox)
+    #>
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)][int]$StoreType
+    )
+    Set-StrictMode -Version Latest
+    return $StoreType -in @(0, 4, -1)
+}
+
+function Test-CalendarNameExcluded {
+    <#
+    .SYNOPSIS
+        Tests whether a calendar's account or folder name matches the user's
+        configured exclude list.
+
+    .DESCRIPTION
+        A shared calendar is not always a distinct store type — "Open Shared
+        Calendar" and similar can surface it as an ordinary-looking subfolder
+        (or even a same-type store) named after the person who shared it, e.g.
+        "Annina Antinranta". Test-PersonalCalendarStore cannot tell that apart
+        from a personal calendar by type alone, so $CalendarExcludeNames
+        (config.local.ps1) lets the user name it directly. Matching is
+        case-insensitive substring, tested by the caller against both the
+        store's display name and the folder's own name, so either can rule a
+        calendar out.
+
+    .PARAMETER Name
+        The store display name or folder name to test. $null/blank never
+        matches.
+
+    .PARAMETER ExcludeNames
+        The configured list of names/substrings to exclude. An empty list
+        excludes nothing.
+
+    .OUTPUTS
+        System.Boolean
+
+    .EXAMPLE
+        Test-CalendarNameExcluded -Name 'Annina Antinranta' -ExcludeNames @('annina')
+        # -> $true
+
+    .EXAMPLE
+        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('annina')
+        # -> $false
+    #>
+    [OutputType([bool])]
+    param(
+        [AllowNull()][string]$Name,
+        [string[]]$ExcludeNames = @()
+    )
+    Set-StrictMode -Version Latest
+    if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
+    if (-not $ExcludeNames -or $ExcludeNames.Count -eq 0) { return $false }
+    foreach ($pattern in $ExcludeNames) {
+        if ([string]::IsNullOrWhiteSpace($pattern)) { continue }
+        if ($Name.IndexOf($pattern, [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $true }
+    }
+    return $false
+}
+
 function Test-MeetingOnDate {
     <#
     .SYNOPSIS

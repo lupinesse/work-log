@@ -27,3 +27,14 @@ $WeatherName = 'Helsinki' # display name shown in the widget
 # from the meetings strip; lower it (0 = current year only) if the calendar
 # request feels slow. Clamped to 0-20.
 $CalendarLookBackYears = 3
+
+# Calendar: names/substrings of calendars to leave off the strip entirely —
+# a shared calendar someone else granted you access to, a meeting-room
+# calendar, a public/team calendar, etc. Case-insensitive substring match
+# against both the Outlook account name and the calendar folder's own name.
+# Your own mailbox, its archive, and local calendars are already the only
+# ones read by default (shared/delegate mailboxes and public folders are
+# excluded automatically); use this for anything else that still shows up
+# uninvited. Leave empty to exclude nothing further.
+# e.g. @('Annina Antinranta', 'Team Room 3')
+$CalendarExcludeNames = @()

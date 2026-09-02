@@ -22,6 +22,11 @@ $WeatherName      = 'Helsinki'
 # occurrences (see Get-TodayMeetings). Raise it if long-running recurring
 # meetings are missing from the strip.
 $CalendarLookBackYears = 3
+# Names/substrings of calendars to leave off the strip entirely — a shared
+# calendar someone else granted access to, a meeting-room calendar, etc. (see
+# Test-CalendarNameExcluded). Case-insensitive substring match against both
+# the Outlook account name and the calendar folder's own name.
+$CalendarExcludeNames = @()
 $configFile = Join-Path $root 'config.local.ps1'
 if (Test-Path $configFile) { . $configFile }
 
@@ -31,7 +36,8 @@ $effectiveLookBack = Get-CalendarLookBackYears -Requested $CalendarLookBackYears
 if ($effectiveLookBack -ne $CalendarLookBackYears) {
     Write-Host "[cfg] CalendarLookBackYears=$CalendarLookBackYears is outside the supported 0-20 range; using $effectiveLookBack" -ForegroundColor Yellow
 }
-Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack"
+$excludeSummary = if ($CalendarExcludeNames -and $CalendarExcludeNames.Count) { $CalendarExcludeNames -join ', ' } else { 'none' }
+Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack calendarExcludeNames=$excludeSummary"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
 $listener = New-Object Net.HttpListener
@@ -60,16 +66,18 @@ function Get-TodayMeetings {
         hashtable of @{ meetings = <list>; debug = <diagnostics> }, or
         @{ error = <message> } when Outlook cannot be reached.
 
-        Calendars are gathered from every non-public store: the default calendar
-        plus any nested folder that holds appointments. Each folder is read twice
-        because no single Outlook query returns both shapes reliably — Pass 1
-        expands recurring occurrences, Pass 2 covers plain appointments and, when
-        Pass 1 could not expand recurrences on that store, probes recurring
-        series for an occurrence today.
+        Calendars are gathered only from the signed-in user's own stores — see
+        Test-PersonalCalendarStore — plus any nested folder that holds
+        appointments, minus anything matching -ExcludeNames (see
+        Test-CalendarNameExcluded). Each folder is read twice because no single
+        Outlook query returns both shapes reliably — Pass 1 expands recurring
+        occurrences, Pass 2 covers plain appointments and, when Pass 1 could not
+        expand recurrences on that store, probes recurring series for an
+        occurrence today.
 
         The decision rules (which day an item belongs to, when a scan may stop
-        early, how duplicates are keyed) live in server-helpers.ps1 so they are
-        unit-tested without Outlook.
+        early, how duplicates are keyed, which stores/names count as personal)
+        live in server-helpers.ps1 so they are unit-tested without Outlook.
 
     .PARAMETER LookBackYears
         How many years back the Pass 2 window reaches when probing recurring
@@ -77,14 +85,20 @@ function Get-TodayMeetings {
         the current year. Only used on stores where Pass 1 degraded. Clamped by
         Get-CalendarLookBackYears.
 
+    .PARAMETER ExcludeNames
+        Names/substrings of calendars to leave out entirely, matched against
+        both the store's display name and each folder's own name. See
+        Test-CalendarNameExcluded.
+
     .OUTPUTS
         System.Collections.Hashtable
 
     .EXAMPLE
-        (Get-TodayMeetings -LookBackYears 3).meetings
+        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Annina Antinranta')).meetings
     #>
     param(
-        [int]$LookBackYears = 3
+        [int]$LookBackYears = 3,
+        [string[]]$ExcludeNames = @()
     )
     $script = {
         # Track every COM object for explicit release in the finally block.
@@ -133,6 +147,7 @@ function Get-TodayMeetings {
         $dbg = [ordered]@{
             storeCount        = 0
             storesSkipped     = 0
+            foldersExcluded   = 0
             folderCount       = 0
             pass1Count        = 0
             pass2Count        = 0
@@ -183,22 +198,42 @@ function Get-TodayMeetings {
             foreach ($store in $stores) {
                 $dbg.storeCount++
                 $storeType = try { [int]$store.ExchangeStoreType } catch { -1 }
-                # Skip public folders
-                if ($storeType -eq 3) { $dbg.storesSkipped++; continue }
-
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
                 $accountKey = if ($storeDisplay) { $storeDisplay } else { $null }
 
+                # Skip shared/delegate mailboxes and public-folder stores — only
+                # the user's own mailbox, its archive, and local stores are
+                # "personal" (see Test-PersonalCalendarStore).
+                if (-not (Test-PersonalCalendarStore -StoreType $storeType)) { $dbg.storesSkipped++; continue }
+                # Skip a whole store the user named explicitly, e.g. a shared
+                # mailbox that happens to report as an ordinary mailbox type.
+                if (Test-CalendarNameExcluded -Name $storeDisplay -ExcludeNames $CalendarExcludeNames) {
+                    $dbg.storesSkipped++; continue
+                }
+
                 $beforeCount = $calFolders.Count
                 # Method 1: GetDefaultFolder
-                try { $calFolders += @{ folder = Add-ComRef ($store.GetDefaultFolder(9)); label = $accountKey } } catch {}
+                try {
+                    $defaultFolder     = Add-ComRef ($store.GetDefaultFolder(9))
+                    $defaultFolderName = try { [string](Read-ComProperty $defaultFolder 'Name') } catch { '' }
+                    if (Test-CalendarNameExcluded -Name $defaultFolderName -ExcludeNames $CalendarExcludeNames) {
+                        $dbg.foldersExcluded++
+                    } else {
+                        $calFolders += @{ folder = $defaultFolder; label = $accountKey }
+                    }
+                } catch {}
 
                 # Method 2: walk the folder tree for anything holding appointments.
                 try {
                     $rootFolder = Add-ComRef ($store.GetRootFolder())
                     foreach ($folder in (Get-CalendarSubFolder -Parent $rootFolder -Depth 1 -MaxDepth $maxCalendarFolderDepth -Track $trackComRef)) {
                         try {
+                            $folderName = [string](Read-ComProperty $folder 'Name')
+                            if (Test-CalendarNameExcluded -Name $folderName -ExcludeNames $CalendarExcludeNames) {
+                                $dbg.foldersExcluded++
+                                continue
+                            }
                             $entryId      = Read-ComProperty $folder 'EntryID'
                             $alreadyAdded = $calFolders | Where-Object { (Read-ComProperty $_.folder 'EntryID') -eq $entryId }
                             if (-not $alreadyAdded) { $calFolders += @{ folder = $folder; label = $accountKey } }
@@ -380,10 +415,12 @@ function Get-TodayMeetings {
     $rs  = [Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace($iss)
     $rs.ApartmentState = [Threading.ApartmentState]::STA
     $rs.Open()
-    # The scriptblock reads $CalendarLookBackYears; a runspace does not inherit
-    # the caller's variables, so it is set explicitly rather than passed as an
-    # argument (the helpers script runs first in the same pipeline).
+    # The scriptblock reads $CalendarLookBackYears/$CalendarExcludeNames; a
+    # runspace does not inherit the caller's variables, so they are set
+    # explicitly rather than passed as arguments (the helpers script runs first
+    # in the same pipeline).
     $rs.SessionStateProxy.SetVariable('CalendarLookBackYears', $LookBackYears)
+    $rs.SessionStateProxy.SetVariable('CalendarExcludeNames', $ExcludeNames)
 
     $ps = [PowerShell]::Create()
     $ps.Runspace = $rs
@@ -663,7 +700,7 @@ while ($listener.IsListening) {
                 $isDebug = Test-DebugQuery $req.Url.Query
                 # PowerShell unrolls the single-item Collection[PSObject] on return,
                 # so $result is the wrapper hashtable directly, not a collection.
-                $result = Get-TodayMeetings -LookBackYears $CalendarLookBackYears
+                $result = Get-TodayMeetings -LookBackYears $CalendarLookBackYears -ExcludeNames $CalendarExcludeNames
 
                 if ($null -eq $result) {
                     Write-Host '[cal] Get-TodayMeetings returned null — returning empty' -ForegroundColor Yellow
