@@ -213,7 +213,9 @@ function Get-TodayMeetings {
                 }
 
                 $beforeCount = $calFolders.Count
-                # Method 1: GetDefaultFolder
+                # Method 1: GetDefaultFolder(9) = olFolderCalendar, the store's one
+                # default calendar folder. Method 2 below covers any other calendar
+                # folder that store also happens to hold.
                 try {
                     $defaultFolder     = Add-ComRef ($store.GetDefaultFolder(9))
                     $defaultFolderName = try { [string](Read-ComProperty $defaultFolder 'Name') } catch { '' }
