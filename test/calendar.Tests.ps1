@@ -393,6 +393,78 @@ Describe 'Look-back window clamping (Get-CalendarLookBackYears)' {
     }
 }
 
+Describe 'Personal-store filtering (Test-PersonalCalendarStore)' {
+    # Regression: a colleague's shared/delegate mailbox and public-folder stores
+    # used to be read exactly like the user's own, putting meetings the user has
+    # no stake in on the strip (e.g. a shared calendar named after its owner).
+
+    It 'accepts the own mailbox (olExchangeMailbox = 0)' {
+        Test-PersonalCalendarStore -StoreType 0 | Should Be $true
+    }
+
+    It 'accepts the own online archive (olExchangeMailboxArchive = 4)' {
+        Test-PersonalCalendarStore -StoreType 4 | Should Be $true
+    }
+
+    It 'accepts a non-Exchange local store (-1)' {
+        Test-PersonalCalendarStore -StoreType -1 | Should Be $true
+    }
+
+    It 'rejects an individual public-folder store (olExchangePublicFolder = 1)' {
+        Test-PersonalCalendarStore -StoreType 1 | Should Be $false
+    }
+
+    It 'rejects a delegate/shared mailbox (olExchangeDelegate = 2)' {
+        Test-PersonalCalendarStore -StoreType 2 | Should Be $false
+    }
+
+    It 'rejects the public-folders root (olExchangePublicFolders = 3)' {
+        Test-PersonalCalendarStore -StoreType 3 | Should Be $false
+    }
+
+    It 'rejects an unreadable/unknown store type (olExchangeUnknown = 5)' {
+        Test-PersonalCalendarStore -StoreType 5 | Should Be $false
+    }
+}
+
+Describe 'Name-based calendar exclusion (Test-CalendarNameExcluded)' {
+    # Backstop for shared calendars that do not stand out by store type — e.g.
+    # one surfaced as an ordinary-looking folder named after the person who
+    # shared it, which Test-PersonalCalendarStore alone cannot catch.
+
+    It 'matches an exact configured name' {
+        Test-CalendarNameExcluded -Name 'Annina Antinranta' -ExcludeNames @('Annina Antinranta') | Should Be $true
+    }
+
+    It 'matches case-insensitively' {
+        Test-CalendarNameExcluded -Name 'ANNINA ANTINRANTA' -ExcludeNames @('annina antinranta') | Should Be $true
+    }
+
+    It 'matches a configured substring' {
+        Test-CalendarNameExcluded -Name 'Calendar - Annina Antinranta (shared)' -ExcludeNames @('annina') | Should Be $true
+    }
+
+    It 'does not match an unrelated name' {
+        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('annina') | Should Be $false
+    }
+
+    It 'excludes nothing when the list is empty' {
+        Test-CalendarNameExcluded -Name 'Anything' -ExcludeNames @() | Should Be $false
+    }
+
+    It 'treats a null name as not excluded' {
+        Test-CalendarNameExcluded -Name $null -ExcludeNames @('annina') | Should Be $false
+    }
+
+    It 'ignores a blank entry in the exclude list' {
+        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('', '  ') | Should Be $false
+    }
+
+    It 'checks every entry, not just the first' {
+        Test-CalendarNameExcluded -Name 'Team Room 3' -ExcludeNames @('annina', 'team room') | Should Be $true
+    }
+}
+
 Describe 'Guarded property reads (Read-ComProperty and Read-ComDate)' {
     # Any property read can throw on a damaged item or a store that does not
     # expose it; one bad appointment must not abort a folder scan.
