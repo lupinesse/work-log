@@ -109,11 +109,14 @@
 <h3>Planning</h3>
 <ul>
 <li><strong>Today's meetings</strong> — fetched live from Outlook calendar (Windows); shows time, duration, Teams join link.
-Every calendar in every account is read, including secondary calendars nested inside another folder, and
-a meeting counts as today's if it overlaps today at all — so multi-day events and meetings that run past
-midnight appear too. <code>✕</code> hides a single meeting for the rest of the day, not every meeting sharing its title.
-If long-running recurring meetings are missing, raise <code>$CalendarLookBackYears</code> in <code>config.local.ps1</code>
-(see <code>config.local.example.ps1</code>); <code>http://localhost:8080/api/calendar?debug=1</code> reports what the collector found.</li>
+Only your own personal calendars are read — your mailbox and its archive, including secondary calendars
+nested inside another folder — not shared/delegate mailboxes or public folders, which are excluded
+automatically. A meeting counts as today's if it overlaps today at all — so multi-day events and meetings
+that run past midnight appear too. <code>✕</code> hides a single meeting for the rest of the day, not every meeting
+sharing its title. If long-running recurring meetings are missing, raise <code>$CalendarLookBackYears</code> in
+<code>config.local.ps1</code> (see <code>config.local.example.ps1</code>). If a calendar you don't want still shows up — e.g. a
+shared calendar that reports as an ordinary folder — name it in <code>$CalendarExcludeNames</code>.
+<code>http://localhost:8080/api/calendar?debug=1</code> reports what the collector found.</li>
 <li><strong>Day streak</strong> — consecutive days with logged work</li>
 </ul>
 <h3>Export &amp; review</h3>
