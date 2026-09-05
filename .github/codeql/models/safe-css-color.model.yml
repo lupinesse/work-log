@@ -1,0 +1,28 @@
+# Models safeCssColor() as an html-injection barrier.
+#
+# WHY THIS IS CORRECT (not a suppression):
+# safeCssColor() in src/js/pure-fns-format.js is a strict allowlist sanitiser. It
+# returns its input only when the input matches the anchored regex
+#   ^(#[0-9a-fA-F]{3,8}|hsl\(\s*\d+\s*,\s*\d+%\s*,\s*\d+%\s*\))$
+# and otherwise returns the constant fallback '#888780'. Every possible return
+# value is therefore a hex triplet, an hsl() triplet, or the fallback — none of
+# which can contain HTML meta-characters (< > " ' &). Its output is genuinely
+# safe to interpolate into markup.
+#
+# WHY CODEQL CANNOT INFER IT:
+# The browser build concatenates src/js/*.js into a single classic script, so
+# consumers such as 02-utils.js call safeCssColor as a free global rather than
+# importing it, and getCat() applies the sanitiser behind an object spread
+# ({ ...cat, color: safeCssColor(cat.color) }) that the taint tracker does not
+# follow. Without this model every getCat().color -> innerHTML flow is reported
+# as js/xss-through-dom — alerts #2 (02-utils.js), #3 (12-misc.js) and #4
+# (20-migration.js), open on main since 2026-05-28.
+#
+# Scope note: this models only the HTML-injection barrier. safeCssColor is a CSS
+# validator, so it is deliberately NOT modelled as a barrier for any other kind.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ['global', 'Member[safeCssColor].ReturnValue', 'html-injection']

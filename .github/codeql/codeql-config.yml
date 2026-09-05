@@ -1,0 +1,11 @@
+# CodeQL configuration for code scanning.
+# Keeps the security-extended suite (previously set via the workflow's `queries`
+# input) and loads the repo-local model pack that models safeCssColor as an
+# html-injection barrier — see models/safe-css-color.model.yml for the rationale.
+name: worklog CodeQL config
+
+queries:
+  - uses: security-extended
+
+packs:
+  - worklog/js-sanitiser-models
