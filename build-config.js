@@ -49,7 +49,9 @@ export const DEST_FILE = '.portable-dest';
  * scope when later files run. `date-labels.js` imports `dk` from
  * `pure-fns.js`, so it's listed after it too (not strictly required — `dk`
  * is a hoisted function declaration — but keeps declaration order matching
- * dependency order for readability).
+ * dependency order for readability). `12b-changelog-data.js`, like
+ * `app-constants.js`, has no dependencies on anything else in the list, so
+ * its position doesn't matter either.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -63,6 +65,7 @@ export const LEAF_MODULES = [
   'pure-fns-validate.js',
   'pure-fns.js',
   'date-labels.js',
+  '12b-changelog-data.js',
 ];
 
 /**
