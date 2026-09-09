@@ -149,7 +149,6 @@ function renderTimelineSection(list) {
   bindTimelineEntryEvents(timelineEl);
 
   renderQuickPick();
-  renderChart(list);
   renderPlan();
   renderPlanReviewReminder();
   renderCompleted();
@@ -371,24 +370,6 @@ function bindTimelineEntryEvents(timelineEl) {
       input.addEventListener('blur', doSave);
     });
   });
-}
-
-/**
- * Time-tracking bar chart for the currently viewed day. Permanently inert:
- * the standalone `#chart` element was removed when the bar chart was folded
- * into Today's Flow (see CLAUDE.md's June 2026 architecture note) and never
- * re-added, so `document.getElementById('chart')` always returns null and
- * this returns immediately. Kept as a no-op rather than removed outright —
- * render() and the timer tick in 03-timer.js both still call it
- * unconditionally on every render, and re-adding `#chart` (should the
- * standalone chart ever come back) would only need work here, not at every
- * call site.
- * @param {Array<Object>} _list - The array of log entries that would be charted (unused — see above).
- * @returns {void}
- */
-function renderChart(_list) {
-  const el = document.getElementById('chart');
-  if (!el) return;
 }
 
 /* ── Helpers ── */
