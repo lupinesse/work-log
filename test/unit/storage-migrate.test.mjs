@@ -75,15 +75,21 @@ describe('01b-migrate — retired keys', () => {
 
   it('logs and keeps going when storage refuses the removal', () => {
     const warnings = [];
+    const thrown = new Error('SecurityError: storage is disabled');
     const { sandbox } = loadMigrateSandbox({});
-    sandbox.wlLog.warn = (...args) => warnings.push(args[0]);
+    sandbox.wlLog.warn = (message, err) => warnings.push({ message, err });
     sandbox.localStorage.getItem = () => '[]';
     sandbox.localStorage.removeItem = () => {
-      throw new Error('SecurityError: storage is disabled');
+      throw thrown;
     };
+
     assert.equal(sandbox.removeRetiredKeys(), 0);
     assert.equal(warnings.length, 1);
-    assert.match(warnings[0], /wl_seen_ended_v1/);
+    // The warning has to name the key and the feature, and forward the original
+    // error — without it the caller cannot tell a security block from a quota one.
+    assert.match(warnings[0].message, /wl_seen_ended_v1/);
+    assert.match(warnings[0].message, /transition-bridge/);
+    assert.equal(warnings[0].err, thrown);
   });
 
   it('reports how many retired keys it removed', () => {

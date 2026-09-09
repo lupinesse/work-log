@@ -14,6 +14,11 @@
  * It also sweeps out RETIRED_KEYS: keys whose owning feature has been
  * removed, so they do not linger in the browser forever.
  *
+ * Retiring a key: when you delete a feature, append its key to RETIRED_KEYS
+ * and drop the key from DATA.md in the same change. Same rule as MIGRATIONS —
+ * never remove an entry once added, or users who skipped that version keep the
+ * orphan forever.
+ *
  * @see DATA.md for the full localStorage schema reference.
  */
 
@@ -101,10 +106,15 @@ function migrateEntryDatesToLocal() {
 }
 
 /**
+ * Describes one localStorage key whose owning feature has been removed.
+ * @typedef {{ key: string, description: string }} RetiredKey
+ */
+
+/**
  * localStorage keys belonging to features that have since been removed.
  * Entries are never deleted from this list — a user upgrading across several
  * versions still needs the key swept out of their browser.
- * @type {{ key: string, description: string }[]}
+ * @type {RetiredKey[]}
  */
 const RETIRED_KEYS = [
   { key: 'wl_seen_ended_v1', description: 'post-meeting transition-bridge banner' },
