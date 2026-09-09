@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (59 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (60 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -421,12 +421,21 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-signifiers.js** (83 lines) — Entry Signifiers
+#### **10b-signifiers.js** (56 lines) — Entry Signifiers
 **Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
 
 **Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
 
 **Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
+
+**Dependencies**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol()`, `sigTitle()` come from the `signifiers.js` leaf module (issue #336) — see below. `SIG_CYCLE`, `cycleSignifier()`, `sigHtml()`, `bindSignifierClicks()` stay here: they read the `entries` module state, call `save()`/`render()`, and do DOM binding, none of which a standalone ES module can reach.
+
+---
+
+#### **signifiers.js** (46 lines) — Signifier Lookup Tables (LEAF MODULE)
+**Responsibility**: `SIG_SYMBOL`, `SIG_TITLE` (signifier id → display symbol/title) and their accessors `sigSymbol(entry)`/`sigTitle(entry)`, with a `'●'`/`'Billable'` fallback for the billable default. Only JS builtins as dependencies — imported as an ES module at the top of `script.js`. Extracted from `10b-signifiers.js` (issue #336) — the fourth ES-module extraction, another instance of the date-labels.js pattern: pull the stateless lookup out, leave the stateful cycling/DOM binding behind. Used by `10b-signifiers.js`'s own `sigHtml()`, `18-dailylog.js`'s `buildDailyLogItems()`, and directly by `16-rapid.js`'s `_qcRenderTokenPreview()` (previously guarded with a `typeof SIG_SYMBOL !== 'undefined'` check against the old concatenated-global; now a guaranteed import, so the guard was removed).
+
+**Exports**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol`, `sigTitle`
 
 ---
 
