@@ -190,10 +190,6 @@ Array of parked-thought objects:
 Array of meeting subject strings hidden for that date.
 Lifetime: one key per day; old keys accumulate but are harmless.
 
-### `wl_seen_ended_v1`
-Array of `"subject|start"` strings for meetings that have already triggered a
-transition-bridge banner in the current session.
-
 ---
 
 ## Work location
