@@ -135,5 +135,13 @@ jobs:
       - name: CHANGELOG duplicate-entry check
         run: npm run test:changelog
 
+      # eslint.config.js's own rule for a single-letter arrow param is 'warn',
+      # by design — the ~292 pre-existing instances were never going to be
+      # bulk-renamed. But a warning alone did not stop the count growing
+      # (294 → 297 over two weekly QA reviews before a refactor brought it
+      # back down), so this ratchets it: fails only if a PR adds to the pile.
+      - name: Single-letter arrow-param ratchet (no new instances)
+        run: npm run test:arrow-param-count
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
