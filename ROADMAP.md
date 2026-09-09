@@ -14,7 +14,7 @@ The following are merged to `main` and accumulating in the **Unreleased** sectio
 | Header almanac redesign | Almanac-led 3-column layout; session chip replaces tracking-first centre column |
 | Auto start-of-day on first task | First task timer silently records SoD if not already started |
 | Upcoming task carry fix | `upcoming → inprogress` no longer reverts to `upcoming` on reload |
-| CI review pipeline improvements | ChatGPT/Claude dialogue token budget, Phase 4 audit trail, `pa11y` a11y CI |
+| CI review pipeline improvements | ChatGPT/Claude dialogue token budget, Phase 4 audit trail, diff-scoped `/a11y-audit` CI (#328) |
 
 ## Recently shipped
 
