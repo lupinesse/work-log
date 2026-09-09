@@ -112,16 +112,22 @@ const RETIRED_KEYS = [
 
 /**
  * Deletes localStorage keys left behind by removed features.
- * Safe to call multiple times — absent keys are skipped.
+ * Safe to call multiple times — absent keys are skipped. A storage failure on
+ * one key is logged and the sweep continues: this is best-effort cleanup, and
+ * an orphaned key is never worth aborting page load over.
  * @returns {number} How many keys were actually removed.
  */
 function removeRetiredKeys() {
   let removed = 0;
   for (const { key, description } of RETIRED_KEYS) {
-    if (localStorage.getItem(key) === null) continue;
-    localStorage.removeItem(key);
-    removed++;
-    wlLog.info(`migrate: removed retired key "${key}" (${description})`);
+    try {
+      if (localStorage.getItem(key) === null) continue;
+      localStorage.removeItem(key);
+      removed++;
+      wlLog.info(`migrate: removed retired key "${key}" (${description})`);
+    } catch (err) {
+      wlLog.warn(`migrate: could not remove retired key "${key}" (${description})`, err);
+    }
   }
   return removed;
 }

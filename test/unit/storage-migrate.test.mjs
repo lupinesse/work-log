@@ -73,6 +73,19 @@ describe('01b-migrate — retired keys', () => {
     assert.equal(sandbox.removeRetiredKeys(), 0);
   });
 
+  it('logs and keeps going when storage refuses the removal', () => {
+    const warnings = [];
+    const { sandbox } = loadMigrateSandbox({});
+    sandbox.wlLog.warn = (...args) => warnings.push(args[0]);
+    sandbox.localStorage.getItem = () => '[]';
+    sandbox.localStorage.removeItem = () => {
+      throw new Error('SecurityError: storage is disabled');
+    };
+    assert.equal(sandbox.removeRetiredKeys(), 0);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /wl_seen_ended_v1/);
+  });
+
   it('reports how many retired keys it removed', () => {
     const { sandbox, store } = loadMigrateSandbox({});
     store.wl_seen_ended_v1 = '[]';
