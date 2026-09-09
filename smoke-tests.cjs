@@ -946,10 +946,7 @@ async function runTests() {
         { timeout: 8000 }
       );
       assert('No ReferenceError on load', !errors.some((e) => e.includes('_lastTickDate')));
-      assert(
-        'No banner null crash',
-        !errors.some((e) => e.includes('newdayBanner') || e.includes('Cannot read'))
-      );
+      assert('No null-element crash', !errors.some((e) => e.includes('Cannot read')));
       assert(
         'Render completes cleanly',
         await page.evaluate(() => !!document.getElementById('statToday'))
@@ -1905,91 +1902,6 @@ async function runTests() {
     // Verify hook close button
     const closeBtn = await page.evaluate(() => !!document.getElementById('timerHookClose'));
     assert('Hook close button exists', closeBtn);
-
-    await page.close();
-  }
-
-  // ── 28. Transition bridge: banner and AI call ───────────────────────────────
-  console.log('\n28. Transition bridge');
-  {
-    const today = dk(new Date());
-    const planTasks = [
-      { id: 'pt1', text: 'Next important task', status: 'todo', date: today, tag: 'work' },
-    ];
-
-    const page = await freshPage(ctx, {
-      wl_entries_v1: [],
-      wl_timer_v1: null,
-      wl_cats_v1: CATS,
-      wl_plan_v1: planTasks,
-    });
-
-    // Verify banner DOM elements exist
-    assert(
-      'newdayBanner exists',
-      await page.evaluate(() => !!document.getElementById('newdayBanner'))
-    );
-    assert('newdayMsg exists', await page.evaluate(() => !!document.getElementById('newdayMsg')));
-    assert(
-      'newdayBridgeBtn exists',
-      await page.evaluate(() => !!document.getElementById('newdayBridgeBtn'))
-    );
-    assert(
-      'newdayDismiss exists',
-      await page.evaluate(() => !!document.getElementById('newdayDismiss'))
-    );
-    assert(
-      'newdayExpanded exists',
-      await page.evaluate(() => !!document.getElementById('newdayExpanded'))
-    );
-
-    // Verify banner initially hidden
-    const bannerHidden = await page.evaluate(() => {
-      const banner = document.getElementById('newdayBanner');
-      return !banner.className.includes('show');
-    });
-    assert('Banner initially not shown', bannerHidden);
-
-    // Test banner via the actual showBridgeBanner function (exposed in window.__wl for tests)
-    const testMeeting = {
-      subject: 'Test Meeting',
-      start: new Date().toISOString(),
-      end: new Date().toISOString(),
-    };
-    await page.evaluate((meeting) => {
-      if (window.__wl && window.__wl._showBridgeBanner) {
-        window.__wl._showBridgeBanner(meeting);
-      }
-    }, testMeeting);
-
-    await page.waitForTimeout(50);
-
-    const bannerShown = await page.evaluate(() => {
-      const banner = document.getElementById('newdayBanner');
-      return banner.className.includes('show');
-    });
-    assert('Banner shows when activated', bannerShown);
-
-    const msgContent = await page.evaluate(() => document.getElementById('newdayMsg').textContent);
-    assert('Banner message correct', msgContent.includes('Test Meeting'));
-
-    // Test dismiss — the button should have onclick handler set up by showBridgeBanner
-    await page.evaluate(() => {
-      const dismissBtn = document.getElementById('newdayDismiss');
-      if (dismissBtn.onclick) {
-        dismissBtn.click();
-      } else {
-        // Fallback: manually remove 'show' class if onclick not available
-        document.getElementById('newdayBanner').classList.remove('show');
-      }
-    });
-    await page.waitForTimeout(50);
-
-    const bannerDismissed = await page.evaluate(() => {
-      const banner = document.getElementById('newdayBanner');
-      return !banner.className.includes('show');
-    });
-    assert('Banner hidden after dismiss', bannerDismissed);
 
     await page.close();
   }

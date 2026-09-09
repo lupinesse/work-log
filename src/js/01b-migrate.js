@@ -11,6 +11,9 @@
  * Adding a new migration: append an entry to MIGRATIONS. Never remove
  * old entries — a user might be upgrading across multiple versions.
  *
+ * It also sweeps out RETIRED_KEYS: keys whose owning feature has been
+ * removed, so they do not linger in the browser forever.
+ *
  * @see DATA.md for the full localStorage schema reference.
  */
 
@@ -97,6 +100,33 @@ function migrateEntryDatesToLocal() {
   }
 }
 
+/**
+ * localStorage keys belonging to features that have since been removed.
+ * Entries are never deleted from this list — a user upgrading across several
+ * versions still needs the key swept out of their browser.
+ * @type {{ key: string, description: string }[]}
+ */
+const RETIRED_KEYS = [
+  { key: 'wl_seen_ended_v1', description: 'post-meeting transition-bridge banner' },
+];
+
+/**
+ * Deletes localStorage keys left behind by removed features.
+ * Safe to call multiple times — absent keys are skipped.
+ * @returns {number} How many keys were actually removed.
+ */
+function removeRetiredKeys() {
+  let removed = 0;
+  for (const { key, description } of RETIRED_KEYS) {
+    if (localStorage.getItem(key) === null) continue;
+    localStorage.removeItem(key);
+    removed++;
+    wlLog.info(`migrate: removed retired key "${key}" (${description})`);
+  }
+  return removed;
+}
+
 // Run immediately so data is in the right keys before load() is called.
 migrateStorage();
 migrateEntryDatesToLocal();
+removeRetiredKeys();
