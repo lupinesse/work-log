@@ -63,6 +63,7 @@ export const LEAF_MODULES = [
   'pure-fns-validate.js',
   'pure-fns.js',
   'date-labels.js',
+  '12b-changelog-data.js',
 ];
 
 /**
