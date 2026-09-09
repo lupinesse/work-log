@@ -462,6 +462,26 @@ describe('epics modal — archive and restore', () => {
     assert.ok(sandbox.categories.every((c) => !c.archived));
   });
 
+  it('points the confirm text at the epics modal, not the retired manage-strip restore path', () => {
+    let confirmText = '';
+    const sandbox = staleSandbox({
+      window: {
+        confirm: (msg) => {
+          confirmText = msg;
+          return false;
+        },
+        alert: () => {},
+      },
+    });
+    sandbox._elements.get('epicsTidyBtn')._listeners.click();
+
+    assert.ok(confirmText.includes('🗂 epics'), 'names the modal that actually restores an epic');
+    assert.ok(
+      !confirmText.includes('⚙ → archived'),
+      'no longer points at the #tagRow manage strip, which #385 deleted'
+    );
+  });
+
   it('alerts instead of archiving when nothing is stale', () => {
     const alerts = [];
     const sandbox = staleSandbox({
