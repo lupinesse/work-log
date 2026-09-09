@@ -471,35 +471,6 @@
   </div>
 </div>
 
-<!-- Reflection overlay -->
-<div id="reflectionOverlay" class="reflection-overlay" role="dialog" aria-modal="true"
-     aria-label="End of day reflection" style="display:none">
-  <div class="reflection-card">
-    <div class="reflection-title">🌅 Day wrap-up &mdash; reflection</div>
-
-    <div class="refl-group">
-      <div class="refl-label">Focus quality</div>
-      <div class="refl-stars" id="reflFocusStars" data-field="focus"></div>
-      <div class="refl-hint" id="reflFocusHint"></div>
-    </div>
-
-    <div class="refl-group">
-      <div class="refl-label">Energy level</div>
-      <div class="refl-stars" id="reflEnergyStars" data-field="energy"></div>
-    </div>
-
-    <div class="refl-group">
-      <div class="refl-label">What took longer than expected? <span class="refl-opt">(optional)</span></div>
-      <input class="capture-input" id="reflNote" aria-label="What took longer than expected?" placeholder="One sentence&hellip;" />
-    </div>
-
-    <div class="refl-actions">
-      <button class="add-btn" id="reflSkip">Skip</button>
-      <button class="add-btn refl-save" id="reflSave">Save &amp; close day</button>
-    </div>
-  </div>
-</div>
-
 <!-- End of day modal -->
 <div class="eod-overlay" id="eodOverlay" role="dialog" aria-modal="true" aria-labelledby="eodModalTitle">
   <div class="eod-modal">
@@ -563,15 +534,15 @@
 <div id="sprintSetup" style="display:none">
   <div class="sprint-setup-card">
     <div class="sprint-setup-title">&#9655; New sprint</div>
-    <div class="refl-label">What will you finish?</div>
+    <div class="field-label">What will you finish?</div>
     <div class="capture-row">
       <input class="capture-input" id="sprintIntention" aria-label="Sprint intention — what will you finish?" placeholder="Describe the outcome, not the task" autocomplete="off" />
     </div>
-    <div class="refl-label" style="margin-top:8px">Duration</div>
+    <div class="field-label" style="margin-top:8px">Duration</div>
     <div class="sprint-durations" id="sprintDurations"></div>
     <div class="sprint-setup-actions">
       <button class="add-btn" id="sprintCancel">Cancel</button>
-      <button class="add-btn refl-save" id="sprintStartBtn">&#9654; Start sprint</button>
+      <button class="add-btn add-btn--save" id="sprintStartBtn">&#9654; Start sprint</button>
     </div>
   </div>
 </div>
@@ -581,10 +552,10 @@
   <div class="sprint-review-card">
     <div class="sprint-review-title">&#9678; Sprint review</div>
     <div class="sprint-review-intention" id="sprintReviewIntention"></div>
-    <div class="refl-label">Did you finish what you set out to do?</div>
+    <div class="field-label">Did you finish what you set out to do?</div>
     <div class="sprint-outcomes" id="sprintOutcomes"></div>
     <input class="capture-input" id="sprintReviewNote" aria-label="Sprint review — what got in the way? (optional)" placeholder="What got in the way? (optional)" style="margin:10px 0" />
-    <button class="add-btn refl-save" id="sprintReviewSave">Save &amp; log entry</button>
+    <button class="add-btn add-btn--save" id="sprintReviewSave">Save &amp; log entry</button>
   </div>
 </div>
 

@@ -186,6 +186,13 @@
   transform: scale(0.97);
 }
 
+// Green "confirm and save" variant, for the primary action in a modal where
+// the neutral .add-btn would read as just another option.
+.add-btn--save {
+  color: #1d9e75;
+  border-color: rgba(29, 158, 117, 0.4);
+}
+
 /* ── Make-it-interesting hook (Feature 1) ── */
 .timer-hook-btn {
   font-size: 11px;

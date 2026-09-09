@@ -325,8 +325,6 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     cycleSignifier,
     isEntryBillable,
     addLogNote,
-    openReflection,
-    getReflectionForDate,
     openSprintSetup,
     getSprintLog: () => sprintLog,
     renderTrackers,
