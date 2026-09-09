@@ -33,14 +33,18 @@
  * (TEST_AREA_NAMES), and the hardcoded DEV_CHANGES entry array. New changelog
  * entries are appended to DEV_CHANGES here.
  *
- * Load-order-sensitive: these are top-level consts, evaluated in filename
- * concatenation order, and the startup block in 12c-startup.js calls
- * mergeDevLog() — which dereferences STORE_DEV_LOG and DEV_CHANGES — at top
- * level. This file must therefore sort BEFORE 12c-startup.js.
+ * A leaf ES module (see `LEAF_MODULES` in build-config.js) — pure literal
+ * data with zero references to shared app state or to functions defined in
+ * other src/js files, imported at the top of the built bundle ahead of the
+ * concatenated block. That import-first placement is also what satisfies
+ * 12c-startup.js's startup block, which calls mergeDevLog() (defined in
+ * 12a-changelog.js) — which in turn dereferences STORE_DEV_LOG and
+ * DEV_CHANGES — at top level: both are already in scope by the time any
+ * concatenated file runs.
  */
 
-const STORE_DEV_LOG = 'wl_dev_log';
-const TEST_AREA_NAMES = {
+export const STORE_DEV_LOG = 'wl_dev_log';
+export const TEST_AREA_NAMES = {
   1: 'Page load',
   2: 'roundToNearest30',
   3: 'localStorage round-trip',
@@ -59,7 +63,7 @@ const TEST_AREA_NAMES = {
 };
 
 // Updated each session by Claude — id format: YYYYMMDD-NNN
-const DEV_CHANGES = [
+export const DEV_CHANGES = [
   {
     id: '20260506-001',
     date: '2026-05-06',
@@ -632,7 +636,7 @@ const DEV_CHANGES = [
     id: '20260513-014',
     date: '2026-05-13',
     desc: 'Fix: streak counter now shows correct days at start of day',
-    areas: [1, 24],
+    areas: [1],
   },
   {
     id: '20260513-015',
