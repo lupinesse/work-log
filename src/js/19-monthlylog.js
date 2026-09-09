@@ -76,13 +76,9 @@ function renderMonthlyCalendar(calEl, year, month) {
     const d = i + 1;
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const hrs = mlHoursForDay(dateKey);
-    const refl = typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
-    const reflDot = refl
-      ? `<div class="ml-refl-dot" title="Focus: ${refl.focus}/5 · Energy: ${refl.energy}/5"></div>`
-      : '';
     return `<div class="ml-cell" data-date="${dateKey}"
                   title="${d} — ${hrs.toFixed(1)}h"
-                  style="background:${mlHeatColor(hrs)};position:relative">${reflDot}</div>`;
+                  style="background:${mlHeatColor(hrs)}"></div>`;
   }).join('');
 
   calEl.innerHTML = `

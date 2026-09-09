@@ -624,15 +624,6 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **21-reflection.js** (143 lines) — End-of-Day Reflection
-**Responsibility**: After the end-of-day export, shows a modal for a 1–5 focus-quality rating, a 1–5 energy-level rating, and an optional one-sentence note. Ratings are surfaced as indicator dots on Monthly Log heatmap cells.
-
-**Key functions**: `openReflection(onComplete)`, `renderReflStars(elId, current)`, `getReflectionForDate(dateKey)`
-
-**localStorage key**: `wl_reflection_v1`
-
----
-
 #### **22-trackers.js** (235 lines) — Custom Time-Goal Trackers
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
@@ -680,7 +671,6 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 │  • wl_timer_v1 (active timer)                                │
 │  • wl_plan_v1 (tasks)                                        │
 │  • wl_lognotes_v1 (daily log notes)                          │
-│  • wl_reflection_v1 (end-of-day ratings)                     │
 │  • wl_sprints_v1 (sprint history)                            │
 │  • wl_trackers_v1 (tracker definitions)                      │
 │  • wl_migration_v1 (month close-out record)                  │
@@ -842,19 +832,19 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (698 tests, 112 suites via Node built-in test runner):
+**Unit Tests** (826 tests, 136 suites via Node built-in test runner):
 - `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
-**Smoke Tests** (320 tests via Playwright):
+**Smoke Tests** (310 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
-- BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
+- BuJo features: Rapid logging, signifiers, daily log, monthly log, sprints, trackers
 
-**CI Script Tests** (324 tests, 68 suites via Node built-in test runner):
-- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 324, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
+**CI Script Tests** (372 tests, 75 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 372, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 1,342 tests (698 unit + 320 smoke + 324 CI-script)**
+**Total: 1,508 tests (826 unit + 310 smoke + 372 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)

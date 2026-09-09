@@ -199,7 +199,6 @@ document.getElementById('eodClose').addEventListener('click', () => {
   triggerPortableDeploy();
   document.getElementById('eodOverlay').classList.remove('show');
   renderPlan();
-  openReflection();
 });
 
 /**
