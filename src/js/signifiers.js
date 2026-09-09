@@ -31,6 +31,8 @@ export const SIG_TITLE = {
 /**
  * Returns the display symbol for an entry's signifier.
  * @param {Object} entry - Log entry object.
+ * @param {string|null} [entry.signifier] - One of 'event'|'flagged'|'migrated'|'cancelled'|'overtime',
+ *   or null/undefined for the billable default.
  * @returns {string} Unicode BuJo symbol (○ ★ → ✗ !) or '●' for the billable default.
  */
 export function sigSymbol(entry) {
@@ -40,7 +42,9 @@ export function sigSymbol(entry) {
 /**
  * Returns the accessible title string for an entry's signifier.
  * @param {Object} entry - Log entry object.
- * @returns {string}
+ * @param {string|null} [entry.signifier] - One of 'event'|'flagged'|'migrated'|'cancelled'|'overtime',
+ *   or null/undefined for the billable default.
+ * @returns {string} Accessible title (e.g. 'Meeting / event') or 'Billable' for the billable default.
  */
 export function sigTitle(entry) {
   return SIG_TITLE[entry.signifier] || 'Billable';
