@@ -156,7 +156,7 @@ wl_snapshot        → backup (auto-restore on failure)
 ---
 
 #### **04-render.js** (56 lines) — Top-Level Render Orchestrator
-**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. The one non-mechanical change: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returns null and the guard clause always returns first. Deleted rather than moved; the function stays as a no-op stub since `render()` and `03-timer.js`'s timer tick both still call it unconditionally.
+**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. One non-mechanical change at split time: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returned null and the guard clause always returned first. The dead body was deleted then, leaving a 3-line no-op stub; that stub, its remaining call sites, and the 15-min refresh interval that also called it were themselves deleted in a later pass (#388) once nothing else in the June 2026 removal depended on the call sites still compiling.
 
 ```
 render() → {
@@ -171,7 +171,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
-- `04c-render-timeline.js` (418 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`), the inert `renderChart()` stub, and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (419 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
