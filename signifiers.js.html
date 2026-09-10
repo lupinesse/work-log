@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 04d-render-quickpick.js</title>
+    <title>JSDoc: Source: signifiers.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 04d-render-quickpick.js</h1>
+    <h1 class="page-title">Source: signifiers.js</h1>
 
     
 
@@ -26,92 +26,56 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Render — recent-tasks quick-pick bar ── */
-// Split out of 04-render.js (QA finding: module size). Self-contained: reads
-// entries/qpHidden/getIterationExpiry, no dependency on render()'s internals.
+            <pre class="prettyprint source linenums"><code>/**
+ * @file signifiers.js
+ * Stateless signifier lookup tables and accessors: what symbol and title an
+ * entry's signifier (event/flagged/migrated/cancelled/overtime, or the
+ * billable default) displays as. Only depends on JS builtins — no module
+ * state, no other-file calls.
+ * Extracted from 10b-signifiers.js (issue #336) — the rest of that file
+ * (SIG_CYCLE, cycleSignifier, sigHtml, bindSignifierClicks) stays behind: it
+ * reads the `entries` module state and calls `save()`/`render()`, and does
+ * DOM binding, none of which a standalone ES module can reach.
+ */
+
+/** Signifier id → display symbol. Entries with no signifier show '●' (billable, the default). */
+export const SIG_SYMBOL = {
+  event: '○',
+  flagged: '★',
+  migrated: '→',
+  cancelled: '✗',
+  overtime: '!',
+};
+
+/** Signifier id → accessible title. Entries with no signifier show 'Billable'. */
+export const SIG_TITLE = {
+  event: 'Meeting / event',
+  flagged: 'Flagged for review',
+  migrated: 'Migrated',
+  cancelled: 'Cancelled — excluded from totals',
+  overtime: 'Overtime',
+};
 
 /**
- * Renders the "recent tasks" quick-pick bar below the capture input.
- * Deduplicates entries by text, hides manually-dismissed tasks and tasks past
- * their iteration expiry, and caps the list at 16 items.
+ * Returns the display symbol for an entry's signifier.
+ * @param {Object} entry - Log entry object.
+ * @param {string|null} [entry.signifier] - One of 'event'|'flagged'|'migrated'|'cancelled'|'overtime',
+ *   or null/undefined for the billable default.
+ * @returns {string} Unicode BuJo symbol (○ ★ → ✗ !) or '●' for the billable default.
  */
-function renderQuickPick() {
-  const qp = document.getElementById('quickPick');
-  const seen = new Set();
-  // Build deduplicated recent list, then filter out hidden ones
-  const allRecent = [...entries].reverse().filter((entry) => {
-    const k = entry.text.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
-  // Hide tasks whose last-logged date is at or past the current iteration boundary
-  const todayKeyQp = dk(new Date());
-  const expiredQp = new Set(
-    allRecent
-      .filter((entry) => {
-        const expiry = getIterationExpiry(entry.date || '');
-        return expiry &amp;&amp; todayKeyQp >= expiry;
-      })
-      .map((entry) => entry.text.toLowerCase())
-  );
-  const recent = allRecent
-    .filter(
-      (entry) => !qpHidden.has(entry.text.toLowerCase()) &amp;&amp; !expiredQp.has(entry.text.toLowerCase())
-    )
-    .slice(0, 16);
-  // Hidden count is the intersection of qpHidden with task texts actually present in entries
-  const hiddenInUse = allRecent.filter((entry) => qpHidden.has(entry.text.toLowerCase())).length;
+export function sigSymbol(entry) {
+  return SIG_SYMBOL[entry.signifier] || '●';
+}
 
-  if (!recent.length &amp;&amp; !hiddenInUse) {
-    qp.innerHTML = '';
-    return;
-  }
-
-  const itemsHtml = recent
-    .map((entry) => {
-      return (
-        `&lt;button class="qp-item" data-text="${escHtml(entry.text)}" data-tag="${entry.tag}">` +
-        `&lt;span class="qp-item-text">${escHtml(entry.text)}&lt;/span>` +
-        `&lt;span class="qp-remove" data-text="${escHtml(entry.text)}" title="remove from recent tasks">&amp;times;&lt;/span>` +
-        `&lt;/button>`
-      );
-    })
-    .join('');
-  const restoreHtml = hiddenInUse
-    ? `&lt;button class="qp-restore" id="qpRestore" title="show all hidden tasks again">restore ${hiddenInUse} hidden&lt;/button>`
-    : '';
-
-  qp.innerHTML = `&lt;div class="qp-wrap">&lt;div class="qp-label">recent tasks&lt;/div>&lt;div class="qp-list">${itemsHtml}${restoreHtml}&lt;/div>&lt;/div>`;
-
-  // Click pill body — fill capture input (only if click wasn't on the ✕)
-  qp.querySelectorAll('.qp-item').forEach((btn) => {
-    btn.addEventListener('click', (event) => {
-      if (event.target.closest('.qp-remove')) return;
-      document.getElementById('captureInput').value = btn.dataset.text;
-      selectedTag = btn.dataset.tag;
-      renderTagRow();
-      document.getElementById('captureInput').focus();
-    });
-  });
-  // Click ✕ — hide from recent list
-  qp.querySelectorAll('.qp-remove').forEach((removeBtn) => {
-    removeBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      qpHidden.add(removeBtn.dataset.text.toLowerCase());
-      saveQpHidden();
-      renderQuickPick();
-    });
-  });
-  // Restore all hidden
-  const restoreBtn = document.getElementById('qpRestore');
-  if (restoreBtn) {
-    restoreBtn.addEventListener('click', () => {
-      qpHidden.clear();
-      saveQpHidden();
-      renderQuickPick();
-    });
-  }
+/**
+ * Returns the accessible title string for an entry's signifier.
+ * @param {Object} entry - Log entry object.
+ * @param {string|null} [entry.signifier] - One of 'event'|'flagged'|'migrated'|'cancelled'|'overtime',
+ *   or null/undefined for the billable default.
+ * @returns {string} Accessible title (e.g. 'Meeting / event') or 'Billable' for the billable default.
+ */
+export function sigTitle(entry) {
+  return SIG_TITLE[entry.signifier] || 'Billable';
 }
 </code></pre>
         </article>
