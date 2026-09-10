@@ -58,6 +58,10 @@ export function loadPureFnsScriptSource() {
       'pure-fns-validate.js',
       'pure-fns-tasks.js',
       'pure-fns-export.js',
+      'pure-fns-gapreport.js',
+      'pure-fns-weeklyreport.js',
+      'pure-fns-rollingsummary.js',
+      'pure-fns-backup.js',
       'pure-fns-epics.js',
     ]
       .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
