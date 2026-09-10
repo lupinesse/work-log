@@ -46,24 +46,35 @@ export const DEST_FILE = '.portable-dest';
  * pure-fns.js barrel, though: order matters for the portable build, which
  * inlines files in list order, and the barrel strips down to comments only —
  * the sub-modules that actually declare the functions must already be in
- * scope when later files run. `date-labels.js` imports `dk` from
- * `pure-fns.js`, so it's listed after it too (not strictly required — `dk`
- * is a hoisted function declaration — but keeps declaration order matching
- * dependency order for readability). `12b-changelog-data.js`, like
- * `app-constants.js`, has no dependencies on anything else in the list, so
- * its position doesn't matter either. `signifiers.js` also has no
- * dependencies on anything else in the list.
+ * scope when later files run. Listed alphabetically among themselves: their
+ * cross-references (`pure-fns-weeklyreport.js` calling `parseJiraLabel` from
+ * `pure-fns-export.js` and `GAP_REPORT_UTILITY_TEXTS` from
+ * `pure-fns-gapreport.js`; `pure-fns-backup.js` calling `dk` from
+ * `pure-fns-format.js`) are all inside function bodies invoked well after
+ * every leaf module has loaded, not at top-level module-evaluation time, so
+ * relative order among the sub-modules themselves doesn't matter the way it
+ * does for the barrel. `date-labels.js` imports `dk` from `pure-fns.js`, so
+ * it's listed after it too (not strictly required — `dk` is a hoisted
+ * function declaration — but keeps declaration order matching dependency
+ * order for readability). `12b-changelog-data.js`, like `app-constants.js`,
+ * has no dependencies on anything else in the list, so its position doesn't
+ * matter either. `signifiers.js` also has no dependencies on anything else
+ * in the list.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
 export const LEAF_MODULES = [
   'app-constants.js',
   'logger.js',
+  'pure-fns-backup.js',
   'pure-fns-epics.js',
   'pure-fns-export.js',
   'pure-fns-format.js',
+  'pure-fns-gapreport.js',
+  'pure-fns-rollingsummary.js',
   'pure-fns-tasks.js',
   'pure-fns-validate.js',
+  'pure-fns-weeklyreport.js',
   'pure-fns.js',
   'date-labels.js',
   '12b-changelog-data.js',
