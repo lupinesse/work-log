@@ -59,7 +59,7 @@ function tidyStaleEpics() {
   const proceed = window.confirm(
     `Archive ${staleIds.length} epic(s) unused since ${cutoffIso}?\n\n${labels}\n\n` +
       'They will be hidden from the epic pickers. Past log entries keep their ' +
-      'label and colour, and you can restore any of them from ⚙ → archived.'
+      'label and colour, and you can restore any of them from 🗂 epics.'
   );
   if (!proceed) {
     wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
