@@ -13,6 +13,11 @@
 
 import assert from 'node:assert/strict';
 import test, { describe } from 'node:test';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
 
 import {
@@ -109,5 +114,47 @@ describe('the real src/js/ count, measured via ESLint', () => {
       'measured 0 single-letter arrow params against a baseline of ' +
         `${BASELINE_COUNT} — the rule/ruleId coupling is broken, not the codebase clean`
     );
+  });
+});
+
+describe('check-arrow-param-count.mjs failure reporting', () => {
+  test('reports an informative error and exits 1 when ESLint itself cannot run', () => {
+    // Regression test: the entry point was `main().then(code => process.exit(code))`
+    // with no .catch(), so anything thrown inside main() — most plausibly an
+    // ESLint upgrade moving the Node API this check depends on — surfaced as a
+    // bare unhandled-rejection trace. Still a non-zero exit, but with nothing
+    // saying which check broke or that the count was never measured at all.
+    const scriptPath = fileURLToPath(new URL('../check-arrow-param-count.mjs', import.meta.url));
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'arrow-ratchet-'));
+
+    try {
+      // A flat config that throws on import is the cheapest way to make
+      // ESLint fail the way a broken/incompatible install would.
+      fs.writeFileSync(
+        path.join(sandbox, 'eslint.config.js'),
+        "throw new Error('deliberately broken eslint config');\n"
+      );
+      fs.mkdirSync(path.join(sandbox, 'src', 'js'), { recursive: true });
+      fs.writeFileSync(path.join(sandbox, 'src', 'js', 'sample.js'), 'export const value = 1;\n');
+
+      const result = spawnSync(process.execPath, [scriptPath], {
+        cwd: sandbox,
+        encoding: 'utf8',
+      });
+
+      assert.equal(result.status, 1, 'exits 1 rather than crashing with an unhandled rejection');
+      assert.match(
+        result.stderr,
+        /could not run, so the count was never measured/,
+        'names the check and says the count was never measured'
+      );
+      assert.doesNotMatch(
+        result.stderr,
+        /UnhandledPromiseRejection/,
+        'the rejection is handled, not left to Node to report'
+      );
+    } finally {
+      fs.rmSync(sandbox, { recursive: true, force: true });
+    }
   });
 });
