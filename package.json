@@ -17,6 +17,7 @@
     "test:commitlint": "node .github/scripts/check-commitlint.mjs",
     "test:actionlint": "node .github/scripts/check-actionlint.mjs",
     "test:changelog": "node .github/scripts/check-changelog-duplicates.mjs",
+    "test:arrow-param-count": "node .github/scripts/check-arrow-param-count.mjs",
     "test": "node --test \"test/unit/*.test.mjs\" && node smoke-tests.cjs && node .github/scripts/test/ci-scripts.test.mjs",
     "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
     "lint:css": "stylelint \"src/css/**/*.scss\"",

@@ -299,6 +299,7 @@ npm run test:unit        # Unit tests (test/unit/*.test.mjs, one file per featur
 npm run test:scripts     # CI script tests (.github/scripts/test/*.test.mjs)
 npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlint.mjs)
 npm run test:actionlint  # Workflow lint + self-test (needs the actionlint binary)
+npm run test:arrow-param-count  # Fails if src/js/ gains a new single-letter arrow param
 ```
 `npm test` runs the unit tests, smoke tests, and CI script tests together.
 
