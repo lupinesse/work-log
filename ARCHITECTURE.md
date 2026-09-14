@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (59 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (60 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -156,7 +156,7 @@ wl_snapshot        → backup (auto-restore on failure)
 ---
 
 #### **04-render.js** (56 lines) — Top-Level Render Orchestrator
-**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. The one non-mechanical change: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returns null and the guard clause always returns first. Deleted rather than moved; the function stays as a no-op stub since `render()` and `03-timer.js`'s timer tick both still call it unconditionally.
+**Responsibility**: `render()` — the master render function called after every state change — plus `renderHeaderAndTimerSection()` (date label/nav, location, start/end-of-day controls, timer bar). Was the largest, least-split module in the codebase at 892 lines, flagged five consecutive weekly QA reviews; split into the five files below (QA finding: module size). Each extraction is a verbatim move, not a rewrite — no rendering logic changed, only where it lives and, for the two blocks that were the middle of `render()` rather than a whole function already, the function boundary drawn around it. One non-mechanical change at split time: `renderChart()`'s body (~100 lines) was genuinely dead — `#chart` was removed from `work-log.html` when the standalone bar chart folded into Today's Flow (see the June 2026 architecture note above), so `document.getElementById('chart')` always returned null and the guard clause always returned first. The dead body was deleted then, leaving a 3-line no-op stub; that stub, its remaining call sites, and the 15-min refresh interval that also called it were themselves deleted in a later pass (#388) once nothing else in the June 2026 removal depended on the call sites still compiling.
 
 ```
 render() → {
@@ -171,7 +171,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
-- `04c-render-timeline.js` (418 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`), the inert `renderChart()` stub, and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (419 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -421,12 +421,21 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-signifiers.js** (83 lines) — Entry Signifiers
+#### **10b-signifiers.js** (56 lines) — Entry Signifiers
 **Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
 
 **Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
 
 **Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
+
+**Dependencies**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol()`, `sigTitle()` come from the `signifiers.js` leaf module (issue #336) — see below. `SIG_CYCLE`, `cycleSignifier()`, `sigHtml()`, `bindSignifierClicks()` stay here: they read the `entries` module state, call `save()`/`render()`, and do DOM binding, none of which a standalone ES module can reach.
+
+---
+
+#### **signifiers.js** (46 lines) — Signifier Lookup Tables (LEAF MODULE)
+**Responsibility**: `SIG_SYMBOL`, `SIG_TITLE` (signifier id → display symbol/title) and their accessors `sigSymbol(entry)`/`sigTitle(entry)`, with a `'●'`/`'Billable'` fallback for the billable default. Only JS builtins as dependencies — imported as an ES module at the top of `script.js`. Extracted from `10b-signifiers.js` (issue #336) — the fourth ES-module extraction, another instance of the date-labels.js pattern: pull the stateless lookup out, leave the stateful cycling/DOM binding behind. Used by `10b-signifiers.js`'s own `sigHtml()`, `18-dailylog.js`'s `buildDailyLogItems()`, and directly by `16-rapid.js`'s `_qcRenderTokenPreview()` (previously guarded with a `typeof SIG_SYMBOL !== 'undefined'` check against the old concatenated-global; now a guaranteed import, so the guard was removed).
+
+**Exports**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol`, `sigTitle`
 
 ---
 
@@ -494,7 +503,7 @@ upcoming    → Scheduled for future date
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
-- `12b-changelog-data.js` (631 lines) — `DEV_CHANGES` dataset: the full version-history entries rendered in the changelog modal.
+- `12b-changelog-data.js` (637 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
@@ -624,15 +633,6 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **21-reflection.js** (143 lines) — End-of-Day Reflection
-**Responsibility**: After the end-of-day export, shows a modal for a 1–5 focus-quality rating, a 1–5 energy-level rating, and an optional one-sentence note. Ratings are surfaced as indicator dots on Monthly Log heatmap cells.
-
-**Key functions**: `openReflection(onComplete)`, `renderReflStars(elId, current)`, `getReflectionForDate(dateKey)`
-
-**localStorage key**: `wl_reflection_v1`
-
----
-
 #### **22-trackers.js** (235 lines) — Custom Time-Goal Trackers
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
@@ -680,7 +680,6 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 │  • wl_timer_v1 (active timer)                                │
 │  • wl_plan_v1 (tasks)                                        │
 │  • wl_lognotes_v1 (daily log notes)                          │
-│  • wl_reflection_v1 (end-of-day ratings)                     │
 │  • wl_sprints_v1 (sprint history)                            │
 │  • wl_trackers_v1 (tracker definitions)                      │
 │  • wl_migration_v1 (month close-out record)                  │
@@ -842,19 +841,19 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (826 tests, 136 suites via Node built-in test runner):
-- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
+**Unit Tests** (846 tests, 140 suites via Node built-in test runner):
+- `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`, `signifiers`, `changelog-data`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
-**Smoke Tests** (314 tests via Playwright):
+**Smoke Tests** (310 tests via Playwright):
 - Load test: Verify no JS errors
 - Feature tests: Timer, tasks, persist, UI interactions
 - Edge cases: Empty data, malformed data, boundary dates
-- BuJo features: Rapid logging, signifiers, daily log, monthly log, reflection, sprints, trackers
+- BuJo features: Rapid logging, signifiers, daily log, monthly log, sprints, trackers
 
-**CI Script Tests** (372 tests, 75 suites via Node built-in test runner):
-- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 372, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
+**CI Script Tests** (373 tests, 75 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 373, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
 
-**Total: 1,512 tests (826 unit + 314 smoke + 372 CI-script)**
+**Total: 1,529 tests (846 unit + 310 smoke + 373 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)

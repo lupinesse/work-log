@@ -1,39 +1,10 @@
 // ── 10b-signifiers.js — Entry signifiers ──
+// SIG_SYMBOL, SIG_TITLE, sigSymbol(), sigTitle() live in the signifiers.js
+// leaf module (issue #336) and are imported as globals at the top of
+// script.js — reachable here without a local import statement.
 
 // null/undefined = billable (default, displayed as ●). Cycle: none → event → … → overtime → none
 const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
-const SIG_SYMBOL = {
-  event: '○',
-  flagged: '★',
-  migrated: '→',
-  cancelled: '✗',
-  overtime: '!',
-};
-const SIG_TITLE = {
-  event: 'Meeting / event',
-  flagged: 'Flagged for review',
-  migrated: 'Migrated',
-  cancelled: 'Cancelled — excluded from totals',
-  overtime: 'Overtime',
-};
-
-/**
- * Returns the display symbol for an entry's signifier.
- * @param {Object} entry - Log entry object.
- * @returns {string} Unicode BuJo symbol (○ ★ → ✗ !) or '●' for the billable default.
- */
-function sigSymbol(entry) {
-  return SIG_SYMBOL[entry.signifier] || '●';
-}
-
-/**
- * Returns the accessible title string for an entry's signifier.
- * @param {Object} entry - Log entry object.
- * @returns {string}
- */
-function sigTitle(entry) {
-  return SIG_TITLE[entry.signifier] || 'Billable';
-}
 
 /**
  * Advances an entry's signifier one step through SIG_CYCLE and persists the change.

@@ -45,7 +45,6 @@ function tickClock() {
   document.getElementById('liveWeek').textContent = `Week ${w}/${total}`;
   positionNowLine();
   checkBlockNotifications();
-  updateHeaderTracking();
   // Detect midnight rollover — carry tasks and re-render
   const todayKey = dk(now);
   if (todayKey !== _lastTickDate) {
@@ -58,15 +57,6 @@ function tickClock() {
     checkPomoWeeklyClear();
     render();
   }
-}
-
-/**
- * No-op: the header tracked-total and pace bar were removed in the top-zone
- * redesign (ITEM 1). Kept so tickClock() and tickTimer() call sites remain
- * unchanged.
- */
-function updateHeaderTracking() {
-  // Tracking display now lives in the Hero Card — no header elements to update.
 }
 
 // WEATHER_LAT, WEATHER_LON, WEATHER_NAME, JIRA_BASE are defined in 00-config.js
@@ -299,15 +289,6 @@ function nearestWeekday(from, weekday) {
  */
 function fmtMD(d) {
   return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
-
-/**
- * No longer actively used — `fetchCalendarEvents` handles flag-day display.
- * Kept as a no-op stub so call sites don't need to be removed.
- */
-function renderFlagDay() {
-  // No longer needed — fetchCalendarEvents handles everything
-  // Kept as stub for compatibility
 }
 
 // Token is injected server-side by start-server.ps1 — never put it in client JS.
@@ -599,7 +580,6 @@ fetch('/api/config')
 fetchNameday();
 fetchCalendarEvents();
 renderMoon();
-renderFlagDay();
 renderDistractionCount();
 renderSodBtn();
 renderEodBtn();

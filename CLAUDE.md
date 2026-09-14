@@ -287,8 +287,10 @@ the **Today's Flow** section. This is intentional — do **not** "restore" them.
 - The time log now renders as the **Log** view *inside* `#todayFlowSection`. The
   editable `#timeline` element was relocated into `#tfLogPane`; it keeps the existing
   editable rows and the **"log something…"** ad-hoc entry row, pinned to the bottom.
-- The **bar chart (`#chart`)** was removed entirely. `renderChart()` is guarded
-  (`if (!el) return;`) and the 15-min `setInterval` that calls it is now a no-op.
+- The **bar chart (`#chart`)** was removed entirely. `renderChart()` and the
+  15-min `setInterval` that called it were dead code from this point on and
+  were themselves deleted later (#388) — do not re-add a chart-rendering
+  function under that name without also re-adding `#chart` to the markup.
 - **Month** is now a 4th Today's Flow tab (Flow / Log / Blocks / Month) that shows
   `#monthlyLogSection`. The old standalone toggle button (`#tabMonthlyLog`) is gone.
 

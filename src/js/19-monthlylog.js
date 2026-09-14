@@ -76,13 +76,9 @@ function renderMonthlyCalendar(calEl, year, month) {
     const d = i + 1;
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const hrs = mlHoursForDay(dateKey);
-    const refl = typeof getReflectionForDate === 'function' ? getReflectionForDate(dateKey) : null;
-    const reflDot = refl
-      ? `<div class="ml-refl-dot" title="Focus: ${refl.focus}/5 · Energy: ${refl.energy}/5"></div>`
-      : '';
     return `<div class="ml-cell" data-date="${dateKey}"
                   title="${d} — ${hrs.toFixed(1)}h"
-                  style="background:${mlHeatColor(hrs)};position:relative">${reflDot}</div>`;
+                  style="background:${mlHeatColor(hrs)}"></div>`;
   }).join('');
 
   calEl.innerHTML = `
@@ -254,16 +250,4 @@ function renderMonthlyLog() {
   renderMonthlyCalendar(calEl, _mlYear, _mlMonth);
   renderMonthlySummary(sumEl, monthPrefix);
   renderMonthlyTasks(taskEl, monthPrefix);
-}
-
-/**
- * Bootstraps the Monthly Log feature.
- * The Monthly Log is now the "Month" tab in Today's Flow; its visibility and
- * rendering are driven by renderTodayFlow(). Month sync happens in initTodayFlow()
- * when the Month tab is clicked. This function is kept as a no-op so the call
- * site in 07-lifecycle.js does not need to change.
- * @returns {void}
- */
-function initMonthlyLog() {
-  // no-op: see initTodayFlow() in 11-timeflow.js
 }

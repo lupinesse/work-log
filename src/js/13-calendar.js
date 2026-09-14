@@ -325,8 +325,6 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     cycleSignifier,
     isEntryBillable,
     addLogNote,
-    openReflection,
-    getReflectionForDate,
     openSprintSetup,
     getSprintLog: () => sprintLog,
     renderTrackers,
@@ -348,8 +346,6 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     pausePomo,
     pomoAddTime,
     pomoTapOut,
-    // Header tracking — exposed for smoke tests
-    updateHeaderTracking,
   };
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically

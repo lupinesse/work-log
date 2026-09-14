@@ -406,15 +406,10 @@ function _qcRenderTokenPreview(parsed) {
   }
 
   if (parsed.signifier) {
-    // SIG_SYMBOL / SIG_TITLE are globals from 10b-signifiers.js, loaded before this file.
-    const symbol =
-      typeof SIG_SYMBOL !== 'undefined'
-        ? SIG_SYMBOL[parsed.signifier] || parsed.signifier
-        : parsed.signifier;
-    const title =
-      typeof SIG_TITLE !== 'undefined'
-        ? SIG_TITLE[parsed.signifier] || parsed.signifier
-        : parsed.signifier;
+    // SIG_SYMBOL / SIG_TITLE come from the signifiers.js leaf module, imported
+    // at the top of script.js — always defined by the time this file runs.
+    const symbol = SIG_SYMBOL[parsed.signifier] || parsed.signifier;
+    const title = SIG_TITLE[parsed.signifier] || parsed.signifier;
     chips.push(
       `<span class="qc-token qc-token--sig" title="${escHtml(title)}">` +
         `${escHtml(symbol)} ${escHtml(title)}` +

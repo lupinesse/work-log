@@ -2133,44 +2133,6 @@ async function runTests() {
     await page.close();
   }
 
-  // ── Reflection ────────────────────────────────────────────────────────────
-  console.log('\nReflection');
-  {
-    const page = await freshPage(ctx);
-    await page.evaluate(() => window.__wl.openReflection());
-    assert(
-      'Reflection overlay opens',
-      await page.evaluate(
-        () => document.getElementById('reflectionOverlay').style.display !== 'none'
-      )
-    );
-    await page.click('#reflSkip');
-    assert(
-      'Reflection closes on skip',
-      await page.evaluate(
-        () => document.getElementById('reflectionOverlay').style.display === 'none'
-      )
-    );
-    // Save with ratings
-    await page.evaluate(() => window.__wl.openReflection());
-    await page.click('[data-el="reflFocusStars"][data-val="4"]');
-    await page.click('[data-el="reflEnergyStars"][data-val="3"]');
-    await page.click('#reflSave');
-    const today = dk(new Date());
-    const refl = await page.evaluate((d) => window.__wl.getReflectionForDate(d), today);
-    assert(
-      'Reflection saves focus rating',
-      refl && refl.focus === 4,
-      `got ${JSON.stringify(refl)}`
-    );
-    assert(
-      'Reflection saves energy rating',
-      refl && refl.energy === 3,
-      `got ${JSON.stringify(refl)}`
-    );
-    await page.close();
-  }
-
   // ── Daily Log (now the Log view inside Today's Flow) ─────────────────────
   console.log('\nDaily Log');
   {
@@ -3271,7 +3233,8 @@ async function runTests() {
   // ── Hero Card idle panel reflects completed entries ───────────────────────
   // The top-zone redesign moved the tracked-total and last-session display
   // from the header into the Hero Card idle panel (heroLoggedToday /
-  // heroIdleLastSession). The header's updateHeaderTracking() is now a no-op.
+  // heroIdleLastSession). The header's now-dead updateHeaderTracking() was
+  // removed (#388).
   console.log('\nHero Card logged-today tracking');
   {
     const today = dk(new Date());

@@ -80,7 +80,6 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 ### Export & review
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
-- **Reflection** — end-of-day focus-quality and energy ratings with an optional note
 - **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
 - **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
 
