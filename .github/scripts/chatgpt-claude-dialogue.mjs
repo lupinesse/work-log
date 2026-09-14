@@ -36,6 +36,7 @@ import {
   upsertIssueComment,
 } from './lib/github-threads.mjs';
 import { parsePhase4Response } from './lib/parse-phase4-response.mjs';
+import { isFixClaimCorroborated } from './lib/verify-fix-claim.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
 
@@ -247,7 +248,7 @@ Your job in Phase 4 is to close the dialogue loop:
 
 - If Claude rejected a finding with ❌ \`disagree\`: do NOT re-raise it. Move on.
 - If Claude accepted with ✅ \`agree_fix\`: do NOT trust the claim blind. Claude's reply describes WHAT was changed (e.g., "Will replace the silent catch with wlLog.warn") — locate that exact change in the current diff at the relevant file/line. Then:
-  - **Fix is present, thread does NOT yet show your verification reply** → post a reply starting with "✅ Verified as fixed" (briefly say what you checked, e.g., "wlLog.warn now in place at 12-meetings.js:73") and set \`resolve: true\` so the thread closes and the merge-gate clears.
+  - **Fix is present, thread does NOT yet show your verification reply** → post a reply starting with "✅ Verified as fixed" and cite the exact added code or text in backticks (e.g., "\`wlLog.warn\` now in place at 12-meetings.js:73") — a script mechanically re-checks that the backtick-quoted text you cite is actually present in an added line of the diff before honoring \`resolve: true\`, so a citation that isn't real prose-only ("looks good") or paraphrased text won't close the thread. Then set \`resolve: true\` so the thread closes and the merge-gate clears.
   - **Fix is present, thread already shows "✅ Verified as fixed" from a prior Phase 4 run** → omit. Do not re-post the same confirmation; you are idempotent.
   - **Fix is absent** (the change Claude described isn't in the diff, or a later commit reverted it) → post a reply starting with "🔁 Reopened —" and quote the line(s) where the fix should appear but doesn't. Set \`unresolve: true\` if the thread is currently resolved. That tells Claude's next Phase 2 run to re-evaluate.
   - The same verification rule applies when Claude's synthesis or \`/pr-review\` verdict claims something is "now fixed" or "addressed in commit X": confirm against the diff before trusting.
@@ -380,7 +381,22 @@ async function main() {
   // Replies go to existing threads individually.
   const unpostable = [];
   for (const a of parsed.actions) {
-    const bodyWithAttribution = `${a.body}${REPLY_ATTRIBUTION}`;
+    // Never trust a "resolve" claim on the model's word alone (issue #416:
+    // three confirmed cases where "✅ Verified as fixed" landed on the same
+    // commit as the promised fix, before the fix existed). Require the
+    // reply's own cited evidence — a backtick or quoted span — to actually
+    // appear in an added diff line before letting it close the thread.
+    const corroborated = !a.resolve || isFixClaimCorroborated(a.body, diff);
+    if (a.resolve && !corroborated) {
+      console.warn(
+        `  thread ${a.threadIndex}: resolve requested but cited evidence not found in the diff — leaving open`
+      );
+    }
+    const noteSuffix =
+      a.resolve && !corroborated
+        ? '\n\n⚠️ _Automated check: the specific change cited above could not be found in this diff — leaving the thread open for another look._'
+        : '';
+    const bodyWithAttribution = `${a.body}${noteSuffix}${REPLY_ATTRIBUTION}`;
     try {
       const target = claudeContext.threads[a.threadIndex];
       // Unresolve first so a "🔁 Reopened" reply lands on an open thread —
@@ -403,7 +419,7 @@ async function main() {
       );
       // Resolve AFTER posting so the "✅ Verified as fixed" confirmation is
       // visible on the thread before it closes — clears the merge-gate.
-      if (a.resolve && !target.isResolved) {
+      if (a.resolve && corroborated && !target.isResolved) {
         try {
           await resolveThread({ ...GH_CTX, threadId: target.id });
           console.log(`  resolved thread ${a.threadIndex} (verified fix)`);
