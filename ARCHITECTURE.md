@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r4 |
-| Covers app version | v1.9.2 (main, 2026-09-01) |
-| Last reviewed | 2026-09-01 |
-| Reviewed by | Claude (split 04-render.js into five files — QA finding: module size, flagged five consecutive weekly reviews — updated its entry and the source file count touched by that change. Not a full re-audit of every per-module line count) |
+| Document version | 1.9.2-r5 |
+| Covers app version | v1.9.2 (main, 2026-09-10) |
+| Last reviewed | 2026-09-10 |
+| Reviewed by | Claude (split pure-fns-export.js into five files — QA finding: module size, flagged for the largest module once `04-render.js` was resolved — updated its entry, the barrel's sub-module count and list, and the source file count touched by that change. Not a full re-audit of every per-module line count) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (60 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (63 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -94,11 +94,15 @@ wl_snapshot        → backup (auto-restore on failure)
 ---
 
 #### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
-**Responsibility**: Re-exports all stateless, side-effect-free helpers from four themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
+**Responsibility**: Re-exports all stateless, side-effect-free helpers from eight themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (745 lines) — Entry grouping, export helpers, rolling summary, backup retention, weekly ticket summary, and gap-report/export-warning entry filters: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntryLinkMap`, `findExportWarnings`, `buildRollingSummary`, `applyBackupRetention`, `computeDayBounds`, `formatGroupedLines`, `findGapReportEntries`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
+- `pure-fns-export.js` (309 lines) — Billable-export grouping and merging: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `computeDayBounds`, `isWorkdayLikelyOver`, `buildTaskNoteMap`, `buildEntryNoteMap`, `buildEntryLinkMap`, `mergeNoteMaps`
+- `pure-fns-gapreport.js` (191 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
+- `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
+- `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
+- `pure-fns-backup.js` (100 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 
