@@ -289,15 +289,6 @@ function playChime() {
 }
 
 /**
- * No-op: `#timerBar` was replaced by the Hero Card whose colour is driven by
- * CSS state-modifier classes (`hero-card--running`, `--paused`, etc.).
- * Kept so existing call-sites in `tickTimer` compile without changes.
- */
-function updateTimerBarColor() {
-  // Hero card colour is handled entirely by CSS — nothing to do here.
-}
-
-/**
  * Updates the SVG arc on the timer circle to reflect elapsed time relative to
  * the hyperfocus threshold. The arc fills 0→100% of the circle circumference
  * (2πr ≈ 150.8 px for r=24) as elapsed time goes from 0 to HYPERFOCUS_MINS.
@@ -330,9 +321,8 @@ function tickTimer() {
     if (!activeTimer) return;
     const entry = entries.find((e) => e.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
-    // Update hero card clock and header tracking total every tick
+    // Update hero card clock every tick
     heroUpdateClock();
-    updateHeaderTracking();
     // Keep the task title element current for accessibility aria-live region
     const taskEl = document.getElementById('timerTask');
     if (taskEl) taskEl.innerHTML = entry ? jiraTicketHtml(entry.text) : '…';
@@ -341,7 +331,6 @@ function tickTimer() {
     updateTabAndFavicon();
     const boardLiveClockEl = document.getElementById('boardLiveClock');
     if (boardLiveClockEl) boardLiveClockEl.textContent = fmtElapsed(elapsed);
-    updateTimerBarColor();
     checkChime(elapsed);
     renderLongRunningWarning(elapsed);
     if (emergencyMode) {
@@ -401,20 +390,6 @@ function resumeTimerIfActive() {
   updateTimerBar();
   updateTimerBtn(true);
 }
-
-// Refresh the "time by task" chart every 15 minutes while a timer runs so the
-// active task's accumulated time appears in (near) real time. renderChart()
-// decorates the active timer's entry with a synthetic tsEnd (= now or
-// ts+accumulated for paused) so the bar grows without modifying stored data.
-const CHART_REFRESH_MS = 15 * 60 * 1000;
-setInterval(() => {
-  if (!activeTimer) return;
-  try {
-    renderChart(viewEntries());
-  } catch (err) {
-    /* renderChart may not be ready on very first tick */
-  }
-}, CHART_REFRESH_MS);
 
 // ── Idle-return check ──
 // Timer safety net for the "left it running overnight" case: if the tab was

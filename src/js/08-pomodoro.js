@@ -407,14 +407,3 @@ const _pomoDismiss = document.getElementById('pomoDismiss');
 if (_pomoDismiss) _pomoDismiss.addEventListener('click', () => initPomo(pomoDurMins));
 
 updatePomoDisplay();
-
-/* ── New day detection ── */
-
-/**
- * Formerly showed a "new day" banner prompting the user to export yesterday's log.
- * The banner was removed — end-of-day modal handles exports now.
- * Kept as a no-op stub to avoid removing the call sites.
- */
-function checkNewDay() {
-  // Banner removed — end-of-day modal handles exports now
-}

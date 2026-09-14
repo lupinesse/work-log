@@ -30,7 +30,6 @@ function loadMonthlyLogSandbox() {
     escHtml: (s) => String(s),
     getCatLabel: () => '',
     isEntryBillable: () => false,
-    getReflectionForDate: () => null,
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     console,
   };

@@ -173,7 +173,7 @@ function openTrackerForm() {
       </div>
       <div class="tr-form-actions">
         <button class="add-btn" id="trFormCancel">Cancel</button>
-        <button class="add-btn refl-save" id="trFormSave">Add tracker</button>
+        <button class="add-btn add-btn--save" id="trFormSave">Add tracker</button>
       </div>
     </div>`;
 

@@ -260,20 +260,14 @@ Lifetime: persistent; notes are never auto-deleted.
 
 ---
 
-### `wl_reflection_v1`
-Object keyed by `YYYY-MM-DD`:
-
-```json
-{ "2026-05-26": { "focus": 4, "energy": 3, "note": "Auth bug took longer than expected" } }
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `focus` | number | Focus quality rating 1–5 (0 = skipped) |
-| `energy` | number | Energy level rating 1–5 (0 = skipped) |
-| `note` | string | Optional one-sentence note |
-
-Lifetime: persistent.
+### `wl_reflection_v1` (retired)
+Held end-of-day focus/energy ratings for the reflection overlay removed in
+#400. No code reads or writes this key any more. It is deliberately **not**
+swept out of localStorage the way `wl_seen_ended_v1` was in #399 — that key
+was an internal "have we shown this banner" flag with no user-facing value,
+where this one holds real user-written ratings and notes. Clearing it, if a
+user wants to, is their call — it just won't grow, and nothing in the app
+will ever look at it again.
 
 ---
 
