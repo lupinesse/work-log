@@ -4,14 +4,18 @@
  *
  * eslint.config.js's `no-restricted-syntax` rule for a single-letter arrow
  * parameter (`NO_SINGLE_LETTER_ARROW_PARAM`) is deliberately `'warn'`, not
- * `'error'` — the ~292 pre-existing instances across `src/js/` were never
- * going to be bulk-renamed, so failing lint on them would just make `npm run
- * lint` permanently red for no fix anyone intends to make. But a warning
- * alone did not stop the count growing: it rose from 294 to 297 over two
- * weeks before dropping back to 292 as unrelated refactors touched some of
- * the flagged files. This ratchet is the actual enforcement the weekly QA
- * review kept recommending — new code cannot add to the pile, even though
- * the existing pile is left alone.
+ * `'error'` — the pre-existing instances across `src/js/` were never going to
+ * be bulk-renamed, so failing lint on them would just make `npm run lint`
+ * permanently red for no fix anyone intends to make. But a warning alone did
+ * not stop the count growing: it rose from 294 to 297 over two weekly QA
+ * reviews before unrelated refactors brought it back down. This ratchet is the
+ * actual enforcement those reviews kept recommending — new code cannot add to
+ * the pile, even though the existing pile is left alone.
+ *
+ * `BASELINE_COUNT` below is the only place the current size of that pile is
+ * recorded. Prose here deliberately doesn't restate it: the figure was
+ * duplicated across this docblock and eslint.config.js's comment, and both
+ * copies were left saying 292 when a rebase moved the real baseline to 289.
  */
 
 /** Baseline as measured on `main` on 2026-09-14. Never raise this by hand —
