@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 05-entries.js</title>
+    <title>JSDoc: Source: pure-fns-rollingsummary.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 05-entries.js</h1>
+    <h1 class="page-title">Source: pure-fns-rollingsummary.js</h1>
 
     
 
@@ -26,120 +26,75 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Entry add ── */
-
-/**
- * Creates a new log entry from the capture input's current value.
- * Optionally starts the timer on the new entry (`withTimer = true`), in which
- * case any running timer is stopped first and the matching plan task is
- * auto-promoted to "in progress".
- * @param {boolean} withTimer - If true, start the timer on the new entry.
+            <pre class="prettyprint source linenums"><code>/**
+ * @file pure-fns-rollingsummary.js
+ * Rolling per-day summary aggregation, used by the Rolling Summary tab.
+ * Split out of pure-fns-export.js (QA 2026-09-07, largest-module finding) —
+ * re-exported there via the pure-fns.js barrel. Pure, with no side-effects
+ * and no global state — a leaf ES module with no dependencies of its own.
  */
-function addEntry(withTimer) {
-  const inp = document.getElementById('captureInput');
-  const text = inp.value.trim();
-  if (!text) {
-    inp.focus();
-    return;
-  }
-  if (withTimer &amp;&amp; activeTimer) stopTimer();
-  const entry = {
-    id: Date.now() + '',
-    text,
-    tag: selectedTag,
-    ts: safeRoundedStart(),
-    date: dk(new Date()),
-  };
-  entries.push(entry);
-  inp.value = '';
-  viewDate = new Date();
-  save();
-  if (withTimer) {
-    promoteMatchingTaskToInProgress(text);
-    startTimer(entry.id);
-  }
-  render();
-  inp.focus();
-}
 
-/* ── Restart with timer ── */
+/* ── Rolling summary ── */
 
 /**
- * Finds the most recently created log entry with the same text (case-
- * insensitive, trimmed) as `text`. Used to carry proof-link/note context
- * forward when a task or entry is restarted with a fresh timer.
- * @param {string} text - The entry/task text to match against.
- * @returns {(Object|undefined)} The most recent matching entry, or undefined if none exists.
- */
-function findMostRecentEntryForText(text) {
-  const key = text.toLowerCase().trim();
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].text.toLowerCase().trim() === key) return entries[i];
-  }
-  return undefined;
-}
-
-/**
- * Builds a fresh log entry that continues previously logged work on `text`,
- * used by every "restart with timer" entry point (the log's ▶ restart button,
- * the kanban board's ▸ track button, and the "+ track recent" chips) so they
- * behave consistently.
+ * Computes a rolling per-day summary for a set of date keys.
  *
- * If a prior entry with the same text exists, its proof link is carried over
- * automatically. Its note is deliberately not copied onto the new entry
- * directly — a note written for an earlier session may no longer describe
- * this one — instead `_entryMetaEditId` and `_pendingNoteConfirm` (both in
- * 04a-render-entry-meta.js) are set so the new entry's proof-link/note editor opens with
- * a "same note as last time?" prompt for the user to confirm or clear.
- * @param {string} text - Entry text.
- * @param {string} tag - Category id.
- * @returns {Object} A new entry object, not yet pushed to `entries`.
- */
-function createRestartedEntry(text, tag) {
-  const entry = {
-    id: Date.now() + '',
-    text,
-    tag,
-    ts: safeRoundedStart(),
-    date: dk(new Date()),
-  };
-  const prior = findMostRecentEntryForText(text);
-  if (prior &amp;&amp; prior.link &amp;&amp; prior.link.trim()) entry.link = prior.link.trim();
-  if (prior &amp;&amp; prior.note &amp;&amp; prior.note.trim()) {
-    _entryMetaEditId = entry.id;
-    _pendingNoteConfirm = { id: entry.id, note: prior.note.trim() };
-  }
-  return entry;
-}
-
-/* ── Billable rule ── */
-
-/**
- * Determines whether a log entry is billable, using a three-tier lookup:
- * 1. The entry's own `billable` flag (if explicitly set).
- * 2. The matching plan task's `billable` flag.
- * 3. The category default.
+ * All data dependencies are injected so the function is pure and unit-testable
+ * without any browser globals or localStorage access.
  *
- * Assumption: entries and tasks where `billable` is `undefined` are treated as
- * billable by default. This preserves backward compatibility with data created
- * before the billable flag was introduced — older entries must not silently
- * disappear from billing reports after an upgrade.
- * If the default should change to non-billable, a migration of existing
- * localStorage data is required (see DATA.md § wl_entries).
- *
- * @param {Object} entry - Log entry object.
- * @returns {boolean} True if the entry should be counted as billable.
+ * @param {string[]} dateKeys - Date keys (YYYY-MM-DD) to summarise, most recent first.
+ * @param {object} opts
+ * @param {object[]} opts.entries - All work-log entries.
+ * @param {Function} opts.getDayStartTs - `(dateKey: string) => number|null` — SOD timestamp.
+ * @param {Function} opts.getDayEodTs - `(dateKey: string) => number|null` — EOD timestamp.
+ * @param {Function} opts.getLocationEmoji - `(dateKey: string) => string` — location emoji char.
+ * @returns {Array&lt;{
+ *   dateKey: string,
+ *   locationEmoji: string,
+ *   sodTs: number|null,
+ *   eodTs: number|null,
+ *   totalMs: number,
+ *   topTasks: Array&lt;{text: string, totalMs: number}>
+ * }>}
+ * @example
+ * buildRollingSummary(['2026-06-04'], {
+ *   entries: [{ date: '2026-06-04', text: 'Write code', ts: 1000, tsEnd: 4600000, signifier: '' }],
+ *   getDayStartTs: () => 1000,
+ *   getDayEodTs: () => null,
+ *   getLocationEmoji: () => '🏠',
+ * })
+ * // → [{ dateKey: '2026-06-04', locationEmoji: '🏠', sodTs: 1000, eodTs: null,
+ * //      totalMs: 4599000, topTasks: [{ text: 'Write code', totalMs: 4599000 }] }]
  */
-function isEntryBillable(entry) {
-  if (entry.signifier === 'cancelled') return false;
-  if (entry.billable !== undefined) return entry.billable;
-  const task = planTasks.find(
-    (planTask) => planTask.text.toLowerCase().trim() === entry.text.toLowerCase().trim()
-  );
-  // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
-  if (task) return task.billable !== false;
-  // Same `!== false` convention for categories — undefined → billable.
-  return getCat(entry.tag || 'other').billable !== false;
+export function buildRollingSummary(dateKeys, opts) {
+  const { entries, getDayStartTs, getDayEodTs, getLocationEmoji } = opts;
+  return dateKeys.map((dateKey) => {
+    const dayEntries = entries.filter(
+      (e) => e.date === dateKey &amp;&amp; e.tsEnd &amp;&amp; e.signifier !== 'cancelled'
+    );
+    const totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
+
+    // Aggregate by task text; case-preserving, case-sensitive key so "Fix bug" and
+    // "fix bug" remain separate entries (they were logged as distinct tasks).
+    const byText = {};
+    for (const e of dayEntries) {
+      const key = e.text || '(untitled)';
+      byText[key] = (byText[key] || 0) + (e.tsEnd - e.ts);
+    }
+    const topTasks = Object.entries(byText)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([text, ms]) => ({ text, totalMs: ms }));
+
+    return {
+      dateKey,
+      locationEmoji: getLocationEmoji(dateKey),
+      sodTs: getDayStartTs(dateKey),
+      eodTs: getDayEodTs(dateKey),
+      totalMs,
+      topTasks,
+    };
+  });
 }
 </code></pre>
         </article>

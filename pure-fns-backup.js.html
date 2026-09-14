@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 05-entries.js</title>
+    <title>JSDoc: Source: pure-fns-backup.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 05-entries.js</h1>
+    <h1 class="page-title">Source: pure-fns-backup.js</h1>
 
     
 
@@ -26,120 +26,123 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Entry add ── */
+            <pre class="prettyprint source linenums"><code>/**
+ * @file pure-fns-backup.js
+ * Backup retention and JSON-backup payload construction. Split out of
+ * pure-fns-export.js (QA 2026-09-07, largest-module finding) — re-exported
+ * there via the pure-fns.js barrel. Pure functions with no side-effects and
+ * no global state — a leaf ES module (imports only from pure-fns-format.js).
+ */
+
+import { dk } from './pure-fns-format.js';
 
 /**
- * Creates a new log entry from the capture input's current value.
- * Optionally starts the timer on the new entry (`withTimer = true`), in which
- * case any running timer is stopped first and the matching plan task is
- * auto-promoted to "in progress".
- * @param {boolean} withTimer - If true, start the timer on the new entry.
+ * Checks whether a `YYYY-MM-DD` date string is on or after the cutoff date —
+ * the predicate `applyBackupRetention()` filters entries by. Extracted as its
+ * own function so the well-formed-date check and the chronological
+ * comparison are named and testable independently of the filtering loop.
+ *
+ * @param {string|undefined} date - Candidate entry's `date` field.
+ * @param {string} cutoffDate - Cutoff as `YYYY-MM-DD` (lexicographic compare).
+ * @returns {boolean} True when `date` is well-formed and not before `cutoffDate`.
  */
-function addEntry(withTimer) {
-  const inp = document.getElementById('captureInput');
-  const text = inp.value.trim();
-  if (!text) {
-    inp.focus();
-    return;
+function isWithinRetentionWindow(date, cutoffDate) {
+  return Boolean(date) &amp;&amp; /^\d{4}-\d{2}-\d{2}$/.test(date) &amp;&amp; date >= cutoffDate;
+}
+
+/**
+ * Filters an entries array to those whose `date` field falls within the
+ * retention window (today minus `retentionDays`, inclusive). Entries with a
+ * missing or unparseable date are excluded to keep backups clean.
+ *
+ * The cutoff is computed from `nowMs` so the function stays pure and testable.
+ *
+ * @param {Array&lt;{date: (string|undefined)}>} entries - Raw entries array from localStorage.
+ * @param {number} retentionDays - How many days back to keep (e.g. 90).
+ * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
+ * @returns {{ retainedEntries: Array, dropped: number }} The filtered entries
+ *   and count of dropped ones.
+ * @example
+ * applyBackupRetention(entries, 90, Date.now())
+ * // → { retainedEntries: [...], dropped: 12 }
+ */
+export function applyBackupRetention(entries, retentionDays, nowMs) {
+  // Compare as YYYY-MM-DD strings (lexicographic = chronological) to avoid
+  // the UTC-midnight parse problem: new Date('2026-03-11') is UTC midnight,
+  // which can be earlier than a cutoff derived from local-time arithmetic.
+  const cutoffDate = dk(new Date(nowMs - retentionDays * 24 * 60 * 60 * 1000));
+  const retainedEntries = [];
+  let dropped = 0;
+  for (const e of entries) {
+    if (isWithinRetentionWindow(e.date, cutoffDate)) {
+      retainedEntries.push(e);
+    } else {
+      dropped++;
+    }
   }
-  if (withTimer &amp;&amp; activeTimer) stopTimer();
-  const entry = {
-    id: Date.now() + '',
-    text,
-    tag: selectedTag,
-    ts: safeRoundedStart(),
-    date: dk(new Date()),
+  return { retainedEntries, dropped };
+}
+
+/**
+ * Builds the JSON-backup payload with the retention window applied to *every*
+ * time-series array, so the backup file size stays bounded over time.
+ *
+ * Previously only `entries` was trimmed while `planTasks`, `blocks`, `devLog`,
+ * and `distractions` were bundled in full — those grow every day (carried
+ * tasks, per-day time blocks, appended distraction/dev-log records) and were
+ * the reason "21-day" backups kept getting bigger. Each of those arrays carries
+ * a `YYYY-MM-DD` `date` field, so they prune through the same window as
+ * `entries`.
+ *
+ * Non-time-series data is intentionally kept whole: `categories` and `qpHidden`
+ * are small reference sets with no date, and `pomoLog` is already capped at
+ * source (100 records) so it needs no further trimming here.
+ *
+ * Kept pure (no `localStorage`, no ambient clock) so the bounded-size guarantee
+ * is unit-testable — the caller supplies the current state and the clock.
+ *
+ * @param {object} state - Current application state arrays.
+ * @param {Array}  [state.entries] - Log entries (dated; trimmed).
+ * @param {Array}  [state.categories] - Category definitions (undated; kept whole).
+ * @param {Array}  [state.planTasks] - Plan/board tasks (dated; trimmed).
+ * @param {Array}  [state.blocks] - Time blocks (dated; trimmed).
+ * @param {Array}  [state.pomoLog] - Pomodoro log (capped at source; kept whole).
+ * @param {Array}  [state.devLog] - Dev-changelog entries (dated; trimmed).
+ * @param {Array}  [state.distractions] - Distraction records (dated; trimmed).
+ * @param {Array}  [state.qpHidden] - Hidden quick-pick ids (undated; kept whole).
+ * @param {number} retentionDays - How many days back to keep for dated arrays.
+ * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
+ * @returns {{ payload: object, dropped: Object&lt;string, number> }} The backup
+ *   payload object and a per-array count of records excluded from it (only
+ *   arrays that dropped at least one record are included). The count folds
+ *   together records that aged out of the window and records dropped for a
+ *   missing/malformed `date` — both are legitimately excluded, so they are not
+ *   distinguished here.
+ * @example
+ * buildBackupPayload({ entries, planTasks, blocks }, 21, Date.now())
+ * // → { payload: { version: '1', entries: [...], planTasks: [...], ... }, dropped: { blocks: 4 } }
+ */
+export function buildBackupPayload(state, retentionDays, nowMs) {
+  const dropped = {};
+  const trim = (arr, label) => {
+    const { retainedEntries, dropped: n } = applyBackupRetention(arr || [], retentionDays, nowMs);
+    if (n > 0) dropped[label] = n;
+    return retainedEntries;
   };
-  entries.push(entry);
-  inp.value = '';
-  viewDate = new Date();
-  save();
-  if (withTimer) {
-    promoteMatchingTaskToInProgress(text);
-    startTimer(entry.id);
-  }
-  render();
-  inp.focus();
-}
-
-/* ── Restart with timer ── */
-
-/**
- * Finds the most recently created log entry with the same text (case-
- * insensitive, trimmed) as `text`. Used to carry proof-link/note context
- * forward when a task or entry is restarted with a fresh timer.
- * @param {string} text - The entry/task text to match against.
- * @returns {(Object|undefined)} The most recent matching entry, or undefined if none exists.
- */
-function findMostRecentEntryForText(text) {
-  const key = text.toLowerCase().trim();
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].text.toLowerCase().trim() === key) return entries[i];
-  }
-  return undefined;
-}
-
-/**
- * Builds a fresh log entry that continues previously logged work on `text`,
- * used by every "restart with timer" entry point (the log's ▶ restart button,
- * the kanban board's ▸ track button, and the "+ track recent" chips) so they
- * behave consistently.
- *
- * If a prior entry with the same text exists, its proof link is carried over
- * automatically. Its note is deliberately not copied onto the new entry
- * directly — a note written for an earlier session may no longer describe
- * this one — instead `_entryMetaEditId` and `_pendingNoteConfirm` (both in
- * 04a-render-entry-meta.js) are set so the new entry's proof-link/note editor opens with
- * a "same note as last time?" prompt for the user to confirm or clear.
- * @param {string} text - Entry text.
- * @param {string} tag - Category id.
- * @returns {Object} A new entry object, not yet pushed to `entries`.
- */
-function createRestartedEntry(text, tag) {
-  const entry = {
-    id: Date.now() + '',
-    text,
-    tag,
-    ts: safeRoundedStart(),
-    date: dk(new Date()),
+  const payload = {
+    version: '1',
+    exported: new Date(nowMs).toISOString(),
+    retentionDays,
+    entries: trim(state.entries, 'entries'),
+    categories: state.categories || [],
+    planTasks: trim(state.planTasks, 'planTasks'),
+    blocks: trim(state.blocks, 'blocks'),
+    pomoLog: state.pomoLog || [],
+    devLog: trim(state.devLog, 'devLog'),
+    distractions: trim(state.distractions, 'distractions'),
+    qpHidden: [...(state.qpHidden || [])],
   };
-  const prior = findMostRecentEntryForText(text);
-  if (prior &amp;&amp; prior.link &amp;&amp; prior.link.trim()) entry.link = prior.link.trim();
-  if (prior &amp;&amp; prior.note &amp;&amp; prior.note.trim()) {
-    _entryMetaEditId = entry.id;
-    _pendingNoteConfirm = { id: entry.id, note: prior.note.trim() };
-  }
-  return entry;
-}
-
-/* ── Billable rule ── */
-
-/**
- * Determines whether a log entry is billable, using a three-tier lookup:
- * 1. The entry's own `billable` flag (if explicitly set).
- * 2. The matching plan task's `billable` flag.
- * 3. The category default.
- *
- * Assumption: entries and tasks where `billable` is `undefined` are treated as
- * billable by default. This preserves backward compatibility with data created
- * before the billable flag was introduced — older entries must not silently
- * disappear from billing reports after an upgrade.
- * If the default should change to non-billable, a migration of existing
- * localStorage data is required (see DATA.md § wl_entries).
- *
- * @param {Object} entry - Log entry object.
- * @returns {boolean} True if the entry should be counted as billable.
- */
-function isEntryBillable(entry) {
-  if (entry.signifier === 'cancelled') return false;
-  if (entry.billable !== undefined) return entry.billable;
-  const task = planTasks.find(
-    (planTask) => planTask.text.toLowerCase().trim() === entry.text.toLowerCase().trim()
-  );
-  // `!== false` (not `=== true`) — undefined means billable (see Assumption above).
-  if (task) return task.billable !== false;
-  // Same `!== false` convention for categories — undefined → billable.
-  return getCat(entry.tag || 'other').billable !== false;
+  return { payload, dropped };
 }
 </code></pre>
         </article>
