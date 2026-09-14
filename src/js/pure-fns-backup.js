@@ -9,6 +9,20 @@
 import { dk } from './pure-fns-format.js';
 
 /**
+ * Checks whether a `YYYY-MM-DD` date string is on or after the cutoff date —
+ * the predicate `applyBackupRetention()` filters entries by. Extracted as its
+ * own function so the well-formed-date check and the chronological
+ * comparison are named and testable independently of the filtering loop.
+ *
+ * @param {string|undefined} date - Candidate entry's `date` field.
+ * @param {string} cutoffDate - Cutoff as `YYYY-MM-DD` (lexicographic compare).
+ * @returns {boolean} True when `date` is well-formed and not before `cutoffDate`.
+ */
+function isWithinRetentionWindow(date, cutoffDate) {
+  return Boolean(date) && /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= cutoffDate;
+}
+
+/**
  * Filters an entries array to those whose `date` field falls within the
  * retention window (today minus `retentionDays`, inclusive). Entries with a
  * missing or unparseable date are excluded to keep backups clean.
@@ -18,26 +32,27 @@ import { dk } from './pure-fns-format.js';
  * @param {Array<{date: (string|undefined)}>} entries - Raw entries array from localStorage.
  * @param {number} retentionDays - How many days back to keep (e.g. 90).
  * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
- * @returns {{ kept: Array, dropped: number }} The filtered entries and count of dropped ones.
+ * @returns {{ retainedEntries: Array, dropped: number }} The filtered entries
+ *   and count of dropped ones.
  * @example
  * applyBackupRetention(entries, 90, Date.now())
- * // → { kept: [...], dropped: 12 }
+ * // → { retainedEntries: [...], dropped: 12 }
  */
 export function applyBackupRetention(entries, retentionDays, nowMs) {
   // Compare as YYYY-MM-DD strings (lexicographic = chronological) to avoid
   // the UTC-midnight parse problem: new Date('2026-03-11') is UTC midnight,
   // which can be earlier than a cutoff derived from local-time arithmetic.
   const cutoffDate = dk(new Date(nowMs - retentionDays * 24 * 60 * 60 * 1000));
-  const kept = [];
+  const retainedEntries = [];
   let dropped = 0;
   for (const e of entries) {
-    if (!e.date || !/^\d{4}-\d{2}-\d{2}$/.test(e.date) || e.date < cutoffDate) {
-      dropped++;
+    if (isWithinRetentionWindow(e.date, cutoffDate)) {
+      retainedEntries.push(e);
     } else {
-      kept.push(e);
+      dropped++;
     }
   }
-  return { kept, dropped };
+  return { retainedEntries, dropped };
 }
 
 /**
@@ -82,9 +97,9 @@ export function applyBackupRetention(entries, retentionDays, nowMs) {
 export function buildBackupPayload(state, retentionDays, nowMs) {
   const dropped = {};
   const trim = (arr, label) => {
-    const { kept, dropped: n } = applyBackupRetention(arr || [], retentionDays, nowMs);
+    const { retainedEntries, dropped: n } = applyBackupRetention(arr || [], retentionDays, nowMs);
     if (n > 0) dropped[label] = n;
-    return kept;
+    return retainedEntries;
   };
   const payload = {
     version: '1',

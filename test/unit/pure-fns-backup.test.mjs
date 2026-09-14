@@ -19,49 +19,49 @@ describe('applyBackupRetention', () => {
 
   it('keeps entries within the retention window', () => {
     const e = makeEntry(30);
-    const { kept, dropped } = applyBackupRetention([e], 90, now);
-    assert.equal(kept.length, 1);
+    const { retainedEntries, dropped } = applyBackupRetention([e], 90, now);
+    assert.equal(retainedEntries.length, 1);
     assert.equal(dropped, 0);
   });
 
   it('drops entries older than the retention window', () => {
     const old = makeEntry(91);
-    const { kept, dropped } = applyBackupRetention([old], 90, now);
-    assert.equal(kept.length, 0);
+    const { retainedEntries, dropped } = applyBackupRetention([old], 90, now);
+    assert.equal(retainedEntries.length, 0);
     assert.equal(dropped, 1);
   });
 
   it('keeps an entry exactly on the cutoff boundary', () => {
     const boundary = makeEntry(90);
-    const { kept, dropped } = applyBackupRetention([boundary], 90, now);
-    assert.equal(kept.length, 1);
+    const { retainedEntries, dropped } = applyBackupRetention([boundary], 90, now);
+    assert.equal(retainedEntries.length, 1);
     assert.equal(dropped, 0);
   });
 
   it('drops entries with a missing date field', () => {
     const noDate = { ts: now - DAY_MS };
-    const { kept, dropped } = applyBackupRetention([noDate], 90, now);
-    assert.equal(kept.length, 0);
+    const { retainedEntries, dropped } = applyBackupRetention([noDate], 90, now);
+    assert.equal(retainedEntries.length, 0);
     assert.equal(dropped, 1);
   });
 
   it('drops entries with an unparseable date field', () => {
     const bad = { date: 'not-a-date', ts: now };
-    const { kept, dropped } = applyBackupRetention([bad], 90, now);
-    assert.equal(kept.length, 0);
+    const { retainedEntries, dropped } = applyBackupRetention([bad], 90, now);
+    assert.equal(retainedEntries.length, 0);
     assert.equal(dropped, 1);
   });
 
   it('handles a mixed array correctly', () => {
     const entries = [makeEntry(10), makeEntry(95), makeEntry(50), { ts: now }];
-    const { kept, dropped } = applyBackupRetention(entries, 90, now);
-    assert.equal(kept.length, 2);
+    const { retainedEntries, dropped } = applyBackupRetention(entries, 90, now);
+    assert.equal(retainedEntries.length, 2);
     assert.equal(dropped, 2);
   });
 
   it('returns empty arrays when given an empty array', () => {
-    const { kept, dropped } = applyBackupRetention([], 90, now);
-    assert.deepEqual(kept, []);
+    const { retainedEntries, dropped } = applyBackupRetention([], 90, now);
+    assert.deepEqual(retainedEntries, []);
     assert.equal(dropped, 0);
   });
 
