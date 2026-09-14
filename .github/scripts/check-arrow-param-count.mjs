@@ -23,6 +23,7 @@ import {
   BASELINE_COUNT,
   countArrowParamWarnings,
   evaluateRatchet,
+  isSuspiciouslyZero,
 } from './lib/arrow-param-ratchet.mjs';
 
 /**
@@ -38,6 +39,17 @@ async function main() {
   const { ok, baseline } = evaluateRatchet(count, BASELINE_COUNT);
 
   console.log(`single-letter arrow params in src/js/: ${count} (baseline ${baseline})`);
+
+  if (isSuspiciouslyZero(count)) {
+    console.error(
+      `✖ measured 0 single-letter arrow params, but the baseline is ${baseline} and this ` +
+        `pile was never bulk-renamed — that means the count stopped matching real ESLint ` +
+        `output instead of the codebase getting clean. Check that eslint.config.js's ` +
+        `NO_SINGLE_LETTER_ARROW_PARAM rule still uses 'no-restricted-syntax' and that ` +
+        `arrow-param-ratchet.mjs's RATCHETED_RULE_ID still matches it.`
+    );
+    return 1;
+  }
 
   if (ok) {
     if (count < baseline) {

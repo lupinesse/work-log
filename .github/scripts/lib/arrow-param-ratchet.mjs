@@ -14,11 +14,20 @@
  * the existing pile is left alone.
  */
 
-/** Baseline as measured on `main` on 2026-09-09. Never raise this by hand —
+/** Baseline as measured on `main` on 2026-09-14. Never raise this by hand —
  * only a genuine drop in the real count should lower it. */
-export const BASELINE_COUNT = 292;
+export const BASELINE_COUNT = 289;
 
-const RULE_MESSAGE = /^Single-letter arrow-function parameter/;
+/**
+ * `no-restricted-syntax` is used for exactly one selector in
+ * `eslint.config.js` (`NO_SINGLE_LETTER_ARROW_PARAM`), so its `ruleId`
+ * alone identifies every message this ratchet cares about. Matching on
+ * `ruleId` rather than the human-readable message text means a future
+ * copy edit to that text can't silently break the count down to a
+ * permanent, undetected 0 — the same pattern the rule's own sibling test
+ * (`eslint-single-letter-arrow.test.mjs`) already relies on.
+ */
+const RATCHETED_RULE_ID = 'no-restricted-syntax';
 
 /**
  * Counts how many of the given ESLint messages are from the single-letter
@@ -29,7 +38,7 @@ const RULE_MESSAGE = /^Single-letter arrow-function parameter/;
  * @returns {number} How many messages match the rule.
  */
 export function countArrowParamWarnings(messages) {
-  return messages.filter((message) => RULE_MESSAGE.test(message.message)).length;
+  return messages.filter((message) => message.ruleId === RATCHETED_RULE_ID).length;
 }
 
 /**
@@ -37,9 +46,29 @@ export function countArrowParamWarnings(messages) {
  *
  * @param {number} count - The count measured this run.
  * @param {number} [baseline] - The baseline to ratchet against.
- * @returns {{ok: boolean, count: number, baseline: number}} `ok` is false
- *   only when `count` exceeds `baseline` — equal or lower both pass.
+ * @returns {{ok: boolean, count: number, baseline: number}} `ok` — false
+ *   only when `count` exceeds `baseline`, true when it is equal or lower.
+ *   `count` — the measured count, echoed back unchanged. `baseline` — the
+ *   baseline it was compared against, echoed back unchanged.
  */
 export function evaluateRatchet(count, baseline = BASELINE_COUNT) {
   return { ok: count <= baseline, count, baseline };
+}
+
+/**
+ * Flags a measured count of exactly 0 as implausible rather than clean.
+ *
+ * The pre-existing pile in `src/js/` — hundreds strong — is not going to be
+ * bulk-renamed (that's the whole reason this is a ratchet and not a hard
+ * lint error), so a real run can never legitimately measure 0 — a 0
+ * reading means `countArrowParamWarnings()` stopped matching real ESLint
+ * output (rule renamed, disabled, or its message coupling broken), not
+ * that the codebase got clean. Left uncaught, `evaluateRatchet(0, ...)`
+ * reports `ok: true` forever, silently defeating the whole ratchet.
+ *
+ * @param {number} count - The count measured this run.
+ * @returns {boolean} True when `count` is 0 and therefore suspicious.
+ */
+export function isSuspiciouslyZero(count) {
+  return count === 0;
 }
