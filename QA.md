@@ -83,10 +83,10 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 
 | Checklist item | Status | Evidence |
 |---|---|---|
-| Core functionality unit tested | ✅ Pass | `test/unit/*.test.mjs` — **846 tests across 140 suites**, 0 failures (up from 698/112 as of 2026-09-01) |
+| Core functionality unit tested | ✅ Pass | `test/unit/*.test.mjs` — **847 tests across 140 suites**, 0 failures (up from 698/112 as of 2026-09-01) |
 | Formal user acceptance testing | ✅ Pass | `smoke-tests.cjs` — **310 Playwright tests**, 0 failures; locally re-verifiable via the `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` escape hatch added in v1.9.2. Down from 320 (#399 removed the "build bridge" banner and its smoke-test section, not a coverage loss). |
-| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **373 tests across 75 suites**, 0 failures (up from 324/68 as of 2026-09-01) |
-| Total test count | ✅ Pass | **1,529 tests** (846 unit + 310 smoke + 373 CI-scripts); up from 1,342 as of 2026-09-01 |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` runs all `.github/scripts/test/*.test.mjs` files — **389 tests across 81 suites**, 0 failures (up from 324/68 as of 2026-09-01) |
+| Total test count | ✅ Pass | **1,546 tests** (847 unit + 310 smoke + 389 CI-scripts); up from 1,342 as of 2026-09-01 |
 | Informal tests recorded near code | ✅ Pass | `@example` JSDoc tags on core pure functions in `pure-fns.js` (renamed from `00-pure-fns.js`) |
 | No credentials in code | ✅ Pass | Anthropic key moved to server-side proxy in v1.8.7 (closes #33); `connect-src` CSP removed direct `api.anthropic.com` access |
 | All functions and classes documented | ✅ Pass | `npm run docs` exits with 0 errors and 0 warnings as of `fix/jsdoc-type-tag-descriptions` |
