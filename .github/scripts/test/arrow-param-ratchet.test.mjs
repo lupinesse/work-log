@@ -158,7 +158,7 @@ describe('the real src/js/ count, measured via ESLint', () => {
 });
 
 describe('check-arrow-param-count.mjs failure reporting', () => {
-  test('reports an informative error and exits 1 when ESLint itself cannot run', () => {
+  test('reports an informative error and exits 1 when ESLint itself cannot run', async () => {
     // Regression test: the entry point was `main().then(code => process.exit(code))`
     // with no .catch(), so anything thrown inside main() — most plausibly an
     // ESLint upgrade moving the Node API this check depends on — surfaced as a
@@ -176,6 +176,19 @@ describe('check-arrow-param-count.mjs failure reporting', () => {
       );
       fs.mkdirSync(path.join(sandbox, 'src', 'js'), { recursive: true });
       fs.writeFileSync(path.join(sandbox, 'src', 'js', 'sample.js'), 'export const value = 1;\n');
+
+      // Precondition, asserted rather than assumed: this test induces the catch
+      // path by relying on ESLint *throwing* for a config that throws at import.
+      // That is observed behaviour, not a documented contract. Checking it here
+      // means a future ESLint that reports config errors as lint messages fails
+      // on this line, naming the assumption, instead of further down on a
+      // confusing stderr mismatch. (The script would then measure 0, trip
+      // isSuspiciouslyZero and still exit 1 — right code, wrong reason.)
+      await assert.rejects(
+        () => new ESLint({ cwd: sandbox }).lintFiles(['src/js/**/*.js']),
+        'ESLint no longer throws on a config that throws at import, so this test no ' +
+          'longer exercises the catch path it was written for'
+      );
 
       const result = spawnSync(process.execPath, [scriptPath], {
         cwd: sandbox,
