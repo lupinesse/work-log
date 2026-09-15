@@ -2218,6 +2218,7 @@ async function runTests() {
       restart: document.querySelector('.erestart[data-id="kb1"]')?.getAttribute('aria-label'),
       del: document.querySelector('.edel[data-id="kb1"]')?.getAttribute('aria-label'),
       bill: document.querySelector('.ebill-btn[data-id="kb1"]')?.getAttribute('aria-label'),
+      time: document.querySelector('.etime-display[data-id="kb1"]')?.getAttribute('aria-label'),
     }));
     assert(
       'Restart button has an aria-label naming the action',
@@ -2233,6 +2234,11 @@ async function runTests() {
       'Billable-toggle button has an aria-label naming its current state and action',
       ariaLabels.bill === 'Billable — tap to mark internal',
       `got ${JSON.stringify(ariaLabels.bill)}`
+    );
+    assert(
+      'Time-display button has an aria-label naming its purpose, not just the time text',
+      ariaLabels.time === 'Edit start and end time',
+      `got ${JSON.stringify(ariaLabels.time)}`
     );
 
     // Symmetric key coverage: both elements' keydown handlers accept either

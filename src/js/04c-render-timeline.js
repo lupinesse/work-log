@@ -128,7 +128,7 @@ function renderTimelineSection(list) {
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
-            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0">
+            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0" aria-label="Edit start and end time">
               <span class="etime-start">${fmtTime(entry.ts)}</span>
               ${endLine}
             </span>
