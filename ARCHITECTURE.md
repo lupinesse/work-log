@@ -854,10 +854,10 @@ async function fetchWeather() {
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, sprints, trackers
 
-**CI Script Tests** (389 tests, 81 suites via Node built-in test runner):
+**CI Script Tests** (393 tests, 82 suites via Node built-in test runner):
 - `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test` runs this whole glob via `test:scripts`, the same command `ci.yml` uses as a separate step. It previously bundled only `ci-scripts.test.mjs` (39 of these), which left the other suites running in CI but never under the local gate CLAUDE.md's PR workflow tells you to run.
 
-**Total: 1,546 tests (847 unit + 310 smoke + 389 CI-script)**
+**Total: 1,550 tests (847 unit + 310 smoke + 393 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
