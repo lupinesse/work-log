@@ -23,6 +23,7 @@ import { ESLint } from 'eslint';
 import {
   BASELINE_COUNT,
   countArrowParamWarnings,
+  describeRatchetFailure,
   evaluateRatchet,
   isSuspiciouslyZero,
 } from '../lib/arrow-param-ratchet.mjs';
@@ -83,6 +84,45 @@ describe('evaluateRatchet', () => {
   test('defaults to BASELINE_COUNT when no baseline is passed', () => {
     const result = evaluateRatchet(BASELINE_COUNT);
     assert.equal(result.ok, true);
+  });
+});
+
+describe('describeRatchetFailure', () => {
+  test('uses the message and strips the header the stack repeats', () => {
+    const error = new Error('eslint.config.js could not be loaded');
+    const { reason, frames } = describeRatchetFailure(error);
+
+    assert.equal(reason, 'eslint.config.js could not be loaded');
+    assert.ok(frames.length > 0, 'keeps the frames');
+    assert.ok(
+      !frames.includes('eslint.config.js could not be loaded'),
+      'the reason is printed separately, so the stack header would repeat it'
+    );
+    assert.match(frames, /^\s*at /, 'what remains starts at the first frame');
+  });
+
+  test('falls back to String() for a non-Error throw', () => {
+    // A misbehaving ESLint plugin can reject with a bare string or object.
+    // Interpolating .message on one of those yields the literal "undefined",
+    // which is a worse diagnostic than the trace the catch replaced.
+    assert.deepEqual(describeRatchetFailure('boom'), { reason: 'boom', frames: '' });
+    assert.deepEqual(describeRatchetFailure(undefined), { reason: 'undefined', frames: '' });
+    assert.equal(describeRatchetFailure({ code: 'ERR' }).reason, '[object Object]');
+  });
+
+  test('returns no frames when the Error carries no stack', () => {
+    const error = new Error('no stack here');
+    error.stack = undefined;
+
+    assert.deepEqual(describeRatchetFailure(error), { reason: 'no stack here', frames: '' });
+  });
+
+  test('keeps the whole stack when it does not open with name: message', () => {
+    const error = new Error('mismatched');
+    error.stack = `SomethingElse: totally different
+    at nowhere`;
+
+    assert.equal(describeRatchetFailure(error).frames, error.stack);
   });
 });
 

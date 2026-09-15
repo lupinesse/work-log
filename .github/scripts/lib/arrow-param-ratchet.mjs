@@ -76,3 +76,38 @@ export function evaluateRatchet(count, baseline = BASELINE_COUNT) {
 export function isSuspiciouslyZero(count) {
   return count === 0;
 }
+
+/**
+ * Splits a thrown value into a human-readable reason and its stack frames.
+ *
+ * Two things make a raw `error` awkward to report straight out of a `catch`.
+ * It is not guaranteed to be an `Error` — a misbehaving ESLint plugin can
+ * reject with a string or a plain object, and interpolating `.message` on
+ * one of those yields the literal "undefined", which is a worse diagnostic
+ * than the bare trace the catch exists to replace. And `error.stack` already
+ * opens with `${name}: ${message}`, so printing the reason and then the whole
+ * stack repeats it.
+ *
+ * @param {unknown} error - The value thrown or rejected with.
+ * @returns {{reason: string, frames: string}} `reason` — a one-line
+ *   description, from `.message` for an `Error` and `String(error)`
+ *   otherwise. `frames` — the stack with its duplicated `name: message`
+ *   header removed, or an empty string when there is no usable stack.
+ */
+export function describeRatchetFailure(error) {
+  if (!(error instanceof Error)) {
+    return { reason: String(error), frames: '' };
+  }
+
+  const reason = error.message;
+  if (typeof error.stack !== 'string' || error.stack === '') {
+    return { reason, frames: '' };
+  }
+
+  const header = `${error.name}: ${reason}`;
+  const frames = error.stack.startsWith(header)
+    ? error.stack.slice(header.length).replace(/^\r?\n/, '')
+    : error.stack;
+
+  return { reason, frames };
+}
