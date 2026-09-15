@@ -2217,6 +2217,80 @@ async function runTests() {
       `got ${JSON.stringify(ariaLabels.del)}`
     );
 
+    // Symmetric key coverage: both elements' keydown handlers accept either
+    // Enter or Space, not just the one key exercised above per element. The
+    // Escape press earlier triggered a full render(), so kb1's markup here
+    // is freshly rebuilt with no leftover 'open'/editing state to interfere.
+    await page.evaluate(() => document.querySelector('.etime-display[data-id="kb1"]')?.focus());
+    await page.keyboard.press(' ');
+    assert(
+      'Space on .etime-display also opens the time editor',
+      await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
+    );
+    await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
+    await page.keyboard.press('Enter');
+    const renameInputValue2 = await page.evaluate(
+      () => document.querySelector('.etext[data-id="kb1"] .etext-input')?.value
+    );
+    assert(
+      'Enter on .etext also opens the rename input',
+      renameInputValue2 === 'Keyboard test entry',
+      `got ${JSON.stringify(renameInputValue2)}`
+    );
+    await page.keyboard.press('Escape');
+
+    await page.close();
+  }
+
+  // ── Timeline entry text with a nested Jira link (#432 review) ──────────────
+  // jiraTicketHtml() renders a real, focusable <a> for ticket-prefixed entry
+  // text. Nesting a focusable element inside a role="button" container is an
+  // ARIA violation (APG §3.5) the initial #431 fix introduced without
+  // realising it — .etext must not carry role="button"/tabindex for such
+  // entries, and the link's own Enter-press must not bubble up and also
+  // open the rename editor underneath it.
+  console.log('\nTimeline entry text with a nested Jira link');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'kb2', text: 'PROJ-123 fix the thing', tag: 'work', ts: Date.now(), date: today },
+      ],
+    });
+    await page.waitForSelector('.tf-seg-btn[data-view="log"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+
+    const linkPresent = await page.evaluate(
+      () => !!document.querySelector('.etext[data-id="kb2"] .jira-key-link')
+    );
+    assert('Ticket-prefixed entry renders the Jira link', linkPresent);
+
+    const attrs = await page.evaluate(() => {
+      const el = document.querySelector('.etext[data-id="kb2"]');
+      return { role: el?.getAttribute('role'), tabindex: el?.getAttribute('tabindex') };
+    });
+    assert(
+      '.etext has no role="button"/tabindex when it wraps a focusable Jira link',
+      attrs.role === null && attrs.tabindex === null,
+      `got ${JSON.stringify(attrs)}`
+    );
+
+    // Dispatch a synthetic (untrusted) Enter keydown targeting the nested
+    // link — bubbles up to exercise our own listener's guard exactly like a
+    // real keypress would, without page.keyboard.press()'s real/trusted
+    // input, which would trigger the link's actual target="_blank"
+    // navigation (JIRA_BASE is an unresolvable placeholder domain here).
+    const renameOpenedByLink = await page.evaluate(() => {
+      const link = document.querySelector('.etext[data-id="kb2"] .jira-key-link');
+      link?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      return !!document.querySelector('.etext[data-id="kb2"] .etext-input');
+    });
+    assert(
+      'Enter on the nested Jira link does not also open the rename editor',
+      !renameOpenedByLink
+    );
+
     await page.close();
   }
 
