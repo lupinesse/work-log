@@ -181,4 +181,40 @@ describe('isFixClaimCorroborated', () => {
     const reply = '✅ Verified as fixed — `wlLog.warn` now in place at `12-meetings.js:73`.';
     assert.equal(isFixClaimCorroborated(reply, diff), false);
   });
+
+  // ─── Multi-file diffs (issue #418) ───
+  //
+  // isFixClaimCorroborated searches every added line in the whole diff, not
+  // just the section for the file named in the reply. That's fine when the
+  // last cited span is genuinely new — but a diff can easily touch an
+  // unrelated file whose added lines happen to contain the *old* name from a
+  // rename claim (e.g. because that file does its own unrelated thing with a
+  // similarly-named identifier). A naive "any cited span matches any added
+  // line anywhere in the diff" implementation would treat that coincidental
+  // match as corroboration; only checking the last non-path span guards
+  // against it.
+
+  test('rejects a rename claim when just an unrelated file happens to contain the old name', () => {
+    const diff = [
+      '+++ b/src/js/other-file.js',
+      '+  const kept = legacyOldName();', // unrelated file, coincidentally contains the old span
+      '+++ b/src/js/pure-fns-backup.js',
+      '+  const somethingElse = 1;', // the file the claim is actually about — no rename here
+    ].join('\n');
+    const reply =
+      '✅ Verified as fixed — the return property `kept` has been renamed to `retainedEntries` in `src/js/pure-fns-backup.js`.';
+    assert.equal(isFixClaimCorroborated(reply, diff), false);
+  });
+
+  test('accepts a rename claim when the new name appears in a later file section than an unrelated one', () => {
+    const diff = [
+      '+++ b/src/js/other-file.js',
+      '+  const unrelatedChange = true;', // unrelated file, no relevant identifiers at all
+      '+++ b/src/js/pure-fns-backup.js',
+      '+  const retainedEntries = [];', // the actual rename, in a later file section
+    ].join('\n');
+    const reply =
+      '✅ Verified as fixed — the return property `kept` has been renamed to `retainedEntries` in `src/js/pure-fns-backup.js`.';
+    assert.equal(isFixClaimCorroborated(reply, diff), true);
+  });
 });
