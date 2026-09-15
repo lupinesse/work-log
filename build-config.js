@@ -59,7 +59,10 @@ export const DEST_FILE = '.portable-dest';
  * order for readability). `12b-changelog-data.js`, like `app-constants.js`,
  * has no dependencies on anything else in the list, so its position doesn't
  * matter either. `signifiers.js` also has no dependencies on anything else
- * in the list.
+ * in the list. `state-access.js` (added for #423) has no dependencies on
+ * anything else in the list either, and nothing outside it yet depends on
+ * `state-access.js` — no other file imports it — so its position doesn't
+ * matter.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -79,6 +82,7 @@ export const LEAF_MODULES = [
   'date-labels.js',
   '12b-changelog-data.js',
   'signifiers.js',
+  'state-access.js',
 ];
 
 /**
