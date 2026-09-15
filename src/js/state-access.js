@@ -19,7 +19,7 @@
  * file's reads/writes to these accessors at a time, per #423's plan.
  */
 
-/** @type {Array<{id: string, label: string, color: string, archived?: boolean, billable?: boolean}>} */
+/** @type {Array<Object>} */
 let categories = [];
 
 /**
@@ -139,7 +139,8 @@ export function setActiveTimer(next) {
   activeTimer = next;
 }
 
-/** @type {number|null} setInterval handle for the running timer's tick. */
+// setInterval handle for the running timer's tick.
+/** @type {number|null} */
 let timerInterval = null;
 
 /**
