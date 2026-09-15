@@ -27,7 +27,9 @@ const source = readFileSync(
   path.join(repoRoot, '.github', 'scripts', 'chatgpt-review.mjs'),
   'utf8'
 );
-const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:'));
+// Falls back to '' rather than undefined so a missing line fails every
+// assert.match below with a clean AssertionError, not a TypeError.
+const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:')) ?? '';
 
 describe('chatgpt-review.mjs DEFAULT_PROMPT — wlLog rule scoping (#424)', () => {
   it('has a "Focus on:" line in the prompt', () => {
