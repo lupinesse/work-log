@@ -90,13 +90,21 @@ export function isSuspiciouslyZero(count) {
  *
  * @param {unknown} error - The value thrown or rejected with.
  * @returns {{reason: string, frames: string}} `reason` — a one-line
- *   description, from `.message` for an `Error` and `String(error)`
- *   otherwise. `frames` — the stack with its duplicated `name: message`
- *   header removed, or an empty string when there is no usable stack.
+ *   description: `.message` for an `Error`, the same field for a plain
+ *   object that carries a non-empty string one, and `String(error)` for
+ *   anything else. `frames` — the stack with its duplicated
+ *   `name: message` header removed, or an empty string when there is no
+ *   usable stack.
  */
 export function describeRatchetFailure(error) {
   if (!(error instanceof Error)) {
-    return { reason: String(error), frames: '' };
+    // A library that rejects with a plain object often still puts a usable
+    // string in `message`; reporting that beats the "[object Object]" a bare
+    // String() would produce, and this function exists to keep the diagnostic
+    // readable.
+    const carried = typeof error === 'object' && error !== null ? error.message : undefined;
+    const reason = typeof carried === 'string' && carried !== '' ? carried : String(error);
+    return { reason, frames: '' };
   }
 
   const reason = error.message;

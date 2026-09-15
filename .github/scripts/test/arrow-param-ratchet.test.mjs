@@ -110,6 +110,21 @@ describe('describeRatchetFailure', () => {
     assert.equal(describeRatchetFailure({ code: 'ERR' }).reason, '[object Object]');
   });
 
+  test('prefers a string message carried by a plain rejected object', () => {
+    // Several libraries reject with an object rather than an Error. Reporting
+    // "[object Object]" for one that carries a perfectly good message would
+    // defeat the point of this function.
+    assert.deepEqual(describeRatchetFailure({ message: 'plugin exploded', code: 'ERR_X' }), {
+      reason: 'plugin exploded',
+      frames: '',
+    });
+  });
+
+  test('ignores a non-string or empty message on a plain object', () => {
+    assert.equal(describeRatchetFailure({ message: 42 }).reason, '[object Object]');
+    assert.equal(describeRatchetFailure({ message: '' }).reason, '[object Object]');
+  });
+
   test('returns no frames when the Error carries no stack', () => {
     const error = new Error('no stack here');
     error.stack = undefined;
