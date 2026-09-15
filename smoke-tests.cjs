@@ -2166,6 +2166,60 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Timeline keyboard accessibility (#431) ─────────────────────────────────
+  console.log('\nTimeline keyboard accessibility');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'kb1', text: 'Keyboard test entry', tag: 'work', ts: Date.now(), date: today },
+      ],
+    });
+    await page.waitForSelector('.tf-seg-btn[data-view="log"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+
+    // Time editor: Tab-focus the display span, activate with Enter (no click)
+    await page.evaluate(() => document.querySelector('.etime-display[data-id="kb1"]')?.focus());
+    await page.keyboard.press('Enter');
+    assert(
+      'Enter on .etime-display opens the time editor',
+      await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
+    );
+
+    // Rename: Tab-focus the entry text, activate with Space (no click) —
+    // independent of the time editor opened above, so no cleanup needed first.
+    await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
+    await page.keyboard.press(' ');
+    const renameInputValue = await page.evaluate(
+      () => document.querySelector('.etext[data-id="kb1"] .etext-input')?.value
+    );
+    assert(
+      'Space on .etext opens the rename input pre-filled with the entry text',
+      renameInputValue === 'Keyboard test entry',
+      `got ${JSON.stringify(renameInputValue)}`
+    );
+    await page.keyboard.press('Escape');
+
+    // Restart/delete buttons expose their action via aria-label, not just title
+    const ariaLabels = await page.evaluate(() => ({
+      restart: document.querySelector('.erestart[data-id="kb1"]')?.getAttribute('aria-label'),
+      del: document.querySelector('.edel[data-id="kb1"]')?.getAttribute('aria-label'),
+    }));
+    assert(
+      'Restart button has an aria-label naming the action',
+      ariaLabels.restart === 'Restart with timer',
+      `got ${JSON.stringify(ariaLabels.restart)}`
+    );
+    assert(
+      'Delete button has an aria-label naming the action',
+      ariaLabels.del === 'Delete entry',
+      `got ${JSON.stringify(ariaLabels.del)}`
+    );
+
+    await page.close();
+  }
+
   // ── Rapid Logging ─────────────────────────────────────────────────────────
   console.log('\nRapid Logging');
   {
