@@ -134,6 +134,7 @@ function openBlockEmojiPicker(bid, anchor) {
   const input = document.createElement('input');
   input.className = 'emoji-picker-input';
   input.placeholder = 'type or paste any emoji…';
+  input.setAttribute('aria-label', 'Type or paste an emoji');
   input.value = block.emoji || '';
   picker.appendChild(input);
 

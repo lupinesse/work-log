@@ -117,8 +117,8 @@ function renderTimelineSection(list) {
               ${endLine}
             </span>
             <div class="etime-editor" id="ed-${entry.id}">
-              <div class="etime-editor-row"><span class="etime-lbl">start</span><input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" /></div>
-              <div class="etime-editor-row"><span class="etime-lbl">end</span><input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" /></div>
+              <div class="etime-editor-row"><label class="etime-lbl" for="ts-${entry.id}">start</label><input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" /></div>
+              <div class="etime-editor-row"><label class="etime-lbl" for="te-${entry.id}">end</label><input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" /></div>
               <div class="etime-actions">
                 <button class="etime-save" data-id="${entry.id}">save</button>
                 <button class="etime-cancel" data-id="${entry.id}">cancel</button>
@@ -334,6 +334,7 @@ function bindTimelineEntryEvents(timelineEl) {
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';
+      input.setAttribute('aria-label', 'Rename entry');
       input.value = origText;
       el.innerHTML = '';
       el.appendChild(input);
