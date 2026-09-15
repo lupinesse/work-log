@@ -109,6 +109,19 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+
+        const entryTextHtml = jiraTicketHtml(entry.text);
+        // ARIA button widgets must not contain a focusable descendant (APG
+        // §3.5) — jiraTicketHtml() renders a real, tabbable <a> for
+        // ticket-prefixed text, so role="button"/tabindex only go on the div
+        // when isJiraTicketText() confirms there's no such link to conflict
+        // with. Untagged entries keep full keyboard access to the rename
+        // editor; ticket-prefixed ones still open it by click, and the link
+        // itself is separately keyboard-reachable.
+        const etextInteractiveAttrs = isJiraTicketText(entry.text)
+          ? ''
+          : ' role="button" tabindex="0"';
+
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
@@ -128,20 +141,7 @@ function renderTimelineSection(list) {
           ${sigHtml(entry)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            ${(() => {
-              const textHtml = jiraTicketHtml(entry.text);
-              // ARIA button widgets must not contain a focusable descendant
-              // (APG §3.5) — jiraTicketHtml() renders a real, tabbable <a>
-              // for ticket-prefixed text, so role="button"/tabindex only go
-              // on the div when there's no such link to conflict with.
-              // Untagged entries keep full keyboard access to the rename
-              // editor; ticket-prefixed ones still open it by click, and the
-              // link itself is separately keyboard-reachable.
-              const interactiveAttrs = textHtml.includes('jira-key-link')
-                ? ''
-                : ' role="button" tabindex="0"';
-              return `<div class="etext" data-id="${entry.id}"${interactiveAttrs}>${textHtml}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>`;
-            })()}
+            <div class="etext" data-id="${entry.id}"${etextInteractiveAttrs}>${entryTextHtml}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
             <button class="etag-btn" data-id="${entry.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(entry.tag))} &#9660;

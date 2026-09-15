@@ -61,6 +61,23 @@ function tickClock() {
 
 // WEATHER_LAT, WEATHER_LON, WEATHER_NAME, JIRA_BASE are defined in 00-config.js
 
+// Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
+// eslint-disable-next-line security/detect-unsafe-regex
+const JIRA_TICKET_TEXT_PATTERN = /^([A-Z]+-\d+)([\s:_-]+(.*))?$/;
+
+/**
+ * True if `text` starts with a Jira ticket key (e.g. `AITO-1234`) in the
+ * shape jiraTicketHtml() converts into a link. Callers that need to know
+ * whether jiraTicketHtml() will render a focusable `<a>` — without
+ * re-parsing its output or duplicating the pattern — should use this rather
+ * than matching the regex or sniffing rendered HTML for `jira-key-link`.
+ * @param {string} text - Raw task text.
+ * @returns {boolean}
+ */
+function isJiraTicketText(text) {
+  return JIRA_TICKET_TEXT_PATTERN.test(text);
+}
+
 /**
  * Returns HTML for a task text string, converting any leading Jira ticket key
  * (e.g. `AITO-1234`) into a clickable link. The remainder of the text is
@@ -69,9 +86,7 @@ function tickClock() {
  * @returns {string} HTML string.
  */
 function jiraTicketHtml(text) {
-  // Anchored on ^…$; [\s:_-]+ and .* overlap on whitespace but cannot catastrophically backtrack.
-  // eslint-disable-next-line security/detect-unsafe-regex
-  const m = text.match(/^([A-Z]+-\d+)([\s:_-]+(.*))?$/);
+  const m = text.match(JIRA_TICKET_TEXT_PATTERN);
   if (!m) return escHtml(text);
   const key = m[1];
   const rest = (m[3] || '').trim();
