@@ -2166,6 +2166,158 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Timeline keyboard accessibility (#431) ─────────────────────────────────
+  console.log('\nTimeline keyboard accessibility');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'kb1', text: 'Keyboard test entry', tag: 'work', ts: Date.now(), date: today },
+      ],
+    });
+    await page.waitForSelector('.tf-seg-btn[data-view="log"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+
+    // Time editor: Tab-focus the display span, activate with Enter (no click)
+    await page.evaluate(() => document.querySelector('.etime-display[data-id="kb1"]')?.focus());
+    await page.keyboard.press('Enter');
+    assert(
+      'Enter on .etime-display opens the time editor',
+      await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
+    );
+
+    // Rename: Tab-focus the entry text, activate with Space (no click) —
+    // independent of the time editor opened above, so no cleanup needed first.
+    await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
+    await page.keyboard.press(' ');
+    const renameInputValue = await page.evaluate(
+      () => document.querySelector('.etext[data-id="kb1"] .etext-input')?.value
+    );
+    assert(
+      'Space on .etext opens the rename input pre-filled with the entry text',
+      renameInputValue === 'Keyboard test entry',
+      `got ${JSON.stringify(renameInputValue)}`
+    );
+    // The wrapping div's accessible name (its text content) is gone the
+    // moment it's replaced by the input, so the input needs its own label.
+    const renameInputAriaLabel = await page.evaluate(() =>
+      document.querySelector('.etext[data-id="kb1"] .etext-input')?.getAttribute('aria-label')
+    );
+    assert(
+      'Rename input has an aria-label naming what is being renamed',
+      renameInputAriaLabel === 'Rename entry: Keyboard test entry',
+      `got ${JSON.stringify(renameInputAriaLabel)}`
+    );
+    await page.keyboard.press('Escape');
+
+    // Restart/delete/billable-toggle buttons expose their action via
+    // aria-label, not just title (screen readers announce the emoji glyph's
+    // own name, e.g. "money bag", over an unlabelled button's title).
+    const ariaLabels = await page.evaluate(() => ({
+      restart: document.querySelector('.erestart[data-id="kb1"]')?.getAttribute('aria-label'),
+      del: document.querySelector('.edel[data-id="kb1"]')?.getAttribute('aria-label'),
+      bill: document.querySelector('.ebill-btn[data-id="kb1"]')?.getAttribute('aria-label'),
+      time: document.querySelector('.etime-display[data-id="kb1"]')?.getAttribute('aria-label'),
+    }));
+    assert(
+      'Restart button has an aria-label naming the action',
+      ariaLabels.restart === 'Restart with timer',
+      `got ${JSON.stringify(ariaLabels.restart)}`
+    );
+    assert(
+      'Delete button has an aria-label naming the action',
+      ariaLabels.del === 'Delete entry',
+      `got ${JSON.stringify(ariaLabels.del)}`
+    );
+    assert(
+      'Billable-toggle button has an aria-label naming its current state and action',
+      ariaLabels.bill === 'Billable — tap to mark internal',
+      `got ${JSON.stringify(ariaLabels.bill)}`
+    );
+    assert(
+      'Time-display button has an aria-label naming its purpose, not just the time text',
+      ariaLabels.time === 'Edit start and end time',
+      `got ${JSON.stringify(ariaLabels.time)}`
+    );
+
+    // Symmetric key coverage: both elements' keydown handlers accept either
+    // Enter or Space, not just the one key exercised above per element. The
+    // Escape press earlier triggered a full render(), so kb1's markup here
+    // is freshly rebuilt with no leftover 'open'/editing state to interfere.
+    await page.evaluate(() => document.querySelector('.etime-display[data-id="kb1"]')?.focus());
+    await page.keyboard.press(' ');
+    assert(
+      'Space on .etime-display also opens the time editor',
+      await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
+    );
+    await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
+    await page.keyboard.press('Enter');
+    const renameInputValue2 = await page.evaluate(
+      () => document.querySelector('.etext[data-id="kb1"] .etext-input')?.value
+    );
+    assert(
+      'Enter on .etext also opens the rename input',
+      renameInputValue2 === 'Keyboard test entry',
+      `got ${JSON.stringify(renameInputValue2)}`
+    );
+    await page.keyboard.press('Escape');
+
+    await page.close();
+  }
+
+  // ── Timeline entry text with a nested Jira link (#432 review) ──────────────
+  // jiraTicketHtml() renders a real, focusable <a> for ticket-prefixed entry
+  // text. Nesting a focusable element inside a role="button" container is an
+  // ARIA violation (APG §3.5) the initial #431 fix introduced without
+  // realising it — .etext must not carry role="button"/tabindex for such
+  // entries, and the link's own Enter-press must not bubble up and also
+  // open the rename editor underneath it.
+  console.log('\nTimeline entry text with a nested Jira link');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'kb2', text: 'PROJ-123 fix the thing', tag: 'work', ts: Date.now(), date: today },
+      ],
+    });
+    await page.waitForSelector('.tf-seg-btn[data-view="log"]');
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+
+    const linkPresent = await page.evaluate(
+      () => !!document.querySelector('.etext[data-id="kb2"] .jira-key-link')
+    );
+    assert('Ticket-prefixed entry renders the Jira link', linkPresent);
+
+    const attrs = await page.evaluate(() => {
+      const el = document.querySelector('.etext[data-id="kb2"]');
+      return { role: el?.getAttribute('role'), tabindex: el?.getAttribute('tabindex') };
+    });
+    assert(
+      '.etext has no role="button"/tabindex when it wraps a focusable Jira link',
+      attrs.role === null && attrs.tabindex === null,
+      `got ${JSON.stringify(attrs)}`
+    );
+
+    // Dispatch a synthetic (untrusted) Enter keydown targeting the nested
+    // link — bubbles up to exercise our own listener's guard exactly like a
+    // real keypress would, without page.keyboard.press()'s real/trusted
+    // input, which would trigger the link's actual target="_blank"
+    // navigation (JIRA_BASE is an unresolvable placeholder domain here).
+    const renameOpenedByLink = await page.evaluate(() => {
+      const link = document.querySelector('.etext[data-id="kb2"] .jira-key-link');
+      link?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      return !!document.querySelector('.etext[data-id="kb2"] .etext-input');
+    });
+    assert(
+      'Enter on the nested Jira link does not also open the rename editor',
+      !renameOpenedByLink
+    );
+
+    await page.close();
+  }
+
   // ── Rapid Logging ─────────────────────────────────────────────────────────
   console.log('\nRapid Logging');
   {

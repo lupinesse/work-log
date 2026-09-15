@@ -109,10 +109,26 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        const billableAriaLabel = isEntryBillable(entry)
+          ? 'Billable — tap to mark internal'
+          : 'Internal — tap to mark billable';
+
+        const entryTextHtml = jiraTicketHtml(entry.text);
+        // ARIA button widgets must not contain a focusable descendant (APG
+        // §3.5) — jiraTicketHtml() renders a real, tabbable <a> for
+        // ticket-prefixed text, so role="button"/tabindex only go on the div
+        // when isJiraTicketText() confirms there's no such link to conflict
+        // with. Untagged entries keep full keyboard access to the rename
+        // editor; ticket-prefixed ones still open it by click, and the link
+        // itself is separately keyboard-reachable.
+        const etextInteractiveAttrs = isJiraTicketText(entry.text)
+          ? ''
+          : ' role="button" tabindex="0"';
+
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
-            <span class="etime-display" data-id="${entry.id}">
+            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0" aria-label="Edit start and end time">
               <span class="etime-start">${fmtTime(entry.ts)}</span>
               ${endLine}
             </span>
@@ -128,7 +144,7 @@ function renderTimelineSection(list) {
           ${sigHtml(entry)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${entry.id}">${jiraTicketHtml(entry.text)}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
+            <div class="etext" data-id="${entry.id}"${etextInteractiveAttrs}>${entryTextHtml}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
             <button class="etag-btn" data-id="${entry.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(entry.tag))} &#9660;
@@ -136,9 +152,9 @@ function renderTimelineSection(list) {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
-          <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
-          <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" aria-label="${billableAriaLabel}" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="erestart" data-id="${entry.id}" title="restart with timer" aria-label="Restart with timer">&#9654;</button>
+          <button class="edel" data-id="${entry.id}" title="delete" aria-label="Delete entry">&times;</button>
         </div>`;
       })
       .join('') + adHocRow;
@@ -168,11 +184,22 @@ function renderTimelineSection(list) {
 function bindTimelineEntryEvents(timelineEl) {
   /* time editor */
   timelineEl.querySelectorAll('.etime-display').forEach((el) => {
-    el.addEventListener('click', () => {
+    /**
+     * Hides the time display and opens this entry's inline start/end editor.
+     * @returns {void}
+     */
+    const openTimeEditor = () => {
       const id = el.dataset.id;
       closeAllEditors();
       el.style.display = 'none';
       document.getElementById('ed-' + id).classList.add('open');
+    };
+    el.addEventListener('click', openTimeEditor);
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openTimeEditor();
+      }
     });
   });
   timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
@@ -326,7 +353,14 @@ function bindTimelineEntryEvents(timelineEl) {
 
   /* rename entry text (propagates to all entries + plan tasks with same text) */
   timelineEl.querySelectorAll('.etext').forEach((el) => {
-    el.addEventListener('click', () => {
+    /**
+     * Swaps the entry-text display for an inline rename input. No-ops if
+     * the input is already showing (guards against a held Enter/Space
+     * re-triggering activation, or a click landing after keyboard
+     * activation already opened it).
+     * @returns {void}
+     */
+    const openTextEditor = () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;
       const entry = entries.find((logEntry) => logEntry.id === id);
@@ -335,6 +369,15 @@ function bindTimelineEntryEvents(timelineEl) {
       const input = document.createElement('input');
       input.className = 'etext-input';
       input.value = origText;
+      // The wrapping div's own accessible name (from its text content) is gone
+      // the moment that text is replaced by this input, so the input needs its
+      // own label rather than inheriting one that no longer exists.
+      input.setAttribute('aria-label', `Rename entry: ${origText}`);
+      // The wrapping div is only a button while showing static text; once it
+      // holds a real input, leaving role="button"/tabindex="0" on it would
+      // make both the div and the input focusable at once for no reason.
+      el.removeAttribute('role');
+      el.removeAttribute('tabindex');
       el.innerHTML = '';
       el.appendChild(input);
       input.focus();
@@ -368,6 +411,17 @@ function bindTimelineEntryEvents(timelineEl) {
         }
       });
       input.addEventListener('blur', doSave);
+    };
+    el.addEventListener('click', openTextEditor);
+    el.addEventListener('keydown', (event) => {
+      // A ticket-prefixed entry nests a real, focusable <a> (jiraTicketHtml())
+      // inside this div; its own Enter keypress bubbles up here too, and
+      // without this guard would also open the rename editor underneath it.
+      if (event.target !== el) return;
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openTextEditor();
+      }
     });
   });
 }
