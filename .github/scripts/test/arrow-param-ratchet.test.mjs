@@ -132,6 +132,15 @@ describe('describeRatchetFailure', () => {
     assert.deepEqual(describeRatchetFailure(error), { reason: 'no stack here', frames: '' });
   });
 
+  test('strips the bare name header an empty-message Error produces', () => {
+    // V8 writes `Error` with no trailing `: ` when the message is empty, so a
+    // header built unconditionally as `${name}: ${message}` would not match.
+    const { reason, frames } = describeRatchetFailure(new Error(''));
+
+    assert.equal(reason, '');
+    assert.match(frames, /^\s*at /, 'header stripped, frames start at the first frame');
+  });
+
   test('keeps the whole stack when it does not open with name: message', () => {
     const error = new Error('mismatched');
     error.stack = `SomethingElse: totally different

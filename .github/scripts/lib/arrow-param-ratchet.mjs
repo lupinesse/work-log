@@ -112,7 +112,10 @@ export function describeRatchetFailure(error) {
     return { reason, frames: '' };
   }
 
-  const header = `${error.name}: ${reason}`;
+  // V8 renders the stack's first line as bare `Error` when the message is
+  // empty -- no trailing `: ` -- so building the header unconditionally
+  // would fail to match and leave that line in the frames.
+  const header = reason ? `${error.name}: ${reason}` : error.name;
   const frames = error.stack.startsWith(header)
     ? error.stack.slice(header.length).replace(/^\r?\n/, '')
     : error.stack;
