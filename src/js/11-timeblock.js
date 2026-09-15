@@ -320,7 +320,7 @@ function tbStartBlock(blockId, overrideTs) {
   activeTimer = { entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false };
   save();
   tickTimer();
-  timerInterval = setInterval(tickTimer, 1000);
+  setTimerInterval(setInterval(tickTimer, 1000));
   updateTimerBar();
   updateTimerBtn(true);
   render();
