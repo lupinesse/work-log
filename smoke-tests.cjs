@@ -2199,12 +2199,25 @@ async function runTests() {
       renameInputValue === 'Keyboard test entry',
       `got ${JSON.stringify(renameInputValue)}`
     );
+    // The wrapping div's accessible name (its text content) is gone the
+    // moment it's replaced by the input, so the input needs its own label.
+    const renameInputAriaLabel = await page.evaluate(() =>
+      document.querySelector('.etext[data-id="kb1"] .etext-input')?.getAttribute('aria-label')
+    );
+    assert(
+      'Rename input has an aria-label naming what is being renamed',
+      renameInputAriaLabel === 'Rename entry: Keyboard test entry',
+      `got ${JSON.stringify(renameInputAriaLabel)}`
+    );
     await page.keyboard.press('Escape');
 
-    // Restart/delete buttons expose their action via aria-label, not just title
+    // Restart/delete/billable-toggle buttons expose their action via
+    // aria-label, not just title (screen readers announce the emoji glyph's
+    // own name, e.g. "money bag", over an unlabelled button's title).
     const ariaLabels = await page.evaluate(() => ({
       restart: document.querySelector('.erestart[data-id="kb1"]')?.getAttribute('aria-label'),
       del: document.querySelector('.edel[data-id="kb1"]')?.getAttribute('aria-label'),
+      bill: document.querySelector('.ebill-btn[data-id="kb1"]')?.getAttribute('aria-label'),
     }));
     assert(
       'Restart button has an aria-label naming the action',
@@ -2215,6 +2228,11 @@ async function runTests() {
       'Delete button has an aria-label naming the action',
       ariaLabels.del === 'Delete entry',
       `got ${JSON.stringify(ariaLabels.del)}`
+    );
+    assert(
+      'Billable-toggle button has an aria-label naming its current state and action',
+      ariaLabels.bill === 'Billable — tap to mark internal',
+      `got ${JSON.stringify(ariaLabels.bill)}`
     );
 
     // Symmetric key coverage: both elements' keydown handlers accept either

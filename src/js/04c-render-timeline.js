@@ -109,6 +109,9 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        const billableAriaLabel = isEntryBillable(entry)
+          ? 'Billable — tap to mark internal'
+          : 'Internal — tap to mark billable';
 
         const entryTextHtml = jiraTicketHtml(entry.text);
         // ARIA button widgets must not contain a focusable descendant (APG
@@ -149,7 +152,7 @@ function renderTimelineSection(list) {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" aria-label="${billableAriaLabel}" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" title="restart with timer" aria-label="Restart with timer">&#9654;</button>
           <button class="edel" data-id="${entry.id}" title="delete" aria-label="Delete entry">&times;</button>
         </div>`;
@@ -366,6 +369,10 @@ function bindTimelineEntryEvents(timelineEl) {
       const input = document.createElement('input');
       input.className = 'etext-input';
       input.value = origText;
+      // The wrapping div's own accessible name (from its text content) is gone
+      // the moment that text is replaced by this input, so the input needs its
+      // own label rather than inheriting one that no longer exists.
+      input.setAttribute('aria-label', `Rename entry: ${origText}`);
       // The wrapping div is only a button while showing static text; once it
       // holds a real input, leaving role="button"/tabindex="0" on it would
       // make both the div and the input focusable at once for no reason.
