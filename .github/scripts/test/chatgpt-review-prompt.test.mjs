@@ -27,8 +27,13 @@ const source = readFileSync(
   path.join(repoRoot, '.github', 'scripts', 'chatgpt-review.mjs'),
   'utf8'
 );
+const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:'));
 
 describe('chatgpt-review.mjs DEFAULT_PROMPT — wlLog rule scoping (#424)', () => {
+  it('has a "Focus on:" line in the prompt', () => {
+    assert.ok(focusLine, 'expected a "Focus on:" line in the prompt');
+  });
+
   it('does not tell the reviewer to enforce wlLog repo-wide', () => {
     // The exact unscoped phrasing that shipped and produced the false
     // positive on PR #422 — must never reappear verbatim.
@@ -39,20 +44,16 @@ describe('chatgpt-review.mjs DEFAULT_PROMPT — wlLog rule scoping (#424)', () =
   });
 
   it('scopes the wlLog rule to src/js/ app code', () => {
-    const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:'));
-    assert.ok(focusLine, 'expected a "Focus on:" line in the prompt');
     assert.match(focusLine, /wlLog\.warn\/error/);
     assert.match(focusLine, /src\/js\//);
   });
 
   it('tells the reviewer CI scripts use console.error/warn instead', () => {
-    const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:'));
     assert.match(focusLine, /\.github\/scripts\//);
     assert.match(focusLine, /console\.error\/warn/);
   });
 
   it('still requires no silent catch, regardless of directory', () => {
-    const focusLine = source.split('\n').find((line) => line.startsWith('Focus on:'));
     assert.match(focusLine, /never a silent catch/);
   });
 });
