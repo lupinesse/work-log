@@ -19,12 +19,48 @@
  * file's reads/writes to these accessors at a time, per #423's plan.
  */
 
-/** @type {Array<Object>} */
+/**
+ * @typedef {Object} Category
+ * @property {string} id
+ * @property {string} label
+ * @property {string} color
+ * @property {boolean} [archived]
+ * @property {boolean} [billable]
+ */
+
+/**
+ * @typedef {Object} LogEntry
+ * @property {string} id
+ * @property {string} text
+ * @property {number} ts
+ * @property {string} date - ISO date (YYYY-MM-DD).
+ * @property {string} [link]
+ * @property {string} [note]
+ */
+
+/**
+ * @typedef {Object} PlanTask
+ * @property {string} id
+ * @property {string} text
+ * @property {string} date - ISO date (YYYY-MM-DD).
+ * @property {string} status - One of 'todo', 'inprogress', 'done', 'pending', 'blocked', 'upcoming'.
+ */
+
+/**
+ * @typedef {Object} TimeblockRecord
+ * @property {string} id
+ * @property {string} date - ISO date (YYYY-MM-DD).
+ * @property {number} slot
+ * @property {number} duration
+ * @property {string} text
+ */
+
+/** @type {Array<Category>} */
 let categories = [];
 
 /**
  * Returns the current category list.
- * @returns {Array<Object>} The live categories array (not a copy).
+ * @returns {Array<Category>} The live categories array (not a copy).
  */
 export function getCategories() {
   return categories;
@@ -32,7 +68,7 @@ export function getCategories() {
 
 /**
  * Replaces the category list.
- * @param {Array<Object>} next - The new categories array.
+ * @param {Array<Category>} next - The new categories array.
  * @returns {void}
  */
 export function setCategories(next) {
@@ -59,12 +95,12 @@ export function setSelectedTag(next) {
   selectedTag = next;
 }
 
-/** @type {Array<Object>} */
+/** @type {Array<LogEntry>} */
 let entries = [];
 
 /**
  * Returns the current log entries.
- * @returns {Array<Object>} The live entries array (not a copy).
+ * @returns {Array<LogEntry>} The live entries array (not a copy).
  */
 export function getEntries() {
   return entries;
@@ -72,19 +108,19 @@ export function getEntries() {
 
 /**
  * Replaces the log entries.
- * @param {Array<Object>} next - The new entries array.
+ * @param {Array<LogEntry>} next - The new entries array.
  * @returns {void}
  */
 export function setEntries(next) {
   entries = next;
 }
 
-/** @type {Array<Object>} */
+/** @type {Array<PlanTask>} */
 let planTasks = [];
 
 /**
  * Returns the current board/plan tasks.
- * @returns {Array<Object>} The live planTasks array (not a copy).
+ * @returns {Array<PlanTask>} The live planTasks array (not a copy).
  */
 export function getPlanTasks() {
   return planTasks;
@@ -92,7 +128,7 @@ export function getPlanTasks() {
 
 /**
  * Replaces the board/plan tasks.
- * @param {Array<Object>} next - The new planTasks array.
+ * @param {Array<PlanTask>} next - The new planTasks array.
  * @returns {void}
  */
 export function setPlanTasks(next) {
@@ -161,12 +197,12 @@ export function setTimerInterval(next) {
   timerInterval = next;
 }
 
-/** @type {Array<Object>} */
+/** @type {Array<TimeblockRecord>} */
 let blocks = [];
 
 /**
  * Returns the current timeblock-planner blocks.
- * @returns {Array<Object>} The live blocks array (not a copy).
+ * @returns {Array<TimeblockRecord>} The live blocks array (not a copy).
  */
 export function getBlocks() {
   return blocks;
@@ -174,9 +210,14 @@ export function getBlocks() {
 
 /**
  * Replaces the timeblock-planner blocks.
- * @param {Array<Object>} next - The new blocks array.
+ * @param {Array<TimeblockRecord>} next - The new blocks array.
  * @returns {void}
  */
 export function setBlocks(next) {
   blocks = next;
 }
+
+// TODO(#423): this module is scaffolding, not yet wired into the app — no
+// file imports it. Follow-up PRs migrate one file's reads/writes to these
+// accessors at a time; each such PR both adds an import here and removes
+// the corresponding bare `let` reassignment from the file it migrates.
