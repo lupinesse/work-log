@@ -217,7 +217,15 @@ export function setBlocks(next) {
   blocks = next;
 }
 
-// TODO(#423): this module is scaffolding, not yet wired into the app — no
-// file imports it. Follow-up PRs migrate one file's reads/writes to these
-// accessors at a time; each such PR both adds an import here and removes
-// the corresponding bare `let` reassignment from the file it migrates.
+// TODO(#423): most of this module is still scaffolding. timerInterval is
+// wired in (03-timer.js, 04c-render-timeline.js, 11-timeblock.js read/write
+// it via the accessors above; 01-state.js no longer declares it). The other
+// seven — categories, selectedTag, entries, planTasks, viewDate,
+// activeTimer, blocks — are still bare `let` bindings in 01-state.js.
+// Each remaining migration is scoped per *variable*, not per file: every
+// file that reads or writes it must move to the accessors in the same PR,
+// since today they all resolve to the same binding via the concatenated
+// build's shared lexical scope — a partial migration would silently
+// diverge. No explicit import is needed in consumer files; leaf-module
+// exports are already in scope for concatenated code the same way wlLog or
+// safeCssColor are.

@@ -60,8 +60,7 @@ let logNotes = [];
 let trackers = [];
 let entries = [];
 let activeTimer = null;
-// eslint-disable-next-line prefer-const -- reassigned by 03-timer.js, 04c-render-timeline.js
-let timerInterval = null;
+// timerInterval lives in state-access.js (#423) — getTimerInterval()/setTimerInterval().
 let categories = [...DEFAULT_CATS];
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
