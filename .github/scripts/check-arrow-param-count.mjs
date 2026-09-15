@@ -22,6 +22,7 @@ import { ESLint } from 'eslint';
 import {
   BASELINE_COUNT,
   countArrowParamWarnings,
+  describeRatchetFailure,
   evaluateRatchet,
   isSuspiciouslyZero,
 } from './lib/arrow-param-ratchet.mjs';
@@ -73,4 +74,25 @@ async function main() {
   return 1;
 }
 
-main().then((code) => process.exit(code));
+main()
+  .then((code) => process.exit(code))
+  .catch((error) => {
+    // This check reaches ESLint through its Node API rather than the CLI, so an
+    // ESLint upgrade that moves or renames that API surfaces here as a thrown
+    // error, not as a count. Without this catch that arrives as a bare
+    // unhandled-rejection trace: still a non-zero exit, but with nothing saying
+    // which check broke or that the count was never actually measured.
+    const { reason, frames } = describeRatchetFailure(error);
+    console.error(
+      `✖ the single-letter arrow-param ratchet could not run, so the count was never ` +
+        `measured: ${reason}\n` +
+        `This check lints src/js/ via the ESLint Node API. It fails this way when ESLint ` +
+        `itself cannot load or run — a broken eslint.config.js, a missing plugin, or an ` +
+        `ESLint major upgrade that changed the API. Run \`npx eslint src/js/\` to see the ` +
+        `underlying error directly.`
+    );
+    if (frames) {
+      console.error(frames);
+    }
+    process.exit(1);
+  });
