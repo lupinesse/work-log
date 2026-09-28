@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r5 |
-| Covers app version | v1.9.2 (main, 2026-09-10) |
-| Last reviewed | 2026-09-10 |
-| Reviewed by | Claude (split pure-fns-export.js into five files — QA finding: module size, flagged for the largest module once `04-render.js` was resolved — updated its entry, the barrel's sub-module count and list, and the source file count touched by that change. Not a full re-audit of every per-module line count) |
+| Document version | 1.9.2-r6 |
+| Covers app version | v1.9.2 (main, 2026-09-28) |
+| Last reviewed | 2026-09-28 |
+| Reviewed by | Claude (QA findings #440/#441: full re-audit of every documented per-module line count against `grep -c . src/js/*.js`, not a narrowly-scoped update — found and fixed 19 drifted entries, not just the 6 previously tracked, plus the missing `pure-fns-epics.js` barrel sub-module. Also added `.github/scripts/check-architecture-line-counts.mjs`, a CI check that regenerates and diffs these counts on every PR, so this class of drift can't recur silently) |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (214 lines) — Data Store
+#### **01-state.js** (212 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -79,7 +79,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **01b-migrate.js** (97 lines) — Data Migration
+#### **01b-migrate.js** (140 lines) — Data Migration
 **Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
 
 **Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
@@ -93,8 +93,8 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
-**Responsibility**: Re-exports all stateless, side-effect-free helpers from eight themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
+#### **pure-fns.js** (87 lines) — Pure Utility Library (LEAF MODULE — barrel)
+**Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
@@ -102,13 +102,14 @@ wl_snapshot        → backup (auto-restore on failure)
 - `pure-fns-gapreport.js` (191 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
 - `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
-- `pure-fns-backup.js` (100 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
+- `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
-- `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-validate.js` (331 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-epics.js` (158 lines) — Epic (category) staleness, archive, and restore logic, added by PR #385: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
 
 ---
 
-#### **02-utils.js** (488 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (529 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -125,7 +126,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **app-constants.js** (63 lines) — Static Config Constants (LEAF MODULE)
+#### **app-constants.js** (69 lines) — Static Config Constants (LEAF MODULE)
 **Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
 
 **Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
@@ -139,7 +140,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (572 lines) — Timer Logic
+#### **03-timer.js** (549 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -175,7 +176,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
-- `04c-render-timeline.js` (419 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (400 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -293,7 +294,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (385 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (384 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -314,7 +315,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (382 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (373 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -352,7 +353,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (565 lines) — Live Info Widgets
+#### **09-clock-weather.js** (547 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -436,7 +437,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **signifiers.js** (46 lines) — Signifier Lookup Tables (LEAF MODULE)
+#### **signifiers.js** (47 lines) — Signifier Lookup Tables (LEAF MODULE)
 **Responsibility**: `SIG_SYMBOL`, `SIG_TITLE` (signifier id → display symbol/title) and their accessors `sigSymbol(entry)`/`sigTitle(entry)`, with a `'●'`/`'Billable'` fallback for the billable default. Only JS builtins as dependencies — imported as an ES module at the top of `script.js`. Extracted from `10b-signifiers.js` (issue #336) — the fourth ES-module extraction, another instance of the date-labels.js pattern: pull the stateless lookup out, leave the stateful cycling/DOM binding behind. Used by `10b-signifiers.js`'s own `sigHtml()`, `18-dailylog.js`'s `buildDailyLogItems()`, and directly by `16-rapid.js`'s `_qcRenderTokenPreview()` (previously guarded with a `typeof SIG_SYMBOL !== 'undefined'` check against the old concatenated-global; now a guaranteed import, so the guard was removed).
 
 **Exports**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol`, `sigTitle`
@@ -503,12 +504,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (254 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (253 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
 - `12b-changelog-data.js` (637 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
-- `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12c-startup.js` (41 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
@@ -516,7 +517,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (537 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (341 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -563,7 +564,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (463 lines) — Jira Import
+#### **14-jira.js** (491 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -592,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (474 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (469 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -621,7 +622,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** (246 lines) — Monthly Log Heatmap
+#### **19-monthlylog.js** (231 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`

@@ -143,5 +143,14 @@ jobs:
       - name: Single-letter arrow-param ratchet (no new instances)
         run: npm run test:arrow-param-count
 
+      # Five consecutive weekly QA reviews found ARCHITECTURE.md's documented
+      # per-module line counts drifted from the real files, because they were
+      # only ever corrected by hand when a review happened to notice — a full
+      # re-audit on 2026-09-28 found 19 drifted entries, three times the 6
+      # already tracked in issues (#440, #441). This regenerates every count
+      # on every PR instead.
+      - name: ARCHITECTURE.md line-count drift check
+        run: npm run test:architecture-line-counts
+
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
