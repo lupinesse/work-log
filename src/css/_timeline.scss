@@ -42,8 +42,11 @@
   display: inline-block;
 }
 
-.etime-display:hover {
+.etime-display:hover,
+.etime-display:focus-visible {
   background: var(--bg2);
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etime-start {
@@ -179,9 +182,12 @@
   cursor: pointer;
 }
 
-.etext:hover {
+.etext:hover,
+.etext:focus-visible {
   text-decoration: underline dotted;
   color: var(--text);
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etext-input {
