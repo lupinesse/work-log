@@ -53,6 +53,7 @@ describe('parseTimesheetPayload', () => {
 
   for (const [name, mutation, message] of [
     ['bad date', { date: '30/09/2026' }, /YYYY-MM-DD/],
+    ['non-numeric hours', { hours: 'seven' }, /hours/],
     ['zero hours', { hours: 0 }, /hours/],
     ['over 24 hours', { hours: 25 }, /hours/],
     ['blank description', { description: '  ' }, /description/],

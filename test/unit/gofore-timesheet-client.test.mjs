@@ -75,6 +75,28 @@ describe('End of Day timesheet form', () => {
     assert.match(elements.eodTimesheetStatus.textContent, /Nothing tracked/);
   });
 
+  for (const [name, edit, expected] of [
+    ['cleared hours', { hours: '' }, /hours/],
+    ['a blanked description', { desc: '   ' }, /description/],
+  ]) {
+    it(`refuses to send ${name}`, async () => {
+      let fetched = false;
+      const { sandbox, elements } = loadSandbox({
+        entries: dayEntries,
+        fetch: async () => {
+          fetched = true;
+          return {};
+        },
+      });
+      sandbox.renderEodTimesheet('2026-09-30');
+      if ('hours' in edit) elements.eodTimesheetHours.value = edit.hours;
+      if ('desc' in edit) elements.eodTimesheetDesc.value = edit.desc;
+      await elements.eodTimesheetSubmit.listeners.click();
+      assert.equal(fetched, false);
+      assert.match(elements.eodTimesheetStatus.textContent, expected);
+    });
+  }
+
   it('posts the edited description and reports success', async () => {
     let request;
     const { sandbox, elements } = loadSandbox({

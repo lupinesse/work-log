@@ -6,6 +6,8 @@
  * the real browser.
  */
 
+import { findTimesheetEntryProblem } from '../../src/js/pure-fns-timesheet.js';
+
 /** Hosts the Microsoft SSO redirect lands on when the saved session has expired. */
 const LOGIN_HOSTS = ['login.microsoftonline.com', 'login.live.com'];
 
@@ -62,15 +64,8 @@ export function parseTimesheetPayload(text) {
   } catch (err) {
     throw new Error(`Timesheet payload is not valid JSON: ${err.message}`, { cause: err });
   }
-  if (typeof payload?.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(payload.date)) {
-    throw new Error('Timesheet payload needs a date in YYYY-MM-DD format');
-  }
-  if (!Number.isFinite(payload.hours) || payload.hours <= 0 || payload.hours > 24) {
-    throw new Error('Timesheet payload needs hours greater than 0 and at most 24');
-  }
-  if (typeof payload.description !== 'string' || !payload.description.trim()) {
-    throw new Error('Timesheet payload needs a non-empty description');
-  }
+  const problem = findTimesheetEntryProblem(payload);
+  if (problem) throw new Error(problem);
   return { date: payload.date, hours: payload.hours, description: payload.description };
 }
 

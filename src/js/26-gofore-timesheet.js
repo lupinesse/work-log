@@ -69,6 +69,11 @@ async function submitEodTimesheet() {
     hours: Number(hoursEl.value),
     description: document.getElementById('eodTimesheetDesc').value.trim(),
   };
+  const problem = findTimesheetEntryProblem(body);
+  if (problem) {
+    setTimesheetStatus(`⚠ ${problem}`, true);
+    return;
+  }
   submitBtn.disabled = true;
   setTimesheetStatus('⏳ Submitting…');
   try {

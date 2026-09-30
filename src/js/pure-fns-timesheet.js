@@ -68,3 +68,24 @@ export function buildTimesheetDayPayload(dateKey, timedEntries, categoryLabel) {
     description: buildTimesheetDescription(timedEntries, categoryLabel),
   };
 }
+
+/**
+ * Checks a timesheet entry before it is sent anywhere. Shared by the browser
+ * form and scripts/lib/gofore-timesheet.mjs so both reject the same inputs.
+ *
+ * @param {Object} entry - Candidate entry with `date` (`YYYY-MM-DD`), `hours`
+ *   (number, > 0 and ≤ 24) and `description` (non-blank string).
+ * @returns {string|null} A message naming the first problem, or `null` when valid.
+ */
+export function findTimesheetEntryProblem(entry) {
+  if (typeof entry?.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+    return 'Timesheet entry needs a date in YYYY-MM-DD format';
+  }
+  if (!Number.isFinite(entry.hours) || entry.hours <= 0 || entry.hours > 24) {
+    return 'Timesheet entry needs hours greater than 0 and at most 24';
+  }
+  if (typeof entry.description !== 'string' || !entry.description.trim()) {
+    return 'Timesheet entry needs a non-empty description';
+  }
+  return null;
+}

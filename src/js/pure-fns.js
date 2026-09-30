@@ -55,7 +55,11 @@ export {
   nextLocation,
 } from './pure-fns-tasks.js';
 
-export { buildTimesheetDescription, buildTimesheetDayPayload } from './pure-fns-timesheet.js';
+export {
+  buildTimesheetDescription,
+  buildTimesheetDayPayload,
+  findTimesheetEntryProblem,
+} from './pure-fns-timesheet.js';
 
 export {
   parseJiraLabel,
