@@ -869,7 +869,7 @@
 
 .eod-timesheet__label {
   font-size: 12px;
-  opacity: 0.8;
+  color: var(--text2);
 }
 
 .eod-timesheet__hours {
@@ -887,5 +887,9 @@
 }
 
 .eod-timesheet__status--error {
-  color: #c0392b;
+  /* Theme text colour keeps contrast in both themes; the tint matches .wl-toast-err. */
+  color: var(--text);
+  background: rgba(241, 112, 112, 0.18);
+  border: 0.5px solid #f17070;
+  padding: 4px 8px;
 }
