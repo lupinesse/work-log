@@ -172,7 +172,10 @@ function bindTimelineEntryEvents(timelineEl) {
       const id = el.dataset.id;
       closeAllEditors();
       el.style.display = 'none';
-      document.getElementById('ed-' + id).classList.add('open');
+      const edPanel = document.getElementById('ed-' + id);
+      edPanel.classList.add('open');
+      const firstInput = edPanel.querySelector('input');
+      if (firstInput) firstInput.focus();
     };
     el.addEventListener('click', openEditor);
     el.addEventListener('keydown', (ev) => {
