@@ -137,26 +137,33 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        // Jira link rendered as a sibling so .etext[role="button"] contains no
+        // interactive descendants (ARIA 1.2 forbids interactive children inside
+        // role="button").
+        const jiraHtml = jiraTicketHtml(entry.text);
+        const plainHtml = escHtml(entry.text);
+        const jiraSiblingHtml =
+          jiraHtml !== plainHtml ? `&lt;span class="jira-key-aside">${jiraHtml}&lt;/span>` : '';
         return `
         &lt;div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           &lt;div class="etime-col">
-            &lt;span class="etime-display" data-id="${entry.id}">
+            &lt;span class="etime-display" data-id="${entry.id}" role="button" tabindex="0">
               &lt;span class="etime-start">${fmtTime(entry.ts)}&lt;/span>
               ${endLine}
             &lt;/span>
             &lt;div class="etime-editor" id="ed-${entry.id}">
-              &lt;div class="etime-editor-row">&lt;span class="etime-lbl">start&lt;/span>&lt;input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" />&lt;/div>
-              &lt;div class="etime-editor-row">&lt;span class="etime-lbl">end&lt;/span>&lt;input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" />&lt;/div>
+              &lt;div class="etime-editor-row">&lt;label class="etime-lbl" for="ts-${entry.id}">start&lt;/label>&lt;input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" />&lt;/div>
+              &lt;div class="etime-editor-row">&lt;label class="etime-lbl" for="te-${entry.id}">end&lt;/label>&lt;input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" />&lt;/div>
               &lt;div class="etime-actions">
-                &lt;button class="etime-save" data-id="${entry.id}">save&lt;/button>
-                &lt;button class="etime-cancel" data-id="${entry.id}">cancel&lt;/button>
+                &lt;button class="etime-save" data-id="${entry.id}" aria-label="Save time edit">save&lt;/button>
+                &lt;button class="etime-cancel" data-id="${entry.id}" aria-label="Cancel time edit">cancel&lt;/button>
               &lt;/div>
             &lt;/div>
           &lt;/div>
           ${sigHtml(entry)}
           &lt;span class="edot" style="background:${color};margin-top:6px;">&lt;/span>
           &lt;div class="ebody">
-            &lt;div class="etext" data-id="${entry.id}">${jiraTicketHtml(entry.text)}${entry._uncategorised ? `&lt;span class="entry-uncategorised" title="No category — tap to assign">○&lt;/span>` : ''}&lt;/div>
+            &lt;div class="etext" data-id="${entry.id}" role="button" tabindex="0">${plainHtml}${entry._uncategorised ? `&lt;span class="entry-uncategorised" aria-label="No category assigned" title="No category — tap to assign">○&lt;/span>` : ''}&lt;/div>${jiraSiblingHtml}
             &lt;button class="etag-btn" data-id="${entry.id}">
               &lt;span class="etag-cdot" style="background:${color}">&lt;/span>
               ${escHtml(getCatLabel(entry.tag))} &amp;#9660;
@@ -164,9 +171,9 @@ function renderTimelineSection(list) {
             &lt;div class="cat-picker" id="cp-${entry.id}">${catOpts}&lt;/div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           &lt;/div>
-          &lt;button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}&lt;/button>
-          &lt;button class="erestart" data-id="${entry.id}" title="restart with timer">&amp;#9654;&lt;/button>
-          &lt;button class="edel" data-id="${entry.id}" title="delete">&amp;times;&lt;/button>
+          &lt;button class="ebill-btn" data-id="${entry.id}" aria-label="Toggle billable" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}&lt;/button>
+          &lt;button class="erestart" data-id="${entry.id}" aria-label="Restart with timer" title="restart with timer">&amp;#9654;&lt;/button>
+          &lt;button class="edel" data-id="${entry.id}" aria-label="Delete entry" title="delete">&amp;times;&lt;/button>
         &lt;/div>`;
       })
       .join('') + adHocRow;
@@ -196,11 +203,21 @@ function renderTimelineSection(list) {
 function bindTimelineEntryEvents(timelineEl) {
   /* time editor */
   timelineEl.querySelectorAll('.etime-display').forEach((el) => {
-    el.addEventListener('click', () => {
+    const openEditor = () => {
       const id = el.dataset.id;
       closeAllEditors();
       el.style.display = 'none';
-      document.getElementById('ed-' + id).classList.add('open');
+      const edPanel = document.getElementById('ed-' + id);
+      edPanel.classList.add('open');
+      const firstInput = edPanel.querySelector('input');
+      if (firstInput) firstInput.focus();
+    };
+    el.addEventListener('click', openEditor);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openEditor();
+      }
     });
   });
   timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
@@ -354,14 +371,19 @@ function bindTimelineEntryEvents(timelineEl) {
 
   /* rename entry text (propagates to all entries + plan tasks with same text) */
   timelineEl.querySelectorAll('.etext').forEach((el) => {
-    el.addEventListener('click', () => {
+    const openRename = () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;
       const entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
+      // ARIA forbids interactive children inside role="button"; remove the role
+      // while the &lt;input> is present, restore via render() when editing ends.
+      el.removeAttribute('role');
+      el.setAttribute('tabindex', '-1');
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';
+      input.setAttribute('aria-label', 'Rename entry');
       input.value = origText;
       el.innerHTML = '';
       el.appendChild(input);
@@ -396,6 +418,13 @@ function bindTimelineEntryEvents(timelineEl) {
         }
       });
       input.addEventListener('blur', doSave);
+    };
+    el.addEventListener('click', openRename);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openRename();
+      }
     });
   });
 }
