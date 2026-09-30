@@ -145,6 +145,8 @@ function openEodModal() {
     });
   };
 
+  renderEodTimesheet(todayKey);
+
   document.getElementById('eodOverlay').classList.add('show');
 }
 
