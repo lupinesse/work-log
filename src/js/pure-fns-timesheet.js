@@ -19,8 +19,8 @@ const MS_PER_HOUR = 3600000;
  * reader checks against the ticket; they are de-duplicated case-insensitively
  * within a group so a task worked in two blocks appears once.
  *
- * @param {Array<{text: string, tag?: string}>} timedEntries - The day's tracked
- *   entries; a missing `tag` is treated as `other`.
+ * @param {Array<Object>} timedEntries - The day's tracked entries (`text`, optional
+ *   `tag`); a missing `tag` is treated as `other`.
  * @param {function(string): string} categoryLabel - Maps a category id to its
  *   display label (e.g. `getCatLabel`). Injected to keep this module state-free.
  * @returns {string} The draft description, or `''` when there are no entries.
@@ -53,8 +53,8 @@ export function buildTimesheetDescription(timedEntries, categoryLabel) {
  * billable or internal, because the timesheet records the full working day.
  *
  * @param {string} dateKey - Day being submitted, `YYYY-MM-DD`.
- * @param {Array<{text: string, tag?: string, ts: number, tsEnd: number}>} timedEntries -
- *   The day's entries with a positive tracked duration.
+ * @param {Array<Object>} timedEntries - The day's entries (`text`, optional `tag`,
+ *   `ts`, `tsEnd`) with a positive tracked duration.
  * @param {function(string): string} categoryLabel - Category id → display label.
  * @returns {{date: string, hours: number, description: string}|null} The entry,
  *   or `null` when nothing was tracked (so the caller can skip submitting).
