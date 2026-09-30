@@ -468,6 +468,21 @@ jobs:
                 return;
               }
 
+              // Skip stale convergence comments: Phase 3 only runs when ChatGPT first
+              // reviews the PR. On subsequent fix-pushes Phase 3 is skipped, so the
+              // convergence comment from the previous round stays in place and would
+              // cause a spurious failure. Mirrors extractCommentCommitSha() in
+              // .github/scripts/lib/parse-convergence-verdict.mjs
+              const headShort = context.payload.pull_request.head.sha.slice(0, 7);
+              const shaMatch = claudeComment.body.match(/·\s+commit\s+`([0-9a-f]{7,40})`/);
+              const commentSha = shaMatch ? shaMatch[1].slice(0, 7) : null;
+              if (commentSha && commentSha !== headShort) {
+                core.info(
+                  `Claude convergence summary is from an earlier commit (${commentSha}), current HEAD is ${headShort}. Phase 3 did not run for this push — PR is clear to merge.`
+                );
+                return;
+              }
+
               // Extract the ## Verdict sentence.
               // Mirrors extractVerdictLine() in .github/scripts/lib/parse-convergence-verdict.mjs
               const verdictMatch = claudeComment.body.match(/^##\s+Verdict\s*\n+([^\n]+)/m);

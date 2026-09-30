@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractVerdictLine, isBlockingVerdict } from '../lib/parse-convergence-verdict.mjs';
+import {
+  extractVerdictLine,
+  isBlockingVerdict,
+  extractCommentCommitSha,
+} from '../lib/parse-convergence-verdict.mjs';
 
 // ---------------------------------------------------------------------------
 // extractVerdictLine
@@ -125,6 +129,55 @@ describe('isBlockingVerdict', () => {
     // The system prompt produces "Blocked" with a capital B; a lower-case
     // variant is not a recognised verdict and must not trip the gate.
     assert.equal(isBlockingVerdict('blocked on 1 fix.'), false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractCommentCommitSha
+// ---------------------------------------------------------------------------
+
+describe('extractCommentCommitSha', () => {
+  it('extracts a 7-char SHA from a full footer line', () => {
+    const body =
+      '## Verdict\nClean — no blocking issues.\n\n---\n*Convergence summary by Claude `claude-haiku-4-5` · commit `abc1234`*';
+    assert.equal(extractCommentCommitSha(body), 'abc1234');
+  });
+
+  it('extracts and truncates a full 40-char SHA to 7 chars', () => {
+    const body =
+      '*Convergence summary by Claude `m` · commit `abcdef1234567890abcdef1234567890abcdef12`*';
+    assert.equal(extractCommentCommitSha(body), 'abcdef1');
+  });
+
+  it('handles extra whitespace around the middle dot', () => {
+    const body = '*Convergence summary by Claude `m` ·  commit `abc1234`*';
+    assert.equal(extractCommentCommitSha(body), 'abc1234');
+  });
+
+  it('returns null when no footer is present', () => {
+    assert.equal(extractCommentCommitSha('some other comment'), null);
+  });
+
+  it('returns null for an empty string', () => {
+    assert.equal(extractCommentCommitSha(''), null);
+  });
+
+  it('returns null for a non-string input', () => {
+    assert.equal(extractCommentCommitSha(null), null);
+    assert.equal(extractCommentCommitSha(undefined), null);
+  });
+
+  it('extracts SHA from a full realistic comment body', () => {
+    const body = [
+      '<!-- claude-pr-review-comment -->',
+      '',
+      '## Verdict',
+      'Blocked on 1 agreed fix.',
+      '',
+      '---',
+      '*Convergence summary by Claude `claude-haiku-4-5` · commit `abc1234`*',
+    ].join('\n');
+    assert.equal(extractCommentCommitSha(body), 'abc1234');
   });
 });
 

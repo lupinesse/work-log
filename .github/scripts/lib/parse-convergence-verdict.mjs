@@ -59,3 +59,27 @@ export function isBlockingVerdict(verdictLine) {
   if (!verdictLine) return false;
   return verdictLine.startsWith('Blocked');
 }
+
+/**
+ * Extract the short commit SHA from a Phase 3 convergence summary comment footer.
+ *
+ * The footer written by `claude-convergence-summary.mjs` always ends with:
+ *   `*Convergence summary by Claude \`model\` · commit \`abc1234\`*`
+ *
+ * Returns the 7-character short SHA, or `null` if the footer is absent (e.g.
+ * the comment belongs to a different phase or was written by an older version).
+ *
+ * @param {string} body - Full PR comment body text.
+ * @returns {string|null} The 7-char short SHA, or null if not found.
+ * @example
+ * extractCommentCommitSha('## Verdict\nClean.\n\n---\n*Convergence summary by Claude `m` · commit `abc1234`*')
+ * // → 'abc1234'
+ *
+ * extractCommentCommitSha('some other comment')
+ * // → null
+ */
+export function extractCommentCommitSha(body) {
+  if (typeof body !== 'string') return null;
+  const match = body.match(/·\s+commit\s+`([0-9a-f]{7,40})`/);
+  return match ? match[1].slice(0, 7) : null;
+}
