@@ -51,6 +51,12 @@ describe('extractVerdictLine', () => {
     assert.equal(extractVerdictLine(body), null);
   });
 
+  it('returns null when ## Verdict is followed only by whitespace', () => {
+    // A line of spaces after the heading should not count as a verdict sentence.
+    assert.equal(extractVerdictLine('## Verdict\n   \n'), null);
+    assert.equal(extractVerdictLine('## Verdict\n\t\t\n'), null);
+  });
+
   it('returns null for an empty string', () => {
     assert.equal(extractVerdictLine(''), null);
   });

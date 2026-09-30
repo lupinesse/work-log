@@ -35,7 +35,9 @@
 export function extractVerdictLine(body) {
   if (typeof body !== 'string') return null;
   const match = body.match(/^##\s+Verdict\s*\n+([^\n]+)/m);
-  return match ? match[1].trim() : null;
+  if (!match) return null;
+  const trimmed = match[1].trim();
+  return trimmed || null;
 }
 
 /**

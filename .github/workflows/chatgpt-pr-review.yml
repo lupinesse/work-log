@@ -451,40 +451,50 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            // Marker written by claude-convergence-summary.mjs
-            const MARKER = '<!-- claude-pr-review-comment -->';
+            try {
+              // Marker written by claude-convergence-summary.mjs
+              const MARKER = '<!-- claude-pr-review-comment -->';
 
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner:        context.repo.owner,
-              repo:         context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              per_page:     100,
-            });
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                per_page:     100,
+              });
 
-            const claudeComment = comments.find(c => c.body && c.body.includes(MARKER));
-            if (!claudeComment) {
-              core.info('No Claude convergence summary found — PR is clear to merge.');
-              return;
-            }
+              const claudeComment = comments.find(c => c.body && c.body.includes(MARKER));
+              if (!claudeComment) {
+                core.info('No Claude convergence summary found — PR is clear to merge.');
+                return;
+              }
 
-            // Extract the ## Verdict sentence.
-            // Mirrors extractVerdictLine() in .github/scripts/lib/parse-convergence-verdict.mjs
-            const verdictMatch = claudeComment.body.match(/^##\s+Verdict\s*\n+([^\n]+)/m);
-            if (!verdictMatch) {
-              core.info('Claude comment found but no ## Verdict section — PR is clear to merge.');
-              return;
-            }
+              // Extract the ## Verdict sentence.
+              // Mirrors extractVerdictLine() in .github/scripts/lib/parse-convergence-verdict.mjs
+              const verdictMatch = claudeComment.body.match(/^##\s+Verdict\s*\n+([^\n]+)/m);
+              if (!verdictMatch) {
+                core.info('Claude comment found but no ## Verdict section — PR is clear to merge.');
+                return;
+              }
 
-            const verdictLine = verdictMatch[1].trim();
-            core.info(`Claude verdict: "${verdictLine}"`);
+              const verdictLine = verdictMatch[1].trim();
+              if (!verdictLine) {
+                core.info('Claude verdict section is empty — PR is clear to merge.');
+                return;
+              }
+              core.info(`Claude verdict: "${verdictLine}"`);
 
-            // A verdict starting with "Blocked" (capital B, as the system prompt
-            // produces) means there are agreed fixes that have not been made yet.
-            // Mirrors isBlockingVerdict() in .github/scripts/lib/parse-convergence-verdict.mjs
-            if (verdictLine.startsWith('Blocked')) {
+              // A verdict starting with "Blocked" (capital B, as the system prompt
+              // produces) means there are agreed fixes that have not been made yet.
+              // Mirrors isBlockingVerdict() in .github/scripts/lib/parse-convergence-verdict.mjs
+              if (verdictLine.startsWith('Blocked')) {
+                core.setFailed(
+                  `Claude's convergence verdict is blocking:\n  "${verdictLine}"\n\nFix the agreed issues before merging.`
+                );
+              } else {
+                core.info('Claude verdict is not blocking — PR is clear to merge.');
+              }
+            } catch (err) {
               core.setFailed(
-                `Claude's convergence verdict is blocking:\n  "${verdictLine}"\n\nFix the agreed issues before merging.`
+                `claude-verdict-gate: unexpected error checking Claude's verdict — ${err.message || err}\n\nThis may be a transient API failure; re-running the job should resolve it.`
               );
-            } else {
-              core.info('Claude verdict is not blocking — PR is clear to merge.');
             }
