@@ -1,6 +1,6 @@
 name: ChatGPT PR Review
 
-# Five-job AI review dialogue:
+# Six-job AI review dialogue:
 #
 #   Phase 1 — chatgpt-review: ChatGPT posts independent inline threads.
 #
@@ -18,6 +18,11 @@ name: ChatGPT PR Review
 #   blocking merge. Succeeds only when ChatGPT has no outstanding findings.
 #   Runs on every trigger, including a push where the dialogue itself is
 #   skipped, so its verdict always belongs to the current head commit.
+#
+#   claude-verdict-gate: Reads Claude's Phase 3 convergence summary comment.
+#   Fails if the ## Verdict section starts with "Blocked", preventing merge
+#   until all agreed fixes are addressed. Passes if the comment is absent
+#   (small PRs that skip the dialogue) or the verdict is clean.
 #
 # Note: Claude's standalone pr-review.yml is gated to skip PRs that meet the
 # size threshold — this workflow handles Claude's review for those PRs instead.
@@ -424,5 +429,87 @@ jobs:
               }).join('\n');
               core.setFailed(
                 `${unresolved.length} unresolved ChatGPT finding(s):\n${list}\n\nResolve all threads before merging.`
+              );
+            }
+
+  # ─── Claude verdict gate: block merge if Phase 3 verdict is blocking ─────
+  claude-verdict-gate:
+    name: Claude verdict — not blocking
+    needs: [claude-final-review]
+    # always() matches merge-gate: runs on every trigger so the gate is never
+    # silently skipped when a dialogue phase is skipped or the PR is too small.
+    # When claude-final-review did not run (small PR / dialogue skipped), there
+    # is no convergence comment and the gate passes on an empty result.
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+
+    steps:
+      - name: Check Claude's convergence verdict
+        uses: actions/github-script@v9
+        with:
+          script: |
+            try {
+              // Marker written by claude-convergence-summary.mjs
+              const MARKER = '<!-- claude-pr-review-comment -->';
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner:        context.repo.owner,
+                repo:         context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                per_page:     100,
+              });
+
+              const claudeComment = comments.find(c => c.body && c.body.includes(MARKER));
+              if (!claudeComment) {
+                core.info('No Claude convergence summary found — PR is clear to merge.');
+                return;
+              }
+
+              // Skip stale convergence comments: Phase 3 only runs when ChatGPT first
+              // reviews the PR. On subsequent fix-pushes Phase 3 is skipped, so the
+              // convergence comment from the previous round stays in place and would
+              // cause a spurious failure. Mirrors extractCommentCommitSha() in
+              // .github/scripts/lib/parse-convergence-verdict.mjs
+              const headShort = context.payload.pull_request.head.sha.slice(0, 7);
+              const shaMatch = claudeComment.body.match(/·\s+commit\s+`([0-9a-f]{7,40})`/);
+              const commentSha = shaMatch ? shaMatch[1].slice(0, 7) : null;
+              if (commentSha && commentSha !== headShort) {
+                core.info(
+                  `Claude convergence summary is from an earlier commit (${commentSha}), current HEAD is ${headShort}. Phase 3 did not run for this push — PR is clear to merge.`
+                );
+                return;
+              }
+
+              // Extract the ## Verdict sentence.
+              // Mirrors extractVerdictLine() in .github/scripts/lib/parse-convergence-verdict.mjs
+              const verdictMatch = claudeComment.body.match(/^##\s+Verdict\s*\n+([^\n]+)/m);
+              if (!verdictMatch) {
+                core.info('Claude comment found but no ## Verdict section — PR is clear to merge.');
+                return;
+              }
+
+              const verdictLine = verdictMatch[1].trim();
+              if (!verdictLine) {
+                core.info('Claude verdict section is empty — PR is clear to merge.');
+                return;
+              }
+              core.info(`Claude verdict: "${verdictLine}"`);
+
+              // A verdict starting with "Blocked" (capital B, as the system prompt
+              // produces) means there are agreed fixes that have not been made yet.
+              // Mirrors isBlockingVerdict() in .github/scripts/lib/parse-convergence-verdict.mjs
+              if (verdictLine.startsWith('Blocked')) {
+                core.setFailed(
+                  `Claude's convergence verdict is blocking:\n  "${verdictLine}"\n\nFix the agreed issues before merging.`
+                );
+              } else {
+                core.info('Claude verdict is not blocking — PR is clear to merge.');
+              }
+            } catch (err) {
+              core.setFailed(
+                `claude-verdict-gate: unexpected error checking Claude's verdict — ${err.message || err}\n\nThis may be a transient API failure; re-running the job should resolve it.`
               );
             }
