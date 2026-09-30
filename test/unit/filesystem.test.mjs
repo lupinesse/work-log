@@ -219,6 +219,53 @@ describe('pickSaveFolder', () => {
   });
 });
 
+describe('writeExportFile — FSA success path', () => {
+  it('writes to the cached FSA directory handle when available', async () => {
+    const { storeDirHandle, writeExportFile } = await loadMod();
+    globalThis.indexedDB = makeIdbMock();
+    globalThis.wlLog = { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} };
+
+    const writes = [];
+    const fakeWritable = {
+      write: async (blob) => {
+        writes.push(blob);
+      },
+      close: async () => {},
+    };
+    const fakeFileHandle = { createWritable: async () => fakeWritable };
+    const fakeSubDir = { getFileHandle: async () => fakeFileHandle };
+    const fakeDirHandle = {
+      name: 'SavedExports',
+      queryPermission: async () => 'granted',
+      requestPermission: async () => 'granted',
+      getDirectoryHandle: async () => fakeSubDir,
+    };
+
+    await storeDirHandle(fakeDirHandle);
+
+    const blob = new Blob(['content'], { type: 'text/plain' });
+    const clicks = [];
+    const doc = makeDocumentMock();
+    doc.createElement = (tag) => {
+      const el = {
+        tagName: tag,
+        href: '',
+        download: '',
+        click() {
+          clicks.push(1);
+        },
+        remove() {},
+      };
+      return el;
+    };
+    globalThis.document = doc;
+
+    await writeExportFile('timesheets', 'output.csv', blob);
+    assert.equal(writes.length, 1);
+    assert.equal(clicks.length, 0, 'should not fall back to browser download');
+  });
+});
+
 describe('writeExportFile — browser download fallback', () => {
   it('falls back to a browser download when no FSA dir is cached', async () => {
     const { clearDirHandle, writeExportFile } = await loadMod();

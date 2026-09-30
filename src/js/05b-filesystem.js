@@ -166,21 +166,25 @@ export async function pickSaveFolder() {
 export function renderFolderStatus() {
   const el = document.getElementById('folderStatus');
   if (!el) return;
-  getSavedDir().then((dir) => {
-    if (dir) {
-      el.textContent = `📁 ${dir.name}`;
-      el.title =
-        'Timesheets → ' +
-        dir.name +
-        '/timesheets/\nJSON backups → ' +
-        dir.name +
-        '/JSON backups/\nClick to change';
-      el.style.color = '#1D9E75';
-    } else {
-      el.textContent = 'pick save folder';
-      el.title =
-        'Choose where exports are saved (creates timesheets/ and JSON backups/ subfolders)';
-      el.style.color = '';
-    }
-  });
+  getSavedDir()
+    .then((dir) => {
+      if (dir) {
+        el.textContent = `📁 ${dir.name}`;
+        el.title =
+          'Timesheets → ' +
+          dir.name +
+          '/timesheets/\nJSON backups → ' +
+          dir.name +
+          '/JSON backups/\nClick to change';
+        el.style.color = '#1D9E75';
+      } else {
+        el.textContent = 'pick save folder';
+        el.title =
+          'Choose where exports are saved (creates timesheets/ and JSON backups/ subfolders)';
+        el.style.color = '';
+      }
+    })
+    .catch((err) => {
+      wlLog.warn('renderFolderStatus: could not read saved dir', err);
+    });
 }
