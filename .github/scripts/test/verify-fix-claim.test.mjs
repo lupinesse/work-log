@@ -181,4 +181,36 @@ describe('isFixClaimCorroborated', () => {
     const reply = '✅ Verified as fixed — `wlLog.warn` now in place at `12-meetings.js:73`.';
     assert.equal(isFixClaimCorroborated(reply, diff), false);
   });
+
+  // ─── Multi-hunk partial-match (issue #418) ───
+
+  test('multi-hunk diff: rejects when only the old name appears in an unrelated hunk, not the new name', () => {
+    // A naive "any added line anywhere contains any cited span" check would
+    // return true here because `console.error` (the OLD name) is in hunk 1.
+    // The correct implementation checks only the LAST content span
+    // (`wlLog.error`, the new name) and must return false since it is absent.
+    const diff = [
+      '+++ b/foo.js',
+      '+  console.error("still using the old pattern");',
+      '+++ b/bar.js',
+      '+  const x = 1;',
+    ].join('\n');
+    const reply =
+      '✅ Verified as fixed — `console.error` has been replaced with `wlLog.error` across both files.';
+    assert.equal(isFixClaimCorroborated(reply, diff), false);
+  });
+
+  test('multi-hunk diff: accepts when the new name appears in one of multiple hunks', () => {
+    // Same structure as above, but the second hunk now contains `wlLog.error`
+    // — the fix is genuinely present, just not in the first hunk.
+    const diff = [
+      '+++ b/foo.js',
+      '+  console.error("old code retained here for unrelated reasons");',
+      '+++ b/bar.js',
+      '+  wlLog.error("the targeted fix is here");',
+    ].join('\n');
+    const reply =
+      '✅ Verified as fixed — `console.error` has been replaced with `wlLog.error` across both files.';
+    assert.equal(isFixClaimCorroborated(reply, diff), true);
+  });
 });
