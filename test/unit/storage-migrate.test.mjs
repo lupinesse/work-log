@@ -21,6 +21,9 @@ function makeLocalStorageMock(initial = {}) {
     removeItem: (key) => {
       delete store[key];
     },
+    clear: () => {
+      Object.keys(store).forEach((k) => delete store[k]);
+    },
     _store: store,
   };
 }
