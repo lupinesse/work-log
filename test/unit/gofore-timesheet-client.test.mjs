@@ -20,7 +20,7 @@ const HOUR = 3600000;
  * @param {Object} opts - `entries` for the day and a `fetch` stub.
  * @returns {Object} Sandbox with `elements` and a `click()` helper.
  */
-function loadSandbox({ entries, fetch }) {
+function loadSandbox({ entries, fetch, submitEnabled = true, clipboard = {} }) {
   const elements = {};
   const makeEl = () => ({
     value: '',
@@ -33,13 +33,19 @@ function loadSandbox({ entries, fetch }) {
       this.listeners[type] = handler;
     },
   });
-  ['eodTimesheetHours', 'eodTimesheetDesc', 'eodTimesheetSubmit', 'eodTimesheetStatus'].forEach(
-    (id) => (elements[id] = makeEl())
-  );
+  [
+    'eodTimesheetHours',
+    'eodTimesheetDesc',
+    'eodTimesheetSubmit',
+    'eodTimesheetCopy',
+    'eodTimesheetStatus',
+  ].forEach((id) => (elements[id] = makeEl()));
   const sandbox = {
     entries,
     fetch,
     getCatLabel: (id) => id,
+    GOFORE_SUBMIT_ENABLED: submitEnabled,
+    navigator: { clipboard },
     wlLog: { info() {}, warn() {} },
     document: { getElementById: (id) => elements[id] },
     console,
@@ -60,6 +66,53 @@ const dayEntries = [
 ];
 
 describe('End of Day timesheet form', () => {
+  it('hides the submit button but keeps the draft copyable while submit is disabled', () => {
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      submitEnabled: false,
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    assert.equal(elements.eodTimesheetSubmit.hidden, true);
+    assert.equal(elements.eodTimesheetCopy.disabled, false);
+    assert.equal(elements.eodTimesheetDesc.value, 'work (AITO-1: Flow), meeting (FUAT)');
+  });
+
+  it('shows the submit button when submit is enabled', () => {
+    const { sandbox, elements } = loadSandbox({ entries: dayEntries, fetch: async () => ({}) });
+    sandbox.renderEodTimesheet('2026-09-30');
+    assert.equal(elements.eodTimesheetSubmit.hidden, false);
+  });
+
+  it('copies the description as edited by the user', async () => {
+    let copied;
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      clipboard: { writeText: async (text) => (copied = text) },
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    elements.eodTimesheetDesc.value = 'test execution (AITO-1: Flow)';
+    await elements.eodTimesheetCopy.listeners.click();
+    assert.equal(copied, 'test execution (AITO-1: Flow)');
+    assert.match(elements.eodTimesheetStatus.textContent, /copied/);
+  });
+
+  it('tells the user to copy manually when the clipboard is refused', async () => {
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      clipboard: {
+        writeText: async () => {
+          throw new Error('denied');
+        },
+      },
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    await elements.eodTimesheetCopy.listeners.click();
+    assert.match(elements.eodTimesheetStatus.textContent, /copy it manually/);
+  });
+
   it('drafts hours and description from today only', () => {
     const { sandbox, elements } = loadSandbox({ entries: dayEntries, fetch: async () => ({}) });
     sandbox.renderEodTimesheet('2026-09-30');
@@ -68,10 +121,11 @@ describe('End of Day timesheet form', () => {
     assert.equal(elements.eodTimesheetSubmit.disabled, false);
   });
 
-  it('disables the form when nothing was tracked', () => {
+  it('disables the form, including copy, when nothing was tracked', () => {
     const { sandbox, elements } = loadSandbox({ entries: [], fetch: async () => ({}) });
     sandbox.renderEodTimesheet('2026-09-30');
     assert.equal(elements.eodTimesheetSubmit.disabled, true);
+    assert.equal(elements.eodTimesheetCopy.disabled, true);
     assert.match(elements.eodTimesheetStatus.textContent, /Nothing tracked/);
   });
 

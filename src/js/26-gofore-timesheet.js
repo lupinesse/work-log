@@ -49,11 +49,28 @@ function renderEodTimesheet(dateKey) {
   hoursEl.value = payload ? String(payload.hours) : '';
   descEl.value = payload ? payload.description : '';
   hoursEl.dataset.date = dateKey;
-  [hoursEl, descEl, submitBtn].forEach((el) => (el.disabled = !payload));
+  const copyBtn = document.getElementById('eodTimesheetCopy');
+  submitBtn.hidden = !GOFORE_SUBMIT_ENABLED;
+  [hoursEl, descEl, submitBtn, copyBtn].forEach((el) => (el.disabled = !payload));
   setTimesheetStatus(payload ? '' : 'Nothing tracked today — nothing to submit.');
   wlLog.info(
     `renderEodTimesheet: ${payload ? `draft ${payload.hours}h for ${dateKey}` : 'no tracked time, form disabled'}`
   );
+}
+
+/**
+ * Copies the description as currently edited in the form to the clipboard, so
+ * it can be pasted into the timesheet by hand.
+ * @returns {Promise<void>} Resolves once the status message is set.
+ */
+async function copyEodTimesheetDescription() {
+  try {
+    await navigator.clipboard.writeText(document.getElementById('eodTimesheetDesc').value);
+    setTimesheetStatus('✅ Description copied');
+  } catch (err) {
+    wlLog.warn('copyEodTimesheetDescription: clipboard write failed', err);
+    setTimesheetStatus('⚠ Could not copy — select the text and copy it manually', true);
+  }
 }
 
 /**
@@ -99,3 +116,4 @@ async function submitEodTimesheet() {
 }
 
 document.getElementById('eodTimesheetSubmit').addEventListener('click', submitEodTimesheet);
+document.getElementById('eodTimesheetCopy').addEventListener('click', copyEodTimesheetDescription);
