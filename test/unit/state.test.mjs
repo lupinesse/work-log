@@ -10,6 +10,28 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as appConstants from '../../src/js/app-constants.js';
 import { __dirname } from './_helpers.mjs';
+import {
+  getEntries,
+  setEntries,
+  getActiveTimer,
+  setActiveTimer,
+  getTimerInterval,
+  setTimerInterval,
+  getCategories,
+  setCategories,
+  getSelectedTag,
+  setSelectedTag,
+  getViewDate,
+  setViewDate,
+  getLogNotes,
+  setLogNotes,
+  getTrackers,
+  setTrackers,
+  getBlocks,
+  setBlocks,
+  getPlanTasks,
+  setPlanTasks,
+} from '../../src/js/state.js';
 
 /**
  * Creates a VM sandbox with 01-state.js loaded, exposing createCategory and
@@ -226,5 +248,200 @@ describe('save() — localStorage failure handling', () => {
     sandbox.save();
     assert.equal(setItemCalls.length, 0);
     assert.equal(doc.prepended.length, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// state.js — new accessor-layer leaf module
+// ---------------------------------------------------------------------------
+
+describe('state.js — initial values', () => {
+  it('entries starts as an empty array', () => {
+    assert.deepEqual(getEntries(), []);
+  });
+
+  it('activeTimer starts as null', () => {
+    assert.equal(getActiveTimer(), null);
+  });
+
+  it('timerInterval starts as null', () => {
+    assert.equal(getTimerInterval(), null);
+  });
+
+  it('selectedTag starts as "work"', () => {
+    assert.equal(getSelectedTag(), 'work');
+  });
+
+  it('viewDate starts as a Date instance', () => {
+    assert.ok(getViewDate() instanceof Date);
+  });
+
+  it('logNotes starts as an empty array', () => {
+    assert.deepEqual(getLogNotes(), []);
+  });
+
+  it('trackers starts as an empty array', () => {
+    assert.deepEqual(getTrackers(), []);
+  });
+
+  it('blocks starts as an empty array', () => {
+    assert.deepEqual(getBlocks(), []);
+  });
+
+  it('planTasks starts as an empty array', () => {
+    assert.deepEqual(getPlanTasks(), []);
+  });
+
+  it('categories starts as a copy of DEFAULT_CATS with the correct labels', () => {
+    const cats = getCategories();
+    const labels = cats.map((c) => c.label);
+    assert.ok(labels.includes('work'));
+    assert.ok(labels.includes('break'));
+    assert.equal(cats.length, appConstants.DEFAULT_CATS.length);
+  });
+
+  it('categories is a shallow copy, not the same reference as DEFAULT_CATS', () => {
+    assert.notStrictEqual(getCategories(), appConstants.DEFAULT_CATS);
+  });
+});
+
+describe('state.js — getter/setter round-trips', () => {
+  it('setEntries / getEntries round-trips an array', () => {
+    const orig = getEntries();
+    const next = [{ id: 'e1', text: 'test', ts: 1, date: '2026-01-01' }];
+    try {
+      setEntries(next);
+      assert.strictEqual(getEntries(), next);
+    } finally {
+      setEntries(orig);
+    }
+  });
+
+  it('setActiveTimer / getActiveTimer round-trips an object', () => {
+    const orig = getActiveTimer();
+    const next = { id: 't1', start: 1000 };
+    try {
+      setActiveTimer(next);
+      assert.strictEqual(getActiveTimer(), next);
+    } finally {
+      setActiveTimer(orig);
+    }
+  });
+
+  it('setActiveTimer accepts null to clear the timer', () => {
+    const orig = getActiveTimer();
+    try {
+      setActiveTimer({ id: 'x' });
+      setActiveTimer(null);
+      assert.equal(getActiveTimer(), null);
+    } finally {
+      setActiveTimer(orig);
+    }
+  });
+
+  it('setTimerInterval / getTimerInterval round-trips a numeric interval ID', () => {
+    const orig = getTimerInterval();
+    try {
+      setTimerInterval(42);
+      assert.equal(getTimerInterval(), 42);
+    } finally {
+      setTimerInterval(orig);
+    }
+  });
+
+  it('setCategories / getCategories round-trips an array', () => {
+    const orig = getCategories();
+    const next = [{ id: 'x', label: 'X', color: '#000' }];
+    try {
+      setCategories(next);
+      assert.strictEqual(getCategories(), next);
+    } finally {
+      setCategories(orig);
+    }
+  });
+
+  it('setSelectedTag / getSelectedTag round-trips a string', () => {
+    const orig = getSelectedTag();
+    try {
+      setSelectedTag('personal');
+      assert.equal(getSelectedTag(), 'personal');
+    } finally {
+      setSelectedTag(orig);
+    }
+  });
+
+  it('setViewDate / getViewDate round-trips a Date', () => {
+    const orig = getViewDate();
+    const next = new Date('2026-06-15');
+    try {
+      setViewDate(next);
+      assert.strictEqual(getViewDate(), next);
+    } finally {
+      setViewDate(orig);
+    }
+  });
+
+  it('setLogNotes / getLogNotes round-trips an array', () => {
+    const orig = getLogNotes();
+    const next = ['note one'];
+    try {
+      setLogNotes(next);
+      assert.strictEqual(getLogNotes(), next);
+    } finally {
+      setLogNotes(orig);
+    }
+  });
+
+  it('setTrackers / getTrackers round-trips an array', () => {
+    const orig = getTrackers();
+    const next = [{ id: 'tr1' }];
+    try {
+      setTrackers(next);
+      assert.strictEqual(getTrackers(), next);
+    } finally {
+      setTrackers(orig);
+    }
+  });
+
+  it('setBlocks / getBlocks round-trips an array', () => {
+    const orig = getBlocks();
+    const next = [{ id: 'b1', start: '09:00', end: '10:00', label: 'Focus' }];
+    try {
+      setBlocks(next);
+      assert.strictEqual(getBlocks(), next);
+    } finally {
+      setBlocks(orig);
+    }
+  });
+
+  it('setPlanTasks / getPlanTasks round-trips an array', () => {
+    const orig = getPlanTasks();
+    const next = [{ id: 'p1', text: 'Task 1', status: 'todo' }];
+    try {
+      setPlanTasks(next);
+      assert.strictEqual(getPlanTasks(), next);
+    } finally {
+      setPlanTasks(orig);
+    }
+  });
+});
+
+describe('state.js — live reference semantics', () => {
+  it('getCategories returns a live reference — push is reflected in the next get', () => {
+    const cats = getCategories();
+    const lenBefore = cats.length;
+    cats.push({ id: 'test-live', label: 'Live test', color: '#f00' });
+    assert.equal(getCategories().length, lenBefore + 1);
+    // clean up
+    setCategories(getCategories().filter((c) => c.id !== 'test-live'));
+  });
+
+  it('getEntries returns a live reference — push is reflected in the next get', () => {
+    const entries = getEntries();
+    const lenBefore = entries.length;
+    entries.push({ id: 'live-test', text: 'x', ts: 0, date: '2026-01-01' });
+    assert.equal(getEntries().length, lenBefore + 1);
+    // clean up
+    setEntries(getEntries().filter((e) => e.id !== 'live-test'));
   });
 });
