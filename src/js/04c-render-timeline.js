@@ -341,6 +341,10 @@ function bindTimelineEntryEvents(timelineEl) {
       const id = el.dataset.id;
       const entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
+      // ARIA forbids interactive children inside role="button"; remove the role
+      // while the <input> is present, restore via render() when editing ends.
+      el.removeAttribute('role');
+      el.setAttribute('tabindex', '-1');
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';
