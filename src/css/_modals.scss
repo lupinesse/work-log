@@ -859,3 +859,33 @@
   color: var(--text3);
   margin: 0;
 }
+
+/* End-of-day Gofore timesheet form */
+.eod-timesheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eod-timesheet__label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.eod-timesheet__hours {
+  width: 6em;
+}
+
+.eod-timesheet__desc {
+  width: 100%;
+  resize: vertical;
+}
+
+.eod-timesheet__status {
+  font-size: 12px;
+  min-height: 1.2em;
+}
+
+.eod-timesheet__status--error {
+  color: #c0392b;
+}

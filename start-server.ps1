@@ -15,6 +15,7 @@ $NamedayApiToken  = ''
 $AnthropicApiKey  = ''
 $NotionToken      = ''
 $NotionDatabaseId = ''
+$GoforeTimesheetUrl = 'https://timesheet.gofore.com'
 $WeatherLat       = 60.1887   # default: Helsinki
 $WeatherLon       = 24.927
 $WeatherName      = 'Helsinki'
@@ -38,6 +39,7 @@ if ($effectiveLookBack -ne $CalendarLookBackYears) {
 }
 $excludeSummary = if ($CalendarExcludeNames -and $CalendarExcludeNames.Count) { $CalendarExcludeNames -join ', ' } else { 'none' }
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack calendarExcludeNames=$excludeSummary"
+Write-Host "[cfg] gofore timesheet url: $GoforeTimesheetUrl"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
 $listener = New-Object Net.HttpListener
@@ -54,6 +56,36 @@ function Send-Json($res, $body, $status = 200) {
     $res.ContentType     = 'application/json; charset=utf-8'
     $res.ContentLength64 = $bytes.Length
     try { $res.OutputStream.Write($bytes, 0, $bytes.Length) } catch {}
+}
+
+function Invoke-GoforeTimesheet {
+    <#
+    .SYNOPSIS
+        Runs scripts/gofore-timesheet.mjs with a JSON entry on stdin.
+    .PARAMETER Json
+        The entry as JSON: { date, hours, description }.
+    .OUTPUTS
+        PSCustomObject with ExitCode, StdOut and StdErr.
+    .EXAMPLE
+        Invoke-GoforeTimesheet -Json '{"date":"2026-09-30","hours":7.5,"description":"work (X-1)"}'
+    #>
+    param([Parameter(Mandatory)][string]$Json)
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = 'node'
+    $startInfo.Arguments = '"' + (Join-Path (Join-Path $root 'scripts') 'gofore-timesheet.mjs') + '"'
+    $startInfo.WorkingDirectory = $root
+    $startInfo.RedirectStandardInput = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.EnvironmentVariables['GOFORE_TIMESHEET_URL'] = $GoforeTimesheetUrl
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    $process.StandardInput.Write($Json)
+    $process.StandardInput.Close()
+    $stdErrTask = $process.StandardError.ReadToEndAsync()
+    $stdOut = $process.StandardOutput.ReadToEnd()
+    $process.WaitForExit()
+    return [pscustomobject]@{ ExitCode = $process.ExitCode; StdOut = $stdOut; StdErr = $stdErrTask.Result }
 }
 
 function Get-TodayMeetings {
@@ -673,6 +705,26 @@ while ($listener.IsListening) {
         }
 
         # Portable deploy — runs the npm portable build + copy to .portable-dest
+        # Gofore timesheet -- adds one day's entry through a saved browser (SSO) session
+        if ($req.Url.LocalPath -eq '/api/gofore-timesheet' -and $req.HttpMethod -eq 'POST') {
+            try {
+                $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                $result = Invoke-GoforeTimesheet -Json $reader.ReadToEnd()
+                Write-Host "[timesheet] exit $($result.ExitCode): $($result.StdOut.Trim()) $($result.StdErr.Trim())"
+                if ($result.ExitCode -eq 0) {
+                    $method = if ($result.StdOut -match 'method=(\w+)') { $Matches[1] } else { 'unknown' }
+                    Send-Json $res (@{ ok = $true; method = $method } | ConvertTo-Json -Compress)
+                } else {
+                    $message = if ($result.ExitCode -eq 2) { 'Timesheet sign-in expired. Run: npm run timesheet:login' } else { $result.StdErr.Trim() }
+                    Send-Json $res (@{ ok = $false; error = $message } | ConvertTo-Json -Compress) 502
+                }
+            } catch {
+                Send-Json $res (@{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress) 500
+            }
+            try { $res.Close() } catch {}
+            continue
+        }
+
         if ($req.Url.LocalPath -eq '/api/portable-deploy' -and $req.HttpMethod -eq 'POST') {
             try {
                 $start = Get-Date

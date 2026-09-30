@@ -79,6 +79,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ### Export & review
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
+- **Gofore timesheet** — the End of Day modal drafts one whole-day entry (total hours + `activity (ticket, ticket)` description from your log). Edit it, press submit, and the local server adds it to timesheet.gofore.com: first through **Claude in Chrome** (`claude --chrome`, your real signed-in browser), falling back to **Playwright** with a saved session. Setup: install the Claude Code CLI + Claude in Chrome extension for the first route; for the fallback run `npm run timesheet:login` once (Microsoft SSO). Requires `start-server.ps1`. The fallback's page selectors are unverified defaults — override them in `scripts/gofore-timesheet.selectors.json`.
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
 - **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
 - **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
