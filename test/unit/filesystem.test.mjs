@@ -5,7 +5,7 @@
  * the browser-only APIs (IndexedDB, FSA) are replaced with minimal mocks.
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 // --- Browser API mocks -------------------------------------------------------

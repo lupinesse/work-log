@@ -161,6 +161,7 @@ export async function pickSaveFolder() {
 /**
  * Updates the `#folderStatus` element to show the currently selected save
  * folder name (green) or a "pick save folder" prompt (default colour).
+ * @returns {void}
  */
 export function renderFolderStatus() {
   const el = document.getElementById('folderStatus');
