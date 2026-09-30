@@ -17,10 +17,13 @@ const HOUR = 3600000;
 
 /**
  * Builds a sandbox with a minimal DOM for the timesheet form.
- * @param {Object} opts - `entries` for the day and a `fetch` stub.
+ * @param {Object} options - `entries`, a `fetch` stub, optional `submitEnabled` and `clipboard`.
  * @returns {Object} Sandbox with `elements` and a `click()` helper.
  */
-function loadSandbox({ entries, fetch, submitEnabled = true, clipboard = {} }) {
+function loadSandbox(options) {
+  const { entries, fetch, submitEnabled = true } = options;
+  // An explicit `clipboard: undefined` must stay undefined (non-secure pages), so don't use a default.
+  const clipboard = 'clipboard' in options ? options.clipboard : {};
   const elements = {};
   const makeEl = () => ({
     value: '',
@@ -96,6 +99,18 @@ describe('End of Day timesheet form', () => {
     await elements.eodTimesheetCopy.listeners.click();
     assert.equal(copied, 'test execution (AITO-1: Flow)');
     assert.match(elements.eodTimesheetStatus.textContent, /copied/);
+  });
+
+  it('tells the user to copy manually when the clipboard API is missing', async () => {
+    // navigator.clipboard is undefined on non-secure pages, so writeText itself is absent.
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      clipboard: undefined,
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    await elements.eodTimesheetCopy.listeners.click();
+    assert.match(elements.eodTimesheetStatus.textContent, /copy it manually/);
   });
 
   it('tells the user to copy manually when the clipboard is refused', async () => {
