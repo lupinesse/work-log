@@ -74,6 +74,7 @@ export const LEAF_MODULES = [
   'pure-fns-gapreport.js',
   'pure-fns-rollingsummary.js',
   'pure-fns-tasks.js',
+  'pure-fns-timesheet.js',
   'pure-fns-validate.js',
   'pure-fns-weeklyreport.js',
   'pure-fns.js',
