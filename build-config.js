@@ -65,6 +65,7 @@ export const DEST_FILE = '.portable-dest';
  */
 export const LEAF_MODULES = [
   'app-constants.js',
+  'state.js',
   'logger.js',
   'pure-fns-backup.js',
   'pure-fns-epics.js',
