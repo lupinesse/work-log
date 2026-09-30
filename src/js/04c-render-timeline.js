@@ -109,6 +109,13 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        // Jira link rendered as a sibling so .etext[role="button"] contains no
+        // interactive descendants (ARIA 1.2 forbids interactive children inside
+        // role="button").
+        const jiraHtml = jiraTicketHtml(entry.text);
+        const plainHtml = escHtml(entry.text);
+        const jiraSiblingHtml =
+          jiraHtml !== plainHtml ? `<span class="jira-key-aside">${jiraHtml}</span>` : '';
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
@@ -128,7 +135,7 @@ function renderTimelineSection(list) {
           ${sigHtml(entry)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${entry.id}" tabindex="0" aria-label="Rename: ${escHtml(entry.text)}">${jiraTicketHtml(entry.text)}${entry._uncategorised ? `<span class="entry-uncategorised" aria-label="No category assigned" title="No category — tap to assign">○</span>` : ''}</div>
+            <div class="etext" data-id="${entry.id}" role="button" tabindex="0">${plainHtml}${entry._uncategorised ? `<span class="entry-uncategorised" aria-label="No category assigned" title="No category — tap to assign">○</span>` : ''}</div>${jiraSiblingHtml}
             <button class="etag-btn" data-id="${entry.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(entry.tag))} &#9660;
@@ -341,9 +348,10 @@ function bindTimelineEntryEvents(timelineEl) {
       const id = el.dataset.id;
       const entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
-      // Hide from AT while the rename input is active; render() restores tabindex="0".
+      // ARIA forbids interactive children inside role="button"; remove the role
+      // while the <input> is present, restore via render() when editing ends.
+      el.removeAttribute('role');
       el.setAttribute('tabindex', '-1');
-      el.removeAttribute('aria-label');
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';

@@ -110,6 +110,11 @@
   border-color: var(--info-text);
 }
 
+.etime-input:focus-visible {
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
+}
+
 .etime-actions {
   display: flex;
   gap: 4px;
@@ -203,6 +208,11 @@
   outline: none;
   line-height: 1.45;
   box-sizing: border-box;
+}
+
+.etext-input:focus-visible {
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etag-btn {
@@ -306,7 +316,9 @@
 }
 
 .entry:hover .edel,
-.entry:hover .erestart {
+.entry:hover .erestart,
+.entry:focus-within .edel,
+.entry:focus-within .erestart {
   opacity: 1;
 }
 
