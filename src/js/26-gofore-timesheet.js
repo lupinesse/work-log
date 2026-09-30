@@ -46,13 +46,13 @@ function renderEodTimesheet(dateKey) {
   const hoursEl = document.getElementById('eodTimesheetHours');
   const descEl = document.getElementById('eodTimesheetDesc');
   const submitBtn = document.getElementById('eodTimesheetSubmit');
+  const copyBtn = document.getElementById('eodTimesheetCopy');
   hoursEl.value = payload ? String(payload.hours) : '';
   descEl.value = payload ? payload.description : '';
   hoursEl.dataset.date = dateKey;
-  const copyBtn = document.getElementById('eodTimesheetCopy');
   submitBtn.hidden = !GOFORE_SUBMIT_ENABLED;
   [hoursEl, descEl, submitBtn, copyBtn].forEach((el) => (el.disabled = !payload));
-  setTimesheetStatus(payload ? '' : 'Nothing tracked today — nothing to submit.');
+  setTimesheetStatus(payload ? '' : 'Nothing tracked today — no timesheet entry to draft.');
   wlLog.info(
     `renderEodTimesheet: ${payload ? `draft ${payload.hours}h for ${dateKey}` : 'no tracked time, form disabled'}`
   );
