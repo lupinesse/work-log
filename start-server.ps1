@@ -704,7 +704,6 @@ while ($listener.IsListening) {
             continue
         }
 
-        # Portable deploy — runs the npm portable build + copy to .portable-dest
         # Gofore timesheet -- adds one day's entry through a saved browser (SSO) session
         if ($req.Url.LocalPath -eq '/api/gofore-timesheet' -and $req.HttpMethod -eq 'POST') {
             try {
@@ -725,6 +724,7 @@ while ($listener.IsListening) {
             continue
         }
 
+        # Portable deploy — runs the npm portable build + copy to .portable-dest
         if ($req.Url.LocalPath -eq '/api/portable-deploy' -and $req.HttpMethod -eq 'POST') {
             try {
                 $start = Get-Date
