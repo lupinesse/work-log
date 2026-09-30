@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r5 |
+| Document version | 1.9.2-r6 |
 | Covers app version | v1.9.2 (main, 2026-09-10) |
-| Last reviewed | 2026-09-10 |
-| Reviewed by | Claude (split pure-fns-export.js into five files — QA finding: module size, flagged for the largest module once `04-render.js` was resolved — updated its entry, the barrel's sub-module count and list, and the source file count touched by that change. Not a full re-audit of every per-module line count) |
+| Last reviewed | 2026-09-30 |
+| Reviewed by | Claude — full sub-module re-audit (issues #440 and #441): added missing `pure-fns-epics.js` entry (barrel had nine sub-modules, not eight), corrected four stale per-module line counts (`pure-fns-backup.js`, `app-constants.js`, `signifiers.js`, `12b-changelog-data.js`). This pass verified every `pure-fns-*.js` sub-module and every LEAF MODULE line count against `grep -v '^\\s*$' <file> | wc -l`. |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -94,7 +94,7 @@ wl_snapshot        → backup (auto-restore on failure)
 ---
 
 #### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
-**Responsibility**: Re-exports all stateless, side-effect-free helpers from eight themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
+**Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
@@ -102,9 +102,10 @@ wl_snapshot        → backup (auto-restore on failure)
 - `pure-fns-gapreport.js` (191 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
 - `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
-- `pure-fns-backup.js` (100 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
+- `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-epics.js` (158 lines) — Epic (category) lifecycle helpers: stale-epic detection, archive/restore, and picker filtering: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
 
 ---
 
@@ -125,7 +126,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **app-constants.js** (63 lines) — Static Config Constants (LEAF MODULE)
+#### **app-constants.js** (69 lines) — Static Config Constants (LEAF MODULE)
 **Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
 
 **Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
@@ -436,7 +437,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **signifiers.js** (46 lines) — Signifier Lookup Tables (LEAF MODULE)
+#### **signifiers.js** (47 lines) — Signifier Lookup Tables (LEAF MODULE)
 **Responsibility**: `SIG_SYMBOL`, `SIG_TITLE` (signifier id → display symbol/title) and their accessors `sigSymbol(entry)`/`sigTitle(entry)`, with a `'●'`/`'Billable'` fallback for the billable default. Only JS builtins as dependencies — imported as an ES module at the top of `script.js`. Extracted from `10b-signifiers.js` (issue #336) — the fourth ES-module extraction, another instance of the date-labels.js pattern: pull the stateless lookup out, leave the stateful cycling/DOM binding behind. Used by `10b-signifiers.js`'s own `sigHtml()`, `18-dailylog.js`'s `buildDailyLogItems()`, and directly by `16-rapid.js`'s `_qcRenderTokenPreview()` (previously guarded with a `typeof SIG_SYMBOL !== 'undefined'` check against the old concatenated-global; now a guaranteed import, so the guard was removed).
 
 **Exports**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol`, `sigTitle`
@@ -507,7 +508,7 @@ upcoming    → Scheduled for future date
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
-- `12b-changelog-data.js` (637 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
+- `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
