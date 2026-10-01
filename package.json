@@ -19,6 +19,7 @@
     "test:changelog": "node .github/scripts/check-changelog-duplicates.mjs",
     "test:arrow-param-count": "node .github/scripts/check-arrow-param-count.mjs",
     "test:architecture-line-counts": "node .github/scripts/check-architecture-line-counts.mjs",
+    "pretest:smoke": "npm run build",
     "test:smoke": "node smoke-tests.cjs",
     "test": "npm run test:unit && npm run test:smoke && npm run test:scripts",
     "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
