@@ -143,6 +143,13 @@ shared calendar that reports as an ordinary folder — name it in <code>$Calenda
 <li><strong>Moon phase</strong> — current phase, illumination %, and zodiac sign</li>
 <li><strong>Finnish nameday</strong> — fetched live from nimipaivat.fi</li>
 </ul>
+<h3>Gofore timesheet automation — security model</h3>
+<ul>
+<li><strong>Off by default.</strong> <code>GOFORE_SUBMIT_ENABLED</code> is <code>false</code> in <code>src/js/00-config.js</code>; nothing is sent until you set it to <code>true</code> in your own <code>src/js/00-config.local.js</code>. The flag only hides the submit button — the local <code>/api/gofore-timesheet</code> endpoint of <code>start-server.ps1</code> is not gated by it.</li>
+<li><strong>Everything runs on your machine.</strong> There is no remote service of ours. <code>scripts/gofore-timesheet.mjs</code> is started by the local server and drives <em>your</em> signed-in Chrome (<code>claude --chrome</code>) or a Playwright profile against <code>$GoforeTimesheetUrl</code>. The date, hours and description go over stdin, never argv. The Chrome route runs the Claude Code CLI, so that entry text is also seen by Claude (Anthropic API); the Playwright route does not involve it.</li>
+<li><strong>No credentials in the repo.</strong> Sign-in is Microsoft SSO done by hand (<code>npm run timesheet:login</code>); the session cookies live in <code>.timesheet-profile/</code>. <code>scripts/gofore-timesheet.selectors.json</code> holds only optional CSS selector overrides (<code>{}</code> by default).</li>
+<li><strong>Gitignored local files:</strong> <code>config.local.ps1</code>, <code>src/js/00-config.local.js</code>, <code>.timesheet-profile/</code>. Copy <code>config.local.example.ps1</code> / <code>src/js/00-config.local.example.js</code> and keep the copies untracked.</li>
+</ul>
 <h2>Troubleshooting</h2>
 <p><strong>My entries are gone after reopening the page.</strong> Entries live in <code>localStorage</code>, scoped to the exact <code>origin:port</code>. Reload <code>http://localhost:8080/work-log.html</code> (see the note under <em>How to use</em>). If you still see nothing, check that your browser isn't set to clear site data on exit, then restore from the newest file in <code>JSON backups/</code> (written automatically at end-of-day).</p>
 <p><strong>The timer didn't save.</strong> Same cause as above — a different port or cleared site data. Log the missed time manually from the Log tab.</p>
