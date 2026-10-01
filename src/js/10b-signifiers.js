@@ -1,17 +1,40 @@
-// ── 10b-signifiers.js — Entry signifiers ──
-// SIG_SYMBOL, SIG_TITLE, sigSymbol(), sigTitle() live in the signifiers.js
-// leaf module (issue #336) and are imported as globals at the top of
-// script.js — reachable here without a local import statement.
+// ── 10b-signifiers.js — Entry signifiers (LEAF MODULE) ──
+//
+// Leaf ES module: SIG_CYCLE, cycleSignifier(), sigHtml(), bindSignifierClicks().
+// Extracted from the concatenated bundle as part of issue #336, extraction #15.
+//
+// render() is a non-leaf function; callers must register it via
+// setSignifierRenderCallback() during app startup before any signifier click
+// can trigger a re-render.
 
-// null/undefined = billable (default, displayed as ●). Cycle: none → event → … → overtime → none
+import { save } from './01c-save.js';
+import { getEntries } from './state.js';
+import { wlLog } from './logger.js';
+import { escHtml } from './pure-fns.js';
+import { sigTitle, sigSymbol } from './signifiers.js';
+
+// Cycle: none → event → flagged → migrated → cancelled → overtime → none
+// null/undefined = billable default (●). Advancing past the last item wraps to null.
 const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
+
+/** Registered render function, injected at startup to avoid a non-leaf dep. */
+let _renderFn = null;
+
+/**
+ * Registers the render function so cycleSignifier can re-render the UI after
+ * mutating an entry. Must be called once during app startup.
+ * @param {Function} fn - The render() function from 04-render.js.
+ */
+export function setSignifierRenderCallback(fn) {
+  _renderFn = fn;
+}
 
 /**
  * Advances an entry's signifier one step through SIG_CYCLE and persists the change.
  * Wraps from the last value back to null (no signifier).
  * @param {string} entryId - ID of the entry to update.
  */
-function cycleSignifier(entryId) {
+export function cycleSignifier(entryId) {
   const entry = getEntries().find((e) => e.id === entryId);
   if (!entry) {
     // No matching entry usually means a stale click during a re-render —
@@ -25,7 +48,7 @@ function cycleSignifier(entryId) {
   wlLog.info('cycleSignifier: changed', { entryId, from: entry.signifier || null, to: next });
   entry.signifier = next;
   save();
-  render();
+  _renderFn?.();
 }
 
 /**
@@ -33,7 +56,7 @@ function cycleSignifier(entryId) {
  * @param {Object} entry - Log entry object.
  * @returns {string} HTML string for a `<span>` button.
  */
-function sigHtml(entry) {
+export function sigHtml(entry) {
   return `<span class="esig sig-${entry.signifier || 'none'}"
                data-entry-id="${escHtml(entry.id)}"
                title="${sigTitle(entry)}"
@@ -44,7 +67,7 @@ function sigHtml(entry) {
 }
 
 /** Attaches click and keyboard listeners to all `.esig` elements after a render. */
-function bindSignifierClicks() {
+export function bindSignifierClicks() {
   document.querySelectorAll('.esig').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();

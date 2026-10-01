@@ -11,6 +11,10 @@
  * top-level loadParked()/renderParked() calls and window.__wl test handle.
  */
 
+// Wire up callbacks that leaf modules can't import directly (non-leaf deps).
+setExportBackupCallback(exportBackup);
+setSignifierRenderCallback(render);
+
 load();
 loadExpiryDates();
 mergeDevLog();

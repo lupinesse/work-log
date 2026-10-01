@@ -83,6 +83,8 @@ export default [
       'src/js/22-trackers.js',
       'src/js/pomo-storage.js',
       'src/js/08a-pomo-dashboard.js',
+      'src/js/01c-save.js',
+      'src/js/10b-signifiers.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -133,6 +135,8 @@ export default [
       'src/js/22-trackers.js',
       'src/js/pomo-storage.js',
       'src/js/08a-pomo-dashboard.js',
+      'src/js/01c-save.js',
+      'src/js/10b-signifiers.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
