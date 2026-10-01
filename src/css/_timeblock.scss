@@ -41,13 +41,13 @@
 
 .tb-slot {
   height: 36px;
-  border-top: 0.5px solid var(--border);
+  border-top: var(--border-hairline) solid var(--border);
   box-sizing: border-box;
   position: relative;
 }
 
 .tb-slot:last-child {
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .tb-slot.half {
@@ -187,7 +187,7 @@
   opacity: 0.5;
   font-style: italic;
   letter-spacing: 0.03em;
-  border-top: 0.5px dashed var(--border);
+  border-top: var(--border-hairline) dashed var(--border);
   background: rgba(128, 128, 128, 0.06);
 }
 

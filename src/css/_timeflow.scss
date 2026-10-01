@@ -1,7 +1,7 @@
 // ── _timeflow.scss — Today's Flow unified section (Flow / Log / Blocks views) ──
 
 #todayFlowSection {
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
   overflow: hidden;
@@ -16,7 +16,7 @@
   gap: 8px;
   padding: 10px 14px;
   background: var(--bg2);
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .tf-icon {
@@ -44,7 +44,7 @@
 .tf-seg {
   display: inline-flex;
   background: var(--bg3);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 2px;
   margin-left: auto;
@@ -76,7 +76,7 @@
 
 .tf-day-strip-wrap {
   padding: 8px 14px 6px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .tf-strip-ticks {
@@ -133,7 +133,7 @@
   gap: 10px;
   padding: 6px 14px;
   background: var(--bg2);
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .tf-gap-text {
@@ -144,7 +144,7 @@
 
 .tf-gap-btn {
   background: none;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 2px 8px;
   font-size: 11px;
@@ -177,7 +177,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 
   &:last-child {
     border-bottom: none;
@@ -332,7 +332,7 @@
   font-size: 11px;
   padding: 1px 6px;
   border: 1px solid var(--border2);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: none;
   cursor: pointer;
   color: var(--text3);
@@ -378,7 +378,7 @@
     button {
       font-size: 11px;
       padding: 2px 8px;
-      border-radius: 99px;
+      border-radius: var(--radius-pill);
       border: 1px solid var(--border2);
       background: none;
       cursor: pointer;

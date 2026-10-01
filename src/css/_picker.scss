@@ -22,8 +22,8 @@
 .qp-item {
   font-size: 12px;
   padding: 3px 4px 3px 10px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border2);
   background: var(--bg);
   color: var(--text2);
   cursor: pointer;
@@ -65,7 +65,7 @@
     opacity 0.1s,
     color 0.1s;
   font-family: var(--font);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
 }
 
 .qp-item:hover .qp-remove {
@@ -108,7 +108,7 @@
 /* Settings toggle — opens the manage row */
 .cat-settings-btn {
   background: none;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   color: var(--text3);
   cursor: pointer;
@@ -142,7 +142,7 @@
   font-family: var(--font);
   padding: 7px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   background: var(--bg);
   color: var(--text);
   cursor: pointer;
@@ -173,7 +173,7 @@
   font-size: 12px;
   padding: 3px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   cursor: pointer;
   background: var(--bg);
   color: var(--text3);
@@ -208,7 +208,7 @@
   position: absolute;
   z-index: 200;
   background: var(--bg2);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
@@ -222,7 +222,7 @@
   font-size: 13px;
   padding: 4px 8px;
   background: var(--bg3);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font);
@@ -296,7 +296,7 @@
   flex: 1;
   font-size: 13px;
   font-family: var(--font);
-  border: 0.5px solid var(--info-text);
+  border: var(--border-hairline) solid var(--info-text);
   border-radius: var(--radius);
   padding: 3px 8px;
   background: var(--bg);
