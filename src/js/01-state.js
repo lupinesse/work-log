@@ -56,8 +56,6 @@ let viewDate = new Date();
 // eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04d-render-quickpick.js
 let selectedTag = 'work';
 let logNotes = [];
-// eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
-let trackers = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
