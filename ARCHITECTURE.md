@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (63 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (67 source files across 30+ numbered modules — 28 of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -322,7 +322,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (377 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (352 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -335,8 +335,17 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (168 lines) — Pomodoro 4-Column Dashboard
-**Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
+#### **pomo-storage.js** (44 lines) — Pomodoro Session Log Storage *(leaf ES module)*
+**Responsibility**: Read and write the pomodoro session log from `localStorage`. Extracted from `08-pomodoro.js` (issue #336, extraction #14).
+
+**Exports**: `pomoGetLog()`, `pomoSaveSession(session)`
+
+**Dependencies**: `app-constants.js` (for `STORE_POMO_LOG`), `pure-fns-validate.js` (for `validPomoEntry`), `logger.js` (for `wlLog`).
+
+---
+
+#### **08a-pomo-dashboard.js** (167 lines) — Pomodoro 4-Column Dashboard *(leaf ES module)*
+**Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout. Extracted as a leaf ES module (issue #336, extraction #14).
 
 **Layout columns** (CSS grid in `_pomo.scss`):
 | Col | Width | Content |
@@ -351,6 +360,10 @@ parkedThoughts     → List of captured thoughts
 - `renderPomoRibbon()` — Updates the ribbon footer: last-5-session dot sequence (`#pomoRibbonDots`), Peak Focus / session-count pill (`#pomoRibbonPill`), and "View all sessions" scroll link.
 - `updatePomoTaskLabel()` — Shows the currently running timer task name in the composer column.
 - `refreshPomoDashboard()` — Orchestrator; called on load and after every session completion.
+
+**Exports**: `renderPomoSparkline`, `renderPomoRibbon`, `updatePomoTaskLabel`, `refreshPomoDashboard`
+
+**Dependencies**: `pure-fns.js` (for `dk`, `escHtml`), `state.js` (for `getActiveTimer`, `getEntries`), `pomo-storage.js` (for `pomoGetLog`).
 
 **CSS variables** (defined in `_pomo.scss`):
 ```css

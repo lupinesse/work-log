@@ -76,6 +76,10 @@ export const DEST_FILE = '.portable-dest';
  * `04b-render-stats.js` depends on `pure-fns-format.js` (for `calcStreak`, `dk`,
  * `fmtDur`, `escHtml`), `pure-fns-export.js`, `state.js`, `00-config.js`, and
  * `date-labels.js`, so it is listed after all of them.
+ * `pomo-storage.js` depends on `app-constants.js`, `pure-fns-validate.js`, and
+ * `logger.js`, so it is listed after all of them.
+ * `08a-pomo-dashboard.js` depends on `pure-fns.js`, `state.js`, and
+ * `pomo-storage.js`, so it is listed after all of them.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -106,6 +110,8 @@ export const LEAF_MODULES = [
   '25-rollingsummary.js',
   '26-gofore-timesheet.js',
   '22-trackers.js',
+  'pomo-storage.js',
+  '08a-pomo-dashboard.js',
 ];
 
 /**

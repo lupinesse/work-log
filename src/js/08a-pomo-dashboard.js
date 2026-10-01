@@ -1,10 +1,10 @@
 // ── 08a-pomo-dashboard.js — Pomodoro 4-column card: sparkline + ribbon ──
 //
-// This module runs after 08-pomodoro.js in the concatenated build.
-// It reads `pomoGetLog()` and the shared `entries`/`activeTimer` globals
-// defined in earlier modules.  All DOM interactions are guarded by
-// `getElementById` null-checks so the module is inert when elements are
-// absent (e.g. during unit tests that mount a partial DOM).
+// Leaf ES module extracted from the concatenated build (issue #336, extraction #14).
+
+import { dk, escHtml } from './pure-fns.js';
+import { getActiveTimer, getEntries } from './state.js';
+import { pomoGetLog } from './pomo-storage.js';
 
 const POMO_SPARKLINE_DAYS = 28;
 const POMO_RIBBON_DOT_COUNT = 5;
@@ -59,7 +59,7 @@ function pomoSparkColours() {
  * number of completed pomodoro sessions on that day.
  * No-op when the canvas element is absent or the 2D context is unavailable.
  */
-function renderPomoSparkline() {
+export function renderPomoSparkline() {
   const canvas = document.getElementById('pomoSparkline');
   if (!canvas || !canvas.getContext) return;
 
@@ -115,7 +115,7 @@ function renderPomoSparkline() {
  *
  * Each element is individually guarded — no-op when absent from the DOM.
  */
-function renderPomoRibbon() {
+export function renderPomoRibbon() {
   const log = pomoGetLog();
   const dotsEl = document.getElementById('pomoRibbonDots');
   const pillEl = document.getElementById('pomoRibbonPill');
@@ -169,7 +169,7 @@ function renderPomoRibbon() {
  * Updates `#pomoTaskLabel` (composer column) with the text of the currently
  * running timer entry.  Clears the label when no timer is active.
  */
-function updatePomoTaskLabel() {
+export function updatePomoTaskLabel() {
   const el = document.getElementById('pomoTaskLabel');
   if (!el) return;
   const liveEntry = getActiveTimer()
@@ -183,7 +183,7 @@ function updatePomoTaskLabel() {
  * footer, and composer task label.
  * Called on module load and after every session completion.
  */
-function refreshPomoDashboard() {
+export function refreshPomoDashboard() {
   renderPomoSparkline();
   renderPomoRibbon();
   updatePomoTaskLabel();
