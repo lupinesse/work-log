@@ -557,23 +557,7 @@ function viewEntries() {
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
-/**
- * Counts consecutive days with at least one logged entry, looking backwards from yesterday.
- * Today is excluded so the streak only increments once the day has been completed.
- * @returns {number}
- */
-function calcStreak() {
-  const days = new Set(getEntries().map((entry) => entry.date));
-  let streak = 0;
-  const d = new Date();
-  d.setDate(d.getDate() - 1); // Start from yesterday, not today
-  while (days.has(dk(d))) {
-    streak++;
-    d.setDate(d.getDate() - 1);
-  }
-  return streak;
-}
-// escHtml() is defined in 00-pure-fns.js.
+// calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
 
 /**
  * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).

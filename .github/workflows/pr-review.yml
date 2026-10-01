@@ -15,7 +15,7 @@ name: Claude PR Review
 #   CLAUDE_REVIEWER_PRIVATE_KEY — .pem private key of the same App
 # The GitHub App must be installed on this repo with permissions:
 #   Contents: read · Pull requests: write
-# An installation token is minted at runtime via actions/create-github-app-token@v3
+# An installation token is minted at runtime via actions/create-github-app-token (pinned below)
 # and used by `gh pr comment` so the review comment is attributed to the App
 # (with its custom name + avatar) instead of "github-actions[bot]" — keeps the
 # Claude reviewer visually distinct from the ChatGPT reviewer. If the mint
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Check PR size — skip if dialogue threshold is met
         id: size-gate
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const LINES_THRESHOLD = 200;
@@ -74,14 +74,14 @@ jobs:
 
       - name: Check out repository
         if: steps.size-gate.outputs.should_run == 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Full history so git diff can compare against the base branch
           fetch-depth: 0
 
       - name: Set up Node.js
         if: steps.size-gate.outputs.should_run == 'true'
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
@@ -151,7 +151,7 @@ jobs:
         # in `if:`). The comment step below falls back to the workflow token,
         # so the review still posts (as github-actions[bot]).
         if: always() && steps.key-check.conclusion != 'skipped' && steps.key-check.outputs.app == 'true'
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}

@@ -55,8 +55,6 @@ function createCategory(rawLabel) {
 let viewDate = new Date();
 // selectedTag lives in state.js (#423) — getSelectedTag()/setSelectedTag().
 let logNotes = [];
-// eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
-let trackers = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
