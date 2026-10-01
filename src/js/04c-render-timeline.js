@@ -318,8 +318,7 @@ function bindTimelineEntryEvents(timelineEl) {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
       if (activeTimer && activeTimer.entryId === id) {
-        clearInterval(getTimerInterval());
-        setTimerInterval(null);
+        clearTimerInterval();
         activeTimer = null;
         save();
         updateTimerBtn(false);

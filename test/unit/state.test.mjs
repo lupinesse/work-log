@@ -15,6 +15,7 @@ import {
   setEntries,
   getActiveTimer,
   setActiveTimer,
+  clearTimerInterval,
   getTimerInterval,
   setTimerInterval,
   getCategories,
@@ -347,6 +348,54 @@ describe('state.js — getter/setter round-trips', () => {
     } finally {
       setTimerInterval(orig);
     }
+  });
+
+  describe('clearTimerInterval', () => {
+    /**
+     * Runs `body` with a recording stand-in for the global clearInterval,
+     * restoring the real one and the stored interval ID afterwards.
+     * @param {(cleared: number[]) => void} body - Test body receiving the recorded IDs.
+     * @returns {void}
+     */
+    function withRecordedClearInterval(body) {
+      const realClearInterval = globalThis.clearInterval;
+      const originalInterval = getTimerInterval();
+      const cleared = [];
+      globalThis.clearInterval = (id) => cleared.push(id);
+      try {
+        body(cleared);
+      } finally {
+        globalThis.clearInterval = realClearInterval;
+        setTimerInterval(originalInterval);
+      }
+    }
+
+    it('clears the held interval and resets the stored ID to null', () => {
+      withRecordedClearInterval((cleared) => {
+        setTimerInterval(42);
+        clearTimerInterval();
+        assert.deepEqual(cleared, [42]);
+        assert.equal(getTimerInterval(), null);
+      });
+    });
+
+    it('is a no-op when no interval is held', () => {
+      withRecordedClearInterval((cleared) => {
+        setTimerInterval(null);
+        clearTimerInterval();
+        assert.deepEqual(cleared, []);
+        assert.equal(getTimerInterval(), null);
+      });
+    });
+
+    it('is idempotent: a second call does not clear again', () => {
+      withRecordedClearInterval((cleared) => {
+        setTimerInterval(7);
+        clearTimerInterval();
+        clearTimerInterval();
+        assert.deepEqual(cleared, [7]);
+      });
+    });
   });
 
   it('setCategories / getCategories round-trips an array', () => {

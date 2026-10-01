@@ -71,6 +71,18 @@ export function setTimerInterval(next) {
   _timerInterval = next;
 }
 
+/**
+ * Stops the running timer's tick, if one is held, and resets the stored ID to
+ * null. A no-op when nothing is ticking. Callers used to repeat the
+ * read/clear/reset sequence by hand; keeping it here means the interval can
+ * never be cleared without also being forgotten.
+ * @returns {void}
+ */
+export function clearTimerInterval() {
+  if (_timerInterval) clearInterval(_timerInterval);
+  _timerInterval = null;
+}
+
 /* ── categories ── */
 
 /**

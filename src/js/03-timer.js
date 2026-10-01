@@ -18,7 +18,7 @@ function getElapsedMs() {
  * @param {string} entryId - ID of the log entry to time.
  */
 function startTimer(entryId) {
-  if (getTimerInterval()) clearInterval(getTimerInterval());
+  clearTimerInterval();
   _lastChimeMinute = null;
   _longRunningWarnDismissed = false;
   activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
@@ -35,10 +35,7 @@ function startTimer(entryId) {
  */
 function pauseTimer() {
   if (!activeTimer || activeTimer.paused) return;
-  if (getTimerInterval()) {
-    clearInterval(getTimerInterval());
-    setTimerInterval(null);
-  }
+  clearTimerInterval();
   activeTimer.accumulatedMs = getElapsedMs();
   activeTimer.paused = true;
   activeTimer.startTs = null;
@@ -69,10 +66,7 @@ function resumeTimer() {
  */
 function stopTimer() {
   if (!activeTimer) return;
-  if (getTimerInterval()) {
-    clearInterval(getTimerInterval());
-    setTimerInterval(null);
-  }
+  clearTimerInterval();
   const entry = entries.find((e) => e.id === activeTimer.entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
   // Enter the 6-second confirmation panel before clearing activeTimer so
