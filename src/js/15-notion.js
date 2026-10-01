@@ -5,8 +5,17 @@
 // Anthropic key lives in config.local.ps1 (server-side); the /api/ai and /api/notion-ai
 // proxies inject it — the browser never holds or reads the key.
 
-// One-time migration: clear any key previously stored in localStorage.
-localStorage.removeItem('wl_anthropic_key');
+/**
+ * Removes an Anthropic API key left in localStorage by an older version, which
+ * kept it in the browser. The key now lives server-side only, so any copy
+ * still in the browser is a leftover to delete rather than honour.
+ * @returns {void}
+ */
+function purgeLegacyAnthropicKey() {
+  localStorage.removeItem('wl_anthropic_key');
+}
+
+purgeLegacyAnthropicKey();
 
 /**
  * Calls the Claude API with a Notion MCP server attached, via the local proxy
