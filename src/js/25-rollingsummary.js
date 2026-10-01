@@ -179,7 +179,7 @@ export function renderRollingSummary() {
           <span class="rs-session">${sodStr} – ${eodStr}</span>
           <span class="rs-total">${totalStr}</span>
         </div>
-        <div class="rs-tasks" aria-label="Top tasks">${tasksHtml}</div>
+        <div class="rs-tasks" role="group" aria-label="Top tasks">${tasksHtml}</div>
       </div>`;
     })
     .join('');
@@ -187,7 +187,7 @@ export function renderRollingSummary() {
   el.innerHTML = `<div class="rs-wrap">
     <div class="rs-rows">${rowsHtml}</div>
     <div class="rs-week-total">Week total: <strong>${fmtDur(weekTotalMs)}</strong></div>
-    <button type="button" class="rs-copy-btn" id="rsCopyBtn">📋 Copy for standup</button>
+    <button type="button" class="rs-copy-btn" id="rsCopyBtn"><span aria-hidden="true">📋</span> Copy for standup</button>
     <div class="rs-copy-feedback" id="rsCopyFeedback" aria-live="polite"></div>
   </div>`;
 
