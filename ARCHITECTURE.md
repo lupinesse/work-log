@@ -157,7 +157,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (543 lines) — Timer Logic
+#### **03-timer.js** (545 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
