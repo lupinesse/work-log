@@ -313,15 +313,26 @@ initBannerControls();
 initLocation();
 initWeeklyReport();
 
+/**
+ * Moves the viewed day by a whole number of days.
+ * Swaps in a fresh Date rather than mutating the current one, so anything
+ * still holding the previous viewDate keeps seeing the day it was given.
+ * @param {number} dayDelta - Days to move; negative goes back.
+ * @returns {void}
+ */
+function shiftViewDay(dayDelta) {
+  const shifted = new Date(getViewDate());
+  shifted.setDate(shifted.getDate() + dayDelta);
+  setViewDate(shifted);
+}
+
 document.getElementById('prevDay').addEventListener('click', () => {
-  setViewDate(new Date(getViewDate()));
-  getViewDate().setDate(getViewDate().getDate() - 1);
+  shiftViewDay(-1);
   render();
 });
 document.getElementById('nextDay').addEventListener('click', () => {
   if (isToday(getViewDate())) return;
-  setViewDate(new Date(getViewDate()));
-  getViewDate().setDate(getViewDate().getDate() + 1);
+  shiftViewDay(1);
   render();
 });
 

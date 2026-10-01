@@ -301,7 +301,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (385 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (395 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
