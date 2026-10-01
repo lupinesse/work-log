@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* ── Task checkpoints ── */
 .cp-badge {
   display: inline-flex;
@@ -228,6 +230,10 @@
   line-height: 1.4;
 }
 
+.cp-edit-input:focus-visible {
+  @include mixins.focus-ring;
+}
+
 .cp-add-icon {
   font-size: 12px;
   color: var(--text3);
@@ -251,6 +257,10 @@
   background: var(--bg);
   color: var(--text);
   outline: none;
+}
+
+.plan-inline-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .plan-inline-ok {
