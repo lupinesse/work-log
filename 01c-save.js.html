@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: app-constants.js</title>
+    <title>JSDoc: Source: 01c-save.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: app-constants.js</h1>
+    <h1 class="page-title">Source: 01c-save.js</h1>
 
     
 
@@ -26,78 +26,113 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/**
- * @file app-constants.js
- * Static configuration constants: localStorage key names, the built-in
- * category seed list, and the palette offered when creating a new category.
- * Pure literal values with no dependencies on other modules or app state.
- * Extracted from 01-state.js (issue #336) as the first step of the ongoing
- * ES-module extraction — see ARCHITECTURE.md and build-config.js's
- * LEAF_MODULES comment for why this matters.
- */
+            <pre class="prettyprint source linenums"><code>// ── 01c-save.js — localStorage persistence and save-failure banner ──
+//
+// Leaf ES module: save() + the transient save-failure banner that prompts
+// the user to export a backup on quota failure. Extracted from 01-state.js
+// (issue #336, extraction #15).
+//
+// exportBackup is a non-leaf function; callers must register it via
+// setExportBackupCallback() during app startup before any save failure
+// can occur.
 
-/** localStorage key for logged work entries. */
-export const STORE_ENTRIES = 'wl_entries_v1';
-/** localStorage key for the active timer state. */
-export const STORE_TIMER = 'wl_timer_v1';
-/** localStorage key for the pomodoro session log. */
-export const STORE_POMO_LOG = 'wl_pomoLog_v1';
-/** localStorage key for custom work categories. */
-export const STORE_CATS = 'wl_cats_v1';
-/** localStorage key for quick-pick items the user has dismissed. */
-export const STORE_QP_HIDDEN = 'wl_qp_hidden_v1';
-/** localStorage key for ad-hoc log notes. */
-export const STORE_LOGNOTES = 'wl_lognotes_v1';
-/** localStorage key for tracker progress grids. */
-export const STORE_TRACKERS = 'wl_trackers_v1';
-/** localStorage key for the end-of-month migration record. */
-export const STORE_MIGRATION = 'wl_migration_v1';
-/** localStorage key for the per-day work-location record. */
-export const STORE_LOCATION = 'wl_location_v1';
+import { STORE_ENTRIES, STORE_TIMER, STORE_CATS } from './app-constants.js';
+import { getEntries, getActiveTimer, getCategories } from './state.js';
+import { wlLog } from './logger.js';
 
-/** Built-in categories seeded on first run. */
-export const DEFAULT_CATS = [
-  { id: 'work', label: 'work', color: '#378ADD' },
-  { id: 'meeting', label: 'meeting', color: '#7EC8E3' },
-  { id: 'focus', label: 'deep focus', color: '#1D9E75' },
-  { id: 'break', label: 'break', color: '#BA7517' },
-  { id: 'other', label: 'other', color: '#888780' },
-];
+/** Registered exportBackup function, injected at startup to avoid a non-leaf dep. */
+let _exportBackupFn = null;
 
 /**
- * Fallback colour palette `nextDistinctColor()` (01-state.js) draws from when
- * auto-generating a new category's colour, in preference order. Every value
- * here is a plain hex string and does not itself need sanitising — but any
- * *user-supplied* colour (e.g. from the category colour picker) must still
- * pass through `safeCssColor()` before use, same as everywhere else in the app.
+ * Registers the exportBackup function so the save-failure banner's export
+ * button can invoke it. Must be called once during app startup, before any
+ * save() call that could fail.
+ * @param {Function} fn - The exportBackup function from 05a-export.js.
  */
-export const CUSTOM_PALETTE = [
-  '#7B61FF',
-  '#E67E22',
-  '#0d9488',
-  '#3F51B5',
-  '#16A085',
-  '#9B59B6',
-  '#F39C12',
-  '#00BCD4',
-  '#27AE60',
-  '#E91E63',
-  '#FF5722',
-  '#2ECC71',
-  '#C0392B',
-  '#1E88E5',
-  '#43A047',
-  '#FB8C00',
-  '#8E24AA',
-  '#039BE5',
-  '#6D4C41',
-  '#00897B',
-  '#F4511E',
-  '#D81B60',
-  '#546E7A',
-  '#FDD835',
-  '#5E35B1',
-];
+export function setExportBackupCallback(fn) {
+  _exportBackupFn = fn;
+}
+
+// Reference to the currently-shown save-failure banner, or null when hidden.
+let saveFailBanner = null;
+
+/**
+ * Shows a persistent, dismissible banner warning that saving to localStorage
+ * is failing (e.g. quota exceeded), with a button to export a backup on the
+ * spot. Idempotent — a second failed save while the banner is already up
+ * does nothing, so repeat failures don't spam duplicate banners.
+ */
+export function showSaveFailureBanner() {
+  if (saveFailBanner) return;
+
+  const banner = document.createElement('div');
+  banner.className = 'save-fail-banner';
+  banner.id = 'saveFailBanner';
+  banner.setAttribute('role', 'alert');
+
+  const msg = document.createElement('span');
+  msg.className = 'save-fail-banner__msg';
+  msg.textContent = '⚠ Saving failed — your data may not persist. Export a backup now.';
+
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'save-fail-banner__action';
+  exportBtn.textContent = 'Export backup';
+  exportBtn.addEventListener('click', () => _exportBackupFn?.());
+
+  const dismissBtn = document.createElement('button');
+  dismissBtn.type = 'button';
+  dismissBtn.className = 'save-fail-banner__dismiss';
+  dismissBtn.setAttribute('aria-label', 'Dismiss saving-failed warning');
+  dismissBtn.textContent = '×';
+  dismissBtn.addEventListener('click', () => hideSaveFailureBanner());
+
+  banner.appendChild(msg);
+  banner.appendChild(exportBtn);
+  banner.appendChild(dismissBtn);
+  document.body.prepend(banner);
+  saveFailBanner = banner;
+}
+
+/** Removes the save-failure banner, if one is currently shown. */
+export function hideSaveFailureBanner() {
+  saveFailBanner?.remove();
+  saveFailBanner = null;
+}
+
+/**
+ * Persists entries, active timer, and categories to localStorage.
+ * Refuses to overwrite existing non-empty data with an empty array to guard against
+ * accidental data loss if save() is called before load() completes.
+ *
+ * Assumption: an empty `entries` array in memory while localStorage still holds
+ * data means save() was called before load() finished (e.g. a race during init),
+ * not that the user intentionally deleted everything. Intentional clearing goes
+ * through a dedicated wipe path that bypasses this guard.
+ *
+ * If localStorage.setItem throws (e.g. QuotaExceededError), the failure is
+ * caught so it never propagates to save()'s many callers — silently losing
+ * data with no signal to the user is worse than a caught, logged, and
+ * surfaced failure. A persistent banner tells the user to export a backup;
+ * it clears itself automatically the next time a save() call succeeds.
+ */
+export function save() {
+  // Never overwrite real data with empty arrays
+  const existing = localStorage.getItem(STORE_ENTRIES);
+  if (!getEntries().length &amp;&amp; existing &amp;&amp; existing !== '[]') {
+    wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
+    return;
+  }
+  try {
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(getEntries()));
+    localStorage.setItem(STORE_TIMER, JSON.stringify(getActiveTimer()));
+    localStorage.setItem(STORE_CATS, JSON.stringify(getCategories()));
+    hideSaveFailureBanner();
+  } catch (err) {
+    wlLog.error('save: localStorage.setItem failed — data is not persisting', err);
+    showSaveFailureBanner();
+  }
+}
 </code></pre>
         </article>
     </section>
