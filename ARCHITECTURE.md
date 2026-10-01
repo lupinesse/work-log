@@ -638,7 +638,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **22-trackers.js** (254 lines) — Custom Time-Goal Trackers _(leaf ES module)_
+#### **22-trackers.js** (255 lines) — Custom Time-Goal Trackers _(leaf ES module)_
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
 **Key functions**: `loadTrackers()`, `saveTrackers()`, `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `initTrackers()`
