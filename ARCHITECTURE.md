@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (210 lines) — Data Store
+#### **01-state.js** (209 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -45,7 +45,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
 - `categories` — Custom work categories (epic colors); held in `state.js` and read/written only via `getCategories()`/`setCategories()` (#423)
 - `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
-- `blocks` — Timeblock UI objects
+- `blocks` — Timeblock UI objects; held in `state.js` and read/written only via `getBlocks()`/`setBlocks()` (#423)
 
 **Key Functions**:
 - `load()` — Restore state from localStorage with validation
