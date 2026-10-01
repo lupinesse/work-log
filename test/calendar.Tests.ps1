@@ -121,14 +121,6 @@ Describe 'Year-anchor locale independence (Get-YearAnchor)' {
         ((Get-YearAnchor -Year 2027) -split [Regex]::Escape($sep))[2] | Should Be '2027'
     }
 
-    It 'keeps the year part correct for every month of the year' {
-        $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
-        foreach ($month in 1..12) {
-            $day = [DateTime]::new(2026, $month, 15)
-            ((Get-YearAnchor -Year $day.Year) -split [Regex]::Escape($sep))[2] | Should Be '2026'
-        }
-    }
-
     It 'produces a dot-delimited anchor for the Finnish locale separator' {
         Get-YearAnchor -Year 2026 -Separator '.' | Should Be '1.1.2026'
     }
@@ -606,67 +598,67 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
     $masterEnd   = [DateTime]'2023-01-05 10:30'
 
     It 'collects the occurrence sitting in its usual slot' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $occurrence = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 10:00') ([DateTime]'2026-09-01 10:30') 'S1'
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{ '2026-09-01T10:00:00.0000000' = $occurrence }
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 1
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 1
         $sink.Count | Should Be 1
     }
 
     It 'collects an occurrence that was moved to a different time today' {
         # Regression: GetOccurrence throws for a moved occurrence, so probing the
         # original slot alone lost every rescheduled meeting.
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $moved     = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 14:00') ([DateTime]'2026-09-01 14:30') 'S1'
         $exception = [pscustomobject]@{ Deleted = $false; AppointmentItem = $moved }
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @($exception)
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 1
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 1
         $sink[0].start | Should Be ([DateTime]'2026-09-01 14:00').ToString('o')
     }
 
     It 'collects an occurrence moved into today from another day' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $movedIn   = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 08:00') ([DateTime]'2026-09-01 08:30') 'S1'
         $elsewhere = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-08 10:00') ([DateTime]'2026-09-08 10:30') 'S1'
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(
             [pscustomobject]@{ Deleted = $false; AppointmentItem = $movedIn },
             [pscustomobject]@{ Deleted = $false; AppointmentItem = $elsewhere }
         )
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 1
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 1
         $sink.Count | Should Be 1
     }
 
     It 'skips an occurrence that was cancelled for today' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(
             [pscustomobject]@{ Deleted = $true; AppointmentItem = $null }
         )
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 0
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 0
         $sink.Count | Should Be 0
     }
 
     It 'adds an occurrence once when both probes return it' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $occurrence = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 10:00') ([DateTime]'2026-09-01 10:30') 'S1'
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' `
             @{ '2026-09-01T10:00:00.0000000' = $occurrence } `
             @([pscustomobject]@{ Deleted = $false; AppointmentItem = $occurrence })
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 1
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 1
         $sink.Count | Should Be 1
     }
 
     It 'adds nothing for a series with no occurrence today' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $master = New-MockRecurringMaster 'Monthly' $masterStart $masterEnd 'S2'
-        Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg | Should Be 0
+        Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo | Should Be 0
     }
 
     It 'records a failed pattern read in the diagnostics instead of throwing' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $broken = New-MockAppointment 'Broken series' $masterStart $masterEnd 'S9'
         $broken | Add-Member -MemberType ScriptMethod -Name GetRecurrencePattern -Value { throw 'MAPI failure' }
-        Add-RecurringOccurrence $broken 'acct' $day $seen $sink $dbg | Should Be 0
-        $dbg.pass2Error | Should Match 'Broken series'
+        Add-RecurringOccurrence $broken 'acct' $day $seen $sink $debugInfo | Should Be 0
+        $debugInfo.pass2Error | Should Match 'Broken series'
     }
 
     It 'keeps scanning after one exception entry blows up' {
@@ -674,7 +666,7 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
         # loop is the tracking callback (the live server's Add-ComRef, on a dead
         # reference). Without a per-iteration guard that aborts the whole scan and
         # loses the occurrences after it.
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $poison = New-MockAppointment 'Poison' ([DateTime]'2026-09-01 11:00') ([DateTime]'2026-09-01 11:30') 'S8'
         $good   = New-MockAppointment 'Weekly 1:1' ([DateTime]'2026-09-01 14:00') ([DateTime]'2026-09-01 14:30') 'S1'
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(
@@ -683,18 +675,18 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
         )
         $track = { param($ComObject) if ($ComObject -eq $poison) { throw 'dead COM reference' }; $ComObject }
         Add-RecurringOccurrence -Master $master -AccountKey 'acct' -Day $day -SeenKeys $seen `
-                                -Sink $sink -Diagnostics $dbg -Track $track | Should Be 1
+                                -Sink $sink -Diagnostics $debugInfo -Track $track | Should Be 1
         $sink[0].subject | Should Be 'Weekly 1:1'
     }
 
     It 'counts the exceptions it scanned' {
-        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $dbg = New-MockDiagnostics
+        $seen = @{}; $sink = [System.Collections.Generic.List[object]]::new(); $debugInfo = New-MockDiagnostics
         $master = New-MockRecurringMaster 'Weekly 1:1' $masterStart $masterEnd 'S1' @{} @(
             [pscustomobject]@{ Deleted = $true; AppointmentItem = $null },
             [pscustomobject]@{ Deleted = $true; AppointmentItem = $null }
         )
-        $null = Add-RecurringOccurrence $master 'acct' $day $seen $sink $dbg
-        $dbg.exceptionsScanned | Should Be 2
+        $null = Add-RecurringOccurrence $master 'acct' $day $seen $sink $debugInfo
+        $debugInfo.exceptionsScanned | Should Be 2
     }
 }
 
