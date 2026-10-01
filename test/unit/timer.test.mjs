@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { afterEach, describe, it, beforeEach } from 'node:test';
 import vm from 'node:vm';
 
-import { __dirname, withEntriesAccessors } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 import { clearTimerInterval, getTimerInterval, setTimerInterval } from '../../src/js/state.js';
 
 const timerSource = readFileSync(join(__dirname, '../../src/js/03-timer.js'), 'utf8');
@@ -49,11 +49,13 @@ function fakeElement() {
  * @param {object} [options] - Sandbox overrides.
  * @param {object|null} [options.activeTimer] - Initial active timer.
  * @param {Array<object>} [options.entries] - Initial log entries.
- * @returns {{ sandbox: object, intervalsStarted: Function[], intervalsCleared: number[] }}
+ * @param {string|null} [options.storedEntries] - Raw localStorage value for the entries key.
+ * @returns {{ sandbox: object, intervalsStarted: Function[], intervalsCleared: number[], saves: boolean[] }}
  */
-function loadTimer({ activeTimer = null, entries = [] } = {}) {
+function loadTimer({ activeTimer = null, entries = [], storedEntries = null } = {}) {
   const intervalsStarted = [];
   const intervalsCleared = [];
+  const saves = [];
   // state.js's clearTimerInterval() calls the real global clearInterval, not
   // the sandbox's, so intercept it there; the afterEach above restores it.
   globalThis.clearInterval = (id) => intervalsCleared.push(id);
@@ -64,13 +66,15 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
     setTimerInterval,
     activeTimer,
     entries,
+    STORE_ENTRIES: 'entries-key',
+    localStorage: { getItem: () => storedEntries },
     _lastChimeMinute: 0,
     _longRunningWarnDismissed: true,
     setInterval: (callback) => {
       intervalsStarted.push(callback);
       return intervalsStarted.length * 100; // distinct, truthy fake IDs
     },
-    save: noop,
+    save: () => saves.push(true),
     render: noop,
     updateTimerBar: noop,
     updateTimerBtn: noop,
@@ -85,7 +89,7 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
     },
     Date,
   };
-  vm.createContext(withEntriesAccessors(sandbox));
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(timerSource, sandbox);
   // The file defines its own UI/tick helpers, which would override the stubs
   // above at load. Their behaviour is out of scope; re-stub them so only the
@@ -93,7 +97,7 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
   for (const name of ['tickTimer', 'updateTimerBar', 'updateTabAndFavicon', 'updateTimerBtn']) {
     sandbox[name] = noop;
   }
-  return { sandbox, intervalsStarted, intervalsCleared };
+  return { sandbox, intervalsStarted, intervalsCleared, saves };
 }
 
 describe('03-timer.js stores its interval ID via state.js accessors', () => {
@@ -203,6 +207,32 @@ describe('03-timer.js no-ops in the wrong state, as its JSDoc promises', () => {
     sandbox.resumeTimer();
     assert.equal(intervalsStarted.length, 0);
     assert.equal(getTimerInterval(), null);
+  });
+});
+
+describe('resumeTimerIfActive drops a timer whose entry no longer exists', () => {
+  beforeEach(() => setTimerInterval(null));
+  const orphanTimer = { entryId: 'gone', startTs: 1, accumulatedMs: 0, paused: false };
+
+  it('clears the timer and saves when other entries exist', () => {
+    const { sandbox, saves } = loadTimer({
+      activeTimer: orphanTimer,
+      entries: [{ id: 'other', ts: 0 }],
+    });
+    sandbox.resumeTimerIfActive();
+    assert.equal(sandbox.activeTimer, null);
+    assert.equal(saves.length, 1);
+  });
+
+  it('keeps the timer when entries are empty but storage still holds data (load not finished)', () => {
+    const { sandbox, saves } = loadTimer({
+      activeTimer: orphanTimer,
+      entries: [],
+      storedEntries: '[{"id":"x"}]',
+    });
+    sandbox.resumeTimerIfActive();
+    assert.equal(sandbox.activeTimer, orphanTimer);
+    assert.equal(saves.length, 0);
   });
 });
 

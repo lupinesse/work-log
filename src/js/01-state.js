@@ -59,7 +59,7 @@ let logNotes = [];
 // eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
 let trackers = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
-let activeTimer = null;
+// activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
 let categories = [...DEFAULT_CATS];
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
@@ -95,11 +95,11 @@ function load() {
   }
   try {
     const parsedTimer = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
-    activeTimer = parsedTimer && validTimer(parsedTimer) ? parsedTimer : null;
+    setActiveTimer(parsedTimer && validTimer(parsedTimer) ? parsedTimer : null);
     if (parsedTimer && !validTimer(parsedTimer))
       wlLog.warn('load: discarded invalid timer state', parsedTimer);
   } catch (err) {
-    activeTimer = null;
+    setActiveTimer(null);
     wlLog.error('load: failed to parse timer state', err);
   }
   try {
@@ -222,7 +222,7 @@ function save() {
   }
   try {
     localStorage.setItem(STORE_ENTRIES, JSON.stringify(getEntries()));
-    localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
+    localStorage.setItem(STORE_TIMER, JSON.stringify(getActiveTimer()));
     localStorage.setItem(STORE_CATS, JSON.stringify(categories));
     hideSaveFailureBanner();
   } catch (err) {

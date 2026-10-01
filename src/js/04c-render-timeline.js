@@ -91,8 +91,8 @@ function renderTimelineSection(list) {
   timelineEl.innerHTML =
     list
       .map((entry) => {
-        const isTiming = activeTimer && activeTimer.entryId === entry.id;
-        const isPaused = isTiming && activeTimer.paused;
+        const isTiming = getActiveTimer() && getActiveTimer().entryId === entry.id;
+        const isPaused = isTiming && getActiveTimer().paused;
         const color = getCatColor(entry.tag);
 
         const endLine = isTiming
@@ -207,10 +207,10 @@ function bindTimelineEntryEvents(timelineEl) {
       if (newEndTime) entry.tsEnd = roundToNearest30(applyTime(entry.ts, newEndTime));
       else delete entry.tsEnd;
       // If this entry's timer is running, reset startTs to the new entry.ts
-      if (activeTimer && activeTimer.entryId === id && newStartTime) {
-        activeTimer.startTs = entry.ts;
-        activeTimer.accumulatedMs = 0;
-        activeTimer.paused = false;
+      if (getActiveTimer() && getActiveTimer().entryId === id && newStartTime) {
+        getActiveTimer().startTs = entry.ts;
+        getActiveTimer().accumulatedMs = 0;
+        getActiveTimer().paused = false;
       }
       save();
       render();
@@ -317,9 +317,9 @@ function bindTimelineEntryEvents(timelineEl) {
   timelineEl.querySelectorAll('.edel').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      if (activeTimer && activeTimer.entryId === id) {
+      if (getActiveTimer() && getActiveTimer().entryId === id) {
         clearTimerInterval();
-        activeTimer = null;
+        setActiveTimer(null);
         save();
         updateTimerBtn(false);
       }
@@ -334,7 +334,7 @@ function bindTimelineEntryEvents(timelineEl) {
     btn.addEventListener('click', () => {
       const sourceEntry = getEntries().find((entry) => entry.id === btn.dataset.id);
       if (!sourceEntry) return;
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const newEntry = createRestartedEntry(sourceEntry.text, sourceEntry.tag);
       getEntries().push(newEntry);
       viewDate = new Date();

@@ -44,7 +44,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 - `entries` — Array of logged work entries (with timestamps); held in `state.js` and read/written only via `getEntries()`/`setEntries()` (#423)
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
 - `categories` — Custom work categories (epic colors)
-- `activeTimer` — Current timer state or null
+- `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
 - `blocks` — Timeblock UI objects
 
 **Key Functions**:
@@ -253,7 +253,7 @@ Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntry
 
 ---
 
-#### **06-focus.js** (168 lines) — Focus Mode (Emergency Mode)
+#### **06-focus.js** (176 lines) — Focus Mode (Emergency Mode)
 **Responsibility**: Distraction-free focus interface
 
 **Features**:
@@ -315,7 +315,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (373 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (377 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -328,7 +328,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (166 lines) — Pomodoro 4-Column Dashboard
+#### **08a-pomo-dashboard.js** (168 lines) — Pomodoro 4-Column Dashboard
 **Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
 
 **Layout columns** (CSS grid in `_pomo.scss`):
@@ -412,7 +412,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-row.js** (307 lines) — Per-Row Card HTML
+#### **10a-tasks-row.js** (309 lines) — Per-Row Card HTML
 **Responsibility**: Per-task card HTML builders for the kanban board. Module-level state variables (`editingPlanId`, `_noteOpenIds`, `_cpOpenIds`) live in `10-tasks.js`; callers live in `10a-tasks-render.js`.
 
 **Key Functions**: `statusOpts()`, `prioBtnHtml()`, `notionBtnHtml()`, `noteBtnHtml()`, `noteAreaHtml()`, `billBtnHtml()`, `renderRow()`
@@ -593,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (475 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (476 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`

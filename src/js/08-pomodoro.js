@@ -140,7 +140,9 @@ function pomoDone() {
   t.classList.add('done');
   setTimeout(() => t.classList.remove('done'), 2400);
   // Log the session
-  const liveEntry = activeTimer ? getEntries().find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   const log = pomoGetLog();
   log.unshift({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
   localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
@@ -365,7 +367,9 @@ function pomoTapOut() {
   pomoRunning = false;
   const partialMins = Math.max(1, Math.ceil((pomoTotal - pomoLeft) / 60));
   pomoLeft = 0;
-  const liveEntry = activeTimer ? getEntries().find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   const log = pomoGetLog();
   log.unshift({ ts: Date.now(), mins: partialMins, task: liveEntry ? liveEntry.text : null });
   localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));

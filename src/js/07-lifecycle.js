@@ -298,7 +298,7 @@ document.getElementById('captureInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') addEntry(false);
 });
 document.getElementById('timerPause').addEventListener('click', () => {
-  if (activeTimer && activeTimer.paused) resumeTimer();
+  if (getActiveTimer() && getActiveTimer().paused) resumeTimer();
   else pauseTimer();
 });
 initHero();
@@ -390,7 +390,7 @@ setInterval(renderEodReminder, 5 * 60 * 1000);
 // Auto-pause when the user switches away (controlled by AUTO_PAUSE_ON_TAB_SWITCH in 00-config.js)
 document.addEventListener('visibilitychange', () => {
   if (!AUTO_PAUSE_ON_TAB_SWITCH) return;
-  if (document.hidden && activeTimer && !activeTimer.paused) {
+  if (document.hidden && getActiveTimer() && !getActiveTimer().paused) {
     pauseTimer();
     wlLog.info('auto-pause: tab hidden while timer running');
   }
@@ -410,7 +410,7 @@ setTimeout(() => {
     planTasks: planTasks.length,
     blocks: blocks.length,
     // Runtime state
-    timer: activeTimer ? 'active' : 'idle',
+    timer: getActiveTimer() ? 'active' : 'idle',
     snapshot: !!localStorage.getItem('wl_snapshot'),
     // Environment: true when the PS API server responded (weather / calendar live)
     apiServer: !!localStorage.getItem('wl_api_ok'),

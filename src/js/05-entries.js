@@ -14,7 +14,7 @@ function addEntry(withTimer) {
     inp.focus();
     return;
   }
-  if (withTimer && activeTimer) stopTimer();
+  if (withTimer && getActiveTimer()) stopTimer();
   const entry = {
     id: Date.now() + '',
     text,

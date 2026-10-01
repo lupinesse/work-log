@@ -24,7 +24,7 @@ function exportTxt() {
   const { dayStartTs, dayEndTs } = computeDayBounds(dayEntries, timedEntries, {
     isViewingToday,
     dayStart: isViewingToday ? getDayStart() : null,
-    activeTimer,
+    activeTimer: getActiveTimer(),
     now: Date.now(),
   });
 
