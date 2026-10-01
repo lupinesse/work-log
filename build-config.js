@@ -101,6 +101,7 @@ export const LEAF_MODULES = [
   'signifiers.js',
   '25-rollingsummary.js',
   '26-gofore-timesheet.js',
+  '22-trackers.js',
 ];
 
 /**

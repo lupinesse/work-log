@@ -79,6 +79,7 @@ export default [
       'src/js/signifiers.js',
       'src/js/25-rollingsummary.js',
       'src/js/26-gofore-timesheet.js',
+      'src/js/22-trackers.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -125,6 +126,7 @@ export default [
       'src/js/signifiers.js',
       'src/js/25-rollingsummary.js',
       'src/js/26-gofore-timesheet.js',
+      'src/js/22-trackers.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
