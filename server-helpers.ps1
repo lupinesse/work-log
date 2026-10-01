@@ -753,7 +753,7 @@ function Add-RecurringOccurrence {
         System.Int32 — how many occurrences were added.
 
     .EXAMPLE
-        Add-RecurringOccurrence $master 'me@example.com' ([DateTime]::Today) $seen $results $dbg
+        Add-RecurringOccurrence $master 'me@example.com' ([DateTime]::Today) $seen $results $debugInfo
     #>
     [OutputType([int])]
     param(
