@@ -7,12 +7,22 @@
  * overlay keydown handlers.
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
 import { __dirname, createDom, stubOffsetParent } from './_helpers.mjs';
+
+// 12d-weeklyreport.js reads `document` / `localStorage` as globals; restore them
+// afterwards so this file leaves the process as it found it.
+const originalGlobals = { document: globalThis.document, localStorage: globalThis.localStorage };
+after(() => {
+  for (const [name, value] of Object.entries(originalGlobals)) {
+    if (value === undefined) delete globalThis[name];
+    else globalThis[name] = value;
+  }
+});
 
 const readSrc = (file) => readFileSync(join(__dirname, '../../src/js/', file), 'utf8');
 
