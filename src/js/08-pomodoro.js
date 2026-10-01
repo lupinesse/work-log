@@ -143,34 +143,10 @@ function pomoDone() {
   const liveEntry = getActiveTimer()
     ? getEntries().find((e) => e.id === getActiveTimer().entryId)
     : null;
-  const log = pomoGetLog();
-  log.unshift({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
-  localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
+  pomoSaveSession({ ts: Date.now(), mins: pomoDurMins, task: liveEntry ? liveEntry.text : null });
   renderPomoLog();
-  if (typeof refreshPomoDashboard === 'function') refreshPomoDashboard();
+  refreshPomoDashboard();
   if (typeof notifyPomodoroEnd === 'function') notifyPomodoroEnd();
-}
-
-/**
- * Reads and validates the pomodoro session log from localStorage.
- * Invalid records are dropped and reported via wlLog.warn.
- * @returns {Array<{ts: number, mins: number, task: string|null}>} Session log entries.
- */
-function pomoGetLog() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(STORE_POMO_LOG) || '[]');
-    const all = Array.isArray(raw) ? raw : [];
-    const valid = all.filter(validPomoEntry);
-    if (valid.length < all.length)
-      wlLog.warn(`pomoGetLog: dropped ${all.length - valid.length} invalid pomodoro record(s)`, {
-        total: all.length,
-        kept: valid.length,
-      });
-    return valid;
-  } catch (err) {
-    wlLog.error('pomoGetLog: failed to parse pomodoro log', err);
-    return [];
-  }
 }
 
 /**
@@ -289,7 +265,7 @@ function updatePomoDisplay() {
     if (_pomoFaviconEl) _pomoFaviconEl.remove();
   }
 
-  if (typeof updatePomoTaskLabel === 'function') updatePomoTaskLabel();
+  updatePomoTaskLabel();
 }
 
 /**
@@ -370,11 +346,9 @@ function pomoTapOut() {
   const liveEntry = getActiveTimer()
     ? getEntries().find((e) => e.id === getActiveTimer().entryId)
     : null;
-  const log = pomoGetLog();
-  log.unshift({ ts: Date.now(), mins: partialMins, task: liveEntry ? liveEntry.text : null });
-  localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
+  pomoSaveSession({ ts: Date.now(), mins: partialMins, task: liveEntry ? liveEntry.text : null });
   renderPomoLog();
-  if (typeof refreshPomoDashboard === 'function') refreshPomoDashboard();
+  refreshPomoDashboard();
   updatePomoDisplay();
 }
 
