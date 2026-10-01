@@ -132,8 +132,6 @@ for (const impl of IMPLEMENTATIONS) {
       });
     }
 
-    // A <button tabindex="-1"> still matches `button:not([disabled])`, so only
-    // non-button elements are excluded by the tabindex clause; see #553 follow-up.
     it('skips disabled buttons and tabindex="-1" non-buttons when finding the edges', async () => {
       const dom = await impl.mount(
         `<button id="first">First</button><button id="last">Last</button>
@@ -145,6 +143,28 @@ for (const impl of IMPLEMENTATIONS) {
       assert.equal(pressTab('last').defaultPrevented, true);
       assert.equal(window.document.activeElement, byId('first'));
     });
+
+    // Regression (#556): `button:not([disabled])` used to match tabindex="-1"
+    // controls, making an untabbable element the trap's edge.
+    for (const [label, untabbable] of [
+      ['button', (id) => `<button id="${id}" tabindex="-1"></button>`],
+      ['input', (id) => `<input id="${id}" tabindex="-1">`],
+      ['link', (id) => `<a id="${id}" href="#" tabindex="-1"></a>`],
+    ]) {
+      it(`ignores a tabindex="-1" ${label} at either edge`, async () => {
+        const dom = await impl.mount(
+          `${untabbable('phantomFirst')}
+           <button id="first">First</button><button id="last">Last</button>
+           ${untabbable('phantomLast')}`
+        );
+        window = dom.window;
+        overlay = byId(impl.overlayId);
+        assert.equal(pressTab('last').defaultPrevented, true);
+        assert.equal(window.document.activeElement, byId('first'));
+        assert.equal(pressTab('first', { shiftKey: true }).defaultPrevented, true);
+        assert.equal(window.document.activeElement, byId('last'));
+      });
+    }
 
     it('does not throw or prevent default when nothing is focusable', async () => {
       const dom = await impl.mount('<p id="text">No controls</p>');
