@@ -60,17 +60,19 @@ function renderHeroCard() {
   _heroShowPanel('heroPanelStopped', state === 'stopped');
 
   // Fill dynamic content for the visible state
-  if (state === 'idle') {
-    _heroFillIdle();
-  }
-  if (state === 'running') {
-    _heroFillRunning();
-  }
-  if (state === 'paused') {
-    _heroFillPaused();
-  }
-  if (state === 'stopped') {
-    _heroFillStopped();
+  switch (state) {
+    case 'idle':
+      _heroFillIdle();
+      break;
+    case 'running':
+      _heroFillRunning();
+      break;
+    case 'paused':
+      _heroFillPaused();
+      break;
+    case 'stopped':
+      _heroFillStopped();
+      break;
   }
 
   // Keep the legacy timerBtn disabled state in sync so any stray references work
@@ -228,7 +230,7 @@ function _heroFillStopped() {
 
   const elapsed = entry.tsEnd && entry.tsEnd > entry.ts ? entry.tsEnd - entry.ts : 0;
   const elapsedEl = document.getElementById('heroStoppedElapsed');
-  if (elapsedEl) elapsedEl.textContent = elapsed > 0 ? fmtElapsed(elapsed) : '0:00';
+  if (elapsedEl) elapsedEl.textContent = fmtElapsed(elapsed);
 
   const rangeEl = document.getElementById('heroStoppedRange');
   if (rangeEl && entry.tsEnd) {
