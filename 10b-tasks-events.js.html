@@ -313,7 +313,7 @@ function bindPlanEvents(lists) {
     btn.addEventListener('click', () => {
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
       const text = btn.dataset.text;
-      const tag = task ? task.tag || 'other' : selectedTag;
+      const tag = task ? task.tag || 'other' : getSelectedTag();
       if (getActiveTimer()) stopTimer();
       const entry = createRestartedEntry(text, tag);
       getEntries().push(entry);
@@ -365,7 +365,7 @@ function bindPlanEvents(lists) {
           text,
           status: 'todo',
           date: dk(new Date()),
-          tag: parent ? parent.tag : selectedTag,
+          tag: parent ? parent.tag : getSelectedTag(),
           parentId,
         });
         savePlan();

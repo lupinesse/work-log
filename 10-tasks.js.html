@@ -153,9 +153,9 @@ function addPlanTask() {
     id: Date.now() + '',
     text,
     status: 'todo',
-    tag: selectedTag,
+    tag: getSelectedTag(),
     date: dk(new Date()),
-    billable: getCat(selectedTag).billable !== false,
+    billable: getCat(getSelectedTag()).billable !== false,
   });
   inp.value = '';
   savePlan();
