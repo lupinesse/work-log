@@ -53,6 +53,7 @@ function loadStateSandbox(overrides = {}) {
     entries: [],
     activeTimer: null,
     categories: [...appConstants.DEFAULT_CATS],
+    logNotes: [],
     ...appConstants,
     ...overrides,
   };
@@ -244,6 +245,57 @@ describe('load() — categories', () => {
     });
     sandbox.load();
     assert.deepEqual(plain(sandbox.categories), [stored[0]]);
+  });
+});
+
+describe('loadLogNotes()', () => {
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+
+  /**
+   * Loads 01-state.js with a localStorage backed by `store`.
+   * @param {Record<string, string>} store - Raw localStorage values by key.
+   * @param {Array<object>} [seedNotes] - What logNotes holds before loading.
+   * @returns {{ sandbox: object, warnings: string[] }}
+   */
+  function loadWithNotesStore(store, seedNotes = []) {
+    const warnings = [];
+    const sandbox = loadStateSandbox({
+      logNotes: seedNotes,
+      localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
+      wlLog: {
+        warn: (message) => warnings.push(message),
+        error: () => {},
+        info: () => {},
+        debug: () => {},
+      },
+    });
+    return { sandbox, warnings };
+  }
+
+  it('replaces the held notes with the stored array', () => {
+    const stored = [{ id: 'n1', text: 'a note', type: 'note' }];
+    const { sandbox } = loadWithNotesStore({ wl_lognotes_v1: JSON.stringify(stored) }, [
+      { id: 'stale' },
+    ]);
+    sandbox.loadLogNotes();
+    assert.deepEqual(plain(sandbox.logNotes), stored);
+  });
+
+  it('treats a stored value that is not an array as no notes', () => {
+    const { sandbox } = loadWithNotesStore({ wl_lognotes_v1: JSON.stringify({ id: 'n1' }) }, [
+      { id: 'stale' },
+    ]);
+    sandbox.loadLogNotes();
+    assert.deepEqual(plain(sandbox.logNotes), []);
+  });
+
+  it('replaces the held notes with an empty list and warns when the stored JSON is corrupt', () => {
+    const { sandbox, warnings } = loadWithNotesStore({ wl_lognotes_v1: '{not json' }, [
+      { id: 'stale' },
+    ]);
+    sandbox.loadLogNotes();
+    assert.deepEqual(plain(sandbox.logNotes), []);
+    assert.match(warnings.join('\n'), /loadLogNotes: failed to parse/);
   });
 });
 
