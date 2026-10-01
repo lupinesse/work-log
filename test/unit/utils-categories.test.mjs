@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, withEntriesAccessors } from './_helpers.mjs';
 
 /**
  * Loads 02-utils.js into a VM sandbox with a minimal fake DOM. Every
@@ -68,7 +68,7 @@ function loadTagRowSandbox(overrides = {}) {
     nextDistinctColor: () => '#000000',
     ...overrides,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withEntriesAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(utilsSrc, sandbox);
   sandbox._elements = elements;

@@ -48,7 +48,7 @@ function openEodModal() {
 
   // Notes for tomorrow — only tasks that were actually worked on today
   const workedToday = new Set(
-    entries
+    getEntries()
       .filter((entry) => entry.date === todayKey)
       .map((entry) => entry.text.toLowerCase().trim())
   );

@@ -37,11 +37,11 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (211 lines) — Data Store
+#### **01-state.js** (214 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
-- `entries` — Array of logged work entries (with timestamps)
+- `entries` — Array of logged work entries (with timestamps); held in `state.js` and read/written only via `getEntries()`/`setEntries()` (#423)
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
 - `categories` — Custom work categories (epic colors)
 - `activeTimer` — Current timer state or null
@@ -175,7 +175,7 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
+- `04b-render-stats.js` (139 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
 - `04c-render-timeline.js` (432 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
@@ -372,7 +372,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (170 lines) — Task Management
+#### **10-tasks.js** (172 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -469,8 +469,8 @@ upcoming    → Scheduled for future date
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (329 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (363 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11a-timeblock-render.js` (344 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11b-timeblock-carry.js` (366 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -487,7 +487,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (437 lines) — Miscellaneous Features
+#### **12-misc.js** (441 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -517,7 +517,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (343 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (351 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -593,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (473 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (475 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`

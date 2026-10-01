@@ -31,7 +31,7 @@ function bindAdHocRow() {
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
-    entries.push(entry);
+    getEntries().push(entry);
     save();
     render();
   };
@@ -199,7 +199,7 @@ function bindTimelineEntryEvents(timelineEl) {
   timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id,
-        entry = entries.find((logEntry) => logEntry.id === id);
+        entry = getEntries().find((logEntry) => logEntry.id === id);
       if (!entry) return;
       const newStartTime = document.getElementById('ts-' + id).value;
       const newEndTime = document.getElementById('te-' + id).value;
@@ -232,10 +232,10 @@ function bindTimelineEntryEvents(timelineEl) {
   });
   timelineEl.querySelectorAll('.cat-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
+      const entry = getEntries().find((logEntry) => logEntry.id === btn.dataset.id);
       if (entry) {
         const taskText = entry.text.toLowerCase();
-        entries.forEach((sameEntry) => {
+        getEntries().forEach((sameEntry) => {
           if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = btn.dataset.cat;
         });
         save();
@@ -272,10 +272,10 @@ function bindTimelineEntryEvents(timelineEl) {
         input.focus();
         return;
       }
-      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
+      const entry = getEntries().find((logEntry) => logEntry.id === btn.dataset.id);
       if (entry) {
         const taskText = entry.text.toLowerCase();
-        entries.forEach((sameEntry) => {
+        getEntries().forEach((sameEntry) => {
           if (sameEntry.text.toLowerCase() === taskText) sameEntry.tag = category.id;
         });
       }
@@ -304,7 +304,7 @@ function bindTimelineEntryEvents(timelineEl) {
   /* billable toggle */
   timelineEl.querySelectorAll('.ebill-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const entry = entries.find((logEntry) => logEntry.id === btn.dataset.id);
+      const entry = getEntries().find((logEntry) => logEntry.id === btn.dataset.id);
       if (entry) {
         entry.billable = entry.billable === false ? undefined : false;
         save();
@@ -323,7 +323,7 @@ function bindTimelineEntryEvents(timelineEl) {
         save();
         updateTimerBtn(false);
       }
-      entries = entries.filter((entry) => entry.id !== id);
+      setEntries(getEntries().filter((entry) => entry.id !== id));
       save();
       render();
     });
@@ -332,11 +332,11 @@ function bindTimelineEntryEvents(timelineEl) {
   /* restart */
   timelineEl.querySelectorAll('.erestart').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const sourceEntry = entries.find((entry) => entry.id === btn.dataset.id);
+      const sourceEntry = getEntries().find((entry) => entry.id === btn.dataset.id);
       if (!sourceEntry) return;
       if (activeTimer) stopTimer();
       const newEntry = createRestartedEntry(sourceEntry.text, sourceEntry.tag);
-      entries.push(newEntry);
+      getEntries().push(newEntry);
       viewDate = new Date();
       save();
       startTimer(newEntry.id);
@@ -349,7 +349,7 @@ function bindTimelineEntryEvents(timelineEl) {
     const openRename = () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;
-      const entry = entries.find((logEntry) => logEntry.id === id);
+      const entry = getEntries().find((logEntry) => logEntry.id === id);
       if (!entry) return;
       // ARIA forbids interactive children inside role="button"; remove the role
       // while the <input> is present, restore via render() when editing ends.
@@ -371,7 +371,7 @@ function bindTimelineEntryEvents(timelineEl) {
         const newText = input.value.trim();
         if (newText && newText !== origText) {
           const origLower = origText.toLowerCase();
-          entries.forEach((sameEntry) => {
+          getEntries().forEach((sameEntry) => {
             if (sameEntry.text.toLowerCase() === origLower) sameEntry.text = newText;
           });
           planTasks.forEach((task) => {

@@ -156,7 +156,7 @@ const BACKUP_RETENTION_DAYS = 21;
 function exportBackup() {
   const { payload, dropped } = buildBackupPayload(
     {
-      entries,
+      entries: getEntries(),
       categories,
       planTasks,
       blocks,
@@ -318,7 +318,7 @@ async function mergeBackupEntries(file) {
     return;
   }
 
-  const incoming = filterNewBackupEntries(entries, backup.entries, validEntry);
+  const incoming = filterNewBackupEntries(getEntries(), backup.entries, validEntry);
 
   if (!incoming.length) {
     alert('No new entries found — all entries in this backup already exist in your current data.');
@@ -337,7 +337,7 @@ async function mergeBackupEntries(file) {
   if (!confirmed) return;
 
   try {
-    const merged = [...entries, ...incoming];
+    const merged = [...getEntries(), ...incoming];
     localStorage.setItem(STORE_ENTRIES, JSON.stringify(merged));
     wlLog.info(
       `mergeBackupEntries: merged ${incoming.length} new entries ` +

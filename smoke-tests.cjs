@@ -2212,6 +2212,16 @@ async function runTests() {
       'Deleting the timed entry clears the accessor',
       (await page.evaluate(() => window.__wl.getTimerInterval())) === null
     );
+    // The delete handler also has to drop the entry itself from the shared
+    // entries array (setEntries in 04c-render-timeline.js).
+    assert(
+      'Deleting an entry removes it from the log',
+      await page.evaluate(() => !window.__wl.getState().entries.some((entry) => entry.id === 'ti2'))
+    );
+    assert(
+      'Deleting an entry leaves the other entries in place',
+      await page.evaluate(() => window.__wl.getState().entries.some((entry) => entry.id === 'ti1'))
+    );
 
     // A timeblock-triggered start stores an interval (11-timeblock tbStartBlock).
     await page.evaluate(() => window.__wl.tbStartBlock('tib1'));

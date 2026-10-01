@@ -41,7 +41,7 @@ let catManageOpen = false;
 function tidyStaleEpics() {
   const { staleIds, cutoffIso } = findStaleCategories({
     categories,
-    entries,
+    entries: getEntries(),
     planTasks,
     todayIso: dk(new Date()),
     windowDays: EPIC_STALE_DAYS,
@@ -97,7 +97,7 @@ function deleteSelectedEpic() {
   }
   const cat = getCat(selectedTag);
   const usageCount =
-    entries.filter((entry) => entry.tag === selectedTag).length +
+    getEntries().filter((entry) => entry.tag === selectedTag).length +
     planTasks.filter((task) => task.tag === selectedTag).length;
 
   const warning =
@@ -533,7 +533,7 @@ function roundToNearest30IfBillable(ts, entry) {
 function safeRoundedStart() {
   const ts = roundToNearest30(Date.now());
   const todayKey = dk(new Date());
-  const lastEnd = entries
+  const lastEnd = getEntries()
     .filter((entry) => entry.date === todayKey && entry.tsEnd)
     .reduce((max, e) => Math.max(max, e.tsEnd), 0);
   return Math.max(ts, lastEnd);
@@ -548,7 +548,7 @@ function safeRoundedStart() {
  * @returns {Array<object>}
  */
 function viewEntries() {
-  return entries
+  return getEntries()
     .filter((entry) => entry.date === dk(viewDate))
     .slice()
     .sort((a, b) => b.ts - a.ts);
@@ -559,7 +559,7 @@ function viewEntries() {
  * @returns {number}
  */
 function calcStreak() {
-  const days = new Set(entries.map((entry) => entry.date));
+  const days = new Set(getEntries().map((entry) => entry.date));
   let streak = 0;
   const d = new Date();
   d.setDate(d.getDate() - 1); // Start from yesterday, not today

@@ -67,7 +67,7 @@ function resumeTimer() {
 function stopTimer() {
   if (!activeTimer) return;
   clearTimerInterval();
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = getEntries().find((e) => e.id === activeTimer.entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
   // Enter the 6-second confirmation panel before clearing activeTimer so
   // heroEnterStopped() can snapshot the entry details.
@@ -94,7 +94,7 @@ function stopTimer() {
 function updateLiveBlock() {
   const el = document.getElementById('tb-live-block');
   if (!el || !activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = getEntries().find((e) => e.id === activeTimer.entryId);
   if (!entry) return;
   const tbStartMins = TB_START * 60,
     tbEndMins = TB_END * 60;
@@ -202,7 +202,7 @@ function updateTabAndFavicon() {
     setFavicon('idle');
     return;
   }
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = getEntries().find((e) => e.id === activeTimer.entryId);
   const taskText = entry ? entry.text : '…';
   const elapsedMs = getElapsedMs();
   const elapsed = fmtElapsed(elapsedMs);
@@ -313,7 +313,7 @@ function updateTimerArc(elapsedMs) {
 function tickTimer() {
   try {
     if (!activeTimer) return;
-    const entry = entries.find((e) => e.id === activeTimer.entryId);
+    const entry = getEntries().find((e) => e.id === activeTimer.entryId);
     const elapsed = getElapsedMs();
     // Update hero card clock every tick
     heroUpdateClock();
@@ -368,9 +368,9 @@ function updateTimerBtn(running) {
  */
 function resumeTimerIfActive() {
   if (!activeTimer) return;
-  if (!entries.find((e) => e.id === activeTimer.entryId)) {
+  if (!getEntries().find((e) => e.id === activeTimer.entryId)) {
     if (
-      entries.length > 0 ||
+      getEntries().length > 0 ||
       !localStorage.getItem(STORE_ENTRIES) ||
       localStorage.getItem(STORE_ENTRIES) === '[]'
     ) {
@@ -460,7 +460,7 @@ function logUtilEntry(kind) {
     ts: safeRoundedStart(),
     date: dk(new Date()),
   };
-  entries.push(entry);
+  getEntries().push(entry);
   save();
   render();
 }

@@ -128,7 +128,7 @@ function renderDayStrip(dateKey) {
 
   // Completed entry footprints — skip entries entirely outside the strip
   // (right === left after clamping) to avoid phantom slivers at the edges.
-  const bars = entries
+  const bars = getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .map((entry) => {
       const cat = getCat(entry.tag);
@@ -143,7 +143,7 @@ function renderDayStrip(dateKey) {
   // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
   if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
+    const liveEntry = getEntries().find((entry) => entry.id === activeTimer.entryId);
     if (liveEntry && liveEntry.date === dateKey) {
       const liveEndMins = tsToMins(liveEntry.ts + activeTimerDurationMs(liveEntry));
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(liveEntry.ts)));
@@ -176,7 +176,7 @@ function renderDayStrip(dateKey) {
  */
 function findLargestGap(dateKey) {
   if (!isToday(viewDate)) return null;
-  const timed = entries
+  const timed = getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .sort((a, b) => a.ts - b.ts);
 
@@ -239,7 +239,7 @@ function renderFlowHeader(dateKey, activeView) {
   const el = document.getElementById('tfHeader');
   if (!el) return;
 
-  const dayEntries = entries.filter(
+  const dayEntries = getEntries().filter(
     (entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled'
   );
   let totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
@@ -249,7 +249,7 @@ function renderFlowHeader(dateKey, activeView) {
 
   // Include live timer duration so both totals update while tracking
   if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
+    const liveEntry = getEntries().find((entry) => entry.id === activeTimer.entryId);
     if (liveEntry && liveEntry.date === dateKey && !liveEntry.tsEnd) {
       const liveMs = activeTimerDurationMs(liveEntry);
       totalMs += liveMs;
@@ -458,7 +458,7 @@ function renderFlowView(dateKey) {
       // Look up the underlying entry object for entry-type items
       const entryObj =
         item.type === 'entry' && item.entryId
-          ? entries.find((entry) => entry.id === item.entryId)
+          ? getEntries().find((entry) => entry.id === item.entryId)
           : null;
 
       // Look up the task object for task-type items (status update rows)

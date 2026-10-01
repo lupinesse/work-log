@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withEntriesAccessors } from './_helpers.mjs';
 
 const dailylogSrc = readFileSync(join(__dirname, '../../src/js/18-dailylog.js'), 'utf8');
 
@@ -37,7 +37,7 @@ function loadDailylogSandbox(overrides = {}) {
     document: { getElementById: () => null },
     ...overrides,
   };
-  vm.createContext(sb);
+  vm.createContext(withEntriesAccessors(sb));
   vm.runInContext(dailylogSrc, sb);
   return sb;
 }

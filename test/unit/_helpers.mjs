@@ -46,6 +46,26 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
 }
 
 /**
+ * Gives a VM sandbox the `getEntries`/`setEntries` pair that state.js provides
+ * in the real bundle (#423), backed by the sandbox's own `entries` property.
+ * The app files under test read and write the shared log entries only through
+ * these accessors, so a sandbox that sets `entries` keeps working unchanged:
+ * `setEntries(next)` shows up as `sandbox.entries`, and vice versa.
+ *
+ * Call it before `vm.createContext(sandbox)`; it returns the same object so it
+ * can wrap the call.
+ * @param {object} sandbox - The sandbox object about to become a VM context.
+ * @returns {object} The same sandbox, with `getEntries` and `setEntries` added.
+ */
+export function withEntriesAccessors(sandbox) {
+  sandbox.getEntries = () => sandbox.entries;
+  sandbox.setEntries = (next) => {
+    sandbox.entries = next;
+  };
+  return sandbox;
+}
+
+/**
  * Reads the pure-fns sub-modules as classic-script source for the VM sandboxes.
  * pure-fns.js is a barrel of `export { … } from …` re-exports, which are not
  * valid classic-script syntax, so the sandboxes concatenate the sub-modules

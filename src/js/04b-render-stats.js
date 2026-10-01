@@ -12,12 +12,16 @@
 function renderHeaderStatTiles() {
   const todayKey = dk(new Date());
   document.getElementById('statToday').textContent = new Set(
-    entries.filter((entry) => entry.date === todayKey).map((entry) => entry.text.toLowerCase())
+    getEntries()
+      .filter((entry) => entry.date === todayKey)
+      .map((entry) => entry.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
     const weekStart = mondayOfWeek();
     return new Set(
-      entries.filter((entry) => entry.ts >= weekStart).map((entry) => entry.tag || 'other')
+      getEntries()
+        .filter((entry) => entry.ts >= weekStart)
+        .map((entry) => entry.tag || 'other')
     ).size;
   })();
   document.getElementById('statStreak').textContent = calcStreak();
@@ -58,7 +62,7 @@ function renderSubStatTiles() {
   const todayKey = dk(new Date());
 
   // Today: task with most tracked time
-  const todayTimed = entries.filter(
+  const todayTimed = getEntries().filter(
     (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const todayByTask = {};
@@ -80,7 +84,7 @@ function renderSubStatTiles() {
   const thisWeekStart = new Date();
   thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
   thisWeekStart.setHours(0, 0, 0, 0);
-  const weekTimed = entries.filter(
+  const weekTimed = getEntries().filter(
     (entry) => new Date(entry.ts) >= thisWeekStart && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const weekByTask = {};
@@ -103,7 +107,7 @@ function renderSubStatTiles() {
   {
     const streakCursor = new Date();
     streakCursor.setDate(streakCursor.getDate() - 1);
-    const daysWithEntries = new Set(entries.map((entry) => entry.date));
+    const daysWithEntries = new Set(getEntries().map((entry) => entry.date));
     while (daysWithEntries.has(dk(streakCursor))) {
       streakDays.push(dk(streakCursor));
       streakCursor.setDate(streakCursor.getDate() - 1);
@@ -114,7 +118,7 @@ function renderSubStatTiles() {
     let bestDay = null,
       bestMs = 0;
     streakDays.forEach((dateKey2) => {
-      const ms = entries
+      const ms = getEntries()
         .filter((entry) => entry.date === dateKey2 && entry.tsEnd && entry.tsEnd > entry.ts)
         .reduce((sum, entry) => sum + (entry.tsEnd - entry.ts), 0);
       if (ms > bestMs) {

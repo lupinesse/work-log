@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { afterEach, describe, it, beforeEach } from 'node:test';
 import vm from 'node:vm';
 
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withEntriesAccessors } from './_helpers.mjs';
 import { clearTimerInterval, getTimerInterval, setTimerInterval } from '../../src/js/state.js';
 
 const timerSource = readFileSync(join(__dirname, '../../src/js/03-timer.js'), 'utf8');
@@ -85,7 +85,7 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
     },
     Date,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withEntriesAccessors(sandbox));
   vm.runInContext(timerSource, sandbox);
   // The file defines its own UI/tick helpers, which would override the stubs
   // above at load. Their behaviour is out of scope; re-stub them so only the

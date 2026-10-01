@@ -19,7 +19,7 @@
 function buildDailyLogItems(dateKey) {
   const items = [];
 
-  entries
+  getEntries()
     .filter((e) => e.date === dateKey)
     .forEach((e) => {
       const cat = getCat(e.tag);
