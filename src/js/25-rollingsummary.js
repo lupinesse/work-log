@@ -176,8 +176,8 @@ export function renderRollingSummary() {
         <div class="rs-row-head">
           <span class="rs-emoji" aria-hidden="true">${row.locationEmoji}</span>
           <span class="rs-date">${fmtDateLabel(row.dateKey)}</span>
-          <span class="rs-session">${sodStr} – ${eodStr}</span>
-          <span class="rs-total">${totalStr}</span>
+          <span class="rs-session" aria-label="Session">${sodStr} – ${eodStr}</span>
+          <span class="rs-total" aria-label="Tracked total">${totalStr}</span>
         </div>
         <div class="rs-tasks" role="group" aria-label="Top tasks">${tasksHtml}</div>
       </div>`;
