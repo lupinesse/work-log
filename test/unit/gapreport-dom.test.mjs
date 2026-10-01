@@ -5,7 +5,7 @@
  * VM-sandbox tests cannot reach.
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -36,6 +36,9 @@ describe('gap report overlay (jsdom)', () => {
     vm.runInContext(gapReportSrc, dom.getInternalVMContext());
   });
 
+  // Free the jsdom window (timers, listeners) so instances do not accumulate (#546).
+  afterEach(() => window.close());
+
   it('closes the overlay on Escape', () => {
     pressKey('Escape');
     assert.equal(overlay.classList.contains('show'), false);
@@ -56,5 +59,20 @@ describe('gap report overlay (jsdom)', () => {
   it('closes via the close button', () => {
     window.document.getElementById('gapReportClose').click();
     assert.equal(overlay.classList.contains('show'), false);
+  });
+});
+
+describe('gap report wiring does not leak top-level bindings (regression, #523)', () => {
+  it('lets a later script declare the same element names without a redeclaration error', () => {
+    const dom = createDom(MARKUP);
+    const context = dom.getInternalVMContext();
+    vm.runInContext(gapReportSrc, context);
+    assert.doesNotThrow(() =>
+      vm.runInContext(
+        'const gapReportBtn = 1, gapReportOverlay = 2, gapReportClose = 3, gapReportList = 4;',
+        context
+      )
+    );
+    dom.window.close();
   });
 });
