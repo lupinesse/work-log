@@ -28,6 +28,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { formatTokenUsage } from './lib/format-token-usage.mjs';
 import { parseRepository } from './lib/parse-repository.mjs';
 import {
   addReactionToComment,
@@ -155,11 +156,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
   if (!response.ok) die(`OpenAI API ${response.status}: ${await response.text()}`);
   const data = await response.json();
   if (data.error) die(`OpenAI API error (${data.error.code}): ${data.error.message}`);
-  const usage = data.usage ?? {};
-  console.log(
-    `  tokens: ${usage.prompt_tokens ?? '?'} in / ${usage.completion_tokens ?? '?'} out` +
-      (usage.total_tokens != null ? ` / ${usage.total_tokens} total` : '')
-  );
+  console.log(formatTokenUsage(data.usage));
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 
