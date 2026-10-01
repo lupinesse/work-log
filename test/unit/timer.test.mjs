@@ -159,6 +159,43 @@ describe('03-timer.js stores its interval ID via state.js accessors', () => {
   });
 });
 
+describe('03-timer.js no-ops in the wrong state, as its JSDoc promises', () => {
+  beforeEach(() => setTimerInterval(null));
+
+  it('pauseTimer twice clears the interval only once', () => {
+    const { sandbox, intervalsCleared } = loadTimer();
+    sandbox.startTimer('e1');
+    sandbox.pauseTimer();
+    sandbox.pauseTimer();
+    assert.deepEqual(intervalsCleared, [100]);
+    assert.equal(getTimerInterval(), null);
+  });
+
+  it('stopTimer twice clears the interval only once', () => {
+    const { sandbox, intervalsCleared } = loadTimer({ entries: [{ id: 'e1', ts: 0 }] });
+    sandbox.startTimer('e1');
+    sandbox.stopTimer();
+    sandbox.stopTimer();
+    assert.deepEqual(intervalsCleared, [100]);
+    assert.equal(getTimerInterval(), null);
+  });
+
+  it('resumeTimer on a timer that is already running does not start a second interval', () => {
+    const { sandbox, intervalsStarted } = loadTimer();
+    sandbox.startTimer('e1');
+    sandbox.resumeTimer();
+    assert.equal(intervalsStarted.length, 1);
+    assert.equal(getTimerInterval(), 100);
+  });
+
+  it('resumeTimer with no active timer does not start an interval', () => {
+    const { sandbox, intervalsStarted } = loadTimer();
+    sandbox.resumeTimer();
+    assert.equal(intervalsStarted.length, 0);
+    assert.equal(getTimerInterval(), null);
+  });
+});
+
 describe('no source file outside state.js uses a bare timerInterval binding', () => {
   it('03-timer.js, 04c-render-timeline.js and 11-timeblock.js reference only the accessors', () => {
     for (const file of ['03-timer.js', '04c-render-timeline.js', '11-timeblock.js']) {
