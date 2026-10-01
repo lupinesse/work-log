@@ -3,7 +3,8 @@ import globals from 'globals';
 import security from 'eslint-plugin-security';
 
 // Flags a new single-letter arrow-function parameter, e.g. `(a) => a.x`.
-// Doesn't touch the ~292 existing instances across src/js/ (severity 'warn',
+// Doesn't touch the existing instances across src/js/ (counted by BASELINE_COUNT
+// in .github/scripts/lib/arrow-param-ratchet.mjs, not restated here; severity 'warn',
 // not 'error' — retroactively failing lint on unrelated pre-existing code
 // isn't this rule's job) or arrow functions with more than one parameter,
 // where a short name in a `.map`/`.reduce`/`.sort` comparator chain reads
