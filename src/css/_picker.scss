@@ -243,6 +243,8 @@
   background: none;
   border: none;
   cursor: pointer;
+
+  /* Deliberately below var(--radius) (8px): on ~28px emoji buttons 8px reads as a pill. */
   border-radius: 4px;
   line-height: 1;
 }
