@@ -44,14 +44,14 @@ function renderQuickPick() {
     .map((entry) => {
       return (
         `<button class="qp-item" data-text="${escHtml(entry.text)}" data-tag="${entry.tag}">` +
-        `<span class="qp-item-text">${escHtml(entry.text)}</span>` +
-        `<span class="qp-remove" data-text="${escHtml(entry.text)}" title="remove from recent tasks">&times;</span>` +
+        `<span class="qp-item__text">${escHtml(entry.text)}</span>` +
+        `<span class="qp-item__remove" data-text="${escHtml(entry.text)}" title="remove from recent tasks">&times;</span>` +
         `</button>`
       );
     })
     .join('');
   const restoreHtml = hiddenInUse
-    ? `<button class="qp-restore" id="qpRestore" title="show all hidden tasks again">restore ${hiddenInUse} hidden</button>`
+    ? `<button class="qp-wrap__restore" id="qpRestore" title="show all hidden tasks again">restore ${hiddenInUse} hidden</button>`
     : '';
 
   qp.innerHTML = `<div class="qp-wrap"><div class="qp-label">recent tasks</div><div class="qp-list">${itemsHtml}${restoreHtml}</div></div>`;
@@ -59,7 +59,7 @@ function renderQuickPick() {
   // Click pill body — fill capture input (only if click wasn't on the ✕)
   qp.querySelectorAll('.qp-item').forEach((btn) => {
     btn.addEventListener('click', (event) => {
-      if (event.target.closest('.qp-remove')) return;
+      if (event.target.closest('.qp-item__remove')) return;
       document.getElementById('captureInput').value = btn.dataset.text;
       selectedTag = btn.dataset.tag;
       renderTagRow();
@@ -67,7 +67,7 @@ function renderQuickPick() {
     });
   });
   // Click ✕ — hide from recent list
-  qp.querySelectorAll('.qp-remove').forEach((removeBtn) => {
+  qp.querySelectorAll('.qp-item__remove').forEach((removeBtn) => {
     removeBtn.addEventListener('click', (event) => {
       event.stopPropagation();
       qpHidden.add(removeBtn.dataset.text.toLowerCase());

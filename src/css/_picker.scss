@@ -39,7 +39,7 @@
     border-color 0.1s;
 }
 
-.qp-item-text {
+.qp-item__text {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
@@ -51,7 +51,7 @@
   border-color: transparent;
 }
 
-.qp-remove {
+.qp-item__remove {
   background: none;
   border: none;
   padding: 0 5px;
@@ -68,16 +68,16 @@
   border-radius: var(--radius-pill);
 }
 
-.qp-item:hover .qp-remove {
+.qp-item:hover .qp-item__remove {
   opacity: 0.55;
 }
 
-.qp-item:hover .qp-remove:hover {
+.qp-item:hover .qp-item__remove:hover {
   opacity: 1;
   color: #f17070;
 }
 
-.qp-restore {
+.qp-wrap__restore {
   font-size: 11px;
   color: var(--text3);
   cursor: pointer;
@@ -92,7 +92,7 @@
     color 0.1s;
 }
 
-.qp-restore:hover {
+.qp-wrap__restore:hover {
   opacity: 1;
   color: var(--text2);
 }
