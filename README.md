@@ -98,6 +98,13 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Moon phase** — current phase, illumination %, and zodiac sign
 - **Finnish nameday** — fetched live from nimipaivat.fi
 
+### Gofore timesheet automation — security model
+
+- **Off by default.** `GOFORE_SUBMIT_ENABLED` is `false` in `src/js/00-config.js`; nothing is sent until you set it to `true` in your own `src/js/00-config.local.js`. The flag only hides the submit button — the local `/api/gofore-timesheet` endpoint of `start-server.ps1` is not gated by it.
+- **Everything runs on your machine.** There is no remote service. `scripts/gofore-timesheet.mjs` is started by the local server, drives *your* signed-in Chrome (`claude --chrome`) or a Playwright profile, and talks only to `$GoforeTimesheetUrl`. The date, hours and description go over stdin, never argv.
+- **No credentials in the repo.** Sign-in is Microsoft SSO done by hand (`npm run timesheet:login`); the session cookies live in `.timesheet-profile/`. `scripts/gofore-timesheet.selectors.json` holds only optional CSS selector overrides (`{}` by default).
+- **Gitignored local files:** `config.local.ps1`, `src/js/00-config.local.js`, `.timesheet-profile/`. Copy `config.local.example.ps1` / `src/js/00-config.local.example.js` and keep the copies untracked.
+
 ## Troubleshooting
 
 **My entries are gone after reopening the page.** Entries live in `localStorage`, scoped to the exact `origin:port`. Reload `http://localhost:8080/work-log.html` (see the note under *How to use*). If you still see nothing, check that your browser isn't set to clear site data on exit, then restore from the newest file in `JSON backups/` (written automatically at end-of-day).
