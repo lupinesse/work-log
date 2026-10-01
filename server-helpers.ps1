@@ -967,3 +967,113 @@ function Set-ComProperty {
         @($Value)
     )
 }
+
+# ── Gofore timesheet endpoint guard ───────────────────────────────────────────
+# POST /api/gofore-timesheet drives the user's signed-in browser session, so it
+# is the one route where a stray request has real-world side effects. The
+# decision is kept pure (headers in, verdict out) so both protections are
+# unit-tested without an HttpListener or a browser.
+
+function Test-GoforeSubmitEnabled {
+    <#
+    .SYNOPSIS
+        Tests whether server-side Gofore timesheet submission is switched on.
+
+    .DESCRIPTION
+        Only a real boolean $true enables submission. A truthy string such as
+        'false' (easy to produce by quoting the value in config.local.ps1) would
+        otherwise count as enabled, and an unset setting must stay disabled.
+
+    .PARAMETER Enabled
+        The value of $GoforeSubmitEnabled from config.local.ps1.
+
+    .OUTPUTS
+        System.Boolean
+
+    .EXAMPLE
+        Test-GoforeSubmitEnabled $true      # -> $true
+
+    .EXAMPLE
+        Test-GoforeSubmitEnabled 'false'    # -> $false
+    #>
+    [OutputType([bool])]
+    param(
+        [AllowNull()][object]$Enabled
+    )
+    Set-StrictMode -Version Latest
+    return ($Enabled -is [bool] -and $Enabled)
+}
+
+function Get-GoforeRequestDecision {
+    <#
+    .SYNOPSIS
+        Decides whether a POST /api/gofore-timesheet request may run.
+
+    .DESCRIPTION
+        Two independent protections, checked in this order:
+
+        1. Origin. A browser always sends an Origin header on a cross-origin
+           POST, so a page on any other site is rejected when its Origin is not
+           this server's own. The Host header must also name this server, which
+           stops DNS-rebinding (an attacker's hostname resolving to 127.0.0.1
+           would otherwise present a matching Host and a same-site Origin). A
+           request with no Origin at all comes from a non-browser client such as
+           curl, which can already run the script directly, so it is allowed.
+        2. Feature gate. Submission must be enabled in config.local.ps1; the
+           browser-side GOFORE_SUBMIT_ENABLED flag only hides a button.
+
+        Both rejections are 403 with a message the client can show. The Reason
+        is for the server log and names which path was taken.
+
+    .PARAMETER Enabled
+        The value of $GoforeSubmitEnabled from config.local.ps1.
+
+    .PARAMETER Origin
+        The request's Origin header, or $null/empty when absent.
+
+    .PARAMETER HostHeader
+        The request's Host header, e.g. 'localhost:8080'.
+
+    .PARAMETER Port
+        The port this server listens on.
+
+    .OUTPUTS
+        System.Collections.Hashtable with Allowed (bool), Status (int),
+        Error (string) and Reason (string).
+
+    .EXAMPLE
+        Get-GoforeRequestDecision -Enabled $true -Origin 'http://localhost:8080' -HostHeader 'localhost:8080' -Port 8080
+        # -> Allowed = $true
+
+    .EXAMPLE
+        Get-GoforeRequestDecision -Enabled $true -Origin 'https://evil.example' -HostHeader 'localhost:8080' -Port 8080
+        # -> Allowed = $false, Status = 403
+    #>
+    [OutputType([hashtable])]
+    param(
+        [AllowNull()][object]$Enabled,
+        [AllowNull()][string]$Origin,
+        [AllowNull()][string]$HostHeader,
+        [Parameter(Mandatory)][int]$Port
+    )
+    Set-StrictMode -Version Latest
+    $localNames     = @('localhost', '127.0.0.1', '[::1]')
+    $allowedHosts   = @($localNames | ForEach-Object { "${_}:$Port" })
+    $allowedOrigins = @($localNames | ForEach-Object { "http://${_}:$Port" })
+
+    $deny = {
+        param([string]$Message, [string]$Why)
+        return @{ Allowed = $false; Status = 403; Error = $Message; Reason = $Why }
+    }
+
+    if (-not [string]::IsNullOrEmpty($Origin) -and $allowedOrigins -notcontains $Origin.ToLowerInvariant()) {
+        return & $deny 'Cross-origin requests to the timesheet endpoint are not allowed.' "rejected origin '$Origin'"
+    }
+    if ($allowedHosts -notcontains ([string]$HostHeader).ToLowerInvariant()) {
+        return & $deny 'Timesheet endpoint only answers requests addressed to localhost.' "rejected host '$HostHeader'"
+    }
+    if (-not (Test-GoforeSubmitEnabled $Enabled)) {
+        return & $deny 'Timesheet submission is disabled. Set $GoforeSubmitEnabled = $true in config.local.ps1.' 'submission disabled in config.local.ps1'
+    }
+    return @{ Allowed = $true; Status = 200; Error = ''; Reason = 'allowed' }
+}

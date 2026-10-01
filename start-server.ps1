@@ -16,6 +16,9 @@ $AnthropicApiKey  = ''
 $NotionToken      = ''
 $NotionDatabaseId = ''
 $GoforeTimesheetUrl = 'https://timesheet.gofore.com'
+# Server-side gate for POST /api/gofore-timesheet. Off unless config.local.ps1
+# sets it to $true; the browser-side GOFORE_SUBMIT_ENABLED only hides the button.
+$GoforeSubmitEnabled = $false
 $WeatherLat       = 60.1887   # default: Helsinki
 $WeatherLon       = 24.927
 $WeatherName      = 'Helsinki'
@@ -39,7 +42,7 @@ if ($effectiveLookBack -ne $CalendarLookBackYears) {
 }
 $excludeSummary = if ($CalendarExcludeNames -and $CalendarExcludeNames.Count) { $CalendarExcludeNames -join ', ' } else { 'none' }
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack calendarExcludeNames=$excludeSummary"
-Write-Host "[cfg] gofore timesheet url: $GoforeTimesheetUrl"
+Write-Host "[cfg] gofore timesheet url: $GoforeTimesheetUrl; submit endpoint: $(if (Test-GoforeSubmitEnabled $GoforeSubmitEnabled) { 'ENABLED' } else { 'disabled' })"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
 $listener = New-Object Net.HttpListener
@@ -472,7 +475,8 @@ while ($listener.IsListening) {
     $ctx = $listener.GetContext()
     $req = $ctx.Request
     $res = $ctx.Response
-    $res.Headers.Add('Access-Control-Allow-Origin', '*')
+    # No CORS headers: the app is served from this same origin, so nothing
+    # cross-origin needs to read these responses (see Get-GoforeRequestDecision).
 
     try {
         # Config endpoint — exposes non-secret runtime config to the browser app
@@ -706,6 +710,13 @@ while ($listener.IsListening) {
 
         # Gofore timesheet -- adds one day's entry through a saved browser (SSO) session
         if ($req.Url.LocalPath -eq '/api/gofore-timesheet' -and $req.HttpMethod -eq 'POST') {
+            $decision = Get-GoforeRequestDecision -Enabled $GoforeSubmitEnabled -Origin $req.Headers['Origin'] -HostHeader $req.Headers['Host'] -Port $port
+            if (-not $decision.Allowed) {
+                Write-Host "[timesheet] refused: $($decision.Reason)" -ForegroundColor Yellow
+                Send-Json $res (@{ ok = $false; error = $decision.Error } | ConvertTo-Json -Compress) $decision.Status
+                try { $res.Close() } catch {}
+                continue
+            }
             try {
                 $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
                 $result = Invoke-GoforeTimesheet -Json $reader.ReadToEnd()
