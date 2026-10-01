@@ -124,7 +124,6 @@ export function loadRenderScriptSource() {
   return [
     '04-render.js',
     '04a-render-entry-meta.js',
-    '04b-render-stats.js',
     '04c-render-timeline.js',
     '04d-render-quickpick.js',
   ]

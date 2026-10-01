@@ -17,6 +17,7 @@ import {
   isLongRunningTimer,
   mondayOfWeek,
   roundToNearest30,
+  calcStreak,
 } from '../../src/js/pure-fns.js';
 import { localMs } from './_helpers.mjs';
 
@@ -225,4 +226,37 @@ describe('roundToNearest30', () => {
     assert.equal(r.getHours(), 23);
     assert.equal(r.getMinutes(), 30);
   });
+});
+
+describe('calcStreak', () => {
+  function daysAgo(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return dk(d);
+  }
+
+  function makeEntries(dateKeys) {
+    return dateKeys.map((date) => ({ date, ts: 0, text: '' }));
+  }
+
+  it('returns 0 for empty entries', () => assert.equal(calcStreak([]), 0));
+  it('returns 0 when only today has entries (streak excludes today)', () =>
+    assert.equal(calcStreak(makeEntries([daysAgo(0)])), 0));
+  it('returns 1 when only yesterday has an entry', () =>
+    assert.equal(calcStreak(makeEntries([daysAgo(1)])), 1));
+  it('returns 2 for yesterday and the day before', () =>
+    assert.equal(calcStreak(makeEntries([daysAgo(1), daysAgo(2)])), 2));
+  it('returns 3 for three consecutive days ending yesterday', () =>
+    assert.equal(calcStreak(makeEntries([daysAgo(1), daysAgo(2), daysAgo(3)])), 3));
+  it('breaks streak at a gap — returns 1 not 2', () =>
+    assert.equal(calcStreak(makeEntries([daysAgo(1), daysAgo(3)])), 1));
+  it('counts multiple entries on the same day as one streak day', () =>
+    assert.equal(
+      calcStreak([
+        { date: daysAgo(1), ts: 1 },
+        { date: daysAgo(1), ts: 2 },
+        { date: daysAgo(2), ts: 1 },
+      ]),
+      2
+    ));
 });
