@@ -4,9 +4,9 @@
 | Field | Value |
 |---|---|
 | Document version | 1.9.2-r6 |
-| Covers app version | v1.9.2 (main, 2026-09-28) |
-| Last reviewed | 2026-09-28 |
-| Reviewed by | Claude (QA findings #440/#441: full re-audit of every documented per-module line count against `grep -c . src/js/*.js`, not a narrowly-scoped update — found and fixed 19 drifted entries, not just the 6 previously tracked, plus the missing `pure-fns-epics.js` barrel sub-module. Also added `.github/scripts/check-architecture-line-counts.mjs`, a CI check that regenerates and diffs these counts on every PR, so this class of drift can't recur silently) |
+| Covers app version | v1.9.2 (main, 2026-09-10) |
+| Last reviewed | 2026-09-30 |
+| Reviewed by | Claude — full sub-module re-audit (issues #440 and #441): added missing `pure-fns-epics.js` entry (barrel had nine sub-modules, not eight), corrected four stale per-module line counts (`pure-fns-backup.js`, `app-constants.js`, `signifiers.js`, `12b-changelog-data.js`). This pass verified every `pure-fns-*.js` sub-module and every LEAF MODULE line count against `grep -v '^\\s*$' <file> | wc -l`. After merging, 19 further counts had drifted again on `main` (the hand-corrected set had been partial), which is why `npm run test:architecture-line-counts` now fails CI on any mismatch. |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -25,7 +25,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **00-config.js** (82 lines) — App Configuration
+#### **00-config.js** (95 lines) — App Configuration
 **Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
 
 **Key constants**:
@@ -79,7 +79,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **01b-migrate.js** (140 lines) — Data Migration
+#### **01b-migrate.js** (141 lines) — Data Migration
 **Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
 
 **Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
@@ -93,7 +93,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (87 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (92 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
@@ -105,7 +105,7 @@ wl_snapshot        → backup (auto-restore on failure)
 - `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
 - `pure-fns-validate.js` (331 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
-- `pure-fns-epics.js` (158 lines) — Epic (category) staleness, archive, and restore logic, added by PR #385: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
+- `pure-fns-epics.js` (158 lines) — Epic (category) lifecycle helpers: stale-epic detection, archive/restore, and picker filtering: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
 
 ---
 
@@ -176,7 +176,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
-- `04c-render-timeline.js` (400 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (429 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -241,7 +241,7 @@ Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntry
 
 ---
 
-#### **05b-filesystem.js** (171 lines) — File System Access Persistence
+#### **05b-filesystem.js** (181 lines) — File System Access Persistence
 **Responsibility**: Persist the user's chosen save folder and write export files via the browser File System Access API; falls back to a `<a download>` click when FSA is unavailable.
 
 **Key Functions**:
@@ -465,7 +465,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (310 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (311 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
@@ -504,11 +504,11 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (253 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (254 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
-- `12b-changelog-data.js` (637 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
+- `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (41 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
@@ -656,7 +656,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **24-location.js** (91 lines) — Work Location Tracker
+#### **24-location.js** (92 lines) — Work Location Tracker
 **Responsibility**: Tracks whether the user is working remotely or in the office on each day. Location is stored per-day and shown in the date-nav header in place of the ISO week number.
 
 **Key Functions**: `renderLocation()`, `bindLocationToggle()`
@@ -869,11 +869,6 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **API Validation**: Add schema validators for external API responses
-   - Outlook calendar response
-   - Weather API response
-   - Jira CSV format
-
-2. **Consolidate CHANGELOG duplicate headings** — the v1.9.0 section still contains multiple `### Added / Changed / Fixed` groups; a follow-up PR should merge them into single headings per type.
+None currently tracked.
 
 This architecture has been stable through v1.0 → v1.9 releases with only feature additions.
