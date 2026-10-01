@@ -271,13 +271,16 @@ describe('load() — entries', () => {
    * localStorage backed by `store`. Records every wlLog warn/error call.
    * @param {Record<string, string>} store - Raw localStorage values by key.
    * @param {Array<object>} [seedEntries] - What the entries array holds before load().
+   * @param {object|null} [seedActiveTimer] - What activeTimer holds before load().
+   * @param {Function} [validTimer] - Stand-in for the timer schema validator.
    * @returns {{ sandbox: object, warnings: string[], errors: string[] }}
    */
-  function loadWithStore(store, seedEntries = []) {
+  function loadWithStore(store, seedEntries = [], seedActiveTimer = null, validTimer = () => true) {
     const warnings = [];
     const errors = [];
     const sandbox = loadStateSandbox({
       entries: seedEntries,
+      activeTimer: seedActiveTimer,
       localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
       wlLog: {
         warn: (message) => warnings.push(message),
@@ -286,7 +289,7 @@ describe('load() — entries', () => {
         debug: () => {},
       },
       validEntry: (entry) => !!entry && typeof entry.id === 'string',
-      validTimer: () => true,
+      validTimer,
       validCategory: () => true,
       loadTrackers: () => {},
     });
@@ -330,6 +333,62 @@ describe('load() — entries', () => {
     // Without the Array.isArray guard, `'corrupted'.filter` throws and the
     // surrounding try/catch turns it into this warning instead.
     assert.doesNotMatch(warnings.join('\n'), /failed to parse snapshot/);
+  });
+});
+
+describe('load() — activeTimer', () => {
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+  const runningTimer = { entryId: 'e1', startTs: 1, accumulatedMs: 0, paused: false };
+
+  /**
+   * Loads 01-state.js with a localStorage backed by `store`.
+   * @param {Record<string, string>} store - Raw localStorage values by key.
+   * @param {object|null} seedActiveTimer - activeTimer before load().
+   * @param {Function} [validTimer] - Stand-in for the timer schema validator.
+   * @returns {{ sandbox: object, warnings: string[], errors: string[] }}
+   */
+  function loadWithTimerStore(store, seedActiveTimer, validTimer = () => true) {
+    const warnings = [];
+    const errors = [];
+    const sandbox = loadStateSandbox({
+      activeTimer: seedActiveTimer,
+      localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
+      wlLog: {
+        warn: (message) => warnings.push(message),
+        error: (message) => errors.push(message),
+        info: () => {},
+        debug: () => {},
+      },
+      validEntry: () => true,
+      validTimer,
+      validCategory: () => true,
+      loadTrackers: () => {},
+    });
+    return { sandbox, warnings, errors };
+  }
+
+  it('restores a valid stored timer', () => {
+    const { sandbox } = loadWithTimerStore({ wl_timer_v1: JSON.stringify(runningTimer) }, null);
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.activeTimer), runningTimer);
+  });
+
+  it('discards an invalid stored timer and warns', () => {
+    const { sandbox, warnings } = loadWithTimerStore(
+      { wl_timer_v1: JSON.stringify({ bogus: true }) },
+      runningTimer,
+      () => false
+    );
+    sandbox.load();
+    assert.equal(sandbox.activeTimer, null);
+    assert.match(warnings.join('\n'), /discarded invalid timer state/);
+  });
+
+  it('clears a previously held timer and logs an error when the stored JSON is corrupt', () => {
+    const { sandbox, errors } = loadWithTimerStore({ wl_timer_v1: '{not json' }, runningTimer);
+    sandbox.load();
+    assert.equal(sandbox.activeTimer, null);
+    assert.match(errors.join('\n'), /load: failed to parse timer state/);
   });
 });
 
