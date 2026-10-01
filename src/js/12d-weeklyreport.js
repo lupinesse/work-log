@@ -3,12 +3,24 @@
  *
  * Groups this calendar week's (Mon–Sun) finished, non-cancelled, non-utility
  * entries by Jira ticket key via buildWeeklyTicketSummary()/
- * formatWeeklyTicketSummaryText() (pure-fns.js), so writing a status report
- * no longer means reconstructing "what did I touch" by hand across
- * Jira/Confluence/memory. Opens a modal with the rendered text and a
+ * formatWeeklyTicketSummaryText() (pure-fns-weeklyreport.js), so writing a
+ * status report no longer means reconstructing "what did I touch" by hand
+ * across Jira/Confluence/memory. Opens a modal with the rendered text and a
  * copy-to-clipboard button — mirrors 12c-gapreport.js's modal wiring and
  * 25-rollingsummary.js's copy-to-clipboard pattern.
+ *
+ * Pure helpers (buildWeeklyTicketSummary, formatWeeklyTicketSummaryText) live
+ * in pure-fns-weeklyreport.js and are unit-tested there. This module is the
+ * localStorage + DOM glue around them.
  */
+
+import {
+  buildWeeklyTicketSummary,
+  formatWeeklyTicketSummaryText,
+} from './pure-fns-weeklyreport.js';
+import { mondayOfWeek, fmtDurLong } from './pure-fns-format.js';
+import { wlLog } from './logger.js';
+import { getEntries } from './state.js';
 
 // Element that had focus when the report was opened, restored on close —
 // same convention as the gap-report modal in 12c-gapreport.js.
@@ -19,7 +31,7 @@ let _weeklyReportTrigger = null;
  * @param {number} weekStart - Monday 00:00 local time, in ms.
  * @returns {string} The formatted range.
  */
-function weekRangeLabel(weekStart) {
+export function weekRangeLabel(weekStart) {
   const opts = { weekday: 'short', day: '2-digit', month: 'short' };
   const start = new Date(weekStart).toLocaleDateString('en', opts);
   const end = new Date(weekStart + 6 * 24 * 60 * 60 * 1000).toLocaleDateString('en', opts);
@@ -32,7 +44,7 @@ function weekRangeLabel(weekStart) {
  * it's opened, so it always reflects the latest data.
  * @returns {void}
  */
-function openWeeklyReportOverlay() {
+export function openWeeklyReportOverlay() {
   const overlay = document.getElementById('weeklyReportOverlay');
   if (!overlay) return;
 
@@ -40,7 +52,7 @@ function openWeeklyReportOverlay() {
 
   const weekStart = mondayOfWeek();
   const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
-  const { ticketOrder, grouped } = buildWeeklyTicketSummary(entries, weekStart, weekEnd);
+  const { ticketOrder, grouped } = buildWeeklyTicketSummary(getEntries(), weekStart, weekEnd);
   const lines = formatWeeklyTicketSummaryText(ticketOrder, grouped, fmtDurLong);
 
   const subtitleEl = document.getElementById('weeklyReportSubtitle');
@@ -57,16 +69,22 @@ function openWeeklyReportOverlay() {
   }, 50);
 }
 
-/** Restores focus to whatever triggered the report, then clears it. */
-function restoreWeeklyReportFocus() {
+/**
+ * Restores focus to whatever triggered the report, then clears the trigger.
+ * @returns {void}
+ */
+export function restoreWeeklyReportFocus() {
   if (_weeklyReportTrigger) {
     _weeklyReportTrigger.focus();
     _weeklyReportTrigger = null;
   }
 }
 
-/** Hides the weekly-report overlay and restores focus to its trigger. */
-function closeWeeklyReportOverlay() {
+/**
+ * Hides the weekly-report overlay and restores focus to its trigger.
+ * @returns {void}
+ */
+export function closeWeeklyReportOverlay() {
   const overlay = document.getElementById('weeklyReportOverlay');
   if (overlay) overlay.classList.remove('show');
   restoreWeeklyReportFocus();
@@ -79,7 +97,7 @@ function closeWeeklyReportOverlay() {
  * "Copied!" confirmation on success, or logs a warning on failure.
  * @returns {void}
  */
-function copyWeeklyReportText() {
+export function copyWeeklyReportText() {
   const textEl = document.getElementById('weeklyReportText');
   if (!textEl) return;
   navigator.clipboard
@@ -98,19 +116,26 @@ function copyWeeklyReportText() {
     });
 }
 
-const weeklyReportBtn = document.getElementById('weeklyReportBtn');
-const weeklyReportOverlay = document.getElementById('weeklyReportOverlay');
-const weeklyReportClose = document.getElementById('weeklyReportClose');
-const weeklyReportCopyBtn = document.getElementById('weeklyReportCopyBtn');
+/**
+ * Binds the weekly-report modal buttons. Called exactly once from the boot
+ * sequence in 07-lifecycle.js. Safe to call when any button is missing.
+ * @returns {void}
+ */
+export function initWeeklyReport() {
+  const weeklyReportBtn = document.getElementById('weeklyReportBtn');
+  const weeklyReportOverlay = document.getElementById('weeklyReportOverlay');
+  const weeklyReportClose = document.getElementById('weeklyReportClose');
+  const weeklyReportCopyBtn = document.getElementById('weeklyReportCopyBtn');
 
-if (weeklyReportBtn) weeklyReportBtn.addEventListener('click', openWeeklyReportOverlay);
-if (weeklyReportClose) weeklyReportClose.addEventListener('click', closeWeeklyReportOverlay);
-if (weeklyReportCopyBtn) weeklyReportCopyBtn.addEventListener('click', copyWeeklyReportText);
-if (weeklyReportOverlay) {
-  weeklyReportOverlay.addEventListener('click', (e) => {
-    if (e.target === weeklyReportOverlay) closeWeeklyReportOverlay();
-  });
-  weeklyReportOverlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeWeeklyReportOverlay();
-  });
+  if (weeklyReportBtn) weeklyReportBtn.addEventListener('click', openWeeklyReportOverlay);
+  if (weeklyReportClose) weeklyReportClose.addEventListener('click', closeWeeklyReportOverlay);
+  if (weeklyReportCopyBtn) weeklyReportCopyBtn.addEventListener('click', copyWeeklyReportText);
+  if (weeklyReportOverlay) {
+    weeklyReportOverlay.addEventListener('click', (e) => {
+      if (e.target === weeklyReportOverlay) closeWeeklyReportOverlay();
+    });
+    weeklyReportOverlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeWeeklyReportOverlay();
+    });
+  }
 }

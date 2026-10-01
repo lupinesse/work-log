@@ -8,12 +8,14 @@
  * Pure helpers (locationFor, nextLocation, WORK_LOCATIONS) live in pure-fns.js
  * and are unit-tested; this module is the localStorage + DOM glue around them.
  *
- * The storage key (STORE_LOCATION) is declared in 01-state.js alongside the
- * other wl_*_v1 keys. It must live there, not here: modules are concatenated in
- * filename order, and render() (04-render.js) calls renderLocation() during boot
- * — before this file's top-level code would run — so a const declared here would
- * be in the temporal dead zone at that point.
+ * The storage key (STORE_LOCATION) is declared in app-constants.js alongside the
+ * other wl_*_v1 keys.
  */
+
+import { dk, locationFor, nextLocation, WORK_LOCATIONS } from './pure-fns.js';
+import { wlLog } from './logger.js';
+import { STORE_LOCATION } from './app-constants.js';
+import { getViewDate } from './state.js';
 
 /**
  * Reads the stored location map from localStorage.
@@ -21,7 +23,7 @@
  * so a single bad write can never break the header render.
  * @returns {Record<string, string>} Date-key → location-id map.
  */
-function loadLocationMap() {
+export function loadLocationMap() {
   const raw = localStorage.getItem(STORE_LOCATION);
   if (!raw) return {};
   try {
@@ -38,7 +40,7 @@ function loadLocationMap() {
  * @param {Record<string, string>} map - Date-key → location-id map.
  * @returns {void}
  */
-function saveLocationMap(map) {
+export function saveLocationMap(map) {
   localStorage.setItem(STORE_LOCATION, JSON.stringify(map));
 }
 
@@ -46,8 +48,8 @@ function saveLocationMap(map) {
  * Resolves the work location for the currently viewed day.
  * @returns {string} A location id present in WORK_LOCATIONS.
  */
-function getViewLocation() {
-  return locationFor(loadLocationMap(), dk(viewDate));
+export function getViewLocation() {
+  return locationFor(loadLocationMap(), dk(getViewDate()));
 }
 
 /**
@@ -55,8 +57,8 @@ function getViewLocation() {
  * persists it, logs the decision, and re-renders the header button.
  * @returns {void}
  */
-function toggleViewLocation() {
-  const dateKey = dk(viewDate);
+export function toggleViewLocation() {
+  const dateKey = dk(getViewDate());
   const map = loadLocationMap();
   const updated = nextLocation(locationFor(map, dateKey));
   // Write a fresh copy rather than mutating the loaded object in place.
@@ -70,7 +72,7 @@ function toggleViewLocation() {
  * No-ops when the button is absent (e.g. in a reduced test DOM).
  * @returns {void}
  */
-function renderLocation() {
+export function renderLocation() {
   const btn = document.getElementById('dateNavLocation');
   if (!btn) return;
   const loc = getViewLocation();
@@ -89,7 +91,7 @@ function renderLocation() {
  * handlers. Safe to call when the button is missing.
  * @returns {void}
  */
-function initLocation() {
+export function initLocation() {
   const btn = document.getElementById('dateNavLocation');
   if (!btn) return;
   btn.addEventListener('click', toggleViewLocation);
