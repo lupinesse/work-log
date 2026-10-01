@@ -167,7 +167,7 @@ function openTrackerForm() {
   if (!formEl) return;
   _trackerFormOpen = true;
   formEl.style.display = '';
-  const defaultColor = categories[0] ? categories[0].color : '#378ADD';
+  const defaultColor = getCategories()[0] ? getCategories()[0].color : '#378ADD';
   formEl.innerHTML = `
     &lt;div class="tr-form">
       &lt;div class="tr-form-row">
@@ -183,7 +183,7 @@ function openTrackerForm() {
       &lt;div class="tr-form-row">
         &lt;label class="tr-form-lbl">Categories to count&lt;/label>
         &lt;div class="tr-form-tags" id="trFormTags">
-          ${pickableCategories(categories)
+          ${pickableCategories(getCategories())
             .map(
               (c) =>
                 `&lt;label class="tr-tag-check">

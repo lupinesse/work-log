@@ -59,7 +59,7 @@ function patchCarriedTasks() {
   planTasks.forEach((task) => {
     if (task.billable === undefined) task.billable = true;
   });
-  categories.forEach((cat) => {
+  getCategories().forEach((cat) => {
     if (cat.billable === undefined) cat.billable = true;
   });
 

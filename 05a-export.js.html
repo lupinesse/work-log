@@ -185,7 +185,7 @@ function exportBackup() {
   const { payload, dropped } = buildBackupPayload(
     {
       entries: getEntries(),
-      categories,
+      categories: getCategories(),
       planTasks,
       blocks,
       pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
