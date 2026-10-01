@@ -66,10 +66,13 @@ export const DEST_FILE = '.portable-dest';
  * `12d-weeklyreport.js` depends on `pure-fns-weeklyreport.js`,
  * `pure-fns-format.js`, `logger.js`, and `state.js`, so it is listed after
  * all of them.
+ * `00-config.js` has no dependencies on anything else in the list, so its
+ * position doesn't matter — listed first for clarity.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
 export const LEAF_MODULES = [
+  '00-config.js',
   'app-constants.js',
   'state.js',
   '05b-filesystem.js',
