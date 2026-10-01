@@ -281,6 +281,21 @@ describe('loadLogNotes()', () => {
     assert.deepEqual(plain(sandbox.logNotes), stored);
   });
 
+  // `null` is what getItem returns for a missing key; the empty string is a
+  // key that exists but holds nothing. Both must reset whatever was held.
+  for (const [label, storedValue] of [
+    ['no value (null)', null],
+    ['an empty string', ''],
+  ]) {
+    it(`replaces the held notes with an empty list when the store holds ${label}`, () => {
+      const store = storedValue === null ? {} : { wl_lognotes_v1: storedValue };
+      const { sandbox, warnings } = loadWithNotesStore(store, [{ id: 'stale' }]);
+      sandbox.loadLogNotes();
+      assert.deepEqual(plain(sandbox.logNotes), []);
+      assert.deepEqual(warnings, [], 'an empty store is normal, not a parse failure');
+    });
+  }
+
   it('treats a stored value that is not an array as no notes', () => {
     const { sandbox } = loadWithNotesStore({ wl_lognotes_v1: JSON.stringify({ id: 'n1' }) }, [
       { id: 'stale' },
