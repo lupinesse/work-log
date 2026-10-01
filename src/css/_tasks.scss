@@ -39,8 +39,8 @@
 }
 
 .jira-badge-new {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .jira-badge-dup {
@@ -59,13 +59,13 @@
 }
 
 .jira-badge-status-blocked {
-  background: rgba(198, 40, 40, 0.12);
-  color: #c62828;
+  background: var(--danger-bg);
+  color: var(--color-error);
 }
 
 .jira-badge-status-pending {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .jira-task-rows {
