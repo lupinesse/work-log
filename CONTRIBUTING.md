@@ -302,7 +302,7 @@ npm run test:commitlint  # Commitlint self-test (.github/scripts/check-commitlin
 npm run test:actionlint  # Workflow lint + self-test (needs the actionlint binary)
 npm run test:arrow-param-count  # Fails if src/js/ gains a new single-letter arrow param
 ```
-`npm test` runs the unit tests, smoke tests, and CI script tests together.
+`npm test` runs the unit tests, smoke tests, and CI script tests together. The smoke tests serve the built `script.js`/`styles.css`, so `npm run test:smoke` (and therefore `npm test`) rebuilds first via `pretest:smoke`; a fresh clone needs no manual `npm run build`.
 
 ### Workflow linting
 
