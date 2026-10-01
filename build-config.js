@@ -80,6 +80,11 @@ export const DEST_FILE = '.portable-dest';
  * `logger.js`, so it is listed after all of them.
  * `08a-pomo-dashboard.js` depends on `pure-fns.js`, `state.js`, and
  * `pomo-storage.js`, so it is listed after all of them.
+ * `01c-save.js` depends on `app-constants.js`, `state.js`, and `logger.js`,
+ * so it is listed after all of them.
+ * `10b-signifiers.js` depends on `01c-save.js`, `state.js`, `logger.js`,
+ * `pure-fns.js` (for `escHtml`), and `signifiers.js`, so it is listed after
+ * all of them.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -89,6 +94,7 @@ export const LEAF_MODULES = [
   'state.js',
   '05b-filesystem.js',
   'logger.js',
+  '01c-save.js',
   'pure-fns-backup.js',
   'pure-fns-epics.js',
   'pure-fns-export.js',
@@ -107,6 +113,7 @@ export const LEAF_MODULES = [
   '04b-render-stats.js',
   '12b-changelog-data.js',
   'signifiers.js',
+  '10b-signifiers.js',
   '25-rollingsummary.js',
   '26-gofore-timesheet.js',
   '22-trackers.js',
