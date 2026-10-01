@@ -418,7 +418,7 @@ setTimeout(() => {
     // Persistent state counts (from localStorage after load + migration)
     entries: getEntries().length,
     categories: getCategories().length,
-    planTasks: planTasks.length,
+    planTasks: getPlanTasks().length,
     blocks: getBlocks().length,
     // Runtime state
     timer: getActiveTimer() ? 'active' : 'idle',

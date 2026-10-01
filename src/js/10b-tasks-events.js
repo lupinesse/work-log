@@ -44,7 +44,7 @@ function bindPlanEvents(lists) {
   });
   qa('.plan-cat-picker .cat-opt').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       if (task) {
         task.tag = btn.dataset.cat;
         savePlan();
@@ -80,7 +80,7 @@ function bindPlanEvents(lists) {
         markInputInvalid(input);
         return;
       }
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       if (task) task.tag = category.id;
       save();
       savePlan();
@@ -108,7 +108,7 @@ function bindPlanEvents(lists) {
   // Status change — handles pending/blocked entry creation and in-flight comment carry-over
   qa('.plan-status').forEach((sel) => {
     sel.addEventListener('change', () => {
-      const task = planTasks.find((task) => task.id === sel.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === sel.dataset.pid);
       if (!task) return;
       const prevStatus = task.status;
       const newStatus = sel.value;
@@ -127,14 +127,14 @@ function bindPlanEvents(lists) {
 
       // If child goes inprogress, promote parent too (unless already done)
       if (newStatus === 'inprogress' && task.parentId) {
-        const parent = planTasks.find((planTask) => planTask.id === task.parentId);
+        const parent = getPlanTasks().find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status === 'todo') {
           parent.status = 'inprogress';
         }
       }
       // When marking done, retire older versions of the same task
       if (newStatus === 'done') {
-        planTasks
+        getPlanTasks()
           .filter(
             (planTask) =>
               planTask.id !== task.id &&
@@ -148,9 +148,9 @@ function bindPlanEvents(lists) {
       }
       // Auto-complete parent when all its children are done
       if (newStatus === 'done' && task.parentId) {
-        const parent = planTasks.find((planTask) => planTask.id === task.parentId);
+        const parent = getPlanTasks().find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status !== 'done') {
-          const siblings = planTasks.filter(
+          const siblings = getPlanTasks().filter(
             (child) => child.parentId === parent.id && child.date === task.date
           );
           if (
@@ -252,7 +252,7 @@ function bindPlanEvents(lists) {
         renderPlan();
         return;
       }
-      const task = planTasks.find((task) => task.id === editOk.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === editOk.dataset.pid);
       if (task) task.text = text;
       editingPlanId = null;
       savePlan();
@@ -282,7 +282,7 @@ function bindPlanEvents(lists) {
   // Start timer from task
   qa('.plan-log-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       const text = btn.dataset.text;
       const tag = task ? task.tag || 'other' : getSelectedTag();
       if (getActiveTimer()) stopTimer();
@@ -300,7 +300,7 @@ function bindPlanEvents(lists) {
   // Delete task (children become orphaned top-level tasks)
   qa('.plan-del-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      planTasks = planTasks.filter((task) => task.id !== btn.dataset.pid);
+      setPlanTasks(getPlanTasks().filter((task) => task.id !== btn.dataset.pid));
       savePlan();
       renderPlan();
     });
@@ -330,8 +330,8 @@ function bindPlanEvents(lists) {
         const text = inp.value.trim();
         if (!text) return;
         const parentId = inp.closest('.plan-split-row').dataset.parent;
-        const parent = planTasks.find((task) => task.id === parentId);
-        planTasks.push({
+        const parent = getPlanTasks().find((task) => task.id === parentId);
+        getPlanTasks().push({
           id: Date.now() + '',
           text,
           status: 'todo',

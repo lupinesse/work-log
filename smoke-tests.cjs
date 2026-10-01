@@ -2825,7 +2825,10 @@ async function runTests() {
     const proxiedRequests = [];
     const directAnthropicRequests = [];
     page.on('request', (request) => {
-      if (request.url().includes('api.anthropic.com')) directAnthropicRequests.push(request.url());
+      // Compare the parsed host, not a substring: a proxy URL may merely mention the name.
+      if (new URL(request.url()).hostname === 'api.anthropic.com') {
+        directAnthropicRequests.push(request.url());
+      }
     });
     await page.route('**/api/ai', async (route) => {
       proxiedRequests.push({ headers: route.request().headers() });
@@ -3789,6 +3792,60 @@ async function runTests() {
       )
     );
     await page.close();
+  }
+
+  // ── 47. Deleting a plan task drops it from the shared planTasks array (#423) ─
+  console.log('\n47. Plan-task delete paths remove the task');
+  {
+    const today = dk(new Date());
+    const seedTasks = () => [
+      { id: 'pdel1', text: 'Delete me', status: 'todo', date: today, tag: 'work' },
+      { id: 'pdel2', text: 'Keep me', status: 'todo', date: today, tag: 'work' },
+    ];
+    const taskIds = (page) =>
+      page.evaluate(() => window.__wl.getState().planTasks.map((task) => task.id));
+    const storedIds = (page) =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem('wl_plan_v1') || '[]').map((task) => task.id)
+      );
+
+    // Board delete button (10b-tasks-events.js).
+    {
+      const page = await freshPage(ctx, { wl_plan_v1: seedTasks(), wl_cats_v1: CATS });
+      await page.waitForSelector('.plan-del-btn[data-pid="pdel1"]', {
+        state: 'attached',
+        timeout: 3000,
+      });
+      await page.evaluate(() => document.querySelector('.plan-del-btn[data-pid="pdel1"]').click());
+      assert(
+        'The task delete button removes the task and keeps the others',
+        JSON.stringify(await taskIds(page)) === '["pdel2"]',
+        JSON.stringify(await taskIds(page))
+      );
+      assert(
+        'The deleted task is gone from storage too',
+        JSON.stringify(await storedIds(page)) === '["pdel2"]'
+      );
+      await page.close();
+    }
+
+    // Weekly plan review "drop" (10e-weeklyplan-review.js): the list handler is
+    // delegated, so a drop button added to the list is handled like a rendered one.
+    {
+      const page = await freshPage(ctx, { wl_plan_v1: seedTasks(), wl_cats_v1: CATS });
+      await page.evaluate(() => {
+        const list = document.getElementById('planReviewList');
+        list.innerHTML =
+          '<button type="button" class="plan-review-drop" data-id="pdel1">drop</button>';
+        list.querySelector('.plan-review-drop').click();
+      });
+      assert(
+        'Dropping a task in the weekly review removes it and keeps the others',
+        JSON.stringify(await taskIds(page)) === '["pdel2"]',
+        JSON.stringify(await taskIds(page))
+      );
+      await page.close();
+    }
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

@@ -244,7 +244,7 @@ function renderMonthlySummary(sumEl, monthPrefix) {
  */
 function renderMonthlyTasks(taskEl, monthPrefix) {
   if (!taskEl) return;
-  const { open, done, migrated } = calcMonthTaskCounts(planTasks, monthPrefix);
+  const { open, done, migrated } = calcMonthTaskCounts(getPlanTasks(), monthPrefix);
 
   taskEl.innerHTML = `
     <div class="ml-sum-title">Task inventory</div>

@@ -105,7 +105,7 @@ function createRestartedEntry(text, tag) {
 function isEntryBillable(entry) {
   if (entry.signifier === 'cancelled') return false;
   if (entry.billable !== undefined) return entry.billable;
-  const task = planTasks.find(
+  const task = getPlanTasks().find(
     (planTask) => planTask.text.toLowerCase().trim() === entry.text.toLowerCase().trim()
   );
   // `!== false` (not `=== true`) — undefined means billable (see Assumption above).

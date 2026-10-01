@@ -12,7 +12,7 @@ let _boardDragTaskId = null;
  * @returns {void}
  */
 function moveTaskToColumn(taskId, newStatus) {
-  const t = planTasks.find((planTask) => planTask.id === taskId);
+  const t = getPlanTasks().find((planTask) => planTask.id === taskId);
   if (!t) {
     wlLog.warn('board: moveTaskToColumn — task not found', { id: taskId });
     return;

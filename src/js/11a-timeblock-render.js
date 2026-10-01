@@ -152,7 +152,7 @@ function renderTimeblock() {
   dayBlocks.forEach((block) => {
     const cat = getCat(block.tag || 'other');
     const el = document.createElement('div');
-    const isDone = planTasks.some(
+    const isDone = getPlanTasks().some(
       (task) =>
         task.date === dateKey &&
         task.text.toLowerCase() === block.text.toLowerCase() &&

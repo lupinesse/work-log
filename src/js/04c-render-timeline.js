@@ -374,7 +374,7 @@ function bindTimelineEntryEvents(timelineEl) {
           getEntries().forEach((sameEntry) => {
             if (sameEntry.text.toLowerCase() === origLower) sameEntry.text = newText;
           });
-          planTasks.forEach((task) => {
+          getPlanTasks().forEach((task) => {
             if (task.text.toLowerCase() === origLower) task.text = newText;
           });
           save();

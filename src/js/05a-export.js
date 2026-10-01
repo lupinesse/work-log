@@ -39,7 +39,7 @@ function exportTxt() {
   // appended as indented lines.
   const { catOrder, catGrouped } = groupEntriesByCategory(dayEntries);
   const taskNotes = mergeNoteMaps(
-    buildTaskNoteMap(planTasks, dateStr),
+    buildTaskNoteMap(getPlanTasks(), dateStr),
     buildEntryNoteMap(dayEntries)
   );
   const taskLinks = buildEntryLinkMap(dayEntries);
@@ -155,7 +155,7 @@ function exportBackup() {
     {
       entries: getEntries(),
       categories: getCategories(),
-      planTasks,
+      planTasks: getPlanTasks(),
       blocks: getBlocks(),
       pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
       devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),

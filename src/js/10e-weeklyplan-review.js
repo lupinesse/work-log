@@ -64,7 +64,7 @@ function buildPlanReviewRowHtml(task) {
  */
 function renderPlanReviewList() {
   const { weekStartKey, weekEndKey } = planReviewWeekBounds();
-  const upcoming = findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey);
+  const upcoming = findWeeklyPlanReviewTasks(getPlanTasks(), weekStartKey, weekEndKey);
 
   const subtitleEl = document.getElementById('planReviewSubtitle');
   const listEl = document.getElementById('planReviewList');
@@ -122,7 +122,7 @@ function renderPlanReviewReminder() {
   const alreadyReviewed =
     localStorage.getItem('wl_plan_review_week') === currentPlanReviewWeekKey();
   const { weekStartKey, weekEndKey } = planReviewWeekBounds();
-  const upcoming = findWeeklyPlanReviewTasks(planTasks, weekStartKey, weekEndKey);
+  const upcoming = findWeeklyPlanReviewTasks(getPlanTasks(), weekStartKey, weekEndKey);
   if (alreadyReviewed || !upcoming.length) {
     banner.style.display = 'none';
     return;
@@ -168,7 +168,7 @@ if (planReviewList) {
     const doneBtn = e.target.closest('.plan-review-done');
     const dropBtn = e.target.closest('.plan-review-drop');
     if (doneBtn) {
-      const task = planTasks.find((t) => t.id === doneBtn.dataset.id);
+      const task = getPlanTasks().find((t) => t.id === doneBtn.dataset.id);
       if (task) {
         task.status = 'done';
         if (!task.completedAt) task.completedAt = Date.now();
@@ -177,7 +177,7 @@ if (planReviewList) {
       }
       renderPlanReviewList();
     } else if (dropBtn) {
-      planTasks = planTasks.filter((t) => t.id !== dropBtn.dataset.id);
+      setPlanTasks(getPlanTasks().filter((t) => t.id !== dropBtn.dataset.id));
       savePlan();
       renderPlan();
       renderPlanReviewList();

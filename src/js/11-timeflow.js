@@ -386,7 +386,7 @@ function bindFlowNoteEvents(pane) {
       const tid = btn.dataset.taskid;
       const ta = btn.closest('.tf-task-note-edit').querySelector('.tf-task-note-input');
       const val = ta.value.trim();
-      const task = planTasks.find((planTask) => planTask.id === tid);
+      const task = getPlanTasks().find((planTask) => planTask.id === tid);
       if (task) {
         if (val) task.note = val;
         else delete task.note;
@@ -401,7 +401,7 @@ function bindFlowNoteEvents(pane) {
   pane.querySelectorAll('.tf-task-note-del').forEach((btn) => {
     btn.addEventListener('click', () => {
       const tid = btn.dataset.taskid;
-      const task = planTasks.find((planTask) => planTask.id === tid);
+      const task = getPlanTasks().find((planTask) => planTask.id === tid);
       if (task) {
         delete task.note;
         savePlan();
@@ -464,7 +464,7 @@ function renderFlowView(dateKey) {
       // Look up the task object for task-type items (status update rows)
       const taskObj =
         item.type === 'task' && item.taskId
-          ? planTasks.find((task) => task.id === item.taskId)
+          ? getPlanTasks().find((task) => task.id === item.taskId)
           : null;
 
       let durationMin = 0;
