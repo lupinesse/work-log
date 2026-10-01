@@ -149,3 +149,23 @@ describe('_heroFillStopped elapsed display (#488)', () => {
     assert.equal(elapsedEl.textContent, '00:00');
   });
 });
+
+describe('heroEnterStopped (#487)', () => {
+  it('switches to the stopped state without rendering the card itself', () => {
+    const sandbox = loadHeroSandbox({ setTimeout: () => 1, clearTimeout: () => {} });
+    let renders = 0;
+    sandbox.renderHeroCard = () => (renders += 1);
+    sandbox.heroEnterStopped({ id: 'e1', text: 'x', tag: 'other', ts: 0, tsEnd: 1000 });
+
+    assert.equal(renders, 0, 'stopTimer() renders once via render()');
+    assert.equal(sandbox.heroGetState(), 'stopped');
+    sandbox._heroCancelStoppedTimer();
+  });
+
+  it('still returns to idle through the auto-dismiss timer path', () => {
+    const sandbox = loadHeroSandbox({ setTimeout: () => 1, clearTimeout: () => {} });
+    sandbox.heroEnterStopped({ id: 'e1', text: 'x', tag: 'other', ts: 0, tsEnd: 1000 });
+    sandbox._heroCancelStoppedTimer();
+    assert.equal(sandbox.heroGetState(), 'idle');
+  });
+});
