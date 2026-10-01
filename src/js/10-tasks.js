@@ -1,8 +1,7 @@
 /* ── Today's tasks — state and persistence ── */
 const STORE_PLAN = 'wl_plan_v1';
 
-// planTasks lives in state.js (#423) — getPlanTasks()/setPlanTasks(). Each item:
-// `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority], [note] }`
+// planTasks lives in state.js (#423) — getPlanTasks()/setPlanTasks().
 let planCollapsed = readCollapseState('planSection', false);
 let pendingCollapsed = readCollapseState('pendingSection', true);
 // eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
@@ -29,9 +28,11 @@ let doneHistoryOpen = false;
 let wipWarnDismissed = false;
 
 /**
- * Loads plan tasks from localStorage into `planTasks`, filtering out invalid
- * entries via `validPlanTask`. Drops are reported via wlLog.warn so data-quality
- * issues are visible in DevTools. Resets to empty array on parse error.
+ * Loads plan tasks from localStorage into the shared plan-task list, filtering
+ * out invalid entries via `validPlanTask`. Drops are reported via wlLog.warn so
+ * data-quality issues are visible in DevTools. Resets to empty array on parse error.
+ * Each task is
+ * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority], [note] }`.
  * @returns {void}
  */
 function loadPlan() {
