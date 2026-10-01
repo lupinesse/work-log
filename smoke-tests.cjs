@@ -2821,6 +2821,38 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Section 41b. Notion calls go through the local server proxy (#491) ───
+  console.log('\n41b. Notion requests use the server proxy');
+  {
+    const page = await freshPage(ctx);
+    const requestedUrls = [];
+    page.on('request', (request) => requestedUrls.push(request.url()));
+    await page.route('**/api/notion-ai', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ content: [{ type: 'text', text: 'ok' }] }),
+      })
+    );
+    await page.evaluate(() => window._wlNotion.callClaudeWithNotion('ping'));
+    const isServerEndpoint = (suffix) => (url) => new URL(url).pathname === suffix;
+    assert(
+      'Notion AI call hits the server /api/notion-ai endpoint',
+      requestedUrls.filter(isServerEndpoint('/api/notion-ai')).length === 1,
+      `requests: ${JSON.stringify(requestedUrls)}`
+    );
+    const directCalls = requestedUrls.filter((url) => {
+      const { hostname } = new URL(url);
+      return hostname.endsWith('notion.com') || hostname.endsWith('anthropic.com');
+    });
+    assert(
+      'No direct request to a Notion or Anthropic host from the browser',
+      directCalls.length === 0,
+      `direct requests: ${JSON.stringify(directCalls)}`
+    );
+    await page.close();
+  }
+
   // ── Today's Flow ──────────────────────────────────────────────────────────
   console.log("\nToday's Flow");
   {
