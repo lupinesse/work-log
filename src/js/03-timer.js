@@ -451,7 +451,7 @@ function logUtilEntry(kind) {
   const labelMap = { break: '☕ Break', lunch: '🥪 Lunch', meeting: '📅 Meeting' };
   const tagMap = { break: 'other', lunch: 'other', meeting: 'meeting' };
   const text = labelMap[kind] || kind;
-  const tag = tagMap[kind] || (categories[0] ? categories[0].id : 'other');
+  const tag = tagMap[kind] || (getCategories()[0] ? getCategories()[0].id : 'other');
 
   const entry = {
     id: Date.now() + '',

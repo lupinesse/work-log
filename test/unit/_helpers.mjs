@@ -49,9 +49,10 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  * Gives a VM sandbox the accessor pairs that state.js provides in the real
  * bundle (#423), each backed by the sandbox's own property of the same name:
  * `getEntries`/`setEntries` over `sandbox.entries`, and
- * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`. The app files
+ * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`, and
+ * `getCategories`/`setCategories` over `sandbox.categories`. The app files
  * under test read and write these only through the accessors, so a sandbox
- * that sets `entries` or `activeTimer` keeps working unchanged: a
+ * that sets `entries`, `activeTimer` or `categories` keeps working unchanged: a
  * `setActiveTimer(next)` shows up as `sandbox.activeTimer`, and vice versa.
  *
  * Each variable moved onto state.js adds one pair here, so a test never needs
@@ -70,6 +71,10 @@ export function withStateAccessors(sandbox) {
   sandbox.getActiveTimer = () => sandbox.activeTimer;
   sandbox.setActiveTimer = (next) => {
     sandbox.activeTimer = next;
+  };
+  sandbox.getCategories = () => sandbox.categories;
+  sandbox.setCategories = (next) => {
+    sandbox.categories = next;
   };
   return sandbox;
 }
