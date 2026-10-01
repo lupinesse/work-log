@@ -3596,7 +3596,7 @@ async function runTests() {
     assert('Choosing an epic in the dropdown selects it', (await selectedTag()) === 'work');
 
     await page.waitForSelector('.qp-item', { state: 'attached', timeout: 3000 });
-    await page.evaluate(() => document.querySelector('.qp-item .qp-item-text').click());
+    await page.evaluate(() => document.querySelector('.qp-item .qp-item__text').click());
     assert(
       "Clicking a recent-task pill selects that task's epic",
       (await selectedTag()) === 'other',

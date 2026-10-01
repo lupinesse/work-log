@@ -29,6 +29,7 @@ const STUBS = `
   var getIterationExpiry = () => null;
   var escHtml = (text) => String(text);
   var selectedTag = 'other';
+  var setSelectedTag = (tag) => { selectedTag = tag; };
   var tagRowRenders = 0;
   var renderTagRow = () => { tagRowRenders += 1; };
 `;

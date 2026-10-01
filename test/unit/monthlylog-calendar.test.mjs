@@ -19,6 +19,8 @@ const STUBS = `
   var getEntries = () => entries;
   var planTasks = [];
   var viewDate = new Date(2026, 0, 1);
+  var getViewDate = () => viewDate;
+  var setViewDate = (date) => { viewDate = date; };
   var navigatedToLog = 0;
   var renderCalls = 0;
   var monthlyLogRenders = 0;
