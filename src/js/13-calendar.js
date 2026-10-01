@@ -292,6 +292,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     blocks,
     activeTimer: () => getActiveTimer(),
     getTimerInterval,
+    getSelectedTag,
     tbStartBlock,
     load,
     save,
