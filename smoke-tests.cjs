@@ -2266,14 +2266,13 @@ async function runTests() {
     await page.close();
   }
 
-  // ── Timeline entry text with a nested Jira link (#432 review) ──────────────
+  // ── Timeline entry text with a Jira link (#432 review) ─────────────────────
   // jiraTicketHtml() renders a real, focusable <a> for ticket-prefixed entry
   // text. Nesting a focusable element inside a role="button" container is an
-  // ARIA violation (APG §3.5) the initial #431 fix introduced without
-  // realising it — .etext must not carry role="button"/tabindex for such
-  // entries, and the link's own Enter-press must not bubble up and also
-  // open the rename editor underneath it.
-  console.log('\nTimeline entry text with a nested Jira link');
+  // ARIA violation (APG §3.5), so the link is rendered as a sibling of .etext
+  // and .etext keeps its button semantics. Activating the link must not also
+  // open the rename editor.
+  console.log('\nTimeline entry text with a Jira link');
   {
     const today = dk(new Date());
     const page = await freshPage(ctx, {
@@ -2285,35 +2284,32 @@ async function runTests() {
     await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
     await page.waitForSelector('#tfLogPane:visible');
 
-    const linkPresent = await page.evaluate(
-      () => !!document.querySelector('.etext[data-id="kb2"] .jira-key-link')
-    );
-    assert('Ticket-prefixed entry renders the Jira link', linkPresent);
-
-    const attrs = await page.evaluate(() => {
-      const el = document.querySelector('.etext[data-id="kb2"]');
-      return { role: el?.getAttribute('role'), tabindex: el?.getAttribute('tabindex') };
+    const placement = await page.evaluate(() => {
+      const link = document.querySelector('.jira-key-link');
+      const etext = document.querySelector('.etext[data-id="kb2"]');
+      return {
+        linkPresent: !!link,
+        linkInsideEtext: !!etext?.contains(link),
+        role: etext?.getAttribute('role'),
+        tabindex: etext?.getAttribute('tabindex'),
+      };
     });
+    assert('Ticket-prefixed entry renders the Jira link', placement.linkPresent);
     assert(
-      '.etext has no role="button"/tabindex when it wraps a focusable Jira link',
-      attrs.role === null && attrs.tabindex === null,
-      `got ${JSON.stringify(attrs)}`
+      'Jira link is a sibling of .etext, not nested inside the role="button" element',
+      !placement.linkInsideEtext && placement.role === 'button' && placement.tabindex === '0',
+      `got ${JSON.stringify(placement)}`
     );
 
-    // Dispatch a synthetic (untrusted) Enter keydown targeting the nested
-    // link — bubbles up to exercise our own listener's guard exactly like a
-    // real keypress would, without page.keyboard.press()'s real/trusted
-    // input, which would trigger the link's actual target="_blank"
-    // navigation (JIRA_BASE is an unresolvable placeholder domain here).
+    // Synthetic (untrusted) Enter keydown on the link: a real keypress would
+    // trigger the link's target="_blank" navigation to the placeholder
+    // JIRA_BASE domain.
     const renameOpenedByLink = await page.evaluate(() => {
-      const link = document.querySelector('.etext[data-id="kb2"] .jira-key-link');
+      const link = document.querySelector('.jira-key-link');
       link?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       return !!document.querySelector('.etext[data-id="kb2"] .etext-input');
     });
-    assert(
-      'Enter on the nested Jira link does not also open the rename editor',
-      !renameOpenedByLink
-    );
+    assert('Enter on the Jira link does not also open the rename editor', !renameOpenedByLink);
 
     await page.close();
   }
