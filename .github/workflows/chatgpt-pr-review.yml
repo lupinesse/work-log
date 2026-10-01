@@ -80,7 +80,7 @@ jobs:
     steps:
       - name: Decide whether to run
         id: gate
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const LABEL           = 'chatgpt-review';
@@ -168,7 +168,7 @@ jobs:
 
       - name: Check out repository
         if: steps.gate.outputs.should_run == 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -186,14 +186,14 @@ jobs:
       - name: Mint ChatGPT Reviewer App token
         id: chatgpt-token
         if: steps.gate.outputs.should_run == 'true'
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
 
       - name: Set up Node.js
         if: always() && steps.gate.outputs.should_run == 'true'
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
@@ -223,7 +223,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -239,13 +239,13 @@ jobs:
 
       - name: Mint Claude Reviewer App token
         id: claude-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
@@ -275,12 +275,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
@@ -309,7 +309,7 @@ jobs:
       - name: Mint Claude Reviewer App token
         id: claude-token
         if: steps.key-check.outputs.present == 'true'
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CLAUDE_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CLAUDE_REVIEWER_PRIVATE_KEY }}
@@ -338,7 +338,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -354,13 +354,13 @@ jobs:
 
       - name: Mint ChatGPT Reviewer App token
         id: chatgpt-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ secrets.CHATGPT_REVIEWER_APP_ID }}
           private-key: ${{ secrets.CHATGPT_REVIEWER_PRIVATE_KEY }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
 
@@ -395,7 +395,7 @@ jobs:
 
     steps:
       - name: Check for unresolved ChatGPT threads
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const result = await github.graphql(`
@@ -463,7 +463,7 @@ jobs:
 
     steps:
       - name: Check Claude's convergence verdict
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             try {
