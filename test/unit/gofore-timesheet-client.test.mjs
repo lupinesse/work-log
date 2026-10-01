@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, withEntriesAccessors } from './_helpers.mjs';
 
 const clientSrc = readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8');
 const HOUR = 3600000;
@@ -56,7 +56,7 @@ function loadSandbox(options) {
     String,
     JSON,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withEntriesAccessors(sandbox));
   vm.runInContext(loadPureFnsScriptSource(), sandbox);
   vm.runInContext(clientSrc, sandbox);
   return { sandbox, elements };

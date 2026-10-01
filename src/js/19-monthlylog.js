@@ -23,7 +23,7 @@ function mlDaysInMonth(y, m) {
  */
 function mlHoursForDay(dateKey) {
   return (
-    entries
+    getEntries()
       .filter((e) => e.date === dateKey && e.signifier !== 'cancelled' && e.tsEnd)
       .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0) / 3600000
   );
@@ -197,7 +197,7 @@ function calcMonthTaskCounts(allTasks, monthPrefix) {
 function renderMonthlySummary(sumEl, monthPrefix) {
   if (!sumEl) return;
   const { totalMs, billableMs, topTag } = calcMonthSummaryStats(
-    entries,
+    getEntries(),
     monthPrefix,
     isEntryBillable
   );

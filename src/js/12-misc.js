@@ -12,7 +12,7 @@ function loadDistractions() {
 }
 function saveDistraction(note) {
   const entry = activeTimer
-    ? entries.find((logEntry) => logEntry.id === activeTimer.entryId)
+    ? getEntries().find((logEntry) => logEntry.id === activeTimer.entryId)
     : null;
   const d = {
     ts: Date.now(),
@@ -166,7 +166,9 @@ function renderParked() {
         btn.classList.remove('active');
         return;
       }
-      const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
+      const liveEntry = activeTimer
+        ? getEntries().find((en) => en.id === activeTimer.entryId)
+        : null;
       parkedThoughts.push({
         id: Date.now() + '',
         text,
@@ -195,7 +197,9 @@ function renderParked() {
     if (event.key === 'Enter') {
       const text = inp.value.trim();
       if (!text) return;
-      const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
+      const liveEntry = activeTimer
+        ? getEntries().find((en) => en.id === activeTimer.entryId)
+        : null;
       parkedThoughts.push({
         id: Date.now() + '',
         text,
@@ -297,7 +301,7 @@ Requirements:
   btn.addEventListener('click', async (event) => {
     event.stopPropagation();
     if (!activeTimer) return;
-    const entry = entries.find((en) => en.id === activeTimer.entryId);
+    const entry = getEntries().find((en) => en.id === activeTimer.entryId);
     if (!entry) return;
     const taskText = entry.text.trim();
     const cached = getHook(taskText);
@@ -341,7 +345,7 @@ Requirements:
     regenBtn.addEventListener('click', async (event) => {
       event.stopPropagation();
       if (!activeTimer) return;
-      const entry = entries.find((en) => en.id === activeTimer.entryId);
+      const entry = getEntries().find((en) => en.id === activeTimer.entryId);
       if (!entry) return;
       saveHook(entry.text.trim(), null);
       btn.click();

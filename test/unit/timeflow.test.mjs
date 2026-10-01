@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as pureFns from '../../src/js/pure-fns.js';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withEntriesAccessors } from './_helpers.mjs';
 
 const timeflowSrc = readFileSync(join(__dirname, '../../src/js/11-timeflow.js'), 'utf8');
 
@@ -60,7 +60,7 @@ function loadTimeflowSandbox(overrides = {}) {
     fmtHm: (ts) => String(ts),
     ...overrides,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withEntriesAccessors(sandbox));
   vm.runInContext(timeflowSrc, sandbox);
   return sandbox;
 }
@@ -463,7 +463,7 @@ describe('regression #227: autoCarryTasks guard key', () => {
         addEventListener: () => {},
       },
     };
-    vm.createContext(sb);
+    vm.createContext(withEntriesAccessors(sb));
     vm.runInContext(carryFileSrc, sb);
     return { sb, stored };
   }

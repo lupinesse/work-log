@@ -25,7 +25,7 @@ function moveTaskToColumn(taskId, newStatus) {
   // Stop the active timer only if it was tracking this exact task
   const stopTimerIfMatches = () => {
     if (activeTimer) {
-      const timerEntry = entries.find((e) => e.id === activeTimer.entryId);
+      const timerEntry = getEntries().find((e) => e.id === activeTimer.entryId);
       if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
     }
   };
@@ -47,7 +47,7 @@ function moveTaskToColumn(taskId, newStatus) {
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
-    entries.push(entry);
+    getEntries().push(entry);
     save();
     startTimer(entry.id);
   }
@@ -213,7 +213,7 @@ function updateBoardLive() {
     return;
   }
 
-  const liveEntry = entries.find((e) => e.id === activeTimer.entryId);
+  const liveEntry = getEntries().find((e) => e.id === activeTimer.entryId);
   if (!liveEntry) {
     stripEl.hidden = true;
     return;

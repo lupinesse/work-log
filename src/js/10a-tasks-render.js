@@ -209,7 +209,7 @@ function renderTrackRecent() {
   // Collect unique recent entries (deduplicated by lower-cased text, newest first)
   const seen = new Set();
   const recent = [];
-  [...entries]
+  [...getEntries()]
     .filter((entry) => entry.date === todayKey)
     .reverse()
     .forEach((entry) => {
@@ -238,11 +238,11 @@ function renderTrackRecent() {
 
   container.querySelectorAll('.ptr-chip').forEach((chip) => {
     chip.addEventListener('click', () => {
-      const src = entries.find((logEntry) => logEntry.id === chip.dataset.eid);
+      const src = getEntries().find((logEntry) => logEntry.id === chip.dataset.eid);
       if (!src) return;
       if (activeTimer) stopTimer();
       const entry = createRestartedEntry(src.text, src.tag);
-      entries.push(entry);
+      getEntries().push(entry);
       save();
       startTimer(entry.id);
       render();

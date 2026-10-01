@@ -74,7 +74,9 @@ function flatSort(tasks) {
   // Assumption: STATUS_ORDER defines the canonical sort priority for visible task sections.
   // 'done' sorts last so completed work doesn't push active items down.
   const STATUS_ORDER = { inprogress: 0, todo: 1, pending: 2, blocked: 3, done: 4 };
-  const liveEntry = activeTimer ? entries.find((entry) => entry.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer
+    ? getEntries().find((entry) => entry.id === activeTimer.entryId)
+    : null;
   const liveText = liveEntry ? liveEntry.text.toLowerCase() : null;
 
   const parents = tasks.filter((task) => !task.parentId);

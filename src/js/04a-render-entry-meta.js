@@ -136,7 +136,7 @@ function bindEntryMetaEvents(timelineEl) {
   timelineEl.querySelectorAll('.emeta-save').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      const entry = entries.find((logEntry) => logEntry.id === id);
+      const entry = getEntries().find((logEntry) => logEntry.id === id);
       if (entry) {
         const linkVal = document.getElementById('emli-' + id).value.trim();
         const noteVal = document.getElementById('emno-' + id).value.trim();
@@ -154,7 +154,7 @@ function bindEntryMetaEvents(timelineEl) {
   timelineEl.querySelectorAll('.emeta-del').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      const entry = entries.find((logEntry) => logEntry.id === id);
+      const entry = getEntries().find((logEntry) => logEntry.id === id);
       if (entry) {
         delete entry.link;
         delete entry.note;
@@ -176,7 +176,7 @@ function bindEntryMetaEvents(timelineEl) {
   timelineEl.querySelectorAll('.emeta-restart-yes').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.id;
-      const entry = entries.find((logEntry) => logEntry.id === id);
+      const entry = getEntries().find((logEntry) => logEntry.id === id);
       if (entry && _pendingNoteConfirm && _pendingNoteConfirm.id === id) {
         entry.note = _pendingNoteConfirm.note;
         save();

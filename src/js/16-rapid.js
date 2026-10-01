@@ -98,7 +98,7 @@ function _qcLogOnly() {
   };
   if (parsed.signifier) entry.signifier = parsed.signifier;
 
-  entries.push(entry);
+  getEntries().push(entry);
   save();
   wlLog.info('_qcLogOnly: entry created', {
     tag,
@@ -161,7 +161,7 @@ function _qcRenderRunningStrip() {
     return;
   }
 
-  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
@@ -259,7 +259,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
 
   // ── In progress: the currently-running entry (if any) ─────────────────
   const activeEntry = activeTimer
-    ? entries.find((entry) => entry.id === activeTimer.entryId)
+    ? getEntries().find((entry) => entry.id === activeTimer.entryId)
     : null;
 
   /** @type {Object[]} */
@@ -284,7 +284,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   // ── Recent: unique entries from today, excluding the active one ───────
   /** @type {Object[]} */
   const recent = [];
-  [...entries]
+  [...getEntries()]
     .filter(
       (entry) => entry.date === todayKey && entry.id !== (activeTimer ? activeTimer.entryId : '')
     )
@@ -458,7 +458,9 @@ function _qcActivateRow(rowId, text, tag, isActive) {
   if (switching) stopTimer();
 
   // Re-use the existing entry for log entries; always create new for plan tasks.
-  let entry = rowId.startsWith('plan:') ? null : entries.find((logEntry) => logEntry.id === rowId);
+  let entry = rowId.startsWith('plan:')
+    ? null
+    : getEntries().find((logEntry) => logEntry.id === rowId);
 
   if (!entry) {
     entry = {
@@ -468,7 +470,7 @@ function _qcActivateRow(rowId, text, tag, isActive) {
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
-    entries.push(entry);
+    getEntries().push(entry);
     save();
     wlLog.info('_qcActivateRow: new entry created', { rowId, tag, switched: switching });
   } else {

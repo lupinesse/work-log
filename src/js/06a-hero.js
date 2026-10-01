@@ -97,7 +97,7 @@ function _heroFillIdle() {
   const todayKey = dk(new Date());
 
   // Total logged today (ms → "Xh Ym" or "Xm")
-  const totalMs = entries
+  const totalMs = getEntries()
     .filter((entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts)
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 
@@ -107,7 +107,7 @@ function _heroFillIdle() {
   // Last session ended time
   const lastEl = document.getElementById('heroIdleLastSession');
   if (lastEl) {
-    const last = [...entries]
+    const last = [...getEntries()]
       .filter((entry) => entry.date === todayKey && entry.tsEnd)
       .sort((a, b) => b.tsEnd - a.tsEnd)[0];
     lastEl.textContent = last ? `last session ended ${fmtTime(last.tsEnd)}` : '';
@@ -128,7 +128,7 @@ function _heroRenderRecentChips() {
   const seen = new Set();
   /** @type {Array<{text: string, tag: string}>} */
   const recent = [];
-  [...entries].reverse().forEach((entry) => {
+  [...getEntries()].reverse().forEach((entry) => {
     const k = entry.text.toLowerCase();
     if (!seen.has(k)) {
       seen.add(k);
@@ -172,7 +172,7 @@ function _heroRenderRecentChips() {
 /** Updates the running panel: category dot + task title + started-at sub-line. */
 function _heroFillRunning() {
   if (!activeTimer) return;
-  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
 
   _heroSetCategory('heroTaskCategory', entry.tag, true);
@@ -195,7 +195,7 @@ function _heroFillRunning() {
 /** Updates the paused panel with the frozen clock and task details. */
 function _heroFillPaused() {
   if (!activeTimer) return;
-  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
 
   _heroSetCategory('heroPausedCategory', entry.tag, true);
@@ -238,7 +238,7 @@ function _heroFillStopped() {
   const sessEl = document.getElementById('heroStoppedSessions');
   if (sessEl) {
     const count = _heroSessionCount(entry);
-    const todayMs = entries
+    const todayMs = getEntries()
       .filter(
         (logEntry) => logEntry.date === entry.date && logEntry.tsEnd && logEntry.tsEnd > logEntry.ts
       )
@@ -313,7 +313,7 @@ function _heroHandleStart() {
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
-    entries.push(entry);
+    getEntries().push(entry);
     promoteMatchingTaskToInProgress(text);
     save();
     if (activeTimer) stopTimer();
@@ -340,7 +340,7 @@ function _heroHandleStart() {
  */
 function _heroStartFromChip(text, tag) {
   // Find the most recent matching entry; re-use it rather than creating a duplicate
-  const existing = [...entries].reverse().find((logEntry) => logEntry.text === text);
+  const existing = [...getEntries()].reverse().find((logEntry) => logEntry.text === text);
   if (existing && !existing.tsEnd) {
     // Entry already has no end — start timer on it
     promoteMatchingTaskToInProgress(text);
@@ -357,7 +357,7 @@ function _heroStartFromChip(text, tag) {
     ts: safeRoundedStart(),
     date: dk(new Date()),
   };
-  entries.push(entry);
+  getEntries().push(entry);
   promoteMatchingTaskToInProgress(text);
   save();
   if (activeTimer) stopTimer();
@@ -375,7 +375,7 @@ function _heroHandleUndo() {
   _heroCancelStoppedTimer();
 
   if (entry) {
-    entries = entries.filter((logEntry) => logEntry.id !== entry.id);
+    setEntries(getEntries().filter((logEntry) => logEntry.id !== entry.id));
     save();
   }
 
@@ -502,7 +502,7 @@ function _heroBindCatPicker(wrap) {
  */
 function _heroCatSelect(newTag) {
   if (!activeTimer) return;
-  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
   if (!entry) return;
   entry.tag = newTag;
   save();
@@ -532,7 +532,7 @@ function _heroLastNoteText(entryId) {
 function _heroSessionCount(entry) {
   const key = entry.text.toLowerCase();
   const todayKey = entry.date || dk(new Date());
-  return entries.filter(
+  return getEntries().filter(
     (logEntry) => logEntry.date === todayKey && logEntry.text.toLowerCase() === key
   ).length;
 }

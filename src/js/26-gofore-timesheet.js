@@ -16,7 +16,7 @@ const TIMESHEET_ROUTE_NOTE = {
  * @returns {Array<Object>} Timed entries for that day.
  */
 function timedEntriesForDay(dateKey) {
-  return entries.filter(
+  return getEntries().filter(
     (entry) =>
       entry.date === dateKey &&
       entry.tsEnd &&
