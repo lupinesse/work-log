@@ -51,19 +51,14 @@ function createCategory(rawLabel) {
   return category;
 }
 
-// eslint-disable-next-line prefer-const -- reassigned by 04c-render-timeline.js, 05-entries.js, 07-lifecycle.js, and others
-let viewDate = new Date();
-// eslint-disable-next-line prefer-const -- reassigned by 02-utils.js, 04d-render-quickpick.js
-let selectedTag = 'work';
+// viewDate lives in state.js (#423) — getViewDate()/setViewDate().
+// selectedTag lives in state.js (#423) — getSelectedTag()/setSelectedTag().
 let logNotes = [];
-// eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
-let trackers = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
 // categories lives in state.js (#423) — getCategories()/setCategories().
-// eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
-let blocks = [];
+// blocks lives in state.js (#423) — getBlocks()/setBlocks().
 
 /* ── Load / Save ── */
 // Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,

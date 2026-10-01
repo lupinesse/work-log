@@ -1,26 +1,35 @@
-// â”€â”€ 22-trackers.js â€” Custom time-goal progress trackers â”€â”€
+/**
+ * @file 22-trackers.js — Custom time-goal progress trackers: load/save,
+ * rendering, streak calculation, and the new-tracker form lifecycle.
+ */
+
+import { STORE_TRACKERS } from './app-constants.js';
+import { getTrackers, setTrackers, getEntries, getCategories } from './state.js';
+import { wlLog } from './logger.js';
+import { dk, escHtml, safeCssColor } from './pure-fns-format.js';
+import { pickableCategories } from './pure-fns-epics.js';
 
 /**
- * Loads the trackers array from localStorage into the module-level `trackers` variable.
+ * Loads the trackers array from localStorage into module state.
  * Falls back to an empty array and logs a warning on parse failure.
  * @returns {void}
  */
-function loadTrackers() {
+export function loadTrackers() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_TRACKERS) || '[]');
-    trackers = Array.isArray(raw) ? raw : [];
+    setTrackers(Array.isArray(raw) ? raw : []);
   } catch (err) {
-    trackers = [];
+    setTrackers([]);
     wlLog.warn('loadTrackers: failed to parse trackers from localStorage', err);
   }
 }
 
 /**
- * Persists the current `trackers` array to localStorage.
+ * Persists the current trackers array to localStorage.
  * @returns {void}
  */
-function saveTrackers() {
-  localStorage.setItem(STORE_TRACKERS, JSON.stringify(trackers));
+export function saveTrackers() {
+  localStorage.setItem(STORE_TRACKERS, JSON.stringify(getTrackers()));
 }
 
 /**
@@ -29,7 +38,7 @@ function saveTrackers() {
  * @param {string} dateKey - YYYY-MM-DD date key.
  * @returns {'hit'|'partial'|'miss'}
  */
-function trackerDayStatus(tracker, dateKey) {
+export function trackerDayStatus(tracker, dateKey) {
   const ms = getEntries()
     .filter(
       (e) =>
@@ -69,18 +78,19 @@ function trackerStreak(tracker) {
  * Attaches delete-button listeners after render.
  * @returns {void}
  */
-function renderTrackers() {
+export function renderTrackers() {
   const el = document.getElementById('trackerList');
   if (!el) return;
 
+  const trackers = getTrackers();
   if (!trackers.length) {
     wlLog.info('renderTrackers: empty state');
-    el.innerHTML = '<div class="plan-empty">No trackers yet â€” click + New above.</div>';
+    el.innerHTML = '<div class="plan-empty">No trackers yet — click + New above.</div>';
     return;
   }
   wlLog.info('renderTrackers: rendering trackers', { count: trackers.length });
 
-  // Last 28 days (oldest â†’ newest)
+  // Last 28 days (oldest → newest)
   const days = Array.from({ length: 28 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (27 - i));
@@ -88,30 +98,36 @@ function renderTrackers() {
   });
 
   el.innerHTML = trackers
-    .map((t) => {
-      const streak = trackerStreak(t);
+    .map((tracker) => {
+      const streak = trackerStreak(tracker);
       const cells = days
         .map((dateKey) => {
-          const status = trackerDayStatus(t, dateKey);
+          const status = trackerDayStatus(tracker, dateKey);
           const bg =
-            status === 'hit' ? t.color : status === 'partial' ? t.color + '55' : 'var(--bg3)';
-          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}"></div>`;
+            status === 'hit'
+              ? tracker.color
+              : status === 'partial'
+                ? tracker.color + '55'
+                : 'var(--bg3)';
+          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}" aria-hidden="true"></div>`;
         })
         .join('');
-      const hitCount = days.filter((d) => trackerDayStatus(t, d) === 'hit').length;
+      const hitCount = days.filter((day) => trackerDayStatus(tracker, day) === 'hit').length;
       const targetLabel =
-        t.targetMinutes >= 60 ? `${t.targetMinutes / 60}h/day` : `${t.targetMinutes}m/day`;
+        tracker.targetMinutes >= 60
+          ? `${tracker.targetMinutes / 60}h/day`
+          : `${tracker.targetMinutes}m/day`;
 
       return `
       <div class="tracker-card">
         <div class="tracker-card-head">
-          <span class="edot" style="background:${safeCssColor(t.color)}"></span>
-          <span class="tracker-name">${escHtml(t.name)}</span>
+          <span class="edot" style="background:${safeCssColor(tracker.color)}" aria-hidden="true"></span>
+          <span class="tracker-name">${escHtml(tracker.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
-          ${streak ? `<span class="tracker-streak">ðŸ”¥ ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
-          <button class="tracker-delete" data-id="${escHtml(t.id)}" aria-label="Delete tracker">âœ•</button>
+          ${streak ? `<span class="tracker-streak"><span aria-hidden="true">🔥</span> ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
+          <button class="tracker-delete" data-id="${escHtml(tracker.id)}" aria-label="Delete tracker: ${escHtml(tracker.name)}">✕</button>
         </div>
-        <div class="tr-grid">${cells}</div>
+        <div class="tr-grid" role="img" aria-label="28-day activity grid for ${escHtml(tracker.name)}">${cells}</div>
         <div class="tracker-footer"><span>${hitCount}/28 days hit</span></div>
       </div>`;
     })
@@ -119,7 +135,7 @@ function renderTrackers() {
 
   document.querySelectorAll('.tracker-delete').forEach((btn) => {
     btn.addEventListener('click', () => {
-      trackers = trackers.filter((t) => t.id !== btn.dataset.id);
+      setTrackers(getTrackers().filter((tracker) => tracker.id !== btn.dataset.id));
       saveTrackers();
       renderTrackers();
     });
@@ -139,7 +155,8 @@ function openTrackerForm() {
   if (!formEl) return;
   _trackerFormOpen = true;
   formEl.style.display = '';
-  const defaultColor = getCategories()[0] ? getCategories()[0].color : '#378ADD';
+  const cats = getCategories();
+  const defaultColor = cats[0] ? cats[0].color : '#378ADD';
   formEl.innerHTML = `
     <div class="tr-form">
       <div class="tr-form-row">
@@ -152,20 +169,20 @@ function openTrackerForm() {
         <input class="capture-input" id="trFormMins" type="number"
                min="5" max="480" value="60" style="width:80px" />
       </div>
-      <div class="tr-form-row">
-        <label class="tr-form-lbl">Categories to count</label>
+      <fieldset class="tr-form-row tr-form-row--fieldset">
+        <legend class="tr-form-lbl">Categories to count</legend>
         <div class="tr-form-tags" id="trFormTags">
-          ${pickableCategories(getCategories())
+          ${pickableCategories(cats)
             .map(
-              (c) =>
+              (cat) =>
                 `<label class="tr-tag-check">
-              <input type="checkbox" value="${escHtml(c.id)}" />
-              <span class="qp-chip" style="border-color:${safeCssColor(c.color)}44;color:${safeCssColor(c.color)};background:${safeCssColor(c.color)}11">${escHtml(c.label)}</span>
+              <input type="checkbox" value="${escHtml(cat.id)}" />
+              <span class="qp-chip" style="border-color:${safeCssColor(cat.color)}44;color:${safeCssColor(cat.color)};background:${safeCssColor(cat.color)}11">${escHtml(cat.label)}</span>
             </label>`
             )
             .join('')}
         </div>
-      </div>
+      </fieldset>
       <div class="tr-form-row">
         <label class="tr-form-lbl" for="trFormColor">Colour</label>
         <input type="color" id="trFormColor" value="${defaultColor}"
@@ -194,18 +211,19 @@ function closeTrackerForm() {
   const formEl = document.getElementById('trackerNewForm');
   if (formEl) formEl.style.display = 'none';
   _trackerFormOpen = false;
+  document.getElementById('trackerAddBtn')?.focus();
 }
 
 /**
  * Reads the new-tracker form, validates inputs, pushes the tracker to the
- * `trackers` array, persists it, and re-renders. Shows an alert if no category
+ * trackers array, persists it, and re-renders. Shows an alert if no category
  * is selected; focuses the name field if the name is empty.
  * @returns {void}
  */
 function saveTrackerForm() {
   const name = (document.getElementById('trFormName')?.value || '').trim();
   if (!name) {
-    wlLog.info('saveTrackerForm: rejected â€” empty name');
+    wlLog.info('saveTrackerForm: rejected — empty name');
     document.getElementById('trFormName')?.focus();
     return;
   }
@@ -216,17 +234,20 @@ function saveTrackerForm() {
     (cb) => cb.value
   );
   if (!tags.length) {
-    wlLog.info('saveTrackerForm: rejected â€” no categories selected', { name });
+    wlLog.info('saveTrackerForm: rejected — no categories selected', { name });
     alert('Please select at least one category.');
     return;
   }
-  trackers.push({
-    id: Date.now() + '',
-    name,
-    targetMinutes,
-    tags,
-    color,
-  });
+  setTrackers([
+    ...getTrackers(),
+    {
+      id: Date.now() + '',
+      name,
+      targetMinutes,
+      tags,
+      color,
+    },
+  ]);
   saveTrackers();
   wlLog.info('saveTrackerForm: tracker added', { name, targetMinutes, tagCount: tags.length });
   closeTrackerForm();
@@ -239,7 +260,7 @@ function saveTrackerForm() {
  * Called once on DOMContentLoaded.
  * @returns {void}
  */
-function initTrackers() {
+export function initTrackers() {
   renderTrackers();
   document.getElementById('trackerAddBtn')?.addEventListener('click', () => {
     if (_trackerFormOpen) {

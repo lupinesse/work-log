@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (63 source files across 30+ numbered modules — a handful of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (67 source files across 30+ numbered modules — 28 of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (214 lines) — Data Store
+#### **01-state.js** (209 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -45,7 +45,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
 - `categories` — Custom work categories (epic colors); held in `state.js` and read/written only via `getCategories()`/`setCategories()` (#423)
 - `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
-- `blocks` — Timeblock UI objects
+- `blocks` — Timeblock UI objects; held in `state.js` and read/written only via `getBlocks()`/`setBlocks()` (#423)
 
 **Key Functions**:
 - `load()` — Restore state from localStorage with validation
@@ -109,7 +109,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (583 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (586 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -301,7 +301,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (385 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (395 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -322,7 +322,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (377 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (352 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -335,8 +335,17 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (168 lines) — Pomodoro 4-Column Dashboard
-**Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
+#### **pomo-storage.js** (48 lines) — Pomodoro Session Log Storage *(leaf ES module)*
+**Responsibility**: Read and write the pomodoro session log from `localStorage`. Extracted from `08-pomodoro.js` (issue #336, extraction #14).
+
+**Exports**: `pomoGetLog()`, `pomoSaveSession(session)`
+
+**Dependencies**: `app-constants.js` (for `STORE_POMO_LOG`), `pure-fns-validate.js` (for `validPomoEntry`), `logger.js` (for `wlLog`).
+
+---
+
+#### **08a-pomo-dashboard.js** (167 lines) — Pomodoro 4-Column Dashboard *(leaf ES module)*
+**Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout. Extracted as a leaf ES module (issue #336, extraction #14).
 
 **Layout columns** (CSS grid in `_pomo.scss`):
 | Col | Width | Content |
@@ -351,6 +360,10 @@ parkedThoughts     → List of captured thoughts
 - `renderPomoRibbon()` — Updates the ribbon footer: last-5-session dot sequence (`#pomoRibbonDots`), Peak Focus / session-count pill (`#pomoRibbonPill`), and "View all sessions" scroll link.
 - `updatePomoTaskLabel()` — Shows the currently running timer task name in the composer column.
 - `refreshPomoDashboard()` — Orchestrator; called on load and after every session completion.
+
+**Exports**: `renderPomoSparkline`, `renderPomoRibbon`, `updatePomoTaskLabel`, `refreshPomoDashboard`
+
+**Dependencies**: `pure-fns.js` (for `dk`, `escHtml`), `state.js` (for `getActiveTimer`, `getEntries`), `pomo-storage.js` (for `pomoGetLog`).
 
 **CSS variables** (defined in `_pomo.scss`):
 ```css
@@ -474,11 +487,11 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (318 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (326 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (344 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11a-timeblock-render.js` (342 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
 - `11b-timeblock-carry.js` (366 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
@@ -518,7 +531,7 @@ upcoming    → Scheduled for future date
 
 **Sub-modules**:
 - `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
-- `12c-startup.js` (41 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12c-startup.js` (42 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (127 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (162 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
@@ -526,7 +539,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (356 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (357 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -647,10 +660,12 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **22-trackers.js** (235 lines) — Custom Time-Goal Trackers
+#### **22-trackers.js** (255 lines) — Custom Time-Goal Trackers _(leaf ES module)_
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
-**Key functions**: `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `trackerStreak(tracker)`, `initTrackers()`
+**Key functions**: `loadTrackers()`, `saveTrackers()`, `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `initTrackers()`
+
+**Imports**: `STORE_TRACKERS` · `getTrackers, setTrackers, getEntries, getCategories` · `wlLog` · `dk, escHtml, safeCssColor` · `pickableCategories`
 
 **localStorage key**: `wl_trackers_v1`
 

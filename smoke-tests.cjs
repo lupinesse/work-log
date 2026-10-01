@@ -3563,6 +3563,233 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 44. selectedTag lives behind state.js accessors (#423) ───────────────
+  // Each handler below is the only writer of the selected epic on its path, so
+  // a dropped setSelectedTag() leaves the previous epic selected.
+  console.log('\n44. selectedTag written through state.js accessors');
+  {
+    const today = dk(new Date());
+    const epics = [
+      { id: 'alpha', label: 'alpha', color: '#378ADD' },
+      { id: 'work', label: 'work', color: '#378ADD' },
+      { id: 'other', label: 'other', color: '#888780' },
+    ];
+    const entries = [
+      { id: 'qp1', text: 'Quick pick task', tag: 'other', ts: Date.now() - 5000, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: epics });
+    const selectedTag = () => page.evaluate(() => window.__wl.getSelectedTag());
+
+    assert(
+      'Startup selects the alphabetically first active epic',
+      (await selectedTag()) === 'alpha',
+      `got "${await selectedTag()}"`
+    );
+
+    // The tag row sits in a collapsed panel at the smoke viewport, so drive the
+    // controls with real DOM events rather than visibility-gated Playwright actions.
+    await page.evaluate(() => {
+      const select = document.getElementById('catSelect');
+      select.value = 'work';
+      select.dispatchEvent(new Event('change'));
+    });
+    assert('Choosing an epic in the dropdown selects it', (await selectedTag()) === 'work');
+
+    await page.waitForSelector('.qp-item', { state: 'attached', timeout: 3000 });
+    await page.evaluate(() => document.querySelector('.qp-item .qp-item-text').click());
+    assert(
+      "Clicking a recent-task pill selects that task's epic",
+      (await selectedTag()) === 'other',
+      `got "${await selectedTag()}"`
+    );
+
+    await page.evaluate(() => {
+      document.getElementById('catSettingsBtn').click();
+      document.getElementById('catAddBtn').click();
+      document.getElementById('catNewInput').value = 'brand new epic';
+      document.getElementById('catNewOk').click();
+    });
+    const created = await page.evaluate(() => {
+      const added = window.__wl.getState().categories.find((c) => c.label === 'brand new epic');
+      return { id: added && added.id, selected: window.__wl.getSelectedTag() };
+    });
+    assert(
+      'Adding a new epic selects it',
+      !!created.id && created.selected === created.id,
+      `created ${created.id}, selected ${created.selected}`
+    );
+    await page.close();
+  }
+
+  // ── 45. viewDate lives behind state.js accessors (#423) ──────────────────
+  // Each step moves the viewed day away from today, triggers one writer of the
+  // shared viewDate, and reads the result back, so a dropped setViewDate() leaves
+  // the old day showing.
+  console.log('\n45. viewDate written through state.js accessors');
+  {
+    const today = dk(new Date());
+    const yesterday = dk(new Date(Date.now() - 86400000));
+    const yesterdayTs = new Date(yesterday + 'T10:00:00').getTime();
+    const todayTs = new Date(today + 'T10:00:00').getTime();
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'vd1', text: 'Today entry', tag: 'work', ts: todayTs, date: today },
+        { id: 'vd2', text: 'Yesterday entry', tag: 'work', ts: yesterdayTs, date: yesterday },
+      ],
+      wl_blocks_v1: [
+        { id: 'vdb1', date: today, slot: 4, duration: 2, text: 'Block task', tag: 'work' },
+      ],
+      // A finished task from yesterday: still listed (with its track button) when
+      // yesterday is in view, and not swept forward by the overnight carry.
+      wl_plan_v1: [
+        { id: 'vdp1', text: 'Board task', status: 'done', date: yesterday, tag: 'work' },
+      ],
+      wl_cats_v1: CATS,
+    });
+    const viewKey = () => page.evaluate(() => window.__wl.dk(window.__wl.viewDate));
+    // The test-handle setter only re-renders the timeline; a full render() also
+    // refreshes the day buttons, whose disabled state tracks the viewed day.
+    const goTo = (key) =>
+      page.evaluate((dayKey) => {
+        window.__wl.viewDate = new Date(dayKey + 'T12:00:00');
+        window.__wl.render();
+      }, key);
+    const stopTimer = () => page.evaluate(() => window.__wl.stopTimer());
+    await page.evaluate(() => window.__wl.setFlowView('log'));
+
+    await goTo(yesterday);
+    assert(
+      'Setting the viewed day through the test handle moves the view',
+      (await viewKey()) === yesterday,
+      `got "${await viewKey()}"`
+    );
+
+    // Day buttons swap in a fresh Date instead of mutating the one other code may hold.
+    const stepDay = (buttonId) =>
+      page.evaluate((id) => {
+        const before = window.__wl.viewDate;
+        document.getElementById(id).click();
+        return {
+          key: window.__wl.dk(window.__wl.viewDate),
+          sameObject: before === window.__wl.viewDate,
+        };
+      }, buttonId);
+    const next = await stepDay('nextDay');
+    assert(
+      'Next day moves the view forward without mutating the old Date',
+      next.key === today && !next.sameObject,
+      JSON.stringify(next)
+    );
+    const prev = await stepDay('prevDay');
+    assert(
+      'Previous day moves the view back without mutating the old Date',
+      prev.key === yesterday && !prev.sameObject,
+      JSON.stringify(prev)
+    );
+
+    await page.evaluate(() => document.querySelector('.erestart[data-id="vd2"]')?.click());
+    assert('Restarting an old entry returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => {
+      document.getElementById('captureInput').value = 'Logged from the past';
+      document.getElementById('addBtn').click();
+    });
+    assert('Logging a new entry returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => window.__wl.tbStartBlock('vdb1'));
+    assert('Starting a timeblock returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => document.querySelector('.plan-log-btn[data-pid="vdp1"]')?.click());
+    assert('Tracking a board task returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => {
+      const now = Date.now();
+      window.__wl.renderCalStrip([
+        {
+          subject: 'View date meeting',
+          start: new Date(now + 3600000).toISOString(),
+          end: new Date(now + 7200000).toISOString(),
+        },
+      ]);
+      document.querySelector('.cal-task-btn')?.click();
+    });
+    assert('Starting a calendar meeting returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(today);
+    await page.evaluate((dayKey) => {
+      const list = document.getElementById('gapReportList');
+      list.innerHTML = `<button type="button" class="gap-report-fix" data-id="vd2" data-date="${dayKey}">+ fix</button>`;
+      list.querySelector('.gap-report-fix').click();
+    }, yesterday);
+    assert(
+      "Jumping to a gap-report entry shows that entry's day",
+      (await viewKey()) === yesterday,
+      `got "${await viewKey()}"`
+    );
+
+    await goTo(today);
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="month"]')?.click());
+    await page.waitForSelector('.ml-cell[data-date]', { state: 'attached', timeout: 3000 });
+    const cellDate = await page.evaluate((todayKey) => {
+      const cell = [...document.querySelectorAll('.ml-cell[data-date]')].find(
+        (candidate) => candidate.dataset.date !== todayKey
+      );
+      cell?.click();
+      return cell ? cell.dataset.date : null;
+    }, today);
+    assert(
+      'Clicking a month-calendar day navigates to it',
+      !!cellDate && (await viewKey()) === cellDate,
+      `cell ${cellDate}, view ${await viewKey()}`
+    );
+    await page.close();
+  }
+
+  // ── 46. Deleting a time block drops it from the shared blocks array (#423) ─
+  console.log('\n46. Time-block delete button removes the block');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_blocks_v1: [
+        { id: 'delb1', date: today, slot: 4, duration: 2, text: 'Delete me', tag: 'work' },
+        { id: 'delb2', date: today, slot: 8, duration: 2, text: 'Keep me', tag: 'work' },
+      ],
+      wl_cats_v1: CATS,
+    });
+    const blockIds = () =>
+      page.evaluate(() => window.__wl.getState().blocks.map((block) => block.id));
+    await page.waitForSelector('.tb-block-del[data-bid="delb1"]', {
+      state: 'attached',
+      timeout: 3000,
+    });
+    await page.evaluate(() => document.querySelector('.tb-block-del[data-bid="delb1"]').click());
+    const remaining = await blockIds();
+    assert(
+      'Deleting a block removes it and keeps the others',
+      remaining.length === 1 && remaining[0] === 'delb2',
+      JSON.stringify(remaining)
+    );
+    assert(
+      'The deleted block is gone from storage too',
+      await page.evaluate(
+        () =>
+          !JSON.parse(localStorage.getItem('wl_blocks_v1') || '[]').some(
+            (block) => block.id === 'delb1'
+          )
+      )
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();

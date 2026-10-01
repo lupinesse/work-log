@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as pureFns from '../../src/js/pure-fns.js';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 const lifecycleSrc = readFileSync(join(__dirname, '../../src/js/07-lifecycle.js'), 'utf8');
 
@@ -167,7 +167,7 @@ function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
       'Could not find `const COLLAPSE_PREFIX` in 07-lifecycle.js; if it was renamed or moved, ' +
         'update the cut point in loadSodSandbox() in this test.'
     );
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
   // renderSodBtn was defined by the vm script (function declaration). Replace
   // the sandbox property with a spy — mutations to the sandbox object are

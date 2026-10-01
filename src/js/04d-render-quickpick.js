@@ -61,7 +61,7 @@ function renderQuickPick() {
     btn.addEventListener('click', (event) => {
       if (event.target.closest('.qp-item__remove')) return;
       document.getElementById('captureInput').value = btn.dataset.text;
-      selectedTag = btn.dataset.tag;
+      setSelectedTag(btn.dataset.tag);
       renderTagRow();
       document.getElementById('captureInput').focus();
     });

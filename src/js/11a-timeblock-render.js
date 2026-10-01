@@ -20,7 +20,7 @@ let tbDragId = null; // block id when dragging from grid
  * moving existing blocks and dropping tasks from the plan list.
  */
 function renderTimeblock() {
-  const dateKey = dk(viewDate);
+  const dateKey = dk(getViewDate());
   const liveEntry = getActiveTimer()
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
@@ -83,7 +83,7 @@ function renderTimeblock() {
   }
 
   const meetingNames = new Set(
-    blocks
+    getBlocks()
       .filter((block) => block.date === dateKey && block.type === 'meeting')
       .map((block) => block.text.toLowerCase())
   );
@@ -115,10 +115,10 @@ function renderTimeblock() {
       entry.id !== liveId &&
       !meetingNames.has(entry.text.replace(/^📅\s*/, '').toLowerCase()) &&
       !meetingNames.has(entry.text.toLowerCase()) &&
-      (entry.tsEnd || isToday(viewDate))
+      (entry.tsEnd || isToday(getViewDate()))
   );
   mergeAutoEntries(dayAutoEntries).forEach((entry) => {
-    const endTs = entry._mergedEnd || (isToday(viewDate) ? Date.now() : null);
+    const endTs = entry._mergedEnd || (isToday(getViewDate()) ? Date.now() : null);
     if (!endTs) return;
     const el = autoBlockEl(entry.text, entry.tag, entry.ts, endTs, false);
     if (el) grid.appendChild(el);
@@ -129,7 +129,7 @@ function renderTimeblock() {
     const le = getEntries().find((entry) => entry.id === liveId);
     const isMeetingBlock =
       le &&
-      blocks.some(
+      getBlocks().some(
         (block) =>
           block.date === dateKey &&
           block.type === 'meeting' &&
@@ -145,7 +145,7 @@ function renderTimeblock() {
   }
 
   // ── Manual planned blocks (render last = on top, dashed border) ──
-  const dayBlocks = blocks.filter((block) => block.date === dateKey);
+  const dayBlocks = getBlocks().filter((block) => block.date === dateKey);
   const tbLiveEntry = getActiveTimer()
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
@@ -201,9 +201,7 @@ function renderTimeblock() {
     });
     el.querySelector('.tb-block-del').addEventListener('click', (event) => {
       event.stopPropagation();
-      blocks = blocks.filter((otherBlock) => otherBlock.id !== block.id);
-      saveBlocks();
-      renderTimeblock();
+      removeBlockById(block.id);
     });
     const startBtn = el.querySelector('.tb-block-start');
     if (startBtn)
@@ -219,12 +217,12 @@ function renderTimeblock() {
   });
 
   // Untracked time — show faint label on past slots with no coverage (any viewed date)
-  const nowMins = isToday(viewDate)
+  const nowMins = isToday(getViewDate())
     ? new Date().getHours() * 60 + new Date().getMinutes()
     : TB_END * 60; // for past days, all slots are "past"
 
   // Use start-of-day as floor — slots before work started aren't "untracked"
-  const sodTs = isToday(viewDate) ? getDayStart() : null;
+  const sodTs = isToday(getViewDate()) ? getDayStart() : null;
   const sodMins = sodTs
     ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
     : TB_START * 60; // no start set — use grid start as default
@@ -263,7 +261,7 @@ function renderTimeblock() {
       for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
     }
   }
-  blocks
+  getBlocks()
     .filter((block) => block.date === dateKey)
     .forEach((block) => {
       for (let s = block.slot; s < Math.min(TB_SLOTS, block.slot + block.duration); s++)
@@ -284,7 +282,7 @@ function renderTimeblock() {
   }
 
   // Current time indicator (today only)
-  if (isToday(viewDate)) {
+  if (isToday(getViewDate())) {
     const nowLine = document.createElement('div');
     nowLine.className = 'tb-now-line';
     nowLine.id = 'tbNowLine';
@@ -323,7 +321,7 @@ function renderTimeblock() {
     const target = grid._dragSlot;
 
     if (tbDragSource === 'grid' && tbDragId) {
-      const draggedBlock = blocks.find((block) => block.id === tbDragId);
+      const draggedBlock = getBlocks().find((block) => block.id === tbDragId);
       if (draggedBlock) {
         const newSlot = Math.min(target, TB_SLOTS - draggedBlock.duration);
         const newStart = TB_START * 60 + newSlot * 30;

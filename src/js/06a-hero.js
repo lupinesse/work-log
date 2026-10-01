@@ -307,7 +307,7 @@ function _heroHandleStart() {
   const text = inp ? inp.value.trim() : '';
 
   if (text) {
-    const tag = selectedTag || (getCategories()[0] ? getCategories()[0].id : 'other');
+    const tag = getSelectedTag() || (getCategories()[0] ? getCategories()[0].id : 'other');
     const entry = {
       id: Date.now() + '',
       text,

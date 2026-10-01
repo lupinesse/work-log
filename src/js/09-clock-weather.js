@@ -51,7 +51,7 @@ function tickClock() {
     _lastTickDate = todayKey;
     autoCarryTasks();
     patchCarriedTasks();
-    viewDate = new Date();
+    setViewDate(new Date());
     renderSodBtn();
     renderEodBtn();
     checkPomoWeeklyClear();

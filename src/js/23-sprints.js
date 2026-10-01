@@ -90,7 +90,7 @@ function startSprint() {
   const entry = {
     id: Date.now() + '',
     text: _sprintIntention,
-    tag: selectedTag,
+    tag: getSelectedTag(),
     ts: safeRoundedStart(),
     date: dk(new Date()),
     _sprintDuration,

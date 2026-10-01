@@ -39,9 +39,9 @@ function render() {
  * timer state may have changed, before it gets to stats or the timeline.
  */
 function renderHeaderAndTimerSection() {
-  document.getElementById('dateLabel').textContent = fmtLabel(viewDate);
+  document.getElementById('dateLabel').textContent = fmtLabel(getViewDate());
   document.getElementById('prevDay').disabled = false;
-  document.getElementById('nextDay').disabled = isToday(viewDate);
+  document.getElementById('nextDay').disabled = isToday(getViewDate());
   renderLocation();
   // Session chip + end-the-day button track the day in view, so refresh them
   // whenever the date changes.

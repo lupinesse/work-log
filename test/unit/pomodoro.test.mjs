@@ -47,8 +47,8 @@ function makePomoSandboxBase(extra = {}) {
     validPomoEntry: (e) => e != null && typeof e.ts === 'number' && typeof e.mins === 'number',
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     renderPomoLog: () => {},
-    refreshPomoDashboard: undefined,
-    updatePomoTaskLabel: undefined,
+    refreshPomoDashboard: () => {},
+    updatePomoTaskLabel: () => {},
     isToday: () => true,
     escHtml: (s) => String(s),
     localStorage: {
@@ -74,6 +74,22 @@ function makePomoSandboxBase(extra = {}) {
     },
     _store: store,
     ...extra,
+  };
+  // pomoGetLog and pomoSaveSession moved to pomo-storage.js leaf — inject them
+  // into the VM sandbox so the non-leaf 08-pomodoro.js can still call them.
+  sb.pomoGetLog = function pomoGetLog() {
+    try {
+      const raw = JSON.parse(store['wl_pomoLog_v1'] || '[]');
+      const all = Array.isArray(raw) ? raw : [];
+      return all.filter(sb.validPomoEntry);
+    } catch {
+      return [];
+    }
+  };
+  sb.pomoSaveSession = function pomoSaveSession(session) {
+    const log = sb.pomoGetLog();
+    log.unshift(session);
+    store['wl_pomoLog_v1'] = JSON.stringify(log.slice(0, 100));
   };
   return sb;
 }

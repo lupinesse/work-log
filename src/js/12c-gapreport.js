@@ -100,7 +100,7 @@ function jumpToGapReportEntry(entryId, entryDate) {
   if (overlay) overlay.classList.remove('show');
   _gapReportTrigger = null; // navigating away — nothing to restore focus to
 
-  viewDate = new Date(entryDate + 'T12:00:00');
+  setViewDate(new Date(entryDate + 'T12:00:00'));
   setFlowView('log');
   _entryMetaEditId = entryId;
   render();

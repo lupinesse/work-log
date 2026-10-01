@@ -162,7 +162,7 @@ function renderCalStrip(meetings) {
         getCategories().find((c) => c.id === 'meeting') ||
         getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
-      const meetingTag = meetingCat ? meetingCat.id : selectedTag;
+      const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
       const exists = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
@@ -192,7 +192,7 @@ function renderCalStrip(meetings) {
         task.status = 'inprogress';
         savePlan();
       }
-      viewDate = new Date();
+      setViewDate(new Date());
       save();
       startTimer(entry.id);
       render();
@@ -295,9 +295,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     entries: getEntries(),
     categories: getCategories(),
     planTasks,
-    blocks,
+    blocks: getBlocks(),
     activeTimer: () => getActiveTimer(),
     getTimerInterval,
+    getSelectedTag,
     tbStartBlock,
     load,
     save,
@@ -333,10 +334,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
       entries: getEntries(),
       categories: getCategories(),
       planTasks,
-      blocks,
+      blocks: getBlocks(),
       activeTimer: getActiveTimer(),
       logNotes,
-      trackers,
+      trackers: getTrackers(),
     }),
     cycleSignifier,
     isEntryBillable,
@@ -346,7 +347,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     renderTrackers,
     trackerDayStatus,
     saveTrackers,
-    getTrackers: () => trackers,
+    getTrackers,
     renderMonthlyLog,
     mlHoursForDay,
     openMigration,
@@ -366,9 +367,9 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically
   Object.defineProperty(window.__wl, 'viewDate', {
-    get: () => viewDate,
+    get: () => getViewDate(),
     set: (v) => {
-      viewDate = v instanceof Date ? v : new Date(v);
+      setViewDate(v instanceof Date ? v : new Date(v));
       renderCompleted();
     },
     enumerable: true,

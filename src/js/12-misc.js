@@ -120,7 +120,7 @@ function renderParked() {
         text: p.text,
         status: 'todo',
         date: todayKey,
-        tag: selectedTag,
+        tag: getSelectedTag(),
       });
       savePlan();
       p.done = true;
