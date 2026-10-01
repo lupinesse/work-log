@@ -90,17 +90,18 @@ function tidyStaleEpics() {
  *   user declined the confirm.
  */
 function deleteSelectedEpic() {
-  if (PROTECTED_CAT_IDS.includes(getSelectedTag())) {
+  const selectedTag = getSelectedTag();
+  if (PROTECTED_CAT_IDS.includes(selectedTag)) {
     wlLog.warn('deleteSelectedEpic: refused to delete a built-in epic', {
-      selectedTag: getSelectedTag(),
+      selectedTag,
     });
-    window.alert(`"${getCatLabel(getSelectedTag())}" is a built-in epic and can't be deleted.`);
+    window.alert(`"${getCatLabel(selectedTag)}" is a built-in epic and can't be deleted.`);
     return false;
   }
-  const cat = getCat(getSelectedTag());
+  const cat = getCat(selectedTag);
   const usageCount =
-    getEntries().filter((entry) => entry.tag === getSelectedTag()).length +
-    planTasks.filter((task) => task.tag === getSelectedTag()).length;
+    getEntries().filter((entry) => entry.tag === selectedTag).length +
+    planTasks.filter((task) => task.tag === selectedTag).length;
 
   const warning =
     usageCount > 0
@@ -113,7 +114,7 @@ function deleteSelectedEpic() {
     return false;
   }
 
-  setCategories(getCategories().filter((category) => category.id !== getSelectedTag()));
+  setCategories(getCategories().filter((category) => category.id !== selectedTag));
   setSelectedTag('work');
   save();
   wlLog.info('deleteSelectedEpic: deleted epic', { catId: cat.id, usageCount });
