@@ -6,7 +6,7 @@
  *   the session chip reflects whichever day the user has navigated to.
  * @returns {string} Key in the format `wl_sod_YYYY-MM-DD`.
  */
-function sodKey(day = viewDate) {
+function sodKey(day = getViewDate()) {
   return 'wl_sod_' + dk(day);
 }
 /**
@@ -14,7 +14,7 @@ function sodKey(day = viewDate) {
  * @param {Date} [day=viewDate] - Day to read; defaults to the day in view.
  * @returns {number|null} Unix timestamp (ms), or null if not yet set.
  */
-function getDayStart(day = viewDate) {
+function getDayStart(day = getViewDate()) {
   return parseInt(localStorage.getItem(sodKey(day)) || '0') || null;
 }
 
@@ -62,11 +62,11 @@ function ensureDayStarted() {
 
 document.getElementById('sodBtn').addEventListener('click', () => {
   const existing = getDayStart();
-  if (existing || !isToday(viewDate)) {
+  if (existing || !isToday(getViewDate())) {
     // Set or correct the start time for the day in view. Also the path for
     // back-filling a past day that has no recorded start (no "restore" prompt —
     // that only makes sense for today's first start).
-    const base = existing ? new Date(existing) : new Date(viewDate);
+    const base = existing ? new Date(existing) : new Date(getViewDate());
     const cur =
       String(base.getHours()).padStart(2, '0') + ':' + String(base.getMinutes()).padStart(2, '0');
     const val = prompt(`Started at (HH:MM):`, cur);
@@ -74,7 +74,7 @@ document.getElementById('sodBtn').addEventListener('click', () => {
     const [h, m] = val.split(':').map(Number);
     if (isNaN(h) || isNaN(m)) return;
     // Anchor the timestamp to the viewed day's calendar date, not today's.
-    const ts = new Date(viewDate);
+    const ts = new Date(getViewDate());
     ts.setHours(h, m, 0, 0);
     localStorage.setItem(sodKey(), String(ts.getTime()));
     renderSodBtn();
@@ -106,7 +106,7 @@ document.getElementById('sodBtn').addEventListener('click', () => {
  * @param {Date} [day=viewDate] - Day to key by; defaults to the day in view.
  * @returns {string} Key in the format `wl_eod_YYYY-MM-DD`.
  */
-function eodKey(day = viewDate) {
+function eodKey(day = getViewDate()) {
   return 'wl_eod_' + dk(day);
 }
 
@@ -115,7 +115,7 @@ function eodKey(day = viewDate) {
  * @param {Date} [day=viewDate] - Day to read; defaults to the day in view.
  * @returns {number|null} Unix timestamp (ms), or null if not yet set.
  */
-function getEodTs(day = viewDate) {
+function getEodTs(day = getViewDate()) {
   return parseInt(localStorage.getItem(eodKey(day)) || '0') || null;
 }
 
@@ -313,15 +313,26 @@ initBannerControls();
 initLocation();
 initWeeklyReport();
 
+/**
+ * Moves the viewed day by a whole number of days.
+ * Swaps in a fresh Date rather than mutating the current one, so anything
+ * still holding the previous viewDate keeps seeing the day it was given.
+ * @param {number} dayDelta - Days to move; negative goes back.
+ * @returns {void}
+ */
+function shiftViewDay(dayDelta) {
+  const shifted = new Date(getViewDate());
+  shifted.setDate(shifted.getDate() + dayDelta);
+  setViewDate(shifted);
+}
+
 document.getElementById('prevDay').addEventListener('click', () => {
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() - 1);
+  shiftViewDay(-1);
   render();
 });
 document.getElementById('nextDay').addEventListener('click', () => {
-  if (isToday(viewDate)) return;
-  viewDate = new Date(viewDate);
-  viewDate.setDate(viewDate.getDate() + 1);
+  if (isToday(getViewDate())) return;
+  shiftViewDay(1);
   render();
 });
 
@@ -408,7 +419,7 @@ setTimeout(() => {
     entries: getEntries().length,
     categories: getCategories().length,
     planTasks: planTasks.length,
-    blocks: blocks.length,
+    blocks: getBlocks().length,
     // Runtime state
     timer: getActiveTimer() ? 'active' : 'idle',
     snapshot: !!localStorage.getItem('wl_snapshot'),

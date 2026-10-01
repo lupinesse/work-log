@@ -25,26 +25,39 @@ function loadBlocks() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
     const all = Array.isArray(raw) ? raw : [];
-    blocks = all.filter(validBlock);
-    if (blocks.length < all.length)
-      wlLog.warn(`loadBlocks: dropped ${all.length - blocks.length} invalid block record(s)`, {
+    setBlocks(all.filter(validBlock));
+    if (getBlocks().length < all.length)
+      wlLog.warn(`loadBlocks: dropped ${all.length - getBlocks().length} invalid block record(s)`, {
         total: all.length,
-        kept: blocks.length,
+        kept: getBlocks().length,
       });
   } catch (err) {
-    blocks = [];
+    setBlocks([]);
     wlLog.error('loadBlocks: failed to parse time blocks from localStorage', err);
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {
-    blocks = blocks.map((block) => ({ ...block, slot: block.slot + 2 }));
+    setBlocks(getBlocks().map((block) => ({ ...block, slot: block.slot + 2 })));
     saveBlocks();
     localStorage.setItem('wl_tb_migrated_7', '1');
   }
 }
 /** Persists the current `blocks` array to localStorage. */
 function saveBlocks() {
-  localStorage.setItem(STORE_BLOCKS, JSON.stringify(blocks));
+  localStorage.setItem(STORE_BLOCKS, JSON.stringify(getBlocks()));
+}
+
+/**
+ * Removes one time block, persists the remaining blocks and redraws the grid.
+ * Shared by the block's delete button and the start prompt's "no" branches so
+ * all three drop a block the same way.
+ * @param {string} blockId - ID of the block to remove.
+ * @returns {void}
+ */
+function removeBlockById(blockId) {
+  setBlocks(getBlocks().filter((block) => block.id !== blockId));
+  saveBlocks();
+  renderTimeblock();
 }
 
 /**
@@ -86,7 +99,7 @@ function timeToSlot(hhmm, m2) {
 function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
   const hits = [];
   // Check against manual planned blocks
-  blocks
+  getBlocks()
     .filter((block) => block.date === dateKey && block.id !== excludeId)
     .forEach((block) => {
       const s = TB_START * 60 + block.slot * 30,
@@ -124,7 +137,7 @@ function openBlockEmojiPicker(bid, anchor) {
     }
   }
   _emojiPickerPid = bid;
-  const block = blocks.find((timeBlock) => timeBlock.id === bid);
+  const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
 
   const picker = document.createElement('div');
@@ -191,7 +204,7 @@ function openBlockEmojiPicker(bid, anchor) {
  * @param {string|null} emoji - Emoji character to assign, or null to remove.
  */
 function setBlockEmoji(bid, emoji) {
-  const block = blocks.find((timeBlock) => timeBlock.id === bid);
+  const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
   if (emoji) block.emoji = emoji;
   else delete block.emoji;
@@ -212,12 +225,12 @@ function setBlockEmoji(bid, emoji) {
  * No-ops when not viewing today.
  */
 function checkBlockNotifications() {
-  if (!isToday(viewDate)) return;
+  if (!isToday(getViewDate())) return;
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
 
-  const pending = blocks.filter(
+  const pending = getBlocks().filter(
     (block) => block.date === todayKey && !notifiedBlocks.has(block.id)
   );
 
@@ -265,18 +278,14 @@ function checkBlockNotifications() {
         if (sw) {
           tbStartBlock(b.id);
         } else {
-          blocks = blocks.filter((bl) => bl.id !== b.id);
-          saveBlocks();
-          renderTimeblock();
+          removeBlockById(b.id);
         }
       } else {
         const go = confirm(`⏰ Time for: "${b.text}"\n\nStart timer?`);
         if (go) {
           tbStartBlock(b.id);
         } else {
-          blocks = blocks.filter((bl) => bl.id !== b.id);
-          saveBlocks();
-          renderTimeblock();
+          removeBlockById(b.id);
         }
       }
       break;
@@ -293,7 +302,7 @@ function checkBlockNotifications() {
  * @param {number} [overrideTs]  - Optional explicit start timestamp (ms). Defaults to `safeRoundedStart()`.
  */
 function tbStartBlock(blockId, overrideTs) {
-  const b = blocks.find((bl) => bl.id === blockId);
+  const b = getBlocks().find((bl) => bl.id === blockId);
   if (!b) return;
   const todayKey = dk(new Date());
   let task = planTasks.find(
@@ -323,7 +332,7 @@ function tbStartBlock(blockId, overrideTs) {
   };
   getEntries().push(entry);
   // Set timer startTs so elapsed = time since scheduled start, not since now
-  viewDate = new Date();
+  setViewDate(new Date());
   save();
   setActiveTimer({ entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false });
   save();

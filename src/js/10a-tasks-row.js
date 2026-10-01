@@ -111,7 +111,7 @@ function billBtnHtml(t, status) {
  * @returns {string} HTML string for one `.plan-item` element (and optional split row).
  */
 function renderRow(t) {
-  const viewKey = dk(viewDate);
+  const viewKey = dk(getViewDate());
   const liveEntry = getActiveTimer()
     ? getEntries().find((e) => e.id === getActiveTimer().entryId)
     : null;

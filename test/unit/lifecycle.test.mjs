@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as pureFns from '../../src/js/pure-fns.js';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 const lifecycleSrc = readFileSync(join(__dirname, '../../src/js/07-lifecycle.js'), 'utf8');
 
@@ -154,7 +154,7 @@ function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
   const cutIdx = lifecycleSrc.indexOf('/* ── Section collapse handlers ── */');
   if (cutIdx === -1)
     throw new Error('Could not locate collapse handlers marker in 07-lifecycle.js');
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
   // renderSodBtn was defined by the vm script (function declaration). Replace
   // the sandbox property with a spy — mutations to the sandbox object are

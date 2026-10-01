@@ -142,7 +142,7 @@ function renderDayStrip(dateKey) {
   // Live timer footprint — endpoint freezes at pause so the bar doesn't keep
   // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
-  if (getActiveTimer() && isToday(viewDate)) {
+  if (getActiveTimer() && isToday(getViewDate())) {
     const liveEntry = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
     if (liveEntry && liveEntry.date === dateKey) {
       const liveEndMins = tsToMins(liveEntry.ts + activeTimerDurationMs(liveEntry));
@@ -157,7 +157,7 @@ function renderDayStrip(dateKey) {
 
   // Now cursor (today only)
   let nowCursor = '';
-  if (isToday(viewDate) && nowMins >= TF_STRIP_START && nowMins <= TF_STRIP_END) {
+  if (isToday(getViewDate()) && nowMins >= TF_STRIP_START && nowMins <= TF_STRIP_END) {
     nowCursor = `<div class="tf-now-cursor" style="left:${stripPct(nowMins)}%"></div>`;
   }
 
@@ -175,7 +175,7 @@ function renderDayStrip(dateKey) {
  * @returns {{startTs: number, endTs: number, gapMin: number}|null}
  */
 function findLargestGap(dateKey) {
-  if (!isToday(viewDate)) return null;
+  if (!isToday(getViewDate())) return null;
   const timed = getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .sort((a, b) => a.ts - b.ts);
@@ -248,7 +248,7 @@ function renderFlowHeader(dateKey, activeView) {
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 
   // Include live timer duration so both totals update while tracking
-  if (getActiveTimer() && isToday(viewDate)) {
+  if (getActiveTimer() && isToday(getViewDate())) {
     const liveEntry = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
     if (liveEntry && liveEntry.date === dateKey && !liveEntry.tsEnd) {
       const liveMs = activeTimerDurationMs(liveEntry);
@@ -358,7 +358,7 @@ function buildFlowTaskNoteHtml(task, isEditing) {
  * @param {HTMLElement} pane - The #tfFlowPane element.
  */
 function bindFlowNoteEvents(pane) {
-  const dateKey = dk(viewDate);
+  const dateKey = dk(getViewDate());
 
   /** Focuses the note textarea for the given task ID after the next render. */
   function focusFlowNoteInput(tid) {
@@ -447,7 +447,7 @@ function renderFlowView(dateKey) {
   const { items, sessionNotesByEntry } = partitionSessionNotes(buildDailyLogItems(dateKey));
 
   if (!items.length) {
-    el.innerHTML = `<div class="tf-empty">No entries for ${isToday(viewDate) ? 'today' : 'this day'} yet.</div>`;
+    el.innerHTML = `<div class="tf-empty">No entries for ${isToday(getViewDate()) ? 'today' : 'this day'} yet.</div>`;
     return;
   }
 
@@ -514,7 +514,7 @@ function renderFlowView(dateKey) {
  * Called from render() on every state change and when the view toggle fires.
  */
 function renderTodayFlow() {
-  const dateKey = dk(viewDate);
+  const dateKey = dk(getViewDate());
   const activeView = getFlowView();
 
   renderFlowHeader(dateKey, activeView);
@@ -539,7 +539,7 @@ function renderTodayFlow() {
   if (activeView === 'flow') renderFlowView(dateKey);
   else if (activeView === 'log') {
     const noteRow = document.getElementById('dailyLogNoteRow');
-    if (noteRow) noteRow.style.display = isToday(viewDate) ? '' : 'none';
+    if (noteRow) noteRow.style.display = isToday(getViewDate()) ? '' : 'none';
   } else if (activeView === 'blocks') renderTimeblock();
   else if (activeView === 'month') renderMonthlyLog();
   else if (activeView === 'summary') renderRollingSummary();
@@ -588,8 +588,8 @@ function initTodayFlow() {
     setFlowView(btn.dataset.view);
     // Sync month calendar to viewDate when entering Month tab
     if (btn.dataset.view === 'month') {
-      _mlYear = viewDate.getFullYear();
-      _mlMonth = viewDate.getMonth();
+      _mlYear = getViewDate().getFullYear();
+      _mlMonth = getViewDate().getMonth();
     }
     renderTodayFlow();
   });

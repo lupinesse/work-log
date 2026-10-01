@@ -24,7 +24,7 @@ function addEntry(withTimer) {
   };
   getEntries().push(entry);
   inp.value = '';
-  viewDate = new Date();
+  setViewDate(new Date());
   save();
   if (withTimer) {
     promoteMatchingTaskToInProgress(text);

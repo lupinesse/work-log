@@ -15,7 +15,7 @@ function exportTxt() {
   const dayEntries = viewEntries().slice().reverse();
   if (!dayEntries.length) return;
 
-  const dateStr = dk(viewDate);
+  const dateStr = dk(getViewDate());
   const isViewingToday = dateStr === dk(new Date());
   const timedEntries = dayEntries.filter(
     (entry) => entry.tsEnd && entry.tsEnd > entry.ts && entry.signifier !== 'cancelled'
@@ -159,7 +159,7 @@ function exportBackup() {
       entries: getEntries(),
       categories: getCategories(),
       planTasks,
-      blocks,
+      blocks: getBlocks(),
       pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
       devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),
       distractions: readOptionalLogForBackup(STORE_DISTRACTIONS, 'distractions'),

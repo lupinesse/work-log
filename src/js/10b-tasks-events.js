@@ -291,7 +291,7 @@ function bindPlanEvents(lists) {
       getEntries().push(entry);
       promoteMatchingTaskToInProgress(text);
       ensureDayStarted();
-      viewDate = new Date();
+      setViewDate(new Date());
       save();
       startTimer(entry.id);
       render();
