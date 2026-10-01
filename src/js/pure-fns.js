@@ -26,6 +26,7 @@ export {
   isLongRunningTimer,
   mondayOfWeek,
   roundToNearest30,
+  calcStreak,
 } from './pure-fns-format.js';
 
 export {

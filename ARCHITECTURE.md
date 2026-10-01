@@ -140,6 +140,13 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
+#### **04b-render-stats.js** (157 lines) — Header Stat Tiles (LEAF MODULE)
+**Responsibility**: Renders the three header stat tiles (distinct tasks today / distinct epics this week / current streak) and the three sub-stat tiles beneath them (top task today / top task this week / best streak day). Reads entries via `getEntries()` from `state.js`; pure rendering with no side-effects beyond DOM writes. Extracted from the render-family concat (issue #336) — the thirteenth ES-module extraction. The only former blocker was `calcStreak()`, which was itself extracted to `pure-fns-format.js` as a pure function in the same PR.
+
+**Exports**: `renderHeaderStatTiles`, `renderSubStatTiles`
+
+---
+
 #### **03-timer.js** (543 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
@@ -175,7 +182,7 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (139 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
+- `04b-render-stats.js` (157 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
 - `04c-render-timeline.js` (432 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 

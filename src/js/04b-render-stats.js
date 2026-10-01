@@ -1,15 +1,24 @@
-/* ── Render — header stat tiles and sub-stat tiles ── */
-// Split out of 04-render.js (QA finding: module size). Both functions only
-// read entries/document and write into the #stat* elements render() already
-// expects to exist; neither depends on render()'s other sections running
-// first or after.
+/**
+ * @file 04b-render-stats.js — Header stat tiles and sub-stat tiles.
+ * Split out of 04-render.js (QA finding: module size). Both render functions
+ * only read entries/document and write into the #stat* elements render()
+ * already expects to exist; neither depends on render()'s other sections
+ * running first or after.
+ */
+
+import { JIRA_BASE } from './00-config.js';
+import { getEntries } from './state.js';
+import { dk, mondayOfWeek, fmtDur, escHtml, calcStreak } from './pure-fns-format.js';
+import { parseJiraLabel } from './pure-fns-export.js';
+import { isToday } from './date-labels.js';
 
 /**
  * Renders the three header stat tiles (distinct tasks today / distinct epics
  * this week / current streak) and the collapsed one-line summary that
  * mirrors them.
+ * @returns {void}
  */
-function renderHeaderStatTiles() {
+export function renderHeaderStatTiles() {
   const todayKey = dk(new Date());
   document.getElementById('statToday').textContent = new Set(
     getEntries()
@@ -24,7 +33,7 @@ function renderHeaderStatTiles() {
         .map((entry) => entry.tag || 'other')
     ).size;
   })();
-  document.getElementById('statStreak').textContent = calcStreak();
+  document.getElementById('statStreak').textContent = calcStreak(getEntries());
 
   // Collapsed summary: mirrors the three values into a single header line so
   // the section communicates its data without needing to be opened.
@@ -57,8 +66,9 @@ function buildStatSubHtml(label, ms) {
  * Renders the three sub-stat tiles beneath the header stats: today's
  * most-tracked task, this week's most-tracked task, and the streak day with
  * the longest tracked time. Hides each tile when there's no data for it.
+ * @returns {void}
  */
-function renderSubStatTiles() {
+export function renderSubStatTiles() {
   const todayKey = dk(new Date());
 
   // Today: task with most tracked time
