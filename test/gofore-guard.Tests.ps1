@@ -90,8 +90,14 @@ Describe 'Get-GoforeRequestDecision: cross-origin protection' {
         $decision.Reason  | Should Match 'host'
     }
 
-    It 'rejects a missing Host header' {
-        (Get-Decision -HostHeader $null).Allowed | Should Be $false
+    foreach ($missingHost in @($null, '')) {
+        It "rejects a missing Host header ($(if ($null -eq $missingHost) { '$null' } else { 'empty' })) with 403 and a host reason" {
+            $decision = Get-Decision -HostHeader $missingHost
+            $decision.Allowed | Should Be $false
+            $decision.Status  | Should Be 403
+            $decision.Error   | Should Match 'localhost'
+            $decision.Reason  | Should Match 'host'
+        }
     }
 
     It 'reports the origin failure before the disabled failure' {
