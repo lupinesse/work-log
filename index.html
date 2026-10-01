@@ -143,6 +143,9 @@ shared calendar that reports as an ordinary folder — name it in <code>$Calenda
 <li><strong>Moon phase</strong> — current phase, illumination %, and zodiac sign</li>
 <li><strong>Finnish nameday</strong> — fetched live from nimipaivat.fi</li>
 </ul>
+<h2>Troubleshooting</h2>
+<p><strong>My entries are gone after reopening the page.</strong> Entries live in <code>localStorage</code>, scoped to the exact <code>origin:port</code>. Reload <code>http://localhost:8080/work-log.html</code> (see the note under <em>How to use</em>). If you still see nothing, check that your browser isn't set to clear site data on exit, then restore from the newest file in <code>JSON backups/</code> (written automatically at end-of-day).</p>
+<p><strong>The timer didn't save.</strong> Same cause as above — a different port or cleared site data. Log the missed time manually from the Log tab.</p>
 <h2>Project documentation</h2>
 <table>
 <thead>
