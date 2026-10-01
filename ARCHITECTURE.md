@@ -25,7 +25,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **00-config.js** (95 lines) — App Configuration
+#### **00-config.js** (114 lines) — App Configuration
 **Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
 
 **Key constants**:
@@ -353,7 +353,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (547 lines) — Live Info Widgets
+#### **09-clock-weather.js** (545 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
