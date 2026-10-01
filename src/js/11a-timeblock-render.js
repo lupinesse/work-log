@@ -30,7 +30,7 @@ function renderTimeblock() {
   timesEl.innerHTML = '';
   for (let i = 0; i <= TB_SLOTS; i++) {
     const d = document.createElement('div');
-    d.className = 'tb-time-lbl' + (i === TB_SLOTS ? ' end' : '');
+    d.className = 'tb-time-label' + (i === TB_SLOTS ? ' end' : '');
     d.textContent = slotToTime(i);
     timesEl.appendChild(d);
   }
