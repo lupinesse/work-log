@@ -1,7 +1,7 @@
 /**
  * @file design-tokens-css.test.mjs
  * Compiles the real stylesheet and checks that semantic colour tokens exist for
- * both themes and are used instead of raw hex values (#511).
+ * both themes and are used instead of raw hex values (#526, #527, #532, #494, #493, #537).
  */
 
 import { describe, it } from 'node:test';
