@@ -77,7 +77,7 @@ function openGapReportOverlay() {
   // (same convention as exportTxt's entriesWithBillingStatus) — this is what
   // lets non-billable entries be excluded without flagging them for a
   // missing note/link.
-  const entriesWithBillingStatus = entries.map((entry) => ({
+  const entriesWithBillingStatus = getEntries().map((entry) => ({
     ...entry,
     _billable: isEntryBillable(entry),
   }));

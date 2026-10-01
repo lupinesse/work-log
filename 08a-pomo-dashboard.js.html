@@ -200,7 +200,7 @@ function renderPomoRibbon() {
 function updatePomoTaskLabel() {
   const el = document.getElementById('pomoTaskLabel');
   if (!el) return;
-  const liveEntry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = activeTimer ? getEntries().find((e) => e.id === activeTimer.entryId) : null;
   el.textContent = liveEntry ? liveEntry.text : '';
 }
 

@@ -58,7 +58,7 @@ function saveTrackers() {
  * @returns {'hit'|'partial'|'miss'}
  */
 function trackerDayStatus(tracker, dateKey) {
-  const ms = entries
+  const ms = getEntries()
     .filter(
       (e) =>
         e.date === dateKey &amp;&amp; tracker.tags.includes(e.tag) &amp;&amp; e.tsEnd &amp;&amp; e.signifier !== 'cancelled'

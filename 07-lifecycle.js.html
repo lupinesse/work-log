@@ -188,7 +188,7 @@ function renderEodReminder() {
   const todayKey = dk(today);
   const sodTs = getDayStart(today);
   const eodTs = getEodTs(today);
-  const hasEntriesToday = entries.some((e) => e.date === todayKey);
+  const hasEntriesToday = getEntries().some((e) => e.date === todayKey);
   const shouldShow =
     _eodReminderDismissedDate !== todayKey &amp;&amp;
     isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now: Date.now() });
@@ -369,7 +369,7 @@ document.getElementById('nextDay').addEventListener('click', () => {
  */
 function saveSnapshot() {
   const todayKey = dk(new Date());
-  const dayEntries = entries
+  const dayEntries = getEntries()
     .filter((e) => e.date === todayKey)
     .slice()
     .sort((a, b) => a.ts - b.ts);
@@ -402,7 +402,7 @@ function saveSnapshot() {
     JSON.stringify({
       date: todayKey,
       text: lines.join('\n'),
-      entries: entries,
+      entries: getEntries(),
       categories: categories,
     })
   );
@@ -433,7 +433,7 @@ setTimeout(() => {
     version: '1.8.2',
     date: dk(new Date()),
     // Persistent state counts (from localStorage after load + migration)
-    entries: entries.length,
+    entries: getEntries().length,
     categories: categories.length,
     planTasks: planTasks.length,
     blocks: blocks.length,
