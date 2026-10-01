@@ -14,13 +14,17 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, it, beforeEach } from 'node:test';
+import { afterEach, describe, it, beforeEach } from 'node:test';
 import vm from 'node:vm';
 
 import { __dirname } from './_helpers.mjs';
-import { getTimerInterval, setTimerInterval } from '../../src/js/state.js';
+import { clearTimerInterval, getTimerInterval, setTimerInterval } from '../../src/js/state.js';
 
 const timerSource = readFileSync(join(__dirname, '../../src/js/03-timer.js'), 'utf8');
+
+/** Restores the real clearInterval after a test that replaced it; set by loadTimer(). */
+let restoreClearInterval = null;
+afterEach(() => restoreClearInterval?.());
 
 /**
  * Minimal stand-in for a DOM element: 03-timer.js binds listeners at load time
@@ -47,8 +51,16 @@ function fakeElement() {
 function loadTimer({ activeTimer = null, entries = [] } = {}) {
   const intervalsStarted = [];
   const intervalsCleared = [];
+  // state.js's clearTimerInterval() calls the real global clearInterval, not
+  // the sandbox's, so intercept it there; afterEach puts the original back.
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.clearInterval = (id) => intervalsCleared.push(id);
+  restoreClearInterval = () => {
+    globalThis.clearInterval = realClearInterval;
+  };
   const noop = () => {};
   const sandbox = {
+    clearTimerInterval,
     getTimerInterval,
     setTimerInterval,
     activeTimer,
@@ -59,7 +71,6 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
       intervalsStarted.push(callback);
       return intervalsStarted.length * 100; // distinct, truthy fake IDs
     },
-    clearInterval: (id) => intervalsCleared.push(id),
     save: noop,
     render: noop,
     updateTimerBar: noop,
@@ -204,6 +215,17 @@ describe('no source file outside state.js uses a bare timerInterval binding', ()
         source,
         /(?<![A-Za-z])timerInterval\b(?!\()/,
         `${file} still uses a bare timerInterval`
+      );
+    }
+  });
+
+  it('03-timer.js and 04c-render-timeline.js stop the tick via clearTimerInterval, not clearInterval', () => {
+    for (const file of ['03-timer.js', '04c-render-timeline.js']) {
+      const source = readFileSync(join(__dirname, '../../src/js', file), 'utf8');
+      assert.doesNotMatch(
+        source,
+        /(?<![A-Za-z])clearInterval\(/,
+        `${file} calls clearInterval directly`
       );
     }
   });
