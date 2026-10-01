@@ -148,3 +148,38 @@ describe('createRestartedEntry', () => {
     assert.equal(sandbox._pendingNoteConfirm.note, 'Wrote unit tests');
   });
 });
+
+describe('annotateBillableStatus', () => {
+  const CASES = [
+    ['an entry with billable:false', { id: 'a', text: 'x', billable: false }, false],
+    ['an entry with billable:true', { id: 'b', text: 'x', billable: true }, true],
+    ['a cancelled entry', { id: 'c', text: 'x', signifier: 'cancelled' }, false],
+    [
+      'an entry with no flag and no matching task/category default',
+      { id: 'd', text: 'x', tag: 'other' },
+      true,
+    ],
+  ];
+
+  for (const [label, entry, expected] of CASES) {
+    it(`flags ${label} as _billable=${expected}`, () => {
+      const sandbox = loadEntriesSandbox({
+        planTasks: [],
+        getCat: () => ({ id: 'other' }),
+      });
+      const [annotated] = sandbox.annotateBillableStatus([entry]);
+      assert.equal(annotated._billable, expected);
+    });
+  }
+
+  it('returns new objects and leaves the input entries untouched', () => {
+    const sandbox = loadEntriesSandbox({
+      planTasks: [],
+      getCat: () => ({ id: 'other' }),
+    });
+    const input = [{ id: 'a', text: 'x', billable: true }];
+    const [annotated] = sandbox.annotateBillableStatus(input);
+    assert.notEqual(annotated, input[0]);
+    assert.equal('_billable' in input[0], false);
+  });
+});
