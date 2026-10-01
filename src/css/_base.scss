@@ -28,10 +28,6 @@
 
   /* ── Unified cool palette ── */
   --paper: #eef2f7; /* page background — cool pale blue-grey */
-  --card-soft: #f5f8fc; /* section header tint (= --bg2) */
-  --line-strong: #c9d3e0; /* stronger border on cards (= --border2) */
-  --ink2: #475569; /* secondary text (= --text2) */
-  --ink-muted: #7a8597; /* tertiary text (= --text3) */
   --ink-faint: #aab4c2; /* ghost / placeholder */
   --live: #0284c7; /* running-state accent (sky-600) */
   --live-deep: #075985; /* darker live for text on light bg */
@@ -92,10 +88,6 @@
 
     /* ── Unified cool palette — dark mode ── */
     --paper: #161a20;
-    --card-soft: #1e2530;
-    --line-strong: rgba(255, 255, 255, 0.18);
-    --ink2: #94a3b8;
-    --ink-muted: #64748b;
     --ink-faint: #475569;
     --live: #38bdf8;
     --color-error: #f17070;

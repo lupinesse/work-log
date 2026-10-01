@@ -94,3 +94,11 @@ describe('Jira badge tokens (#494)', () => {
     }
   });
 });
+
+describe('retired colour aliases (#493)', () => {
+  for (const alias of ['--card-soft', '--line-strong', '--ink2', '--ink-muted']) {
+    it(`${alias} is neither defined nor referenced`, () => {
+      assert.equal(compiledCss.includes(alias), false);
+    });
+  }
+});
