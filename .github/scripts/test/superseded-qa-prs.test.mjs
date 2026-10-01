@@ -37,6 +37,10 @@ describe('selectSupersededPrs', () => {
     assert.throws(() => selectSupersededPrs('not json', CURRENT));
   });
 
+  test('throws on empty input, as when gh prints nothing', () => {
+    assert.throws(() => selectSupersededPrs('', CURRENT));
+  });
+
   test('throws on non-array JSON', () => {
     assert.throws(() => selectSupersededPrs('null', CURRENT), /Expected an array/);
   });

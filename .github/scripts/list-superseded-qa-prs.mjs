@@ -22,7 +22,14 @@ process.stdin.on('data', (chunk) => {
   data += chunk;
 });
 process.stdin.on('end', () => {
-  for (const prNumber of selectSupersededPrs(data, currentBranch)) {
-    console.log(prNumber);
+  try {
+    for (const prNumber of selectSupersededPrs(data, currentBranch)) {
+      console.log(prNumber);
+    }
+  } catch (error) {
+    // Exit non-zero so the workflow step (bash -e -o pipefail) fails visibly
+    // instead of silently leaving stale report PRs open.
+    console.error(`list-superseded-qa-prs: ${error.message}`);
+    process.exitCode = 1;
   }
 });
