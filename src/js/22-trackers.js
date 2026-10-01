@@ -121,7 +121,7 @@ export function renderTrackers() {
       return `
       <div class="tracker-card">
         <div class="tracker-card-head">
-          <span class="edot" style="background:${safeCssColor(tracker.color)}"></span>
+          <span class="edot" style="background:${safeCssColor(tracker.color)}" aria-hidden="true"></span>
           <span class="tracker-name">${escHtml(tracker.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
           ${streak ? `<span class="tracker-streak">🔥 ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
