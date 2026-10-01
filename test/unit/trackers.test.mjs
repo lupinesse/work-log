@@ -243,7 +243,7 @@ describe('22-trackers — renderTrackers', () => {
     const xss = { ...WORK_TRACKER, name: '<script>alert(1)</script>' };
     const { sandbox, listEl } = loadSandbox({ trackers: [xss] });
     sandbox.renderTrackers();
-    assert.doesNotMatch(listEl.innerHTML, /<script>/);
+    assert.doesNotMatch(listEl.innerHTML, /<script>/i);
     assert.match(listEl.innerHTML, /&lt;script&gt;/);
   });
 
