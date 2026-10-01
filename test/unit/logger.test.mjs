@@ -8,15 +8,45 @@ import assert from 'node:assert/strict';
 import { wlLog } from '../../src/js/logger.js';
 
 describe('wlLog', () => {
+  /**
+   * Replaces console methods with the given stubs for the duration of `fn`,
+   * restoring the originals in a finally block so a throwing callback cannot
+   * leave the console patched for later tests.
+   * @param {Object<string, Function>} stubs - Console method name → replacement.
+   * @param {Function} fn - Callback to run while the stubs are installed.
+   * @returns {void}
+   */
+  function withConsoleStubs(stubs, fn) {
+    const originals = {};
+    for (const method of Object.keys(stubs)) originals[method] = console[method];
+    Object.assign(console, stubs);
+    try {
+      fn();
+    } finally {
+      Object.assign(console, originals);
+    }
+  }
+
   /** Temporarily replace a console method, run fn, restore, return recorded calls. */
   function spy(method, fn) {
     const recorded = [];
-    const orig = console[method];
-    console[method] = (...args) => recorded.push(args);
-    fn();
-    console[method] = orig;
+    withConsoleStubs({ [method]: (...args) => recorded.push(args) }, fn);
     return recorded;
   }
+
+  describe('console restoration (regression, #519)', () => {
+    it('restores the console method even when the callback throws', () => {
+      const original = console.debug;
+      assert.throws(
+        () =>
+          spy('debug', () => {
+            throw new Error('boom');
+          }),
+        /boom/
+      );
+      assert.equal(console.debug, original);
+    });
+  });
 
   describe('debug()', () => {
     it('calls console.debug with [WL:DEBUG] prefix', () => {
@@ -74,15 +104,11 @@ describe('wlLog', () => {
   });
 
   describe('config()', () => {
+    const silent = () => {};
+
     it('opens a collapsed group labelled [WL:CONFIG] Startup', () => {
       const groups = spy('groupCollapsed', () => {
-        const origLog = console.log;
-        const origEnd = console.groupEnd;
-        console.log = () => {};
-        console.groupEnd = () => {};
-        wlLog.config({ version: '1.0' });
-        console.log = origLog;
-        console.groupEnd = origEnd;
+        withConsoleStubs({ log: silent, groupEnd: silent }, () => wlLog.config({ version: '1.0' }));
       });
       assert.equal(groups.length, 1);
       assert.equal(groups[0][0], '[WL:CONFIG] Startup');
@@ -90,16 +116,10 @@ describe('wlLog', () => {
 
     it('logs each key/value pair inside the group', () => {
       const logged = [];
-      const origGroup = console.groupCollapsed;
-      const origEnd = console.groupEnd;
-      console.groupCollapsed = () => {};
-      console.groupEnd = () => {};
-      const origLog = console.log;
-      console.log = (...args) => logged.push(args);
-      wlLog.config({ a: 1, b: 'two' });
-      console.groupCollapsed = origGroup;
-      console.groupEnd = origEnd;
-      console.log = origLog;
+      withConsoleStubs(
+        { groupCollapsed: silent, groupEnd: silent, log: (...args) => logged.push(args) },
+        () => wlLog.config({ a: 1, b: 'two' })
+      );
       assert.equal(logged.length, 2);
       assert.ok(logged[0][0].includes('a:'));
       assert.ok(logged[1][0].includes('b:'));
@@ -107,13 +127,7 @@ describe('wlLog', () => {
 
     it('calls console.groupEnd once', () => {
       const ends = spy('groupEnd', () => {
-        const orig = console.groupCollapsed;
-        const origLog = console.log;
-        console.groupCollapsed = () => {};
-        console.log = () => {};
-        wlLog.config({});
-        console.groupCollapsed = orig;
-        console.log = origLog;
+        withConsoleStubs({ groupCollapsed: silent, log: silent }, () => wlLog.config({}));
       });
       assert.equal(ends.length, 1);
     });
