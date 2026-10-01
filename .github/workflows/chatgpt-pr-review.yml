@@ -51,6 +51,15 @@ on:
   pull_request:
     types: [labeled, opened, reopened, synchronize]
 
+# The one place the review bot's identity is defined. Both author checks below
+# (the synchronize guard and merge-gate) compare against it by exact equality; a
+# substring match would also match any human handle containing "chatgpt" (#514).
+# This is the REST login. GraphQL reports the same bot without the "[bot]" suffix.
+# Update it if the "ChatGPT Reviewer" App is renamed: a stale value matches nothing,
+# which stops the already-reviewed guard working and lets merge-gate pass.
+env:
+  CHATGPT_REVIEW_BOT_LOGIN: 'chatgpt-reviewer-work-log[bot]'
+
 # One full dialogue cycle per PR at a time; never cancel an in-progress run.
 concurrency:
   group: chatgpt-review-${{ github.event.pull_request.number }}
@@ -109,7 +118,9 @@ jobs:
                 }),
               ]);
 
-              const isChatGPT = login => (login ?? '').toLowerCase().includes('chatgpt');
+              const botLogin  = process.env.CHATGPT_REVIEW_BOT_LOGIN;
+              if (!botLogin) throw new Error('CHATGPT_REVIEW_BOT_LOGIN is not set');
+              const isChatGPT = login => login === botLogin;
               const alreadyReviewed =
                 comments.some(c => isChatGPT(c.user?.login)) ||
                 reviews.some(r =>  isChatGPT(r.user?.login));
@@ -413,11 +424,15 @@ jobs:
               number: context.payload.pull_request.number,
             });
 
+            // GraphQL author logins omit the "[bot]" suffix that REST includes.
+            const botLogin = process.env.CHATGPT_REVIEW_BOT_LOGIN;
+            if (!botLogin) throw new Error('CHATGPT_REVIEW_BOT_LOGIN is not set');
+            const graphqlBotLogin = botLogin.replace(/\[bot\]$/, '');
+
             const unresolved = result.repository.pullRequest.reviewThreads.nodes
               .filter(t => {
                 if (t.isResolved) return false;
-                const login = (t.comments.nodes[0]?.author?.login || '').toLowerCase();
-                return login.includes('chatgpt');
+                return t.comments.nodes[0]?.author?.login === graphqlBotLogin;
               });
 
             if (unresolved.length === 0) {

@@ -71,6 +71,8 @@ export const DEST_FILE = '.portable-dest';
  * `25-rollingsummary.js` depends on `pure-fns-format.js`, `pure-fns-tasks.js`,
  * `pure-fns-rollingsummary.js`, `24-location.js`, `state.js`, and `logger.js`,
  * so it is listed after all of them.
+ * `26-gofore-timesheet.js` depends on `pure-fns-timesheet.js`, `00-config.js`,
+ * `state.js`, and `logger.js`, so it is listed after all of them.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -98,6 +100,7 @@ export const LEAF_MODULES = [
   '12b-changelog-data.js',
   'signifiers.js',
   '25-rollingsummary.js',
+  '26-gofore-timesheet.js',
 ];
 
 /**
