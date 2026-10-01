@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Docs: README troubleshooting section, CONTRIBUTING dependency-update policy, QA.md tested-browser matrix; stale "API Validation" future-improvement removed from `ARCHITECTURE.md`** — `validWeatherResponse`, `validCalendarMeeting` and `validJiraCsvRow` already guard all three external inputs (`pure-fns-validate.js`), so the roadmap entry was out of date.
+
 ### Fixed
 - **`ARCHITECTURE.md` module map corrected: `pure-fns-epics.js` was absent and four per-module line counts were stale (#440, #441)** — the barrel's "eight themed sub-modules" description and sub-module list both omitted `pure-fns-epics.js` (158 non-blank lines, added by PR #385); `pure-fns-backup.js` (100 → 114), `app-constants.js` (63 → 69), `signifiers.js` (46 → 47), and `12b-changelog-data.js` (637 → 635) were out of sync with their files. All counts verified against `grep -v '^\\s*$' <file> | wc -l`; design certificate bumped to `1.9.2-r6`, marking this a full sub-module re-audit rather than a narrowly-scoped update. Fixes the "Software fully specified" and "Design certificates confirm compliance" Duck Book checklist items flagged in the 2026-09-21 QA review.
 - **ChatGPT review prompt's `wlLog` error-handling rule scoped to `src/js/` (#424)** — the rule previously told reviewers to enforce `wlLog.warn`/`error` repo-wide, producing a blocking finding on PR #422 asking that `console.error` in `.github/scripts/check-arrow-param-count.mjs` be replaced with `wlLog` — a call that would throw `ReferenceError` at runtime. The prompt now explicitly distinguishes: `wlLog.warn`/`error` in `src/js/` app code; `console.error` in `.github/scripts/` CI scripts; never a silent catch in either context.

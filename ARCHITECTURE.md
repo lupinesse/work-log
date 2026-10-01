@@ -869,11 +869,6 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **API Validation**: Add schema validators for external API responses
-   - Outlook calendar response
-   - Weather API response
-   - Jira CSV format
-
-2. **Consolidate CHANGELOG duplicate headings** — the v1.9.0 section still contains multiple `### Added / Changed / Fixed` groups; a follow-up PR should merge them into single headings per type.
+1. **Consolidate CHANGELOG duplicate headings** — the v1.9.0 section still contains multiple `### Added / Changed / Fixed` groups; a follow-up PR should merge them into single headings per type.
 
 This architecture has been stable through v1.0 → v1.9 releases with only feature additions.

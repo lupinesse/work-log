@@ -98,6 +98,12 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Moon phase** — current phase, illumination %, and zodiac sign
 - **Finnish nameday** — fetched live from nimipaivat.fi
 
+## Troubleshooting
+
+**My entries are gone after reopening the page.** Entries live in `localStorage`, scoped to the exact `origin:port`. Reload `http://localhost:8080/work-log.html` (see the note under *How to use*). If you still see nothing, check that your browser isn't set to clear site data on exit, then restore from the newest file in `JSON backups/` (written automatically at end-of-day).
+
+**The timer didn't save.** Same cause as above — a different port or cleared site data. Log the missed time manually from the Log tab.
+
 ## Project documentation
 
 | Document | Purpose |
