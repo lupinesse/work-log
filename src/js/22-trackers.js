@@ -1,4 +1,4 @@
-﻿// â”€â”€ 22-trackers.js â€” Custom time-goal progress trackers â”€â”€
+// â”€â”€ 22-trackers.js â€” Custom time-goal progress trackers â”€â”€
 
 /**
  * Loads the trackers array from localStorage into the module-level `trackers` variable.
