@@ -255,6 +255,83 @@ describe('save() — localStorage failure handling', () => {
   });
 });
 
+describe('load() — entries', () => {
+  /**
+   * Copies a value out of the VM sandbox as plain JSON. Arrays built inside the
+   * sandbox have a different Array.prototype from the test's, so strict
+   * deepEqual would reject them even when the contents match.
+   * @param {*} value - A value read from the sandbox.
+   * @returns {*} A same-realm deep copy.
+   */
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+
+  /**
+   * Loads 01-state.js with just enough collaborators for load() to run, and a
+   * localStorage backed by `store`. Records every wlLog warn/error call.
+   * @param {Record<string, string>} store - Raw localStorage values by key.
+   * @param {Array<object>} [seedEntries] - What the entries array holds before load().
+   * @returns {{ sandbox: object, warnings: string[], errors: string[] }}
+   */
+  function loadWithStore(store, seedEntries = []) {
+    const warnings = [];
+    const errors = [];
+    const sandbox = loadStateSandbox({
+      entries: seedEntries,
+      localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
+      wlLog: {
+        warn: (message) => warnings.push(message),
+        error: (message) => errors.push(message),
+        info: () => {},
+        debug: () => {},
+      },
+      validEntry: (entry) => !!entry && typeof entry.id === 'string',
+      validTimer: () => true,
+      validCategory: () => true,
+      loadTrackers: () => {},
+    });
+    return { sandbox, warnings, errors };
+  }
+
+  it('keeps valid stored entries, drops invalid ones, and warns about the drop', () => {
+    const { sandbox, warnings } = loadWithStore({
+      wl_entries_v1: JSON.stringify([{ id: 'a' }, { nope: true }]),
+    });
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), [{ id: 'a' }]);
+    assert.match(warnings.join('\n'), /dropped 1 invalid entry record/);
+  });
+
+  it('resets entries to an empty array and logs an error when the stored JSON is corrupt', () => {
+    const { sandbox, errors } = loadWithStore({ wl_entries_v1: '{not json' }, [{ id: 'stale' }]);
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), []);
+    assert.match(errors.join('\n'), /load: failed to parse entries/);
+  });
+
+  it('restores entries from the snapshot when primary storage holds none', () => {
+    const { sandbox, warnings } = loadWithStore({
+      wl_entries_v1: '[]',
+      wl_snapshot: JSON.stringify({ entries: [{ id: 'snap' }, { nope: true }] }),
+    });
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), [{ id: 'snap' }]);
+    assert.match(warnings.join('\n'), /restored from snapshot/);
+  });
+
+  it('ignores a snapshot whose entries field is not an array, without throwing', () => {
+    const { sandbox, warnings, errors } = loadWithStore({
+      wl_entries_v1: '[]',
+      wl_snapshot: JSON.stringify({ entries: 'corrupted' }),
+    });
+    assert.doesNotThrow(() => sandbox.load());
+    assert.deepEqual(plain(sandbox.entries), []);
+    assert.deepEqual(errors, []);
+    // Without the Array.isArray guard, `'corrupted'.filter` throws and the
+    // surrounding try/catch turns it into this warning instead.
+    assert.doesNotMatch(warnings.join('\n'), /failed to parse snapshot/);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // state.js — new accessor-layer leaf module
 // ---------------------------------------------------------------------------
