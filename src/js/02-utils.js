@@ -9,7 +9,9 @@
  * @returns {{ id: string, label: string, color: string }}
  */
 function getCat(id) {
-  const cat = categories.find((c) => c.id === id) || categories.find((c) => c.id === 'other');
+  const cat =
+    categories.find((category) => category.id === id) ||
+    categories.find((category) => category.id === 'other');
   if (!cat) return { id: 'other', label: 'other', color: '#888780' };
   return { ...cat, color: safeCssColor(cat.color) };
 }
@@ -95,8 +97,8 @@ function deleteSelectedEpic() {
   }
   const cat = getCat(selectedTag);
   const usageCount =
-    entries.filter((e) => e.tag === selectedTag).length +
-    planTasks.filter((t) => t.tag === selectedTag).length;
+    entries.filter((entry) => entry.tag === selectedTag).length +
+    planTasks.filter((task) => task.tag === selectedTag).length;
 
   const warning =
     usageCount > 0
@@ -109,7 +111,7 @@ function deleteSelectedEpic() {
     return false;
   }
 
-  categories = categories.filter((c) => c.id !== selectedTag);
+  categories = categories.filter((category) => category.id !== selectedTag);
   selectedTag = 'work';
   save();
   wlLog.info('deleteSelectedEpic: deleted epic', { catId: cat.id, usageCount });
@@ -207,12 +209,12 @@ function bindEpicsManager() {
 
   // Escape and backdrop-click dismissal, matching the other modals built on
   // this overlay shell (12a-changelog.js's expiry modal, 12c-gapreport.js).
-  overlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeEpicsModal();
+  overlay.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeEpicsModal();
   });
 
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeEpicsModal();
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) closeEpicsModal();
   });
 
   if (tidyBtn)
@@ -282,8 +284,8 @@ function buildTagRowHtml() {
         ${pickableCategories([...categories], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
-            (c) =>
-              `<option value="${c.id}"${c.id === selectedTag ? ' selected' : ''}>${escHtml(c.label)}</option>`
+            (category) =>
+              `<option value="${category.id}"${category.id === selectedTag ? ' selected' : ''}>${escHtml(category.label)}</option>`
           )
           .join('')}
         </select>
@@ -306,8 +308,8 @@ function buildTagRowHtml() {
  */
 function bindTagRowEvents() {
   // Select change
-  document.getElementById('catSelect').addEventListener('change', (e) => {
-    selectedTag = e.target.value;
+  document.getElementById('catSelect').addEventListener('change', (event) => {
+    selectedTag = event.target.value;
     editingCatId = null;
     addingNewCat = false;
     renderTagRow();
@@ -328,7 +330,7 @@ function bindTagRowEvents() {
       if (dot) dot.style.background = safeCssColor(quickColorPick.value);
     });
     quickColorPick.addEventListener('change', () => {
-      const cat = categories.find((c) => c.id === selectedTag);
+      const cat = categories.find((category) => category.id === selectedTag);
       if (cat) {
         cat.color = safeCssColor(quickColorPick.value);
         save();
@@ -361,12 +363,16 @@ function bindTagRowEvents() {
         renderTagRow();
         return;
       }
-      if (categories.find((c) => c.id !== id && c.label.toLowerCase() === label.toLowerCase())) {
+      if (
+        categories.find(
+          (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
+        )
+      ) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
       }
-      const cat = categories.find((c) => c.id === id);
+      const cat = categories.find((category) => category.id === id);
       if (cat) cat.label = label;
       editingCatId = null;
       catManageOpen = false;
@@ -381,9 +387,9 @@ function bindTagRowEvents() {
     if (editInput) {
       editInput.focus();
       editInput.select();
-      editInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveEdit();
-        if (e.key === 'Escape') {
+      editInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') saveEdit();
+        if (event.key === 'Escape') {
           editingCatId = null;
           renderTagRow();
         }
@@ -425,8 +431,8 @@ function bindTagRowEvents() {
       const cat = getCat(selectedTag);
       cat.billable = cat.billable === false;
       // Retroactively update all tasks with this category
-      planTasks.forEach((t) => {
-        if (t.tag === selectedTag) t.billable = cat.billable;
+      planTasks.forEach((task) => {
+        if (task.tag === selectedTag) task.billable = cat.billable;
       });
       save();
       savePlan();
@@ -446,7 +452,7 @@ function bindTagRowEvents() {
         renderTagRow();
         return;
       }
-      if (categories.find((c) => c.label.toLowerCase() === label.toLowerCase())) {
+      if (categories.find((category) => category.label.toLowerCase() === label.toLowerCase())) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
@@ -466,9 +472,9 @@ function bindTagRowEvents() {
     const newCatInput = document.getElementById('catNewInput');
     if (newCatInput) {
       newCatInput.focus();
-      newCatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') saveNew();
-        if (e.key === 'Escape') {
+      newCatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') saveNew();
+        if (event.key === 'Escape') {
           addingNewCat = false;
           renderTagRow();
         }
@@ -528,7 +534,7 @@ function safeRoundedStart() {
   const ts = roundToNearest30(Date.now());
   const todayKey = dk(new Date());
   const lastEnd = entries
-    .filter((e) => e.date === todayKey && e.tsEnd)
+    .filter((entry) => entry.date === todayKey && entry.tsEnd)
     .reduce((max, e) => Math.max(max, e.tsEnd), 0);
   return Math.max(ts, lastEnd);
 }
@@ -543,7 +549,7 @@ function safeRoundedStart() {
  */
 function viewEntries() {
   return entries
-    .filter((e) => e.date === dk(viewDate))
+    .filter((entry) => entry.date === dk(viewDate))
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
@@ -553,7 +559,7 @@ function viewEntries() {
  * @returns {number}
  */
 function calcStreak() {
-  const days = new Set(entries.map((e) => e.date));
+  const days = new Set(entries.map((entry) => entry.date));
   let streak = 0;
   const d = new Date();
   d.setDate(d.getDate() - 1); // Start from yesterday, not today
@@ -564,3 +570,38 @@ function calcStreak() {
   return streak;
 }
 // escHtml() is defined in 00-pure-fns.js.
+
+/**
+ * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
+ * Wraps forward from the last focusable element back to the first (Tab) and
+ * backward from the first to the last (Shift-Tab). Call from the overlay's
+ * `keydown` handler whenever `e.key === 'Tab'`. Used by concatenated modules
+ * (12c-gapreport.js); 12d-weeklyreport.js keeps a private copy because it is
+ * a leaf ES module and cannot import from this concatenated file — consolidate
+ * both into a shared leaf module when 12c-gapreport.js is extracted (#336).
+ * @param {HTMLElement} overlayEl - The open overlay container.
+ * @param {KeyboardEvent} e - The Tab keydown event.
+ * @returns {void}
+ */
+function trapFocusInOverlay(overlayEl, e) {
+  const focusable = Array.from(
+    overlayEl.querySelectorAll(
+      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
+        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => el.offsetParent !== null);
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}

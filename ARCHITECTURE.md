@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (212 lines) — Data Store
+#### **01-state.js** (211 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -109,7 +109,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (529 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (569 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -151,7 +151,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 **Internals**:
 - `tickTimer()` — Called every 100ms to update elapsed time
-- `timerInterval` — setInterval reference for cleanup
+- `timerInterval` — setInterval reference for cleanup; held in `state.js` and read/written only via `getTimerInterval()`/`setTimerInterval()` (#423)
 - Tab title updates with format: `▶ 0:30 Timer task` (running) or `⏸ 0:30 Timer task` (paused)
 
 **Data Persistence**:
@@ -405,7 +405,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (267 lines) — Task Rendering
+#### **10a-tasks-render.js** (268 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
@@ -465,7 +465,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (311 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (318 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
@@ -504,20 +504,20 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (254 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (261 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
 - `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (41 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
-- `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
-- `12d-weeklyreport.js` (128 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
+- `12c-gapreport.js` (125 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
+- `12d-weeklyreport.js` (162 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
 ---
 
-#### **13-calendar.js** (341 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (343 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -593,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (469 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (473 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`

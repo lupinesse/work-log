@@ -2166,6 +2166,68 @@ async function runTests() {
     await page.close();
   }
 
+  // ── timerInterval lives in state.js (#423) ─────────────────────────────────
+  // The accessor is the only holder of the interval ID, so each path that
+  // starts or clears the 1-second tick is exercised through the real bundle:
+  // the start/stop pair, deleting the entry that is being timed, and a
+  // timeblock-triggered start.
+  console.log('\ntimerInterval via state.js accessors');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'ti1', text: 'Timed entry', tag: 'work', ts: Date.now(), date: today },
+        { id: 'ti2', text: 'Another entry', tag: 'work', ts: Date.now(), date: today },
+      ],
+      wl_blocks_v1: [
+        { id: 'tib1', date: today, slot: 4, duration: 2, text: 'Block task', tag: 'work' },
+      ],
+    });
+    assert(
+      'No interval is held before any timer starts',
+      (await page.evaluate(() => window.__wl.getTimerInterval())) === null
+    );
+
+    await page.evaluate(() => window.__wl.startTimer('ti1'));
+    assert(
+      'startTimer stores an interval ID in the accessor',
+      await page.evaluate(() => !!window.__wl.getTimerInterval())
+    );
+    await page.evaluate(() => window.__wl.stopTimer());
+    assert(
+      'stopTimer clears the accessor',
+      (await page.evaluate(() => window.__wl.getTimerInterval())) === null
+    );
+
+    // Deleting the entry being timed clears the interval (04c .edel handler).
+    await page.evaluate(() => window.__wl.startTimer('ti2'));
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="log"]')?.click());
+    await page.waitForSelector('#tfLogPane:visible');
+    await page.evaluate(() => document.querySelector('.edel[data-id="ti2"]')?.click());
+    assert(
+      'Deleting the timed entry clears the timer',
+      !(await page.evaluate(() => !!window.__wl.activeTimer()))
+    );
+    assert(
+      'Deleting the timed entry clears the accessor',
+      (await page.evaluate(() => window.__wl.getTimerInterval())) === null
+    );
+
+    // A timeblock-triggered start stores an interval (11-timeblock tbStartBlock).
+    await page.evaluate(() => window.__wl.tbStartBlock('tib1'));
+    assert(
+      'tbStartBlock stores an interval ID in the accessor',
+      await page.evaluate(() => !!window.__wl.getTimerInterval())
+    );
+    assert(
+      'tbStartBlock starts the active timer',
+      await page.evaluate(() => !!window.__wl.activeTimer())
+    );
+    await page.evaluate(() => window.__wl.stopTimer());
+
+    await page.close();
+  }
+
   // ── Timeline keyboard accessibility (#431) ─────────────────────────────────
   console.log('\nTimeline keyboard accessibility');
   {

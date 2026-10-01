@@ -18,12 +18,12 @@ function getElapsedMs() {
  * @param {string} entryId - ID of the log entry to time.
  */
 function startTimer(entryId) {
-  if (timerInterval) clearInterval(timerInterval);
+  if (getTimerInterval()) clearInterval(getTimerInterval());
   _lastChimeMinute = null;
   _longRunningWarnDismissed = false;
   activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
   save();
-  timerInterval = setInterval(tickTimer, 1000); // set up BEFORE first tick so it always runs
+  setTimerInterval(setInterval(tickTimer, 1000)); // set up BEFORE first tick so it always runs
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
@@ -35,9 +35,9 @@ function startTimer(entryId) {
  */
 function pauseTimer() {
   if (!activeTimer || activeTimer.paused) return;
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+  if (getTimerInterval()) {
+    clearInterval(getTimerInterval());
+    setTimerInterval(null);
   }
   activeTimer.accumulatedMs = getElapsedMs();
   activeTimer.paused = true;
@@ -56,7 +56,7 @@ function resumeTimer() {
   activeTimer.paused = false;
   activeTimer.startTs = Date.now();
   save();
-  timerInterval = setInterval(tickTimer, 1000);
+  setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
   updateTimerBar();
   renderHeroCard();
@@ -69,9 +69,9 @@ function resumeTimer() {
  */
 function stopTimer() {
   if (!activeTimer) return;
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
+  if (getTimerInterval()) {
+    clearInterval(getTimerInterval());
+    setTimerInterval(null);
   }
   const entry = entries.find((e) => e.id === activeTimer.entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
@@ -385,7 +385,7 @@ function resumeTimerIfActive() {
     }
     return;
   }
-  if (!activeTimer.paused) timerInterval = setInterval(tickTimer, 1000);
+  if (!activeTimer.paused) setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
