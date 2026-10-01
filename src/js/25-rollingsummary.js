@@ -4,9 +4,16 @@
  * Shows per-day rows (date · location · session times · tracked total · top 3 tasks)
  * and a week total. Includes a "Copy" button for standup use.
  *
- * Pure data calculation lives in buildRollingSummary (pure-fns.js) and is
+ * Pure data calculation lives in buildRollingSummary (pure-fns-rollingsummary.js) and is
  * unit-tested there. This module is the localStorage + DOM glue around it.
  */
+
+import { dk, escHtml, fmtTime, fmtDur } from './pure-fns-format.js';
+import { WORK_LOCATIONS, locationFor } from './pure-fns-tasks.js';
+import { loadLocationMap } from './24-location.js';
+import { buildRollingSummary } from './pure-fns-rollingsummary.js';
+import { getEntries } from './state.js';
+import { wlLog } from './logger.js';
 
 /**
  * Returns the last `n` YYYY-MM-DD date keys ending at (and including) today,
@@ -66,7 +73,7 @@ const DATE_LABEL_MONTHS = [
  * @param {string} dateKey
  * @returns {string}
  */
-function fmtDateLabel(dateKey) {
+export function fmtDateLabel(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   return `${DATE_LABEL_DAYS[date.getDay()]} ${String(d).padStart(2, '0')} ${DATE_LABEL_MONTHS[m - 1]}`;
@@ -86,8 +93,8 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
     .filter((r) => r.sodTs || r.totalMs > 0)
     .map((row) => {
       const locLabel = WORK_LOCATIONS[locationFor(locationMap, row.dateKey)].label;
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
+      const sodStr = row.sodTs ? fmtTime(row.sodTs) : '—';
+      const eodStr = row.eodTs ? fmtTime(row.eodTs) : '—';
       const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
       let line = `${row.locationEmoji} ${fmtDateLabel(row.dateKey)} ${locLabel} · ${sodStr}–${eodStr} · ${totalStr}`;
       if (row.topTasks.length) {
@@ -121,7 +128,7 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
  * No-ops when the pane element is absent (e.g. reduced test DOM).
  * @returns {void}
  */
-function renderRollingSummary() {
+export function renderRollingSummary() {
   const el = document.getElementById('tfSummaryPane');
   if (!el) return;
 
@@ -129,7 +136,7 @@ function renderRollingSummary() {
   const locationMap = loadLocationMap();
   const dateKeys = rollingDateKeys(7);
   const rows = buildRollingSummary(dateKeys, {
-    entries,
+    entries: getEntries(),
     getDayStartTs: summaryGetSodTs,
     getDayEodTs: summaryGetEodTs,
     getLocationEmoji: (dateKey) => WORK_LOCATIONS[locationFor(locationMap, dateKey)].emoji,
@@ -139,8 +146,8 @@ function renderRollingSummary() {
 
   const rowsHtml = rows
     .map((row) => {
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
+      const sodStr = row.sodTs ? fmtTime(row.sodTs) : '—';
+      const eodStr = row.eodTs ? fmtTime(row.eodTs) : '—';
       const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
       const hasData = !!(row.sodTs || row.totalMs > 0);
 

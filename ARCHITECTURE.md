@@ -667,7 +667,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **25-rollingsummary.js** (162 lines) — Rolling Summary
+#### **25-rollingsummary.js** (168 lines) — Rolling Summary
 **Responsibility**: Renders the Rolling Summary tab inside the Today's Flow section. Builds a compact, categorised digest of recent entries (current sprint or last 7 days) grouped by task and epic, showing time totals and a sparkline of daily activity.
 
 **Key export**: `renderRollingSummary()`
