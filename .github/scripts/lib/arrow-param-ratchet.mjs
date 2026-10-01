@@ -20,7 +20,7 @@
 
 /** Baseline as measured on `main` on 2026-10-01. Never raise this by hand —
  * only a genuine drop in the real count should lower it. */
-export const BASELINE_COUNT = 131;
+export const BASELINE_COUNT = 128;
 
 /**
  * `no-restricted-syntax` is used for exactly one selector in

@@ -4,9 +4,16 @@
  * Shows per-day rows (date · location · session times · tracked total · top 3 tasks)
  * and a week total. Includes a "Copy" button for standup use.
  *
- * Pure data calculation lives in buildRollingSummary (pure-fns.js) and is
+ * Pure data calculation lives in buildRollingSummary (pure-fns-rollingsummary.js) and is
  * unit-tested there. This module is the localStorage + DOM glue around it.
  */
+
+import { dk, escHtml, fmtTime, fmtDur } from './pure-fns-format.js';
+import { WORK_LOCATIONS, locationFor } from './pure-fns-tasks.js';
+import { loadLocationMap } from './24-location.js';
+import { buildRollingSummary } from './pure-fns-rollingsummary.js';
+import { getEntries } from './state.js';
+import { wlLog } from './logger.js';
 
 /**
  * Returns the last `n` YYYY-MM-DD date keys ending at (and including) today,
@@ -66,32 +73,33 @@ const DATE_LABEL_MONTHS = [
  * @param {string} dateKey
  * @returns {string}
  */
-function fmtDateLabel(dateKey) {
+export function fmtDateLabel(dateKey) {
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   return `${DATE_LABEL_DAYS[date.getDay()]} ${String(d).padStart(2, '0')} ${DATE_LABEL_MONTHS[m - 1]}`;
 }
 
 /**
- * Builds the plain-text standup block from computed rows and copies it to the
- * clipboard. Shows a brief "Copied!" confirmation on success, or logs a warning
- * on failure.
+ * Builds the plain-text standup block from computed rows.
+ * Pure function — no DOM or clipboard access.
  * @param {object[]} rows - Output of buildRollingSummary.
  * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
- * @param {Record<string, string>} locationMap - Pre-read location map (avoids a redundant read).
- * @returns {void}
+ * @param {Record<string, string>} locationMap - Pre-read location map.
+ * @returns {string}
  */
-function copySummaryText(rows, weekTotalMs, locationMap) {
+export function buildSummaryText(rows, weekTotalMs, locationMap) {
   const lines = rows
-    .filter((r) => r.sodTs || r.totalMs > 0)
+    .filter((row) => row.sodTs || row.totalMs > 0)
     .map((row) => {
       const locLabel = WORK_LOCATIONS[locationFor(locationMap, row.dateKey)].label;
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
+      const sodStr = row.sodTs ? fmtTime(row.sodTs) : '—';
+      const eodStr = row.eodTs ? fmtTime(row.eodTs) : '—';
       const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
       let line = `${row.locationEmoji} ${fmtDateLabel(row.dateKey)} ${locLabel} · ${sodStr}–${eodStr} · ${totalStr}`;
       if (row.topTasks.length) {
-        const tasks = row.topTasks.map((t) => `${t.text} (${fmtDur(t.totalMs)})`).join(', ');
+        const tasks = row.topTasks
+          .map((task) => `${task.text} (${fmtDur(task.totalMs)})`)
+          .join(', ');
         line += `\n  ${tasks}`;
       }
       return line;
@@ -99,9 +107,20 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
 
   if (weekTotalMs > 0) lines.push(`\nWeek total: ${fmtDur(weekTotalMs)}`);
 
-  const text = lines.join('\n');
+  return lines.join('\n');
+}
+
+/**
+ * Copies the standup text to the clipboard.
+ * Shows a brief "Copied!" confirmation on success, or logs a warning on failure.
+ * @param {object[]} rows - Output of buildRollingSummary.
+ * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
+ * @param {Record<string, string>} locationMap - Pre-read location map.
+ * @returns {void}
+ */
+function copySummaryText(rows, weekTotalMs, locationMap) {
   navigator.clipboard
-    .writeText(text)
+    .writeText(buildSummaryText(rows, weekTotalMs, locationMap))
     .then(() => {
       const fb = document.getElementById('rsCopyFeedback');
       if (fb) {
@@ -121,7 +140,7 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
  * No-ops when the pane element is absent (e.g. reduced test DOM).
  * @returns {void}
  */
-function renderRollingSummary() {
+export function renderRollingSummary() {
   const el = document.getElementById('tfSummaryPane');
   if (!el) return;
 
@@ -129,7 +148,7 @@ function renderRollingSummary() {
   const locationMap = loadLocationMap();
   const dateKeys = rollingDateKeys(7);
   const rows = buildRollingSummary(dateKeys, {
-    entries,
+    entries: getEntries(),
     getDayStartTs: summaryGetSodTs,
     getDayEodTs: summaryGetEodTs,
     getLocationEmoji: (dateKey) => WORK_LOCATIONS[locationFor(locationMap, dateKey)].emoji,
@@ -139,16 +158,16 @@ function renderRollingSummary() {
 
   const rowsHtml = rows
     .map((row) => {
-      const sodStr = row.sodTs ? fmtHm(row.sodTs) : '—';
-      const eodStr = row.eodTs ? fmtHm(row.eodTs) : '—';
+      const sodStr = row.sodTs ? fmtTime(row.sodTs) : '—';
+      const eodStr = row.eodTs ? fmtTime(row.eodTs) : '—';
       const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
       const hasData = !!(row.sodTs || row.totalMs > 0);
 
       const tasksHtml = row.topTasks.length
         ? row.topTasks
             .map(
-              (t) =>
-                `<span class="rs-task">${escHtml(t.text)}<span class="rs-task-dur"> ${fmtDur(t.totalMs)}</span></span>`
+              (task) =>
+                `<span class="rs-task">${escHtml(task.text)}<span class="rs-task-dur"> ${fmtDur(task.totalMs)}</span></span>`
             )
             .join('')
         : '<span class="rs-no-tasks">no tracked entries</span>';
@@ -157,10 +176,10 @@ function renderRollingSummary() {
         <div class="rs-row-head">
           <span class="rs-emoji" aria-hidden="true">${row.locationEmoji}</span>
           <span class="rs-date">${fmtDateLabel(row.dateKey)}</span>
-          <span class="rs-session">${sodStr} – ${eodStr}</span>
-          <span class="rs-total">${totalStr}</span>
+          <span class="rs-session"><span class="sr-only">Session: </span>${sodStr} – ${eodStr}</span>
+          <span class="rs-total"><span class="sr-only">Tracked total: </span>${totalStr}</span>
         </div>
-        <div class="rs-tasks" aria-label="Top tasks">${tasksHtml}</div>
+        <div class="rs-tasks" role="group" aria-label="Top tasks for ${fmtDateLabel(row.dateKey)}">${tasksHtml}</div>
       </div>`;
     })
     .join('');
@@ -168,7 +187,7 @@ function renderRollingSummary() {
   el.innerHTML = `<div class="rs-wrap">
     <div class="rs-rows">${rowsHtml}</div>
     <div class="rs-week-total">Week total: <strong>${fmtDur(weekTotalMs)}</strong></div>
-    <button type="button" class="rs-copy-btn" id="rsCopyBtn">📋 Copy for standup</button>
+    <button type="button" class="rs-copy-btn" id="rsCopyBtn"><span aria-hidden="true">📋</span> Copy for standup</button>
     <div class="rs-copy-feedback" id="rsCopyFeedback" aria-live="polite"></div>
   </div>`;
 

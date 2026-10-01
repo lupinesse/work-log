@@ -77,6 +77,7 @@ export default [
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
+      'src/js/25-rollingsummary.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -121,6 +122,7 @@ export default [
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
+      'src/js/25-rollingsummary.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
