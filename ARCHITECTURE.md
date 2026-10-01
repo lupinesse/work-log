@@ -150,7 +150,7 @@ wl_snapshot        → backup (auto-restore on failure)
 ---
 
 #### **cat-utils.js** (44 lines) — Category Lookup Helpers (LEAF MODULE)
-**Responsibility**: `getCat(id)`, `getCatColor(id)`, and `getCatLabel(id)` — stateless category accessors that route through a single fallback chain: id → `'other'` → hardcoded stub. The returned colour is always sanitised through `safeCssColor()`, which is the choke point every colour-rendering template in the app relies on (audited against XSS alert #2). Extracted from `02-utils.js` (issue #336, extraction #16) — sister to `date-labels.js`: both pull the stateless lookup out of a heavily-entangled file and leave the DOM-binding code behind. Used by `26-gofore-timesheet.js` and `22-trackers.js` (previously both had an inline copy or direct reference).
+**Responsibility**: `getCat(id)`, `getCatColor(id)`, and `getCatLabel(id)` — stateless category accessors that route through a single fallback chain: id → `'other'` → hardcoded stub. The returned colour is always sanitised through `safeCssColor()`, which is the choke point every colour-rendering template in the app relies on (audited against XSS alert #2). Extracted from `02-utils.js` (issue #336, extraction #16) — sister to `date-labels.js`: both pull the stateless lookup out of a heavily-entangled file and leave the DOM-binding code behind. `26-gofore-timesheet.js` was the first caller; it had an inline copy of `getCatLabel` added in extraction #11 to avoid the then-non-leaf dependency on `02-utils.js`. That inline is replaced by a proper import here.
 
 **Exports**: `getCat`, `getCatColor`, `getCatLabel`
 
