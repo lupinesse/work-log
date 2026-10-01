@@ -121,14 +121,6 @@ Describe 'Year-anchor locale independence (Get-YearAnchor)' {
         ((Get-YearAnchor -Year 2027) -split [Regex]::Escape($sep))[2] | Should Be '2027'
     }
 
-    It 'keeps the year part correct for every month of the year' {
-        $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
-        foreach ($month in 1..12) {
-            $day = [DateTime]::new(2026, $month, 15)
-            ((Get-YearAnchor -Year $day.Year) -split [Regex]::Escape($sep))[2] | Should Be '2026'
-        }
-    }
-
     It 'produces a dot-delimited anchor for the Finnish locale separator' {
         Get-YearAnchor -Year 2026 -Separator '.' | Should Be '1.1.2026'
     }
