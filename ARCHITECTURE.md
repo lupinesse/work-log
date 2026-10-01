@@ -43,8 +43,8 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 **Exports**:
 - `entries` — Array of logged work entries (with timestamps); held in `state.js` and read/written only via `getEntries()`/`setEntries()` (#423)
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
-- `categories` — Custom work categories (epic colors)
-- `activeTimer` — Current timer state or null
+- `categories` — Custom work categories (epic colors); held in `state.js` and read/written only via `getCategories()`/`setCategories()` (#423)
+- `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
 - `blocks` — Timeblock UI objects
 
 **Key Functions**:
@@ -109,7 +109,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (555 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -183,7 +183,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (148 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
-- `04c-render-timeline.js` (432 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (435 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -260,7 +260,7 @@ Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntry
 
 ---
 
-#### **06-focus.js** (168 lines) — Focus Mode (Emergency Mode)
+#### **06-focus.js** (176 lines) — Focus Mode (Emergency Mode)
 **Responsibility**: Distraction-free focus interface
 
 **Features**:
@@ -322,7 +322,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (373 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (377 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -335,7 +335,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (166 lines) — Pomodoro 4-Column Dashboard
+#### **08a-pomo-dashboard.js** (168 lines) — Pomodoro 4-Column Dashboard
 **Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout; runs after `08-pomodoro.js` in the build concatenation.
 
 **Layout columns** (CSS grid in `_pomo.scss`):
@@ -419,7 +419,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-row.js** (307 lines) — Per-Row Card HTML
+#### **10a-tasks-row.js** (309 lines) — Per-Row Card HTML
 **Responsibility**: Per-task card HTML builders for the kanban board. Module-level state variables (`editingPlanId`, `_noteOpenIds`, `_cpOpenIds`) live in `10-tasks.js`; callers live in `10a-tasks-render.js`.
 
 **Key Functions**: `statusOpts()`, `prioBtnHtml()`, `notionBtnHtml()`, `noteBtnHtml()`, `noteAreaHtml()`, `billBtnHtml()`, `renderRow()`
@@ -571,7 +571,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (492 lines) — Jira Import
+#### **14-jira.js** (494 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -600,7 +600,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (475 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (480 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`

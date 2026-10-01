@@ -76,7 +76,7 @@ function _qcLogOnly() {
     return;
   }
 
-  const parsed = parseRapidTokens(raw, categories);
+  const parsed = parseRapidTokens(raw, getCategories());
   if (!parsed.text) {
     // Tokens present but no description — ask the user to add one
     if (inp) inp.focus();
@@ -84,7 +84,11 @@ function _qcLogOnly() {
   }
 
   const tag =
-    parsed.tag || _qcFilterCat || selectedTag || (categories[0] && categories[0].id) || 'other';
+    parsed.tag ||
+    _qcFilterCat ||
+    selectedTag ||
+    (getCategories()[0] && getCategories()[0].id) ||
+    'other';
   const entryDate = parsed.date || dk(new Date());
 
   /** @type {Object} */
@@ -115,7 +119,7 @@ function _qcLogOnly() {
 /** Starts a 1-second interval to update the elapsed-time label in the running strip. */
 function _qcStartTick() {
   _qcStopTick();
-  if (activeTimer) {
+  if (getActiveTimer()) {
     _qcTickInterval = setInterval(_qcUpdateElapsed, 1000);
   }
 }
@@ -131,7 +135,7 @@ function _qcStopTick() {
 /** Updates only the elapsed-time label; called every second by the ticker. */
 function _qcUpdateElapsed() {
   const el = document.getElementById('qcRunElapsed');
-  if (!el || !activeTimer) return;
+  if (!el || !getActiveTimer()) return;
   el.textContent = fmtElapsed(getElapsedMs());
 }
 
@@ -155,13 +159,13 @@ function _qcRenderRunningStrip() {
   const overlay = document.getElementById('rapidOverlay');
   if (!strip) return;
 
-  if (!activeTimer) {
+  if (!getActiveTimer()) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
     return;
   }
 
-  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
   if (!entry) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
@@ -188,7 +192,7 @@ function _qcRenderCatChips() {
     `<button class="qc-cat-chip${!_qcFilterCat ? ' active' : ''}"` +
     ` data-cat="" aria-pressed="${!_qcFilterCat}">All</button>`;
 
-  const catBtns = pickableCategories(categories, _qcFilterCat)
+  const catBtns = pickableCategories(getCategories(), _qcFilterCat)
     .map(
       (category) =>
         `<button class="qc-cat-chip${_qcFilterCat === category.id ? ' active' : ''}"` +
@@ -222,10 +226,10 @@ function _qcRenderCatChips() {
  * @returns {string} HTML string.
  */
 function _qcTaskRowHtml(rowId, text, cat, isActive) {
-  const actionLabel = isActive ? '■ now' : activeTimer ? '▸ switch' : '▸ start';
+  const actionLabel = isActive ? '■ now' : getActiveTimer() ? '▸ switch' : '▸ start';
   const ariaLabel = isActive
     ? `Currently tracking: ${text}`
-    : `${activeTimer ? 'Switch to' : 'Start'}: ${text}`;
+    : `${getActiveTimer() ? 'Switch to' : 'Start'}: ${text}`;
   return (
     `<div class="qc-task-row${isActive ? ' qc-task-row--active' : ''}"` +
     ` role="option" aria-selected="${isActive}">` +
@@ -258,8 +262,8 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   const matchCat = (tag) => !_qcFilterCat || tag === _qcFilterCat;
 
   // ── In progress: the currently-running entry (if any) ─────────────────
-  const activeEntry = activeTimer
-    ? getEntries().find((entry) => entry.id === activeTimer.entryId)
+  const activeEntry = getActiveTimer()
+    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
 
   /** @type {Object[]} */
@@ -286,7 +290,8 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   const recent = [];
   [...getEntries()]
     .filter(
-      (entry) => entry.date === todayKey && entry.id !== (activeTimer ? activeTimer.entryId : '')
+      (entry) =>
+        entry.date === todayKey && entry.id !== (getActiveTimer() ? getActiveTimer().entryId : '')
     )
     .reverse()
     .forEach((entry) => {
@@ -454,7 +459,7 @@ function _qcActivateRow(rowId, text, tag, isActive) {
     return;
   }
 
-  const switching = !!activeTimer;
+  const switching = !!getActiveTimer();
   if (switching) stopTimer();
 
   // Re-use the existing entry for log entries; always create new for plan tasks.
@@ -508,7 +513,7 @@ function initRapid() {
   const inp = document.getElementById('rapidInput');
   if (inp) {
     inp.addEventListener('input', () => {
-      const parsed = parseRapidTokens(inp.value, categories);
+      const parsed = parseRapidTokens(inp.value, getCategories());
       // Use the token-stripped text for task-list filtering
       _qcSearch = parsed.text;
       // Auto-activate the category chip when a #cat token is recognised;
@@ -527,7 +532,7 @@ function initRapid() {
 
   // Stop current timer from the running strip
   document.getElementById('qcRunStop')?.addEventListener('click', () => {
-    if (activeTimer) {
+    if (getActiveTimer()) {
       stopTimer();
       render();
     }

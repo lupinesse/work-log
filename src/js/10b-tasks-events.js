@@ -164,8 +164,8 @@ function bindPlanEvents(lists) {
         }
       }
       // Auto-stop timer when active task is marked done
-      if (newStatus === 'done' && activeTimer) {
-        const timerEntry = getEntries().find((entry) => entry.id === activeTimer.entryId);
+      if (newStatus === 'done' && getActiveTimer()) {
+        const timerEntry = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
         if (timerEntry && timerEntry.text.toLowerCase() === task.text.toLowerCase()) {
           stopTimer();
         }
@@ -286,7 +286,7 @@ function bindPlanEvents(lists) {
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
       const text = btn.dataset.text;
       const tag = task ? task.tag || 'other' : selectedTag;
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const entry = createRestartedEntry(text, tag);
       getEntries().push(entry);
       promoteMatchingTaskToInProgress(text);

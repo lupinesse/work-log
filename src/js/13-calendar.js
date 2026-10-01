@@ -153,8 +153,8 @@ function renderCalStrip(meetings) {
       // Meetings always default to the "meeting" category. Try the default id first,
       // then any category whose label matches; fall back to selectedTag if absent.
       const meetingCat =
-        categories.find((c) => c.id === 'meeting') ||
-        categories.find((c) => (c.label || '').toLowerCase() === 'meeting') ||
+        getCategories().find((c) => c.id === 'meeting') ||
+        getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : selectedTag;
       const exists = planTasks.find(
@@ -170,7 +170,7 @@ function renderCalStrip(meetings) {
         });
         savePlan();
       }
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const entry = {
         id: Date.now() + '',
         text: subject,
@@ -287,10 +287,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     getISOWeek,
     totalISOWeeks,
     entries: getEntries(),
-    categories,
+    categories: getCategories(),
     planTasks,
     blocks,
-    activeTimer: () => activeTimer,
+    activeTimer: () => getActiveTimer(),
     getTimerInterval,
     tbStartBlock,
     load,
@@ -325,10 +325,10 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     saveHook,
     getState: () => ({
       entries: getEntries(),
-      categories,
+      categories: getCategories(),
       planTasks,
       blocks,
-      activeTimer,
+      activeTimer: getActiveTimer(),
       logNotes,
       trackers,
     }),

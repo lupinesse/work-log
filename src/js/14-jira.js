@@ -92,14 +92,16 @@
   function jiraMatchCat(parentKey, label) {
     // Match by ticket key prefix first — most reliable, prevents "UAT" matching "Pre-UAT"
     if (parentKey) {
-      const byKey = categories.find(
+      const byKey = getCategories().find(
         (category) => category.label.startsWith(parentKey + ':') || category.label === parentKey
       );
       if (byKey) return byKey;
     }
     // Fall back to exact label match only — no fuzzy substring matching
     const lower = label.toLowerCase().trim();
-    return categories.find((category) => category.label.toLowerCase().trim() === lower) || null;
+    return (
+      getCategories().find((category) => category.label.toLowerCase().trim() === lower) || null
+    );
   }
 
   /**
@@ -114,7 +116,7 @@
   function unarchiveImportedCats(mappedCats) {
     let restored = 0;
     mappedCats.forEach((mapped) => {
-      const cat = categories.find((category) => category.id === mapped.id);
+      const cat = getCategories().find((category) => category.id === mapped.id);
       if (!cat || !cat.archived) return;
       delete cat.archived;
       restored++;
@@ -134,7 +136,7 @@
    */
   function jiraBuildCatMap(tasks) {
     jiraCatMap = {};
-    const usedColors = new Set(categories.map((category) => category.color));
+    const usedColors = new Set(getCategories().map((category) => category.color));
     let ci = 0;
     const seen = new Set();
     tasks
@@ -458,8 +460,8 @@
 
     // Create any new categories
     Object.values(jiraCatMap).forEach((cat) => {
-      if (cat.isNew && !categories.find((category) => category.id === cat.id)) {
-        categories.push({ id: cat.id, label: cat.label, color: cat.color });
+      if (cat.isNew && !getCategories().find((category) => category.id === cat.id)) {
+        getCategories().push({ id: cat.id, label: cat.label, color: cat.color });
       }
     });
 

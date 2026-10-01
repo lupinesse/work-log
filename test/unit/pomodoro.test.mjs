@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 const pomoSrc = readFileSync(join(__dirname, '../../src/js/08-pomodoro.js'), 'utf8');
 
@@ -82,7 +82,7 @@ describe('pomoAffirmation', () => {
   let pomoFnSb;
   before(() => {
     pomoFnSb = makePomoSandboxBase();
-    vm.createContext(pomoFnSb);
+    vm.createContext(withStateAccessors(pomoFnSb));
     vm.runInContext(pomoCoreSrc, pomoFnSb);
   });
 
@@ -131,7 +131,7 @@ describe('pomoAffirmation', () => {
 describe('pomoAddTime', () => {
   it('adds 120 to pomoLeft and pomoTotal when the timer is running', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoRunning = true;
@@ -148,7 +148,7 @@ results.totalDiff = pomoTotal - _prevTotal;`,
 
   it('is a no-op when the timer is not running', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoRunning = false;
@@ -167,7 +167,7 @@ results.totalUnchanged = pomoTotal === _prevTotal;`,
 describe('pomoTapOut', () => {
   it('sets pomoLeft to 0 and pomoRunning to false', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoTotal = 300;
@@ -184,7 +184,7 @@ results.running = pomoRunning;`,
 
   it('logs partial minutes equal to elapsed time (180 s → 3 min)', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoTotal = 300;
@@ -200,7 +200,7 @@ results.mins = log[0].mins;`,
 
   it('records at least 1 minute even when elapsed time is 0', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoTotal = 300;
@@ -216,7 +216,7 @@ results.mins = log[0].mins;`,
 
   it('persists the tap-out entry to STORE_POMO_LOG in localStorage', () => {
     const sb = makePomoSandboxBase({ results: {} });
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(
       `${pomoCoreSrc}
 pomoTotal = 600;

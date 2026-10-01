@@ -112,7 +112,9 @@ function billBtnHtml(t, status) {
  */
 function renderRow(t) {
   const viewKey = dk(viewDate);
-  const liveEntry = activeTimer ? getEntries().find((e) => e.id === activeTimer.entryId) : null;
+  const liveEntry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   const liveText = liveEntry ? liveEntry.text.toLowerCase() : null;
 
   const status = t.status || 'todo';
@@ -131,7 +133,7 @@ function renderRow(t) {
 
   const isLive = liveText && t.text.toLowerCase() === liveText;
   const catOpts =
-    pickableCategories([...categories], t.tag)
+    pickableCategories([...getCategories()], t.tag)
       .sort((a, b) => a.label.localeCompare(b.label))
       .map(
         (c) =>

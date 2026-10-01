@@ -24,7 +24,7 @@ function exportTxt() {
   const { dayStartTs, dayEndTs } = computeDayBounds(dayEntries, timedEntries, {
     isViewingToday,
     dayStart: isViewingToday ? getDayStart() : null,
-    activeTimer,
+    activeTimer: getActiveTimer(),
     now: Date.now(),
   });
 
@@ -157,7 +157,7 @@ function exportBackup() {
   const { payload, dropped } = buildBackupPayload(
     {
       entries: getEntries(),
-      categories,
+      categories: getCategories(),
       planTasks,
       blocks,
       pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),

@@ -34,8 +34,8 @@ let _heroStoppedEntry = null;
  */
 function heroGetState() {
   if (_heroStopped) return 'stopped';
-  if (!activeTimer) return 'idle';
-  return activeTimer.paused ? 'paused' : 'running';
+  if (!getActiveTimer()) return 'idle';
+  return getActiveTimer().paused ? 'paused' : 'running';
 }
 
 // ── Full render ───────────────────────────────────────────────────────────────
@@ -171,8 +171,8 @@ function _heroRenderRecentChips() {
 
 /** Updates the running panel: category dot + task title + started-at sub-line. */
 function _heroFillRunning() {
-  if (!activeTimer) return;
-  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
+  if (!getActiveTimer()) return;
+  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
   if (!entry) return;
 
   _heroSetCategory('heroTaskCategory', entry.tag, true);
@@ -194,8 +194,8 @@ function _heroFillRunning() {
 
 /** Updates the paused panel with the frozen clock and task details. */
 function _heroFillPaused() {
-  if (!activeTimer) return;
-  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
+  if (!getActiveTimer()) return;
+  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
   if (!entry) return;
 
   _heroSetCategory('heroPausedCategory', entry.tag, true);
@@ -257,7 +257,7 @@ function _heroFillStopped() {
  * Only touches the clock element so the DOM churn stays minimal.
  */
 function heroUpdateClock() {
-  if (!activeTimer || activeTimer.paused || _heroStopped) return;
+  if (!getActiveTimer() || getActiveTimer().paused || _heroStopped) return;
   const el = document.getElementById('timerElapsed');
   if (el) el.textContent = fmtElapsed(getElapsedMs());
 }
@@ -305,7 +305,7 @@ function _heroHandleStart() {
   const text = inp ? inp.value.trim() : '';
 
   if (text) {
-    const tag = selectedTag || (categories[0] ? categories[0].id : 'other');
+    const tag = selectedTag || (getCategories()[0] ? getCategories()[0].id : 'other');
     const entry = {
       id: Date.now() + '',
       text,
@@ -316,7 +316,7 @@ function _heroHandleStart() {
     getEntries().push(entry);
     promoteMatchingTaskToInProgress(text);
     save();
-    if (activeTimer) stopTimer();
+    if (getActiveTimer()) stopTimer();
     // Cancel any stopped-confirmation window so the new running state renders immediately.
     _heroCancelStoppedTimer();
     startTimer(entry.id);
@@ -344,7 +344,7 @@ function _heroStartFromChip(text, tag) {
   if (existing && !existing.tsEnd) {
     // Entry already has no end — start timer on it
     promoteMatchingTaskToInProgress(text);
-    if (activeTimer) stopTimer();
+    if (getActiveTimer()) stopTimer();
     _heroCancelStoppedTimer();
     startTimer(existing.id);
     render();
@@ -360,7 +360,7 @@ function _heroStartFromChip(text, tag) {
   getEntries().push(entry);
   promoteMatchingTaskToInProgress(text);
   save();
-  if (activeTimer) stopTimer();
+  if (getActiveTimer()) stopTimer();
   _heroCancelStoppedTimer();
   startTimer(entry.id);
   render();
@@ -409,7 +409,7 @@ function _heroSetCategory(elId, tag, interactive = false) {
   }
 
   const panelId = `${elId}-panel`;
-  const itemsHtml = pickableCategories(categories, tag)
+  const itemsHtml = pickableCategories(getCategories(), tag)
     .map(
       (category) =>
         `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(category.id)}"` +
@@ -501,8 +501,8 @@ function _heroBindCatPicker(wrap) {
  * @param {string} newTag - Category ID to apply.
  */
 function _heroCatSelect(newTag) {
-  if (!activeTimer) return;
-  const entry = getEntries().find((logEntry) => logEntry.id === activeTimer.entryId);
+  if (!getActiveTimer()) return;
+  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
   if (!entry) return;
   entry.tag = newTag;
   save();
