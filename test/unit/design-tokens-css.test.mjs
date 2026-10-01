@@ -36,3 +36,34 @@ describe('shape tokens replace raw values (#526, #527)', () => {
     assert.match(compiledCss, /border:\s*var\(--border-hairline\) solid/);
   });
 });
+
+describe('danger tokens (#532)', () => {
+  it('defines --danger-ink and --danger-border with distinct light and dark values', () => {
+    const ink = compiledCss.match(/--danger-ink:\s*(#[0-9a-f]{6})/g) ?? [];
+    const border = compiledCss.match(/--danger-border:\s*(#[0-9a-f]{6})/g) ?? [];
+    assert.deepEqual(
+      ink.map((d) => d.split(':')[1].trim()),
+      ['#991b1b', '#fca5a5']
+    );
+    assert.deepEqual(
+      border.map((d) => d.split(':')[1].trim()),
+      ['#b91c1c', '#f87171']
+    );
+  });
+
+  it('keeps --pom-red-deep in step by aliasing --danger-ink', () => {
+    assert.match(compiledCss, /--pom-red-deep:\s*var\(--danger-ink\)/);
+  });
+
+  it('colours the save-failure banner through the tokens, not raw reds', () => {
+    for (const selector of [
+      '.save-fail-banner',
+      '.save-fail-banner__action',
+      '.save-fail-banner__dismiss',
+    ]) {
+      const body = ruleBody(selector) ?? '';
+      assert.match(body, /var\(--danger-(ink|border)\)/, selector);
+      assert.doesNotMatch(body, /#991b1b|#fca5a5|#f87171|#b91c1c/i, selector);
+    }
+  });
+});
