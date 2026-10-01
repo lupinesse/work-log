@@ -289,6 +289,21 @@ describe('deleteSelectedEpic — confirm before hard delete (regression)', () =>
     assert.ok(confirmText.includes('no log entries or tasks'));
   });
 
+  it('does not save or log a deletion when selectedTag matches no epic (stale tag)', () => {
+    const saves = [];
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+      selectedTag: 'cat_gone',
+      save: () => saves.push(true),
+      window: { confirm: () => true, alert: () => {} },
+    });
+    const deleted = sandbox.deleteSelectedEpic();
+
+    assert.equal(deleted, false);
+    assert.equal(saves.length, 0, 'nothing to delete, so nothing is saved');
+    assert.equal(sandbox.selectedTag, 'cat_gone', 'selection is untouched');
+  });
+
   it('refuses to delete a built-in epic, even if somehow selected', () => {
     const saves = [];
     const alerts = [];
