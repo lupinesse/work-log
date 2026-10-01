@@ -20,12 +20,13 @@
  * Optional env vars:
  *   MODEL                default 'gpt-4o-mini'
  *   MAX_DIFF_CHARS       default 25000
- *   MAX_TOKENS           default 3072
+ *   MAX_COMPLETION_TOKENS default 3072 (legacy name MAX_TOKENS still read, deprecated)
  *   MAX_CONTEXT_CHARS    default 3000 — cap on the final-review context block
  *   DIFF_PATH            default 'pr.diff'
  */
 
 import { readFileSync } from 'node:fs';
+import { readMaxCompletionTokens } from './lib/max-completion-tokens.mjs';
 import { formatTokenUsage } from './lib/format-token-usage.mjs';
 import { parseRepository } from './lib/parse-repository.mjs';
 import {
@@ -68,7 +69,7 @@ const HEAD_SHA = must('HEAD_SHA');
 
 const MODEL = process.env.MODEL || 'gpt-4o-mini';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '25000', 10);
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '3072', 10);
+const MAX_COMPLETION_TOKENS = readMaxCompletionTokens(process.env, 3072);
 const MAX_CONTEXT_CHARS = parseInt(process.env.MAX_CONTEXT_CHARS || '3000', 10);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
@@ -295,7 +296,7 @@ Output a single raw JSON object — no markdown wrapper:
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.2,
-      max_completion_tokens: MAX_TOKENS,
+      max_completion_tokens: MAX_COMPLETION_TOKENS,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
