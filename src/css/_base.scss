@@ -19,6 +19,8 @@
   --info-text: #185fa5;
   --radius: 8px;
   --radius-lg: 12px;
+  --radius-pill: 99px; /* fully rounded pills and chips */
+  --border-hairline: 0.5px; /* thin divider/outline width used across cards and controls */
   --font: -apple-system, 'Segoe UI', sans-serif;
   --mono: 'SF Mono', 'Fira Code', monospace;
 
@@ -201,7 +203,7 @@ body {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid #b91c1c;
+  border: var(--border-hairline) solid #b91c1c;
   cursor: pointer;
   background: none;
   color: #991b1b;

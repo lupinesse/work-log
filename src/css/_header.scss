@@ -121,7 +121,7 @@
 
 .nav-btn {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 5px 13px;
   cursor: pointer;
@@ -150,7 +150,7 @@
 .session-chip {
   width: 100%;
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 8px 12px;
   font-size: 12.5px;
@@ -215,7 +215,7 @@
   color: var(--text3);
   margin-top: 5px;
   line-height: 1.6;
-  border-top: 0.5px solid var(--border);
+  border-top: var(--border-hairline) solid var(--border);
   padding-top: 5px;
 }
 

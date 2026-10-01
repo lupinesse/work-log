@@ -11,12 +11,12 @@
   gap: 6px;
   align-items: center;
   padding: 6px 8px 4px;
-  border-top: 0.5px solid var(--border);
+  border-top: var(--border-hairline) solid var(--border);
 }
 
 .tl-adhoc-input {
   flex: 1;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 5px 10px;
   font-size: 13px;
@@ -38,7 +38,7 @@
 
 .tl-adhoc-btn {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 5px 12px;
   font-size: 12px;
@@ -62,7 +62,7 @@
   top: calc(100% + 4px);
   right: 0;
   background: var(--bg2);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   min-width: 160px;
   z-index: 200;
@@ -105,7 +105,7 @@
 /* Timer start button */
 .timer-btn {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 8px 12px;
   font-size: 13px;
@@ -146,7 +146,7 @@
 
 .capture-input {
   flex: 1;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 8px 12px;
   font-size: 14px;
@@ -168,7 +168,7 @@
 
 .add-btn {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 8px 14px;
   font-size: 13px;
@@ -198,7 +198,7 @@
   font-size: 11px;
   padding: 2px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid #7b61ff;
+  border: var(--border-hairline) solid #7b61ff;
   background: none;
   color: #7b61ff;
   cursor: pointer;
@@ -222,7 +222,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   background: var(--bg2);
-  border: 0.5px solid #7b61ff;
+  border: var(--border-hairline) solid #7b61ff;
   border-radius: var(--radius-lg);
   padding: 16px;
   width: min(480px, 90vw);
@@ -266,7 +266,7 @@
 
 .timer-hook-regen {
   background: none;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   color: var(--text3);
   font-size: 11px;
@@ -289,7 +289,7 @@
   margin-top: 6px;
   border-radius: var(--radius);
   background: #fef3c7;
-  border: 0.5px solid #fde68a;
+  border: var(--border-hairline) solid #fde68a;
   font-size: 12px;
   color: #92400e;
 }
@@ -308,7 +308,7 @@
 
 .hero-longrun-warn__stop {
   background: none;
-  border: 0.5px solid #b45309;
+  border: var(--border-hairline) solid #b45309;
   border-radius: var(--radius);
   padding: 2px 9px;
   font-size: 11px;
