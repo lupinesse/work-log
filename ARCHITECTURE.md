@@ -513,7 +513,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (262 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (275 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
