@@ -86,7 +86,8 @@ jobs:
           BRANCH="claude/delivery-metrics-$WEEK"
           git checkout -B "$BRANCH"
           git add docs/delivery-metrics.md
-          git commit -m "docs: delivery metrics $WEEK"
+          git commit -m "docs: delivery metrics $WEEK" \
+            -m "Automated weekly refresh of docs/delivery-metrics.md, opened as a PR because main is protected (see the note above)."
           git push -f origin "$BRANCH"
 
           if gh pr list --head "$BRANCH" --state open --json number \
