@@ -25,7 +25,7 @@ function groupTasksByColumn(viewKey) {
  */
 function renderPlan() {
   /* ── 1. Partition tasks for the current view date ── */
-  const viewKey = dk(viewDate);
+  const viewKey = dk(getViewDate());
   const { todoTasks, inProgressTasks, todayDoneTasks } = groupTasksByColumn(viewKey);
 
   const todoCount = todoTasks.length;
@@ -55,7 +55,7 @@ function renderPlan() {
 
   // Hide add form when not viewing today
   const addRow = document.getElementById('planAddRow');
-  if (addRow) addRow.style.display = isToday(viewDate) ? '' : 'none';
+  if (addRow) addRow.style.display = isToday(getViewDate()) ? '' : 'none';
 
   // Force-hide legacy stacked sections — their parse-time listeners remain intact
   document.getElementById('upcomingSection').style.display = 'none';
@@ -78,7 +78,7 @@ function renderPlan() {
   /* ── 5. Render To Do column (todo + upcoming + pending + blocked) ── */
   if (!todoTasks.length) {
     todoListEl.innerHTML = `<div class="plan-empty">${
-      isToday(viewDate)
+      isToday(getViewDate())
         ? inProgressTasks.length
           ? 'all tasks are in progress or done'
           : 'no tasks yet — add some above'
@@ -115,7 +115,7 @@ function renderPlan() {
   bindBoardColumnDnD();
   updateBoardLive();
 
-  if (isToday(viewDate)) renderTrackRecent();
+  if (isToday(getViewDate())) renderTrackRecent();
 }
 
 /**

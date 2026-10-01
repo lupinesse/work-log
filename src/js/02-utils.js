@@ -554,7 +554,7 @@ function safeRoundedStart() {
  */
 function viewEntries() {
   return getEntries()
-    .filter((entry) => entry.date === dk(viewDate))
+    .filter((entry) => entry.date === dk(getViewDate()))
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
