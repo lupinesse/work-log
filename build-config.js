@@ -61,6 +61,11 @@ export const DEST_FILE = '.portable-dest';
  * matter either. `signifiers.js` also has no dependencies on anything else
  * in the list. `01b-migrate.js` depends on both `logger.js` and
  * `pure-fns-format.js`, so it is listed after `pure-fns.js`.
+ * `24-location.js` depends on `pure-fns.js`, `logger.js`, `app-constants.js`,
+ * and `state.js`, so it is listed after all of them.
+ * `12d-weeklyreport.js` depends on `pure-fns-weeklyreport.js`,
+ * `pure-fns-format.js`, `logger.js`, and `state.js`, so it is listed after
+ * all of them.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -81,6 +86,8 @@ export const LEAF_MODULES = [
   'pure-fns-weeklyreport.js',
   'pure-fns.js',
   '01b-migrate.js',
+  '24-location.js',
+  '12d-weeklyreport.js',
   'date-labels.js',
   '12b-changelog-data.js',
   'signifiers.js',
