@@ -43,3 +43,11 @@ $CalendarExcludeNames = @()
 # `npm run timesheet:login` (Microsoft SSO); the session is kept in the
 # gitignored .timesheet-profile/ folder. No credentials are stored here.
 $GoforeTimesheetUrl = 'https://timesheet.gofore.com'
+
+# Server-side switch for POST /api/gofore-timesheet. Off by default: while it is
+# $false the server refuses every submit request with 403, whatever the browser
+# sends. Set it to $true (a real boolean, not the string 'true') only when you
+# also want the End of Day submit button (GOFORE_SUBMIT_ENABLED in
+# src/js/00-config.local.js). Requests from any other origin or host are refused
+# either way.
+$GoforeSubmitEnabled = $false
