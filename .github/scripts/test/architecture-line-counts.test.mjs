@@ -57,8 +57,8 @@ describe('countNonBlankLines', () => {
     assert.equal(countNonBlankLines('a\n\nb\nc\n'), 3);
   });
 
-  test('excludes whitespace-only lines', () => {
-    assert.equal(countNonBlankLines('a\n   \n\tb\n'), 2);
+  test('counts whitespace-only lines, matching grep -c .', () => {
+    assert.equal(countNonBlankLines('a\n   \n\tb\n'), 3);
   });
 
   test('returns 0 for an empty file', () => {

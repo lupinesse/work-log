@@ -45,14 +45,15 @@ export function extractDocumentedCounts(markdown) {
 
 /**
  * Counts the non-blank lines in a file's contents, matching the convention
- * ARCHITECTURE.md states it uses (`grep -c .`): a line counts unless it is
- * completely empty or contains only whitespace.
+ * ARCHITECTURE.md states it uses (`grep -c .`): a line counts whenever it
+ * contains any character, even whitespace; only a truly empty line is
+ * excluded.
  *
  * @param {string} contents - The file's full text.
  * @returns {number} The non-blank line count.
  */
 export function countNonBlankLines(contents) {
-  return contents.split('\n').filter((line) => line.trim() !== '').length;
+  return contents.split('\n').filter((line) => line !== '').length;
 }
 
 /**
