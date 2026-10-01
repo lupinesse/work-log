@@ -7,6 +7,39 @@
 // "Log without tracking" either commits typed text as a log entry or
 // redirects to the ad-hoc row in the time log when input is empty.
 
+/**
+ * A time-log entry, as stored in `wl_entries` (see DATA.md for every field).
+ * @typedef {Object} LogEntry
+ * @property {string} id - Unique ID.
+ * @property {string} text - Task name as typed.
+ * @property {string} tag - Category ID.
+ * @property {number} ts - Start timestamp in ms.
+ * @property {number} [tsEnd] - End timestamp in ms; absent while the timer runs.
+ * @property {string} date - ISO date `YYYY-MM-DD` of the start day.
+ * @property {boolean} [billable] - Override; absent means inherit.
+ * @property {string} [signifier] - Bullet-journal signifier, if any.
+ * @property {boolean} [_uncategorised] - True when logged without choosing a category.
+ */
+
+/**
+ * A plan (board) task, as stored in `wl_plan_v1` (see DATA.md).
+ * @typedef {Object} PlanTask
+ * @property {string} id - Unique ID.
+ * @property {string} text - Task name.
+ * @property {string} status - `todo` | `inprogress` | `upcoming` | `pending` | `blocked` | `done`.
+ * @property {string} tag - Category ID.
+ * @property {string} date - Target date `YYYY-MM-DD`.
+ * @property {boolean} [_migrated] - True once the Migration flow has processed it.
+ */
+
+/**
+ * The three groups shown in the Quick Capture task list.
+ * @typedef {Object} TaskGroups
+ * @property {LogEntry[]} inProgress - The running entry, if it passes the filters.
+ * @property {PlanTask[]} todo - Today's open plan tasks.
+ * @property {LogEntry[]} recent - Today's other entries, unique by text, newest first.
+ */
+
 /** @type {boolean} */
 let _rapidOpen = false;
 
@@ -91,7 +124,6 @@ function _qcLogOnly() {
     'other';
   const entryDate = parsed.date || dk(new Date());
 
-  /** @type {Object} */
   const entry = {
     id: Date.now() + '',
     text: parsed.text,
@@ -253,7 +285,7 @@ function _qcTaskRowHtml(rowId, text, cat, isActive) {
  *
  * @param {string} searchLower - Lower-cased search string; empty string means no filter.
  * @param {string} todayKey - Date key for today in YYYY-MM-DD format.
- * @returns {{ inProgress: Object[], todo: Object[], recent: Object[] }}
+ * @returns {TaskGroups} The deduplicated groups.
  */
 function _qcBuildTaskGroups(searchLower, todayKey) {
   /** @param {string} text @returns {boolean} */
@@ -266,7 +298,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
 
-  /** @type {Object[]} */
+  /** @type {LogEntry[]} */
   const inProgress = [];
   if (activeEntry && matchSearch(activeEntry.text) && matchCat(activeEntry.tag)) {
     inProgress.push(activeEntry);
@@ -286,7 +318,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   todo.forEach((task) => seen.add(task.text.toLowerCase()));
 
   // ── Recent: unique entries from today, excluding the active one ───────
-  /** @type {Object[]} */
+  /** @type {LogEntry[]} */
   const recent = [];
   [...getEntries()]
     .filter(
@@ -309,7 +341,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
  * Renders the task list HTML string from pre-built group data.
  * Receives all inputs as parameters — performs no DOM or module-state reads.
  *
- * @param {{ inProgress: Object[], todo: Object[], recent: Object[] }} groups
+ * @param {TaskGroups} groups - The groups from {@link _qcBuildTaskGroups}.
  * @param {string} search - Original (un-lowercased) search string for the empty-state message.
  * @returns {string} HTML string ready for assignment to `el.innerHTML`.
  */
