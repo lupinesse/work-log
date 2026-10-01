@@ -18,7 +18,8 @@
     "test:actionlint": "node .github/scripts/check-actionlint.mjs",
     "test:changelog": "node .github/scripts/check-changelog-duplicates.mjs",
     "test:arrow-param-count": "node .github/scripts/check-arrow-param-count.mjs",
-    "test": "node --test \"test/unit/*.test.mjs\" && node smoke-tests.cjs && node .github/scripts/test/ci-scripts.test.mjs",
+    "test:smoke": "node smoke-tests.cjs",
+    "test": "npm run test:unit && npm run test:smoke && npm run test:scripts",
     "lint": "eslint src/js/ *.js *.cjs \"test/**/*.mjs\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\" && stylelint \"src/css/**/*.scss\"",
     "lint:css": "stylelint \"src/css/**/*.scss\"",
     "format": "prettier --write \"src/**/*\" \"*.js\" \"*.cjs\" \"test/**/*.{cjs,mjs}\" \"scripts/**/*.mjs\" \".github/scripts/**/*.mjs\"",
@@ -75,7 +76,7 @@
     "lint-staged": "^17.5.1",
     "playwright": "^1.63.0",
     "prettier": "^3.9.8",
-    "sass": "^1.103.1",
+    "sass": "^1.105.0",
     "stylelint": "^17.15.0",
     "stylelint-config-standard-scss": "^17.0.0",
     "vite": "^8.3.0"

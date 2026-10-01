@@ -569,7 +569,10 @@ function calcStreak() {
  * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
  * Wraps forward from the last focusable element back to the first (Tab) and
  * backward from the first to the last (Shift-Tab). Call from the overlay's
- * `keydown` handler whenever `e.key === 'Tab'`.
+ * `keydown` handler whenever `e.key === 'Tab'`. Used by concatenated modules
+ * (12c-gapreport.js); 12d-weeklyreport.js keeps a private copy because it is
+ * a leaf ES module and cannot import from this concatenated file — consolidate
+ * both into a shared leaf module when 12c-gapreport.js is extracted (#336).
  * @param {HTMLElement} overlayEl - The open overlay container.
  * @param {KeyboardEvent} e - The Tab keydown event.
  * @returns {void}

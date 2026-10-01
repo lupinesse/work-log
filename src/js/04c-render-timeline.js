@@ -109,6 +109,10 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        // The emoji alone is announced as e.g. "money bag"; name the state and the action.
+        const billableAriaLabel = isEntryBillable(entry)
+          ? 'Billable — tap to mark internal'
+          : 'Internal — tap to mark billable';
         // Jira link rendered as a sibling so .etext[role="button"] contains no
         // interactive descendants (ARIA 1.2 forbids interactive children inside
         // role="button").
@@ -119,7 +123,7 @@ function renderTimelineSection(list) {
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
-            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0">
+            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0" aria-label="Edit start and end time">
               <span class="etime-start">${fmtTime(entry.ts)}</span>
               ${endLine}
             </span>
@@ -143,7 +147,7 @@ function renderTimelineSection(list) {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" aria-label="Toggle billable" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="ebill-btn" data-id="${entry.id}" aria-label="${billableAriaLabel}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
           <button class="erestart" data-id="${entry.id}" aria-label="Restart with timer" title="restart with timer">&#9654;</button>
           <button class="edel" data-id="${entry.id}" aria-label="Delete entry" title="delete">&times;</button>
         </div>`;
@@ -355,7 +359,7 @@ function bindTimelineEntryEvents(timelineEl) {
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';
-      input.setAttribute('aria-label', 'Rename entry');
+      input.setAttribute('aria-label', `Rename entry: ${origText}`);
       input.value = origText;
       el.innerHTML = '';
       el.appendChild(input);
