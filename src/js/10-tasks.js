@@ -73,7 +73,10 @@ function savePlan() {
 function flatSort(tasks) {
   // Assumption: STATUS_ORDER defines the canonical sort priority for visible task sections.
   // 'done' sorts last so completed work doesn't push active items down.
-  const STATUS_ORDER = { inprogress: 0, todo: 1, pending: 2, blocked: 3, done: 4 };
+  // 'upcoming' shares todo's rank on purpose: the To Do column absorbs both, so
+  // they interleave by priority then text. The `?? 1` fallback covers only
+  // unknown/legacy statuses.
+  const STATUS_ORDER = { inprogress: 0, todo: 1, upcoming: 1, pending: 2, blocked: 3, done: 4 };
   const liveEntry = getActiveTimer()
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
