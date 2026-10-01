@@ -943,11 +943,8 @@ so navigating with ← → reveals that day's location. Unset days default to
 Remote (see DEFAULT_WORK_LOCATION in pure-fns.js).</p>
 <p>Pure helpers (locationFor, nextLocation, WORK_LOCATIONS) live in pure-fns.js
 and are unit-tested; this module is the localStorage + DOM glue around them.</p>
-<p>The storage key (STORE_LOCATION) is declared in 01-state.js alongside the
-other wl_*_v1 keys. It must live there, not here: modules are concatenated in
-filename order, and render() (04-render.js) calls renderLocation() during boot
-— before this file's top-level code would run — so a const declared here would
-be in the temporal dead zone at that point.</p></div>
+<p>The storage key (STORE_LOCATION) is declared in app-constants.js alongside the
+other wl_*_v1 keys.</p></div>
         
 
         
