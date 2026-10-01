@@ -13490,7 +13490,7 @@ doesn't, followed by the formatted duration.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line46">line 46</a>
+        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line55">line 55</a>
     </li></ul></dd>
     
 
@@ -15467,7 +15467,7 @@ both count toward the migrated total.</p>
     
 
     
-    <h4 class="name" id="calcStreak"><span class="type-signature"></span>calcStreak<span class="signature">()</span><span class="type-signature"> &rarr; {number}</span></h4>
+    <h4 class="name" id="calcStreak"><span class="type-signature"></span>calcStreak<span class="signature">(allEntries)</span><span class="type-signature"> &rarr; {number}</span></h4>
     
 
     
@@ -15475,8 +15475,9 @@ both count toward the migrated total.</p>
 
 
 <div class="description">
-    <p>Counts consecutive days with at least one logged entry, looking backwards from yesterday.
-Today is excluded so the streak only increments once the day has been completed.</p>
+    <p>Counts consecutive days with at least one logged entry, looking backwards
+from yesterday. Today is excluded so the streak only increments once the
+day has been completed.</p>
 </div>
 
 
@@ -15485,6 +15486,55 @@ Today is excluded so the streak only increments once the day has been completed.
 
 
 
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>allEntries</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;{date: string}></span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The full entries array.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
 
 
 
@@ -15520,7 +15570,7 @@ Today is excluded so the streak only increments once the day has been completed.
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line563">line 563</a>
+        <a href="pure-fns-format.js.html">pure-fns-format.js</a>, <a href="pure-fns-format.js.html#line239">line 239</a>
     </li></ul></dd>
     
 
@@ -15548,6 +15598,10 @@ Today is excluded so the streak only increments once the day has been completed.
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>The current streak length (0 if no streak).</p>
+</div>
+
 
 
 <dl>
@@ -44419,7 +44473,7 @@ timer state may have changed, before it gets to stats or the timeline.</p>
     
 
     
-    <h4 class="name" id="renderHeaderStatTiles"><span class="type-signature"></span>renderHeaderStatTiles<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="renderHeaderStatTiles"><span class="type-signature"></span>renderHeaderStatTiles<span class="signature">()</span><span class="type-signature"> &rarr; {void}</span></h4>
     
 
     
@@ -44473,7 +44527,7 @@ mirrors them.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line12">line 12</a>
+        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line21">line 21</a>
     </li></ul></dd>
     
 
@@ -44498,6 +44552,24 @@ mirrors them.</p>
 
 
 
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">void</span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -46834,7 +46906,7 @@ currently selected duration active. Attaches click listeners to each chip.</p>
     
 
     
-    <h4 class="name" id="renderSubStatTiles"><span class="type-signature"></span>renderSubStatTiles<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="renderSubStatTiles"><span class="type-signature"></span>renderSubStatTiles<span class="signature">()</span><span class="type-signature"> &rarr; {void}</span></h4>
     
 
     
@@ -46888,7 +46960,7 @@ the longest tracked time. Hides each tile when there's no data for it.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line61">line 61</a>
+        <a href="04b-render-stats.js.html">04b-render-stats.js</a>, <a href="04b-render-stats.js.html#line71">line 71</a>
     </li></ul></dd>
     
 
@@ -46913,6 +46985,24 @@ the longest tracked time. Hides each tile when there's no data for it.</p>
 
 
 
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">void</span>
+
+
+    </dd>
+</dl>
+
+    
 
 
 
@@ -58489,7 +58579,7 @@ both into a shared leaf module when 12c-gapreport.js is extracted (#336).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line588">line 588</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line572">line 572</a>
     </li></ul></dd>
     
 
