@@ -33,7 +33,7 @@ function buildDailyLogItems(dateKey) {
       });
     });
 
-  logNotes
+  getLogNotes()
     .filter((n) => n.date === dateKey)
     .forEach((n) => {
       if (n.type === 'session-note') {
@@ -85,7 +85,13 @@ function addLogNote() {
     wlLog.info('addLogNote: rejected — empty input');
     return;
   }
-  logNotes.push({ id: Date.now() + '', text, ts: Date.now(), date: dk(new Date()), type: 'note' });
+  getLogNotes().push({
+    id: Date.now() + '',
+    text,
+    ts: Date.now(),
+    date: dk(new Date()),
+    type: 'note',
+  });
   saveLogNotes();
   if (inp) inp.value = '';
   wlLog.info('addLogNote: note saved', { length: text.length });
