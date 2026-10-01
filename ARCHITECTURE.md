@@ -109,7 +109,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (529 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (535 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -405,7 +405,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (267 lines) — Task Rendering
+#### **10a-tasks-render.js** (268 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
@@ -465,7 +465,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (311 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (318 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
@@ -504,7 +504,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (254 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (261 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
@@ -593,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (469 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (473 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
