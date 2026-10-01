@@ -42,7 +42,7 @@ function addEntry(withTimer) {
     inp.focus();
     return;
   }
-  if (withTimer &amp;&amp; activeTimer) stopTimer();
+  if (withTimer &amp;&amp; getActiveTimer()) stopTimer();
   const entry = {
     id: Date.now() + '',
     text,

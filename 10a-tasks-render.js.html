@@ -268,7 +268,7 @@ function renderTrackRecent() {
     chip.addEventListener('click', () => {
       const src = getEntries().find((logEntry) => logEntry.id === chip.dataset.eid);
       if (!src) return;
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const entry = createRestartedEntry(src.text, src.tag);
       getEntries().push(entry);
       save();

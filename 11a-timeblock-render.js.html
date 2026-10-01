@@ -49,8 +49,8 @@ let tbDragId = null; // block id when dragging from grid
  */
 function renderTimeblock() {
   const dateKey = dk(viewDate);
-  const liveEntry = activeTimer
-    ? getEntries().find((entry) => entry.id === activeTimer.entryId)
+  const liveEntry = getActiveTimer()
+    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
 
   // Time labels
@@ -74,7 +74,7 @@ function renderTimeblock() {
   }
 
   // ── Auto blocks from log entries (render first = below manual blocks) ──
-  const liveId = activeTimer ? activeTimer.entryId : null;
+  const liveId = getActiveTimer() ? getActiveTimer().entryId : null;
   const tbStart = TB_START * 60,
     tbEnd = TB_END * 60;
 
@@ -164,8 +164,8 @@ function renderTimeblock() {
           block.text.toLowerCase() === le.text.toLowerCase()
       );
     if (le &amp;&amp; le.date === dateKey &amp;&amp; !isMeetingBlock) {
-      const fakeEnd = activeTimer.paused
-        ? le.ts + (activeTimer.accumulatedMs || 0) // paused: stop at pause point
+      const fakeEnd = getActiveTimer().paused
+        ? le.ts + (getActiveTimer().accumulatedMs || 0) // paused: stop at pause point
         : Math.max(Date.now(), le.ts + 60000); // running: extend to now
       const el = autoBlockEl(le.text, le.tag, le.ts, fakeEnd, true);
       if (el) grid.appendChild(el);
@@ -174,8 +174,8 @@ function renderTimeblock() {
 
   // ── Manual planned blocks (render last = on top, dashed border) ──
   const dayBlocks = blocks.filter((block) => block.date === dateKey);
-  const tbLiveEntry = activeTimer
-    ? getEntries().find((entry) => entry.id === activeTimer.entryId)
+  const tbLiveEntry = getActiveTimer()
+    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
   dayBlocks.forEach((block) => {
     const cat = getCat(block.tag || 'other');
@@ -276,14 +276,14 @@ function renderTimeblock() {
       for (let s = Math.max(0, startSlot); s &lt; Math.min(TB_SLOTS, endSlot + 1); s++)
         coveredSlots.add(s);
     });
-  if (activeTimer &amp;&amp; liveEntry &amp;&amp; liveEntry.date === dateKey) {
+  if (getActiveTimer() &amp;&amp; liveEntry &amp;&amp; liveEntry.date === dateKey) {
     const startSlot = timeToSlot(
       new Date(liveEntry.ts).getHours(),
       new Date(liveEntry.ts).getMinutes()
     );
-    if (activeTimer.paused) {
+    if (getActiveTimer().paused) {
       // Paused: only cover slots up to the pause point
-      const pauseEnd = new Date(liveEntry.ts + (activeTimer.accumulatedMs || 0));
+      const pauseEnd = new Date(liveEntry.ts + (getActiveTimer().accumulatedMs || 0));
       const endSlot = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
       for (let s = Math.max(0, startSlot); s &lt; Math.min(TB_SLOTS, endSlot + 1); s++)
         coveredSlots.add(s);

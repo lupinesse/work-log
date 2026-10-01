@@ -127,7 +127,7 @@ function startSprint() {
   _sprintEntryId = entry.id;
   save();
 
-  if (activeTimer) stopTimer();
+  if (getActiveTimer()) stopTimer();
   startTimer(entry.id);
 
   const focusIntention = document.getElementById('sprintFocusIntention');
