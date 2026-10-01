@@ -3565,6 +3565,139 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 45. viewDate lives behind state.js accessors (#423) ──────────────────
+  // Each step moves the viewed day away from today, triggers one writer of the
+  // shared viewDate, and reads the result back, so a dropped setViewDate() leaves
+  // the old day showing.
+  console.log('\n45. viewDate written through state.js accessors');
+  {
+    const today = dk(new Date());
+    const yesterday = dk(new Date(Date.now() - 86400000));
+    const yesterdayTs = new Date(yesterday + 'T10:00:00').getTime();
+    const todayTs = new Date(today + 'T10:00:00').getTime();
+    const page = await freshPage(ctx, {
+      wl_entries_v1: [
+        { id: 'vd1', text: 'Today entry', tag: 'work', ts: todayTs, date: today },
+        { id: 'vd2', text: 'Yesterday entry', tag: 'work', ts: yesterdayTs, date: yesterday },
+      ],
+      wl_blocks_v1: [
+        { id: 'vdb1', date: today, slot: 4, duration: 2, text: 'Block task', tag: 'work' },
+      ],
+      // A finished task from yesterday: still listed (with its track button) when
+      // yesterday is in view, and not swept forward by the overnight carry.
+      wl_plan_v1: [
+        { id: 'vdp1', text: 'Board task', status: 'done', date: yesterday, tag: 'work' },
+      ],
+      wl_cats_v1: CATS,
+    });
+    const viewKey = () => page.evaluate(() => window.__wl.dk(window.__wl.viewDate));
+    // The test-handle setter only re-renders the timeline; a full render() also
+    // refreshes the day buttons, whose disabled state tracks the viewed day.
+    const goTo = (key) =>
+      page.evaluate((dayKey) => {
+        window.__wl.viewDate = new Date(dayKey + 'T12:00:00');
+        window.__wl.render();
+      }, key);
+    const stopTimer = () => page.evaluate(() => window.__wl.stopTimer());
+    await page.evaluate(() => window.__wl.setFlowView('log'));
+
+    await goTo(yesterday);
+    assert(
+      'Setting the viewed day through the test handle moves the view',
+      (await viewKey()) === yesterday,
+      `got "${await viewKey()}"`
+    );
+
+    // Day buttons swap in a fresh Date instead of mutating the one other code may hold.
+    const stepDay = (buttonId) =>
+      page.evaluate((id) => {
+        const before = window.__wl.viewDate;
+        document.getElementById(id).click();
+        return {
+          key: window.__wl.dk(window.__wl.viewDate),
+          sameObject: before === window.__wl.viewDate,
+        };
+      }, buttonId);
+    const next = await stepDay('nextDay');
+    assert(
+      'Next day moves the view forward without mutating the old Date',
+      next.key === today && !next.sameObject,
+      JSON.stringify(next)
+    );
+    const prev = await stepDay('prevDay');
+    assert(
+      'Previous day moves the view back without mutating the old Date',
+      prev.key === yesterday && !prev.sameObject,
+      JSON.stringify(prev)
+    );
+
+    await page.evaluate(() => document.querySelector('.erestart[data-id="vd2"]')?.click());
+    assert('Restarting an old entry returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => {
+      document.getElementById('captureInput').value = 'Logged from the past';
+      document.getElementById('addBtn').click();
+    });
+    assert('Logging a new entry returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => window.__wl.tbStartBlock('vdb1'));
+    assert('Starting a timeblock returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => document.querySelector('.plan-log-btn[data-pid="vdp1"]')?.click());
+    assert('Tracking a board task returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(yesterday);
+    await page.evaluate(() => {
+      const now = Date.now();
+      window.__wl.renderCalStrip([
+        {
+          subject: 'View date meeting',
+          start: new Date(now + 3600000).toISOString(),
+          end: new Date(now + 7200000).toISOString(),
+        },
+      ]);
+      document.querySelector('.cal-task-btn')?.click();
+    });
+    assert('Starting a calendar meeting returns the view to today', (await viewKey()) === today);
+    await stopTimer();
+
+    await goTo(today);
+    await page.evaluate((dayKey) => {
+      const list = document.getElementById('gapReportList');
+      list.innerHTML = `<button type="button" class="gap-report-fix" data-id="vd2" data-date="${dayKey}">+ fix</button>`;
+      list.querySelector('.gap-report-fix').click();
+    }, yesterday);
+    assert(
+      "Jumping to a gap-report entry shows that entry's day",
+      (await viewKey()) === yesterday,
+      `got "${await viewKey()}"`
+    );
+
+    await goTo(today);
+    await page.evaluate(() => document.querySelector('.tf-seg-btn[data-view="month"]')?.click());
+    await page.waitForSelector('.ml-cell[data-date]', { state: 'attached', timeout: 3000 });
+    const cellDate = await page.evaluate((todayKey) => {
+      const cell = [...document.querySelectorAll('.ml-cell[data-date]')].find(
+        (candidate) => candidate.dataset.date !== todayKey
+      );
+      cell?.click();
+      return cell ? cell.dataset.date : null;
+    }, today);
+    assert(
+      'Clicking a month-calendar day navigates to it',
+      !!cellDate && (await viewKey()) === cellDate,
+      `cell ${cellDate}, view ${await viewKey()}`
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
