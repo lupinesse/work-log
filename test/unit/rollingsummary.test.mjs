@@ -68,3 +68,83 @@ describe('25-rollingsummary — renderRollingSummary is exported', () => {
     assert.equal(typeof renderRollingSummary, 'function');
   });
 });
+
+// ---------------------------------------------------------------------------
+// buildSummaryText
+// ---------------------------------------------------------------------------
+
+describe('25-rollingsummary — buildSummaryText', () => {
+  const DATE_KEY = '2026-10-01';
+  // locationFor returns 'remote' when no value is stored; locationMap {} → fallback
+  const locationMap = {};
+
+  function makeRow(overrides = {}) {
+    return {
+      dateKey: DATE_KEY,
+      locationEmoji: '🏠',
+      sodTs: 1_000_000,
+      eodTs: 1_003_600_000,
+      totalMs: 3_600_000,
+      topTasks: [],
+      ...overrides,
+    };
+  }
+
+  it('returns empty string when no rows have sodTs or totalMs', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow({ sodTs: null, eodTs: null, totalMs: 0 })];
+    assert.equal(buildSummaryText(rows, 0, locationMap), '');
+  });
+
+  it('includes location label, date, session times, and total for a row with data', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow()];
+    const result = buildSummaryText(rows, 3_600_000, locationMap);
+    assert.match(result, /Remote/);
+    assert.match(result, /Thu 01 Oct/);
+    assert.match(result, /1h/);
+  });
+
+  it('appends Week total line when weekTotalMs > 0', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow()];
+    const result = buildSummaryText(rows, 7_200_000, locationMap);
+    assert.match(result, /Week total:/);
+  });
+
+  it('does not append Week total when weekTotalMs is 0', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow()];
+    const result = buildSummaryText(rows, 0, locationMap);
+    assert.doesNotMatch(result, /Week total:/);
+  });
+
+  it('includes top tasks when present', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow({ topTasks: [{ text: 'Write tests', totalMs: 1_800_000 }] })];
+    const result = buildSummaryText(rows, 1_800_000, locationMap);
+    assert.match(result, /Write tests/);
+    assert.match(result, /30m/);
+  });
+
+  it('uses em-dash placeholder when sodTs is null', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow({ sodTs: null, totalMs: 3_600_000 })];
+    const result = buildSummaryText(rows, 3_600_000, locationMap);
+    assert.match(result, /—/);
+  });
+
+  it('uses em-dash placeholder when eodTs is null', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow({ eodTs: null })];
+    const result = buildSummaryText(rows, 3_600_000, locationMap);
+    assert.match(result, /—/);
+  });
+
+  it('uses em-dash for total when totalMs is 0 but sodTs is present', async () => {
+    const { buildSummaryText } = await loadMod();
+    const rows = [makeRow({ totalMs: 0 })];
+    const result = buildSummaryText(rows, 0, locationMap);
+    assert.match(result, /—/);
+  });
+});

@@ -80,17 +80,16 @@ export function fmtDateLabel(dateKey) {
 }
 
 /**
- * Builds the plain-text standup block from computed rows and copies it to the
- * clipboard. Shows a brief "Copied!" confirmation on success, or logs a warning
- * on failure.
+ * Builds the plain-text standup block from computed rows.
+ * Pure function — no DOM or clipboard access.
  * @param {object[]} rows - Output of buildRollingSummary.
  * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
- * @param {Record<string, string>} locationMap - Pre-read location map (avoids a redundant read).
- * @returns {void}
+ * @param {Record<string, string>} locationMap - Pre-read location map.
+ * @returns {string}
  */
-function copySummaryText(rows, weekTotalMs, locationMap) {
+export function buildSummaryText(rows, weekTotalMs, locationMap) {
   const lines = rows
-    .filter((r) => r.sodTs || r.totalMs > 0)
+    .filter((row) => row.sodTs || row.totalMs > 0)
     .map((row) => {
       const locLabel = WORK_LOCATIONS[locationFor(locationMap, row.dateKey)].label;
       const sodStr = row.sodTs ? fmtTime(row.sodTs) : '—';
@@ -98,7 +97,9 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
       const totalStr = row.totalMs > 0 ? fmtDur(row.totalMs) : '—';
       let line = `${row.locationEmoji} ${fmtDateLabel(row.dateKey)} ${locLabel} · ${sodStr}–${eodStr} · ${totalStr}`;
       if (row.topTasks.length) {
-        const tasks = row.topTasks.map((t) => `${t.text} (${fmtDur(t.totalMs)})`).join(', ');
+        const tasks = row.topTasks
+          .map((task) => `${task.text} (${fmtDur(task.totalMs)})`)
+          .join(', ');
         line += `\n  ${tasks}`;
       }
       return line;
@@ -106,9 +107,20 @@ function copySummaryText(rows, weekTotalMs, locationMap) {
 
   if (weekTotalMs > 0) lines.push(`\nWeek total: ${fmtDur(weekTotalMs)}`);
 
-  const text = lines.join('\n');
+  return lines.join('\n');
+}
+
+/**
+ * Copies the standup text to the clipboard.
+ * Shows a brief "Copied!" confirmation on success, or logs a warning on failure.
+ * @param {object[]} rows - Output of buildRollingSummary.
+ * @param {number} weekTotalMs - Sum of all days' tracked time in ms.
+ * @param {Record<string, string>} locationMap - Pre-read location map.
+ * @returns {void}
+ */
+function copySummaryText(rows, weekTotalMs, locationMap) {
   navigator.clipboard
-    .writeText(text)
+    .writeText(buildSummaryText(rows, weekTotalMs, locationMap))
     .then(() => {
       const fb = document.getElementById('rsCopyFeedback');
       if (fb) {
@@ -154,8 +166,8 @@ export function renderRollingSummary() {
       const tasksHtml = row.topTasks.length
         ? row.topTasks
             .map(
-              (t) =>
-                `<span class="rs-task">${escHtml(t.text)}<span class="rs-task-dur"> ${fmtDur(t.totalMs)}</span></span>`
+              (task) =>
+                `<span class="rs-task">${escHtml(task.text)}<span class="rs-task-dur"> ${fmtDur(task.totalMs)}</span></span>`
             )
             .join('')
         : '<span class="rs-no-tasks">no tracked entries</span>';
