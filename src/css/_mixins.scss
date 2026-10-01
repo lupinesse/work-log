@@ -1,0 +1,10 @@
+// Shared Sass mixins. Partials pull this in with `@use 'mixins';` and call
+// `@include mixins.focus-ring;`. Emits no CSS by itself.
+
+// Visible keyboard-focus indicator for controls whose own styling removes the
+// default outline (WCAG 2.4.7 Focus Visible, 1.4.11 Non-text Contrast). Matches
+// the ring already used by `.date-nav-location:focus-visible`.
+@mixin focus-ring {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
+}

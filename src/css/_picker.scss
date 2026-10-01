@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* Quick pick */
 .qp-wrap {
   margin-bottom: 14px;
@@ -298,6 +300,10 @@
   background: var(--bg);
   color: var(--text);
   outline: none;
+}
+
+.cat-inline-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .cat-inline-ok {

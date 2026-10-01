@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* ── Today's tasks ── */
 
 /* ── Jira CSV importer ── */
@@ -596,6 +598,10 @@
   color: var(--text);
   outline: none;
   min-width: 0;
+}
+
+.pcat-add-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .pcat-add-ok {
