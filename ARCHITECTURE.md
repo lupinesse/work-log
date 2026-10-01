@@ -3,10 +3,10 @@
 <!-- Design certificate -->
 | Field | Value |
 |---|---|
-| Document version | 1.9.2-r5 |
+| Document version | 1.9.2-r6 |
 | Covers app version | v1.9.2 (main, 2026-09-10) |
-| Last reviewed | 2026-09-10 |
-| Reviewed by | Claude (split pure-fns-export.js into five files — QA finding: module size, flagged for the largest module once `04-render.js` was resolved — updated its entry, the barrel's sub-module count and list, and the source file count touched by that change. Not a full re-audit of every per-module line count) |
+| Last reviewed | 2026-09-30 |
+| Reviewed by | Claude — full sub-module re-audit (issues #440 and #441): added missing `pure-fns-epics.js` entry (barrel had nine sub-modules, not eight), corrected four stale per-module line counts (`pure-fns-backup.js`, `app-constants.js`, `signifiers.js`, `12b-changelog-data.js`). This pass verified every `pure-fns-*.js` sub-module and every LEAF MODULE line count against `grep -v '^\\s*$' <file> | wc -l`. After merging, 19 further counts had drifted again on `main` (the hand-corrected set had been partial), which is why `npm run test:architecture-line-counts` now fails CI on any mismatch. |
 | Status | **Approved** — reflects current implementation |
 
 Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
@@ -25,7 +25,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **00-config.js** (82 lines) — App Configuration
+#### **00-config.js** (95 lines) — App Configuration
 **Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
 
 **Key constants**:
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (214 lines) — Data Store
+#### **01-state.js** (212 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -79,7 +79,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **01b-migrate.js** (97 lines) — Data Migration
+#### **01b-migrate.js** (141 lines) — Data Migration
 **Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
 
 **Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
@@ -93,8 +93,8 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (65 lines) — Pure Utility Library (LEAF MODULE — barrel)
-**Responsibility**: Re-exports all stateless, side-effect-free helpers from eight themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
+#### **pure-fns.js** (92 lines) — Pure Utility Library (LEAF MODULE — barrel)
+**Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
 - `pure-fns-format.js` (216 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
@@ -102,13 +102,14 @@ wl_snapshot        → backup (auto-restore on failure)
 - `pure-fns-gapreport.js` (191 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
 - `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
-- `pure-fns-backup.js` (100 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
+- `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
 - `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
-- `pure-fns-validate.js` (264 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-validate.js` (331 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-epics.js` (158 lines) — Epic (category) lifecycle helpers: stale-epic detection, archive/restore, and picker filtering: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
 
 ---
 
-#### **02-utils.js** (488 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (529 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -125,7 +126,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **app-constants.js** (63 lines) — Static Config Constants (LEAF MODULE)
+#### **app-constants.js** (69 lines) — Static Config Constants (LEAF MODULE)
 **Responsibility**: `localStorage` key names and the built-in category seed/palette data. Pure literal values with no dependencies — imported as an ES module at the top of `script.js`. Extracted from `01-state.js` (issue #336), the first ES-module extraction beyond the original `logger.js`/`pure-fns.js` set.
 
 **Exports**: `STORE_ENTRIES`, `STORE_TIMER`, `STORE_POMO_LOG`, `STORE_CATS`, `STORE_QP_HIDDEN`, `STORE_LOGNOTES`, `STORE_TRACKERS`, `STORE_MIGRATION`, `STORE_LOCATION`, `DEFAULT_CATS`, `CUSTOM_PALETTE`
@@ -139,7 +140,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (572 lines) — Timer Logic
+#### **03-timer.js** (549 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -175,7 +176,7 @@ render() → {
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
 - `04b-render-stats.js` (135 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`)
-- `04c-render-timeline.js` (419 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04c-render-timeline.js` (433 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -240,7 +241,7 @@ Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntry
 
 ---
 
-#### **05b-filesystem.js** (171 lines) — File System Access Persistence
+#### **05b-filesystem.js** (181 lines) — File System Access Persistence
 **Responsibility**: Persist the user's chosen save folder and write export files via the browser File System Access API; falls back to a `<a download>` click when FSA is unavailable.
 
 **Key Functions**:
@@ -314,7 +315,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08-pomodoro.js** (382 lines) — Pomodoro Timer
+#### **08-pomodoro.js** (373 lines) — Pomodoro Timer
 **Responsibility**: Ring timer with session logging
 
 **Features**:
@@ -352,7 +353,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (565 lines) — Live Info Widgets
+#### **09-clock-weather.js** (547 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -436,7 +437,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **signifiers.js** (46 lines) — Signifier Lookup Tables (LEAF MODULE)
+#### **signifiers.js** (47 lines) — Signifier Lookup Tables (LEAF MODULE)
 **Responsibility**: `SIG_SYMBOL`, `SIG_TITLE` (signifier id → display symbol/title) and their accessors `sigSymbol(entry)`/`sigTitle(entry)`, with a `'●'`/`'Billable'` fallback for the billable default. Only JS builtins as dependencies — imported as an ES module at the top of `script.js`. Extracted from `10b-signifiers.js` (issue #336) — the fourth ES-module extraction, another instance of the date-labels.js pattern: pull the stateless lookup out, leave the stateful cycling/DOM binding behind. Used by `10b-signifiers.js`'s own `sigHtml()`, `18-dailylog.js`'s `buildDailyLogItems()`, and directly by `16-rapid.js`'s `_qcRenderTokenPreview()` (previously guarded with a `typeof SIG_SYMBOL !== 'undefined'` check against the old concatenated-global; now a guaranteed import, so the guard was removed).
 
 **Exports**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol`, `sigTitle`
@@ -464,7 +465,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (310 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (311 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
@@ -507,16 +508,16 @@ upcoming    → Scheduled for future date
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
-- `12b-changelog-data.js` (637 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
-- `12c-startup.js` (39 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
+- `12c-startup.js` (41 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (124 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
-- `12d-weeklyreport.js` (104 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
+- `12d-weeklyreport.js` (128 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
 ---
 
-#### **13-calendar.js** (537 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (341 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -563,7 +564,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (463 lines) — Jira Import
+#### **14-jira.js** (491 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -592,7 +593,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (474 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (469 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -621,7 +622,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** (246 lines) — Monthly Log Heatmap
+#### **19-monthlylog.js** (231 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`
@@ -655,7 +656,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **24-location.js** (91 lines) — Work Location Tracker
+#### **24-location.js** (92 lines) — Work Location Tracker
 **Responsibility**: Tracks whether the user is working remotely or in the office on each day. Location is stored per-day and shown in the date-nav header in place of the ISO week number.
 
 **Key Functions**: `renderLocation()`, `bindLocationToggle()`
@@ -845,7 +846,7 @@ async function fetchWeather() {
 
 ## Testing Strategy
 
-**Unit Tests** (846 tests, 140 suites via Node built-in test runner):
+**Unit Tests** (847 tests, 140 suites via Node built-in test runner):
 - `test/unit/*.test.mjs` (`npm run test:unit`) — one file per feature area, mirroring the `src/js` module areas (`pure-fns-format`, `pure-fns-validate`, `pure-fns-export`, `pure-fns-tasks`, `date-labels`, `notion`, `tasks-board`, `rapid`, `hero`, `utils-categories`, `tasks-render`, `entries`, `render`, `monthlylog`, `timeflow`, `lifecycle`, `pomodoro`, `clock-weather`, `migration`, `jira`, `state`, `dailylog`, `location`, `logger`, `export`, `signifiers`, `changelog-data`), split from the former monolithic `test/unit.mjs` (issue #334). Shared fixtures (`localDate`/`localMs`/`loadPureFnsScriptSource`/`__dirname`) live in `test/unit/_helpers.mjs`. `.github/scripts/test/` covers CI auth/model helpers
 
 **Smoke Tests** (310 tests via Playwright):
@@ -854,10 +855,10 @@ async function fetchWeather() {
 - Edge cases: Empty data, malformed data, boundary dates
 - BuJo features: Rapid logging, signifiers, daily log, monthly log, sprints, trackers
 
-**CI Script Tests** (373 tests, 75 suites via Node built-in test runner):
-- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test`'s own bundled run only exercises `ci-scripts.test.mjs` (39 of these 373, covering `jsdoc-check.mjs`/`impact-check.mjs`); the full suite runs as a separate `test:scripts` step in `ci.yml`.
+**CI Script Tests** (396 tests, 82 suites via Node built-in test runner):
+- `.github/scripts/test/*.test.mjs` (`npm run test:scripts`) — commitlint/actionlint self-tests, CI auth/model helpers, GitHub thread parsing, claude-CLI workflow guards. `npm test` runs this whole glob via `test:scripts`, the same command `ci.yml` uses as a separate step. It previously bundled only `ci-scripts.test.mjs` (39 of these), which left the other suites running in CI but never under the local gate CLAUDE.md's PR workflow tells you to run.
 
-**Total: 1,529 tests (846 unit + 310 smoke + 373 CI-script)**
+**Total: 1,553 tests (847 unit + 310 smoke + 396 CI-script)**
 
 **What's NOT tested**:
 - Browser-specific issues (Safari, Edge quirks)
@@ -868,11 +869,6 @@ async function fetchWeather() {
 
 ## Future Improvements
 
-1. **API Validation**: Add schema validators for external API responses
-   - Outlook calendar response
-   - Weather API response
-   - Jira CSV format
-
-2. **Consolidate CHANGELOG duplicate headings** — the v1.9.0 section still contains multiple `### Added / Changed / Fixed` groups; a follow-up PR should merge them into single headings per type.
+None currently tracked.
 
 This architecture has been stable through v1.0 → v1.9 releases with only feature additions.

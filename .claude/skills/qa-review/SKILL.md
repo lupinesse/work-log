@@ -21,6 +21,22 @@ report, and flag anything that has regressed since the last review. The goal is
 to keep quality consistent over time — so accuracy matters more than a high
 score. Do not inflate ratings.
 
+## QA report lifecycle
+
+Weekly QA report PRs are not merged to `main` as a normal feature PR.
+
+- `main` is protected.
+- Each review is written to `docs/qa-reports/` and committed on a branch.
+- The workflow opens a draft PR for that review.
+- A newer QA review supersedes older report PRs.
+- When a new report is created, older open QA report PRs for previous weeks are
+  closed as superseded, not left stale (`weekly-qa-review.yml` does this).
+- The archive value is the newest report on the branch history and the current
+  `docs/qa-reports/` record, not the backlog of stale review PRs.
+
+Never treat an older QA report PR as a failure to merge if a newer review has
+already superseded it.
+
 ## How to run the review
 
 ### Step 1 — Establish context

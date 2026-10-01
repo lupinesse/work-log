@@ -42,8 +42,11 @@
   display: inline-block;
 }
 
-.etime-display:hover {
+.etime-display:hover,
+.etime-display:focus-visible {
   background: var(--bg2);
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etime-start {
@@ -105,6 +108,11 @@
 
 .etime-input:focus {
   border-color: var(--info-text);
+}
+
+.etime-input:focus-visible {
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etime-actions {
@@ -179,9 +187,12 @@
   cursor: pointer;
 }
 
-.etext:hover {
+.etext:hover,
+.etext:focus-visible {
   text-decoration: underline dotted;
   color: var(--text);
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etext-input {
@@ -197,6 +208,11 @@
   outline: none;
   line-height: 1.45;
   box-sizing: border-box;
+}
+
+.etext-input:focus-visible {
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .etag-btn {
@@ -300,7 +316,9 @@
 }
 
 .entry:hover .edel,
-.entry:hover .erestart {
+.entry:hover .erestart,
+.entry:focus-within .edel,
+.entry:focus-within .erestart {
   opacity: 1;
 }
 
@@ -599,6 +617,12 @@
 .emeta-note-input:focus {
   outline: none;
   border-color: var(--info-text);
+}
+
+.emeta-link-input:focus-visible,
+.emeta-note-input:focus-visible {
+  outline: 2px solid var(--info-text);
+  outline-offset: 1px;
 }
 
 .emeta-actions {

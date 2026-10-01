@@ -38,3 +38,8 @@ $CalendarLookBackYears = 3
 # uninvited. Leave empty to exclude nothing further.
 # e.g. @('Annina Antinranta', 'Team Room 3')
 $CalendarExcludeNames = @()
+
+# Gofore timesheet start URL for "End day" submission. Sign in once with
+# `npm run timesheet:login` (Microsoft SSO); the session is kept in the
+# gitignored .timesheet-profile/ folder. No credentials are stored here.
+$GoforeTimesheetUrl = 'https://timesheet.gofore.com'

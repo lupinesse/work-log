@@ -78,7 +78,10 @@ Then check:
 **Correctness**
 - Are there logic errors, off-by-one mistakes, or incorrect conditions?
 - Are edge cases (empty array, null, NaN, zero) handled or silently broken?
-- Does error handling follow project conventions (`wlLog.warn`/`wlLog.error`)?
+- Does error handling follow project conventions — never a silent catch? In `src/js/`
+  app code that means `wlLog.warn`/`wlLog.error`; CI scripts under `.github/scripts/`
+  use `console.error`, because `wlLog` is a browser global defined in
+  `src/js/00-config.js` and is not reachable from Node.
 
 **Quality standard (CLAUDE.md)**
 - Single-purpose functions — does any new or changed function do more than one

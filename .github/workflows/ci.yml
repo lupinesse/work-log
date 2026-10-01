@@ -28,7 +28,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Smoke tests
+      # `npm test` is the whole suite -- unit, smoke and CI-script tests --
+      # not just the smoke run this step was named for. It bundled only one
+      # script-test file until the glob fix, which is where the old name came
+      # from. This is the job with Playwright installed, so the smoke tests
+      # have to run here.
+      - name: Full test suite (unit + smoke + CI scripts)
         run: npm test
 
   # .nvmrc/package.json's engines.node declare a floor of 22.22.1 (#353), but
@@ -142,6 +147,15 @@ jobs:
       # back down), so this ratchets it: fails only if a PR adds to the pile.
       - name: Single-letter arrow-param ratchet (no new instances)
         run: npm run test:arrow-param-count
+
+      # Five consecutive weekly QA reviews found ARCHITECTURE.md's documented
+      # per-module line counts drifted from the real files, because they were
+      # only ever corrected by hand when a review happened to notice — a full
+      # re-audit on 2026-09-28 found 19 drifted entries, three times the 6
+      # already tracked in issues (#440, #441). This regenerates every count
+      # on every PR instead.
+      - name: ARCHITECTURE.md line-count drift check
+        run: npm run test:architecture-line-counts
 
       - name: Docs (fail on JSDoc parse errors)
         run: npm run docs
