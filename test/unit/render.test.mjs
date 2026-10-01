@@ -348,3 +348,150 @@ describe('regression: non-billable relabeled as "internal"', () => {
     assert.doesNotMatch(exportSrcCheck, /💸 Non-billable/);
   });
 });
+
+describe('regression: timeline time-editor inputs have accessible labels (#429)', () => {
+  /**
+   * Builds a sandbox with the render-family files loaded and every
+   * cross-file dependency renderTimelineSection()'s non-empty branch
+   * reaches stubbed — same pattern as makeRenderSandbox above, extended
+   * with the additional stubs this branch needs (getCatColor/getCatLabel
+   * from 02-utils.js, isEntryBillable from 05-entries.js, sigHtml/
+   * bindSignifierClicks from 10b-signifiers.js, jiraTicketHtml from
+   * 09-clock-weather.js, escHtml/safeCssColor for the real
+   * buildEntryCatPickerHtml/buildEntryMetaHtml calls this branch makes).
+   * @returns {object} The populated sandbox, with `_elements` exposing every
+   *   mock element created via `document.getElementById`.
+   */
+  function makeTimelineSandbox() {
+    const elements = {};
+    const getElementById = (id) => (elements[id] ??= makeMockTimelineElement());
+    const sb = {
+      entries: [],
+      viewDate: new Date('2026-05-29T12:00:00'),
+      selectedTag: null,
+      categories: [{ id: 'work', label: 'Work', color: '#4a90e2' }],
+      activeTimer: null,
+      isToday: () => false,
+      escHtml: (s) => s,
+      safeCssColor: (c) => c,
+      fmtTime: () => '9:00 AM',
+      getCatColor: () => '#4a90e2',
+      getCatLabel: () => 'Work',
+      isEntryBillable: () => true,
+      pickableCategories: (cats) => cats,
+      sigHtml: () => '',
+      bindSignifierClicks: () => {},
+      jiraTicketHtml: (text) => text,
+      dk: (d) => d.toISOString().slice(0, 10),
+      renderQuickPick: () => {},
+      renderPlan: () => {},
+      renderPlanReviewReminder: () => {},
+      renderCompleted: () => {},
+      renderTodayFlow: () => {},
+      renderTrackers: () => {},
+      document: {
+        getElementById,
+        querySelectorAll: () => [],
+      },
+      _elements: elements,
+    };
+    vm.createContext(sb);
+    vm.runInContext(loadRenderScriptSource(), sb);
+    return sb;
+  }
+
+  /** @returns {object} Mock element supporting the subset used by this branch. */
+  function makeMockTimelineElement() {
+    return {
+      innerHTML: '',
+      addEventListener() {},
+      querySelectorAll() {
+        return [];
+      },
+    };
+  }
+
+  it('associates the start/end time-editor labels with their inputs via for=/id=', () => {
+    const sb = makeTimelineSandbox();
+    const entry = { id: 'e1', ts: Date.parse('2026-05-29T09:00:00'), tag: 'work', text: 'Task' };
+    sb.entry = entry;
+    vm.runInContext('renderTimelineSection([entry]);', sb);
+
+    const html = sb._elements['timeline'].innerHTML;
+    assert.match(html, /<label class="etime-lbl" for="ts-e1">start<\/label>/);
+    assert.match(html, /<input class="etime-input" type="time" id="ts-e1"/);
+    assert.match(html, /<label class="etime-lbl" for="te-e1">end<\/label>/);
+    assert.match(html, /<input class="etime-input" type="time" id="te-e1"/);
+  });
+});
+
+describe('regression: emoji picker and rename inputs have accessible labels (#429)', () => {
+  const timeblockSrc = readFileSync(join(__dirname, '../../src/js/11-timeblock.js'), 'utf8');
+
+  /**
+   * Minimal DOM element mock supporting the subset createElement()'d nodes
+   * need in openBlockEmojiPicker(): attribute/property assignment,
+   * setAttribute (captured so the test can assert on it directly rather
+   * than re-parsing outerHTML), style, and the event/tree methods called on
+   * every node this function creates.
+   * @returns {object} Mock element.
+   */
+  function makeMockNode() {
+    return {
+      _attrs: {},
+      style: {},
+      setAttribute(name, value) {
+        this._attrs[name] = value;
+      },
+      getAttribute(name) {
+        return this._attrs[name];
+      },
+      appendChild() {},
+      addEventListener() {},
+      focus() {},
+      select() {},
+    };
+  }
+
+  it("11-timeblock.js's openBlockEmojiPicker() sets an aria-label on the emoji input", () => {
+    const created = [];
+    const sb = {
+      blocks: [{ id: 'b1', emoji: '' }],
+      EMOJI_COMMON: ['😀'],
+      setBlockEmoji: () => {},
+      document: {
+        getElementById: () => null,
+        createElement: (tag) => {
+          const el = { tag, ...makeMockNode() };
+          created.push(el);
+          return el;
+        },
+        body: { appendChild() {} },
+        documentElement: { scrollTop: 0 },
+      },
+      window: { scrollY: 0, innerWidth: 1024 },
+      setTimeout: () => {}, // deferred click-outside-to-close listener; not exercised here
+    };
+    vm.createContext(sb);
+    vm.runInContext(timeblockSrc, sb);
+    vm.runInContext("openBlockEmojiPicker('b1', { getBoundingClientRect: () => ({}) });", sb);
+
+    const input = created.find((el) => el.className === 'emoji-picker-input');
+    assert.ok(input, 'expected openBlockEmojiPicker to create the emoji input');
+    assert.equal(input.getAttribute('aria-label'), 'Type or paste an emoji');
+  });
+
+  // The inline rename input (04c-render-timeline.js's `.etext` click handler)
+  // is reached only via bindTimelineEntryEvents()'s querySelectorAll('.etext'),
+  // which the renderTimelineSection sandbox above stubs to return no nodes —
+  // extending it to simulate a real click, just for this one attribute check,
+  // would add more mock-DOM surface than the assertion is worth. Checked
+  // against the source directly instead.
+  it("04c-render-timeline.js's inline rename input carries an aria-label", () => {
+    const timelineSrc = readFileSync(
+      join(__dirname, '../../src/js/04c-render-timeline.js'),
+      'utf8'
+    );
+    assert.match(timelineSrc, /input\.setAttribute\('aria-label', 'Rename entry'\)/);
+  });
+});

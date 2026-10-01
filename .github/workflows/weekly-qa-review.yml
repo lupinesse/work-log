@@ -65,3 +65,14 @@ jobs:
               --body "Automated weekly QA review. See \`docs/qa-reports/qa-review-$DATE.md\`." \
               --base main --head "$BRANCH" --draft
           fi
+
+          # A newer report supersedes older report PRs (see the "QA report
+          # lifecycle" section of .claude/skills/qa-review/SKILL.md). Selection
+          # is by branch prefix in a tested script, never by title search.
+          gh pr list --state open --limit 100 --json number,headRefName \
+            | node .github/scripts/list-superseded-qa-prs.mjs "$BRANCH" \
+            | while read -r PR_NUMBER; do
+                echo "Closing PR $PR_NUMBER as superseded by $BRANCH"
+                gh pr close "$PR_NUMBER" \
+                  --comment "Superseded by newer weekly QA report: \`$BRANCH\`."
+              done
