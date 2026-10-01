@@ -268,15 +268,15 @@ function heroUpdateClock() {
 
 /**
  * Called by stopTimer() just before activeTimer is cleared.
- * Shows the stopped confirmation panel and arms the 6s auto-dismiss.
+ * Switches the hero to the stopped state and arms the 6s auto-dismiss. It does
+ * not render: stopTimer() calls render() right afterwards, which re-renders the
+ * hero card, so rendering here as well would draw the same state twice.
  *
  * @param {Object} entry - The log entry that was just stopped.
  */
 function heroEnterStopped(entry) {
   _heroStoppedEntry = entry;
   _heroStopped = true;
-
-  renderHeroCard();
 
   // Auto-dismiss to idle after 6 seconds
   _heroStoppedTimer = setTimeout(() => {
