@@ -49,7 +49,7 @@ function renderHeaderAndTimerSection() {
   renderEodBtn();
   renderEodReminder();
 
-  if (!activeTimer) {
+  if (!getActiveTimer()) {
     updateTimerBar();
     updateTimerBtn(false);
   } else {

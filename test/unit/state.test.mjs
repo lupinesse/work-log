@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as appConstants from '../../src/js/app-constants.js';
-import { __dirname, withEntriesAccessors } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 import {
   getEntries,
   setEntries,
@@ -55,14 +55,15 @@ function loadStateSandbox(overrides = {}) {
     console,
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
-    // entries lives in state.js now (#423); 01-state.js reaches it through
-    // getEntries()/setEntries(), which withEntriesAccessors backs with this.
+    // entries and activeTimer live in state.js now (#423); 01-state.js reaches
+    // them through the accessors, which withStateAccessors backs with these.
     entries: [],
+    activeTimer: null,
     ...appConstants,
     ...overrides,
   };
 
-  vm.createContext(withEntriesAccessors(sandbox));
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(stateSrc, sandbox);
   return sandbox;
 }

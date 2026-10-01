@@ -24,8 +24,8 @@ function moveTaskToColumn(taskId, newStatus) {
 
   // Stop the active timer only if it was tracking this exact task
   const stopTimerIfMatches = () => {
-    if (activeTimer) {
-      const timerEntry = getEntries().find((e) => e.id === activeTimer.entryId);
+    if (getActiveTimer()) {
+      const timerEntry = getEntries().find((e) => e.id === getActiveTimer().entryId);
       if (timerEntry && timerEntry.text.toLowerCase() === t.text.toLowerCase()) stopTimer();
     }
   };
@@ -39,7 +39,7 @@ function moveTaskToColumn(taskId, newStatus) {
   } else if (newStatus === 'inprogress') {
     delete t.completedAt;
     // Stop any active timer unconditionally — only one task can be tracked at a time
-    if (activeTimer) stopTimer();
+    if (getActiveTimer()) stopTimer();
     const entry = {
       id: Date.now() + '',
       text: t.text,
@@ -208,12 +208,12 @@ function updateBoardLive() {
   const stripEl = document.getElementById('boardLive');
   if (!stripEl) return;
 
-  if (!activeTimer || activeTimer.paused) {
+  if (!getActiveTimer() || getActiveTimer().paused) {
     stripEl.hidden = true;
     return;
   }
 
-  const liveEntry = getEntries().find((e) => e.id === activeTimer.entryId);
+  const liveEntry = getEntries().find((e) => e.id === getActiveTimer().entryId);
   if (!liveEntry) {
     stripEl.hidden = true;
     return;

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 function runAutoPauseHandler({ autoPauseEnabled, hidden, timerRunning, timerPaused = false }) {
   const lifecycleSrc = readFileSync(join(__dirname, '../../src/js/07-lifecycle.js'), 'utf8');
@@ -24,7 +24,7 @@ function runAutoPauseHandler({ autoPauseEnabled, hidden, timerRunning, timerPaus
     pauseTimer: () => pausedCalls.push(true),
     wlLog: { info: () => {} },
   };
-  vm.createContext(box);
+  vm.createContext(withStateAccessors(box));
   vm.runInContext(`(function(){${handlerMatch[1]}})()`, box);
   return pausedCalls;
 }

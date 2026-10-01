@@ -46,21 +46,30 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
 }
 
 /**
- * Gives a VM sandbox the `getEntries`/`setEntries` pair that state.js provides
- * in the real bundle (#423), backed by the sandbox's own `entries` property.
- * The app files under test read and write the shared log entries only through
- * these accessors, so a sandbox that sets `entries` keeps working unchanged:
- * `setEntries(next)` shows up as `sandbox.entries`, and vice versa.
+ * Gives a VM sandbox the accessor pairs that state.js provides in the real
+ * bundle (#423), each backed by the sandbox's own property of the same name:
+ * `getEntries`/`setEntries` over `sandbox.entries`, and
+ * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`. The app files
+ * under test read and write these only through the accessors, so a sandbox
+ * that sets `entries` or `activeTimer` keeps working unchanged: a
+ * `setActiveTimer(next)` shows up as `sandbox.activeTimer`, and vice versa.
+ *
+ * Each variable moved onto state.js adds one pair here, so a test never needs
+ * to know which variables have migrated yet.
  *
  * Call it before `vm.createContext(sandbox)`; it returns the same object so it
  * can wrap the call.
  * @param {object} sandbox - The sandbox object about to become a VM context.
- * @returns {object} The same sandbox, with `getEntries` and `setEntries` added.
+ * @returns {object} The same sandbox, with the accessor pairs added.
  */
-export function withEntriesAccessors(sandbox) {
+export function withStateAccessors(sandbox) {
   sandbox.getEntries = () => sandbox.entries;
   sandbox.setEntries = (next) => {
     sandbox.entries = next;
+  };
+  sandbox.getActiveTimer = () => sandbox.activeTimer;
+  sandbox.setActiveTimer = (next) => {
+    sandbox.activeTimer = next;
   };
   return sandbox;
 }

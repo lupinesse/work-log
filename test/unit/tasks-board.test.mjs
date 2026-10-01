@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dk } from '../../src/js/pure-fns.js';
-import { __dirname, loadPureFnsScriptSource, withEntriesAccessors } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
 
 /**
  * Creates a VM sandbox with pure-fns.js and 10-tasks.js loaded.
@@ -50,7 +50,7 @@ function loadFlatSortSandbox(overrides = {}) {
     safeRoundedStart: () => Date.now(),
     ...overrides,
   };
-  vm.createContext(withEntriesAccessors(sandbox));
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(tasksSrc, sandbox);
   return sandbox;
@@ -173,7 +173,7 @@ function loadTasksSandbox() {
     readCollapseState: () => false,
     writeCollapseState: () => {},
   };
-  vm.createContext(withEntriesAccessors(sandbox));
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(tasksSrc, sandbox);
   vm.runInContext(
@@ -280,7 +280,7 @@ describe('regression #218: initBoardTabs warns on localStorage errors', () => {
       ...overrides,
       _warned: warned,
     };
-    vm.createContext(withEntriesAccessors(sb));
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(boardSrc, sb);
     return sb;
   }

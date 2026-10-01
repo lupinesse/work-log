@@ -170,7 +170,7 @@ function renderCalStrip(meetings) {
         });
         savePlan();
       }
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const entry = {
         id: Date.now() + '',
         text: subject,
@@ -290,7 +290,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     categories,
     planTasks,
     blocks,
-    activeTimer: () => activeTimer,
+    activeTimer: () => getActiveTimer(),
     getTimerInterval,
     tbStartBlock,
     load,
@@ -328,7 +328,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
       categories,
       planTasks,
       blocks,
-      activeTimer,
+      activeTimer: getActiveTimer(),
       logNotes,
       trackers,
     }),
