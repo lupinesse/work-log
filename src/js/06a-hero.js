@@ -242,7 +242,7 @@ function _heroFillStopped() {
       .filter(
         (logEntry) => logEntry.date === entry.date && logEntry.tsEnd && logEntry.tsEnd > logEntry.ts
       )
-      .reduce((s, e) => s + (e.tsEnd - e.ts), 0);
+      .reduce((sum, logEntry) => sum + (logEntry.tsEnd - logEntry.ts), 0);
     sessEl.textContent =
       count > 1
         ? `${count} sessions today · ${fmtDur(todayMs)} total`
