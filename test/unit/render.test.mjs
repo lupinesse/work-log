@@ -481,22 +481,45 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
     assert.equal(input.getAttribute('aria-label'), 'Type or paste an emoji');
   });
 
-  // The inline rename input (04c-render-timeline.js's `.etext` click handler)
-  // is reached only via bindTimelineEntryEvents()'s querySelectorAll('.etext'),
-  // which the renderTimelineSection sandbox above stubs to return no nodes —
-  // extending it to simulate a real click, just for this one attribute check,
-  // would add more mock-DOM surface than the assertion is worth. Checked
-  // against the source directly instead.
-  it("04c-render-timeline.js's inline rename input carries an aria-label", () => {
-    const timelineSrc = readFileSync(
-      join(__dirname, '../../src/js/04c-render-timeline.js'),
-      'utf8'
-    );
-    // Label includes the entry text (`Rename entry: ${origText}`, #431) so the
-    // text the input replaces is still announced.
-    assert.match(
-      timelineSrc,
-      /input\.setAttribute\('aria-label', `Rename entry: \$\{origText\}`\)/
-    );
+  // Drives the real `.etext` click handler in bindTimelineEntryEvents() with a
+  // fake timeline, so the assertion is on the label the user's screen reader
+  // gets rather than on how 04c-render-timeline.js happens to spell it (#469).
+  it('names the entry being renamed in the inline rename input aria-label', () => {
+    const created = [];
+    const handlers = {};
+    const etextEl = {
+      dataset: { id: 'e1' },
+      querySelector: () => null,
+      removeAttribute() {},
+      setAttribute() {},
+      appendChild() {},
+      addEventListener(type, handler) {
+        handlers[type] = handler;
+      },
+    };
+    const fakeTimeline = {
+      querySelectorAll: (selector) => (selector === '.etext' ? [etextEl] : []),
+    };
+    const sb = {
+      entries: [{ id: 'e1', text: 'Write report' }],
+      document: {
+        getElementById: () => null,
+        createElement: (tag) => {
+          const el = { tag, ...makeMockNode() };
+          created.push(el);
+          return el;
+        },
+      },
+      fakeTimeline,
+    };
+    vm.createContext(sb);
+    vm.runInContext(loadRenderScriptSource(), sb);
+    vm.runInContext('bindTimelineEntryEvents(fakeTimeline);', sb);
+
+    handlers.click();
+
+    const input = created.find((el) => el.className === 'etext-input');
+    assert.ok(input, 'expected the click handler to create the rename input');
+    assert.equal(input.getAttribute('aria-label'), 'Rename entry: Write report');
   });
 });

@@ -4,7 +4,10 @@
  * Rebuild after editing: `npm run build`
  *
  * Files ending in .example.js are excluded from the build automatically.
+ *
+ * NOTE: 00-config.js is now an ES module. Use the setter functions below
+ * rather than direct variable assignment.
  */
 
 // Jira instance base URL — ticket keys like PROJ-123 become clickable links.
-// JIRA_BASE = 'https://your-instance.atlassian.net/browse';
+// setJiraBase('https://your-instance.atlassian.net/browse');
