@@ -109,7 +109,7 @@ export function renderTrackers() {
               : status === 'partial'
                 ? tracker.color + '55'
                 : 'var(--bg3)';
-          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}" aria-label="${dateKey}: ${status}"></div>`;
+          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}" aria-hidden="true"></div>`;
         })
         .join('');
       const hitCount = days.filter((day) => trackerDayStatus(tracker, day) === 'hit').length;
