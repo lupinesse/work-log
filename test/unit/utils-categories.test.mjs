@@ -647,3 +647,53 @@ describe('buildTagRowHtml / bindTagRowEvents — markup and wiring are separable
     assert.ok(sandbox._elements.get('catSettingsBtn')._listeners.click, 'settings click is wired');
   });
 });
+
+describe('markInputInvalid — rejected epic names (regression, #524)', () => {
+  // The inline #C62828 border used to be set with element.style and never
+  // removed, so the input stayed red after the user fixed the name.
+
+  /**
+   * Builds a minimal input stand-in recording classes, attributes and focus.
+   * @returns {Object} Fake input with a `fire(type)` helper to dispatch listeners.
+   */
+  function makeInput() {
+    const classes = new Set();
+    const attributes = new Map();
+    const listeners = {};
+    return {
+      focused: false,
+      classes,
+      attributes,
+      classList: { add: (cls) => classes.add(cls), remove: (cls) => classes.delete(cls) },
+      setAttribute: (name, value) => attributes.set(name, value),
+      removeAttribute: (name) => attributes.delete(name),
+      addEventListener: (type, handler) => {
+        listeners[type] = handler;
+      },
+      focus() {
+        this.focused = true;
+      },
+      fire: (type) => listeners[type](),
+    };
+  }
+
+  it('marks the input invalid, exposes aria-invalid and focuses it', () => {
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input);
+
+    assert.ok(input.classes.has('input--invalid'));
+    assert.equal(input.attributes.get('aria-invalid'), 'true');
+    assert.equal(input.focused, true);
+  });
+
+  it('clears the invalid state as soon as the user edits the value', () => {
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input);
+    input.fire('input');
+
+    assert.equal(input.classes.has('input--invalid'), false);
+    assert.equal(input.attributes.has('aria-invalid'), false);
+  });
+});

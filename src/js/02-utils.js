@@ -378,8 +378,7 @@ function bindTagRowEvents() {
           (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
         )
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const cat = getCategories().find((category) => category.id === id);
@@ -465,8 +464,7 @@ function bindTagRowEvents() {
       if (
         getCategories().find((category) => category.label.toLowerCase() === label.toLowerCase())
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const color = nextDistinctColor();
@@ -565,6 +563,27 @@ function viewEntries() {
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
+/**
+ * Flags a text input as rejected: red border via `.input--invalid`, exposed to
+ * assistive tech through `aria-invalid`, and focused. The mark clears itself
+ * on the next edit so a corrected value is not left looking wrong.
+ * @param {HTMLInputElement} input - The input whose value was rejected.
+ * @returns {void}
+ */
+function markInputInvalid(input) {
+  input.classList.add('input--invalid');
+  input.setAttribute('aria-invalid', 'true');
+  input.addEventListener(
+    'input',
+    () => {
+      input.classList.remove('input--invalid');
+      input.removeAttribute('aria-invalid');
+    },
+    { once: true }
+  );
+  input.focus();
+}
+
 // calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
 
 /**

@@ -77,8 +77,7 @@ function bindPlanEvents(lists) {
       }
       const category = createCategory(input.value);
       if (!category) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const task = planTasks.find((task) => task.id === btn.dataset.pid);
