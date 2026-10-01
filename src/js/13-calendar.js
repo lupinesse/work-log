@@ -291,6 +291,8 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     planTasks,
     blocks,
     activeTimer: () => activeTimer,
+    getTimerInterval,
+    tbStartBlock,
     load,
     save,
     savePlan,

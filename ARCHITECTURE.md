@@ -517,7 +517,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (341 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (343 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
