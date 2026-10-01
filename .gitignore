@@ -46,3 +46,6 @@ assistant/
 .claude/*
 !.claude/skills/
 !.claude/token-optimization.md
+
+# Playwright profile holding the Gofore timesheet SSO session (cookies) — never commit
+.timesheet-profile/

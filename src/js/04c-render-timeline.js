@@ -109,10 +109,17 @@ function renderTimelineSection(list) {
         const endVal = entry.tsEnd ? toTimeInput(entry.tsEnd) : '';
 
         const billableEmoji = isEntryBillable(entry) ? '💰' : '💸';
+        // Jira link rendered as a sibling so .etext[role="button"] contains no
+        // interactive descendants (ARIA 1.2 forbids interactive children inside
+        // role="button").
+        const jiraHtml = jiraTicketHtml(entry.text);
+        const plainHtml = escHtml(entry.text);
+        const jiraSiblingHtml =
+          jiraHtml !== plainHtml ? `<span class="jira-key-aside">${jiraHtml}</span>` : '';
         return `
         <div class="entry${isTiming ? ' is-timing' : ''}${entry.signifier === 'cancelled' ? ' sig-cancelled-row' : ''}" data-id="${entry.id}">
           <div class="etime-col">
-            <span class="etime-display" data-id="${entry.id}">
+            <span class="etime-display" data-id="${entry.id}" role="button" tabindex="0">
               <span class="etime-start">${fmtTime(entry.ts)}</span>
               ${endLine}
             </span>
@@ -120,15 +127,15 @@ function renderTimelineSection(list) {
               <div class="etime-editor-row"><label class="etime-lbl" for="ts-${entry.id}">start</label><input class="etime-input" type="time" id="ts-${entry.id}" value="${startVal}" /></div>
               <div class="etime-editor-row"><label class="etime-lbl" for="te-${entry.id}">end</label><input class="etime-input" type="time" id="te-${entry.id}" value="${endVal}" placeholder="--:--" /></div>
               <div class="etime-actions">
-                <button class="etime-save" data-id="${entry.id}">save</button>
-                <button class="etime-cancel" data-id="${entry.id}">cancel</button>
+                <button class="etime-save" data-id="${entry.id}" aria-label="Save time edit">save</button>
+                <button class="etime-cancel" data-id="${entry.id}" aria-label="Cancel time edit">cancel</button>
               </div>
             </div>
           </div>
           ${sigHtml(entry)}
           <span class="edot" style="background:${color};margin-top:6px;"></span>
           <div class="ebody">
-            <div class="etext" data-id="${entry.id}">${jiraTicketHtml(entry.text)}${entry._uncategorised ? `<span class="entry-uncategorised" title="No category — tap to assign">○</span>` : ''}</div>
+            <div class="etext" data-id="${entry.id}" role="button" tabindex="0">${plainHtml}${entry._uncategorised ? `<span class="entry-uncategorised" aria-label="No category assigned" title="No category — tap to assign">○</span>` : ''}</div>${jiraSiblingHtml}
             <button class="etag-btn" data-id="${entry.id}">
               <span class="etag-cdot" style="background:${color}"></span>
               ${escHtml(getCatLabel(entry.tag))} &#9660;
@@ -136,9 +143,9 @@ function renderTimelineSection(list) {
             <div class="cat-picker" id="cp-${entry.id}">${catOpts}</div>
             ${buildEntryMetaHtml(entry, _entryMetaEditId === entry.id)}
           </div>
-          <button class="ebill-btn" data-id="${entry.id}" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
-          <button class="erestart" data-id="${entry.id}" title="restart with timer">&#9654;</button>
-          <button class="edel" data-id="${entry.id}" title="delete">&times;</button>
+          <button class="ebill-btn" data-id="${entry.id}" aria-label="Toggle billable" title="toggle billable/internal" style="cursor:pointer;background:none;border:none;padding:4px 8px;font-size:16px;color:inherit">${billableEmoji}</button>
+          <button class="erestart" data-id="${entry.id}" aria-label="Restart with timer" title="restart with timer">&#9654;</button>
+          <button class="edel" data-id="${entry.id}" aria-label="Delete entry" title="delete">&times;</button>
         </div>`;
       })
       .join('') + adHocRow;
@@ -168,11 +175,21 @@ function renderTimelineSection(list) {
 function bindTimelineEntryEvents(timelineEl) {
   /* time editor */
   timelineEl.querySelectorAll('.etime-display').forEach((el) => {
-    el.addEventListener('click', () => {
+    const openEditor = () => {
       const id = el.dataset.id;
       closeAllEditors();
       el.style.display = 'none';
-      document.getElementById('ed-' + id).classList.add('open');
+      const edPanel = document.getElementById('ed-' + id);
+      edPanel.classList.add('open');
+      const firstInput = edPanel.querySelector('input');
+      if (firstInput) firstInput.focus();
+    };
+    el.addEventListener('click', openEditor);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openEditor();
+      }
     });
   });
   timelineEl.querySelectorAll('.etime-save').forEach((btn) => {
@@ -326,11 +343,15 @@ function bindTimelineEntryEvents(timelineEl) {
 
   /* rename entry text (propagates to all entries + plan tasks with same text) */
   timelineEl.querySelectorAll('.etext').forEach((el) => {
-    el.addEventListener('click', () => {
+    const openRename = () => {
       if (el.querySelector('.etext-input')) return;
       const id = el.dataset.id;
       const entry = entries.find((logEntry) => logEntry.id === id);
       if (!entry) return;
+      // ARIA forbids interactive children inside role="button"; remove the role
+      // while the <input> is present, restore via render() when editing ends.
+      el.removeAttribute('role');
+      el.setAttribute('tabindex', '-1');
       const origText = entry.text;
       const input = document.createElement('input');
       input.className = 'etext-input';
@@ -369,6 +390,13 @@ function bindTimelineEntryEvents(timelineEl) {
         }
       });
       input.addEventListener('blur', doSave);
+    };
+    el.addEventListener('click', openRename);
+    el.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        openRename();
+      }
     });
   });
 }

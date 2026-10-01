@@ -56,16 +56,20 @@ export default [
     },
   },
 
-  // Extracted ES-module files — logger.js, app-constants.js, date-labels.js,
-  // 12b-changelog-data.js, signifiers.js, and the pure-fns barrel plus its
-  // pure-fns-*.js sub-modules use 'export' syntax and are imported directly
-  // by unit tests. They run in the browser context.
+  // Extracted ES-module files — logger.js, app-constants.js, state.js,
+  // 05b-filesystem.js, 01b-migrate.js, date-labels.js, 12b-changelog-data.js,
+  // signifiers.js, and the pure-fns barrel plus its pure-fns-*.js sub-modules
+  // use 'export' syntax and are imported directly by unit tests. They run in
+  // the browser context.
   // detect-object-injection: bracket-notation keys are internal constants,
   // never from untrusted external input.
   {
     files: [
       'src/js/logger.js',
       'src/js/app-constants.js',
+      'src/js/state.js',
+      'src/js/05b-filesystem.js',
+      'src/js/01b-migrate.js',
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
@@ -104,6 +108,9 @@ export default [
     ignores: [
       'src/js/logger.js',
       'src/js/app-constants.js',
+      'src/js/state.js',
+      'src/js/05b-filesystem.js',
+      'src/js/01b-migrate.js',
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
