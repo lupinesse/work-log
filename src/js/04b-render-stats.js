@@ -8,7 +8,14 @@
 
 import { JIRA_BASE } from './00-config.js';
 import { getEntries } from './state.js';
-import { dk, mondayOfWeek, fmtDur, escHtml, calcStreak } from './pure-fns-format.js';
+import {
+  dk,
+  mondayOfWeek,
+  fmtDur,
+  escHtml,
+  jiraKeyLinkHtml,
+  calcStreak,
+} from './pure-fns-format.js';
 import { parseJiraLabel } from './pure-fns-export.js';
 import { isToday } from './date-labels.js';
 
@@ -54,9 +61,7 @@ export function renderHeaderStatTiles() {
  */
 function buildStatSubHtml(label, ms) {
   const { ticket, name } = parseJiraLabel(label);
-  const keyHtml = ticket
-    ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
-    : null;
+  const keyHtml = ticket ? jiraKeyLinkHtml(JIRA_BASE, ticket) : null;
   return keyHtml
     ? `${keyHtml}${name ? `<div class="stat-sub-title">${escHtml(name)}</div>` : ''}<div class="stat-sub-value">${fmtDur(ms)}</div>`
     : `<div class="stat-sub-title">${escHtml(label)}</div><div class="stat-sub-value">${fmtDur(ms)}</div>`;

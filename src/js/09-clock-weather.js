@@ -75,7 +75,7 @@ function jiraTicketHtml(text) {
   if (!m) return escHtml(text);
   const key = m[1];
   const rest = (m[3] || '').trim();
-  const link = `<a class="jira-key-link" href="${JIRA_BASE}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}</a>`;
+  const link = jiraKeyLinkHtml(JIRA_BASE, key);
   return rest ? `${link}<span class="jira-key-sep">:</span> ${escHtml(rest)}` : link;
 }
 
