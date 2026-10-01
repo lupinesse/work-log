@@ -1,6 +1,5 @@
 /**
- * @file 01b-migrate.js
- * Automatic localStorage schema migration.
+ * @file 01b-migrate.js — Automatic localStorage schema migration.
  *
  * Runs once per page load, before load() reads from the versioned keys.
  * Each migration entry maps an old key name to the new one. If the old
@@ -21,6 +20,9 @@
  *
  * @see DATA.md for the full localStorage schema reference.
  */
+
+import { wlLog } from './logger.js';
+import { dk } from './pure-fns-format.js';
 
 /**
  * Describes one key-rename migration.
@@ -46,7 +48,7 @@ const MIGRATIONS = [
  * Safe to call multiple times — migrations are skipped if the source key
  * is absent or the destination key already has data.
  */
-function migrateStorage() {
+export function migrateStorage() {
   let migratedCount = 0;
   for (const { from, to, description } of MIGRATIONS) {
     const oldData = localStorage.getItem(from);
@@ -80,7 +82,7 @@ function migrateStorage() {
  *
  * Safe to run multiple times — entries already on the correct local date are untouched.
  */
-function migrateEntryDatesToLocal() {
+export function migrateEntryDatesToLocal() {
   const raw = localStorage.getItem('wl_entries_v1');
   if (!raw) return;
   try {
@@ -127,7 +129,7 @@ const RETIRED_KEYS = [
  * an orphaned key is never worth aborting page load over.
  * @returns {number} How many keys were actually removed.
  */
-function removeRetiredKeys() {
+export function removeRetiredKeys() {
   let removed = 0;
   for (const { key, description } of RETIRED_KEYS) {
     try {

@@ -1,3 +1,10 @@
+/**
+ * @file 05b-filesystem.js — File System Access API helpers for persisting
+ * and using a user-granted directory handle for automatic export saves.
+ */
+
+import { wlLog } from './logger.js';
+
 /* ── File System Access API ── */
 let _cachedDirHandle = null;
 
@@ -5,7 +12,7 @@ let _cachedDirHandle = null;
  * Opens (or creates) the IndexedDB database used to persist the FSA directory handle.
  * @returns {Promise<IDBDatabase>} Resolves with the opened database instance.
  */
-function openIDB() {
+export function openIDB() {
   return new Promise((res, rej) => {
     const req = indexedDB.open('wl_fs_v1', 1);
     req.onupgradeneeded = (e) => e.target.result.createObjectStore('handles');
@@ -19,7 +26,7 @@ function openIDB() {
  * IndexedDB (with an in-memory cache).
  * @returns {Promise<FileSystemDirectoryHandle|null>} The handle, or null if none saved.
  */
-async function getSavedDir() {
+export async function getSavedDir() {
   if (_cachedDirHandle) return _cachedDirHandle;
   try {
     const db = await openIDB();
@@ -47,7 +54,7 @@ async function getSavedDir() {
  * @param {FileSystemDirectoryHandle} handle - The directory handle to store.
  * @returns {Promise<void>}
  */
-async function storeDirHandle(handle) {
+export async function storeDirHandle(handle) {
   _cachedDirHandle = handle;
   try {
     const db = await openIDB();
@@ -74,7 +81,7 @@ async function storeDirHandle(handle) {
  * in-memory cache so future exports fall back to browser downloads.
  * @returns {Promise<void>}
  */
-async function clearDirHandle() {
+export async function clearDirHandle() {
   _cachedDirHandle = null;
   try {
     const db = await openIDB();
@@ -95,7 +102,7 @@ async function clearDirHandle() {
  * @param {Blob}   blob      - File content.
  * @returns {Promise<void>}
  */
-async function writeExportFile(subfolder, filename, blob) {
+export async function writeExportFile(subfolder, filename, blob) {
   const dir = await getSavedDir();
   if (dir) {
     try {
@@ -134,7 +141,7 @@ async function writeExportFile(subfolder, filename, blob) {
  * browsers that do not support the API.
  * @returns {Promise<void>}
  */
-async function pickSaveFolder() {
+export async function pickSaveFolder() {
   if (!window.showDirectoryPicker) {
     alert(
       "Your browser doesn't support the File System Access API.\nUse Chrome or Edge for automatic subfolder saving.\nFiles will download normally for now."
@@ -154,25 +161,30 @@ async function pickSaveFolder() {
 /**
  * Updates the `#folderStatus` element to show the currently selected save
  * folder name (green) or a "pick save folder" prompt (default colour).
+ * @returns {void}
  */
-function renderFolderStatus() {
+export function renderFolderStatus() {
   const el = document.getElementById('folderStatus');
   if (!el) return;
-  getSavedDir().then((dir) => {
-    if (dir) {
-      el.textContent = `📁 ${dir.name}`;
-      el.title =
-        'Timesheets → ' +
-        dir.name +
-        '/timesheets/\nJSON backups → ' +
-        dir.name +
-        '/JSON backups/\nClick to change';
-      el.style.color = '#1D9E75';
-    } else {
-      el.textContent = 'pick save folder';
-      el.title =
-        'Choose where exports are saved (creates timesheets/ and JSON backups/ subfolders)';
-      el.style.color = '';
-    }
-  });
+  getSavedDir()
+    .then((dir) => {
+      if (dir) {
+        el.textContent = `📁 ${dir.name}`;
+        el.title =
+          'Timesheets → ' +
+          dir.name +
+          '/timesheets/\nJSON backups → ' +
+          dir.name +
+          '/JSON backups/\nClick to change';
+        el.style.color = '#1D9E75';
+      } else {
+        el.textContent = 'pick save folder';
+        el.title =
+          'Choose where exports are saved (creates timesheets/ and JSON backups/ subfolders)';
+        el.style.color = '';
+      }
+    })
+    .catch((err) => {
+      wlLog.warn('renderFolderStatus: could not read saved dir', err);
+    });
 }
