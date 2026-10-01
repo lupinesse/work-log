@@ -442,6 +442,8 @@ upcoming    → Scheduled for future date
 
 **Dependencies**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol()`, `sigTitle()` come from the `signifiers.js` leaf module (issue #336) — see below. `SIG_CYCLE`, `cycleSignifier()`, `sigHtml()`, `bindSignifierClicks()` stay here: they read the `entries` module state, call `save()`/`render()`, and do DOM binding, none of which a standalone ES module can reach.
 
+**Load order**: this file shares the `10b-` prefix with `10b-tasks-events.js`, and `10a-tasks-render.js` shares `10a-` with `10a-tasks-row.js`. `build.js` concatenates `src/js/*.js` with a plain `.sort()`, so within each pair the order is by the characters after the prefix: `10b-signifiers.js` before `10b-tasks-events.js`, and `10a-tasks-render.js` before `10a-tasks-row.js`. The order is incidental, not a dependency: none of these files calls into its sibling at load time (only inside functions that run after the whole bundle has loaded), so no rename is needed. If a load-time dependency is ever added between a pair, give the files distinct numeric prefixes instead of relying on the sort.
+
 ---
 
 #### **signifiers.js** (47 lines) — Signifier Lookup Tables (LEAF MODULE)
