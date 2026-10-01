@@ -676,6 +676,15 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
+#### **26-gofore-timesheet.js** (132 lines) — Gofore Timesheet
+**Responsibility**: End-of-day Gofore timesheet form — renders a draft entry from the day's tracked time, supports clipboard copy, and posts to the local PowerShell server's `/api/gofore-timesheet` endpoint for submission via a saved browser session.
+
+**Key export**: `renderEodTimesheet(dateKey)`
+
+**Dependencies**: `buildTimesheetDayPayload()`, `findTimesheetEntryProblem()` from `pure-fns-timesheet.js`; `GOFORE_SUBMIT_ENABLED` from `00-config.js`; `getEntries()`, `getCategories()` from `state.js`; `wlLog` from `logger.js`.
+
+---
+
 ## Data Flow Diagram
 
 ```

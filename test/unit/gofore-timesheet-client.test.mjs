@@ -12,7 +12,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
 
-const clientSrc = readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8');
+const clientSrc = readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8')
+  .replace(/^import\s[^;]*;\s*$/gm, '')
+  .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
 const HOUR = 3600000;
 
 /**
@@ -46,7 +48,12 @@ function loadSandbox(options) {
   const sandbox = {
     entries,
     fetch,
-    getCatLabel: (id) => id,
+    getEntries: () => entries,
+    getCategories: () => [
+      { id: 'work', label: 'work', color: '#aaa' },
+      { id: 'meeting', label: 'meeting', color: '#bbb' },
+      { id: 'other', label: 'other', color: '#888780' },
+    ],
     GOFORE_SUBMIT_ENABLED: submitEnabled,
     navigator: { clipboard },
     wlLog: { info() {}, warn() {} },
