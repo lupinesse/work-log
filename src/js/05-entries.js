@@ -18,7 +18,7 @@ function addEntry(withTimer) {
   const entry = {
     id: Date.now() + '',
     text,
-    tag: selectedTag,
+    tag: getSelectedTag(),
     ts: safeRoundedStart(),
     date: dk(new Date()),
   };

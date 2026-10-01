@@ -50,9 +50,10 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  * bundle (#423), each backed by the sandbox's own property of the same name:
  * `getEntries`/`setEntries` over `sandbox.entries`, and
  * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`, and
- * `getCategories`/`setCategories` over `sandbox.categories`. The app files
+ * `getCategories`/`setCategories` over `sandbox.categories`, and
+ * `getSelectedTag`/`setSelectedTag` over `sandbox.selectedTag`. The app files
  * under test read and write these only through the accessors, so a sandbox
- * that sets `entries`, `activeTimer` or `categories` keeps working unchanged: a
+ * that sets `entries`, `activeTimer`, `categories` or `selectedTag` keeps working unchanged: a
  * `setActiveTimer(next)` shows up as `sandbox.activeTimer`, and vice versa.
  *
  * Each variable moved onto state.js adds one pair here, so a test never needs
@@ -75,6 +76,10 @@ export function withStateAccessors(sandbox) {
   sandbox.getCategories = () => sandbox.categories;
   sandbox.setCategories = (next) => {
     sandbox.categories = next;
+  };
+  sandbox.getSelectedTag = () => sandbox.selectedTag;
+  sandbox.setSelectedTag = (next) => {
+    sandbox.selectedTag = next;
   };
   return sandbox;
 }

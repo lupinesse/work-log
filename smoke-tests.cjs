@@ -3507,6 +3507,64 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 44. selectedTag lives behind state.js accessors (#423) ───────────────
+  // Each handler below is the only writer of the selected epic on its path, so
+  // a dropped setSelectedTag() leaves the previous epic selected.
+  console.log('\n44. selectedTag written through state.js accessors');
+  {
+    const today = dk(new Date());
+    const epics = [
+      { id: 'alpha', label: 'alpha', color: '#378ADD' },
+      { id: 'work', label: 'work', color: '#378ADD' },
+      { id: 'other', label: 'other', color: '#888780' },
+    ];
+    const entries = [
+      { id: 'qp1', text: 'Quick pick task', tag: 'other', ts: Date.now() - 5000, date: today },
+    ];
+    const page = await freshPage(ctx, { wl_entries_v1: entries, wl_cats_v1: epics });
+    const selectedTag = () => page.evaluate(() => window.__wl.getSelectedTag());
+
+    assert(
+      'Startup selects the alphabetically first active epic',
+      (await selectedTag()) === 'alpha',
+      `got "${await selectedTag()}"`
+    );
+
+    // The tag row sits in a collapsed panel at the smoke viewport, so drive the
+    // controls with real DOM events rather than visibility-gated Playwright actions.
+    await page.evaluate(() => {
+      const select = document.getElementById('catSelect');
+      select.value = 'work';
+      select.dispatchEvent(new Event('change'));
+    });
+    assert('Choosing an epic in the dropdown selects it', (await selectedTag()) === 'work');
+
+    await page.waitForSelector('.qp-item', { state: 'attached', timeout: 3000 });
+    await page.evaluate(() => document.querySelector('.qp-item .qp-item-text').click());
+    assert(
+      "Clicking a recent-task pill selects that task's epic",
+      (await selectedTag()) === 'other',
+      `got "${await selectedTag()}"`
+    );
+
+    await page.evaluate(() => {
+      document.getElementById('catSettingsBtn').click();
+      document.getElementById('catAddBtn').click();
+      document.getElementById('catNewInput').value = 'brand new epic';
+      document.getElementById('catNewOk').click();
+    });
+    const created = await page.evaluate(() => {
+      const added = window.__wl.getState().categories.find((c) => c.label === 'brand new epic');
+      return { id: added && added.id, selected: window.__wl.getSelectedTag() };
+    });
+    assert(
+      'Adding a new epic selects it',
+      !!created.id && created.selected === created.id,
+      `created ${created.id}, selected ${created.selected}`
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();

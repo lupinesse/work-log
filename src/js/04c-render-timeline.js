@@ -27,7 +27,7 @@ function bindAdHocRow() {
     const entry = {
       id: Date.now() + '',
       text,
-      tag: selectedTag || (getCategories()[0] ? getCategories()[0].id : 'other'),
+      tag: getSelectedTag() || (getCategories()[0] ? getCategories()[0].id : 'other'),
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
