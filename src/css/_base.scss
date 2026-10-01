@@ -71,6 +71,17 @@
   --danger-bg: rgba(198, 40, 40, 0.12); /* tinted badge/chip background for danger */
   --warning-bg: #faeeda; /* tinted badge/chip background for warning */
   --warning-ink: #854f0b; /* text on --warning-bg */
+  --success-ink: #1d9e75; /* confirmation text/border in modals and toasts */
+  --success-bg: #0a3d1f; /* deep green behind --success-ink */
+  --danger-soft-ink: #f17070; /* soft red text/border for error toasts and chips */
+  --danger-soft-bg: rgba(241, 112, 112, 0.18); /* tint behind --danger-soft-ink */
+  --note-inprogress-ink: #ef9f27; /* EOD note status chip: in progress */
+  --note-pending-ink: #9b7dff; /* EOD note status chip: pending */
+  --amber-bg: #fef3c7; /* dismissible reminder banner background */
+  --amber-border: #fde68a; /* reminder banner outline */
+  --amber-ink: #92400e; /* reminder banner text */
+  --amber-accent: #b45309; /* reminder action outline and dismiss glyph */
+  --amber-hover-bg: rgba(180, 83, 9, 0.1); /* reminder action hover wash */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -96,6 +107,11 @@
     --danger-bg: rgba(248, 113, 113, 0.16);
     --warning-bg: rgba(234, 179, 8, 0.18);
     --warning-ink: #fcd34d;
+    --amber-bg: rgba(245, 158, 11, 0.12);
+    --amber-border: rgba(245, 158, 11, 0.3);
+    --amber-ink: #fbbf24;
+    --amber-accent: #fbbf24;
+    --amber-hover-bg: rgba(251, 191, 36, 0.12);
     --live-deep: #7dd3fc;
     --live-soft: #0c2d4a;
     --live-softer: #082030;

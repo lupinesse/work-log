@@ -102,3 +102,41 @@ describe('retired colour aliases (#493)', () => {
     });
   }
 });
+
+describe('modal and toast semantic tokens (#537)', () => {
+  it('gives the amber reminder palette a light and a dark value', () => {
+    for (const token of [
+      '--amber-bg',
+      '--amber-border',
+      '--amber-ink',
+      '--amber-accent',
+      '--amber-hover-bg',
+    ]) {
+      const definitions = compiledCss.match(new RegExp(`${token}:`, 'g')) ?? [];
+      assert.equal(definitions.length, 2, `${token} needs a light and a dark value`);
+    }
+  });
+
+  it('keeps the light amber values identical to the former hard-coded hexes', () => {
+    assert.match(compiledCss, /--amber-bg:\s*#fef3c7/);
+    assert.match(compiledCss, /--amber-ink:\s*#92400e/);
+    assert.match(compiledCss, /--amber-accent:\s*#b45309/);
+  });
+
+  it('styles both reminder families through the tokens, with no dark-mode copies', () => {
+    for (const selector of ['.eod-reminder', '.plan-review-reminder']) {
+      const body = ruleBody(selector) ?? '';
+      assert.match(body, /var\(--amber-bg\)/, selector);
+      assert.doesNotMatch(body, /#fef3c7|#fde68a|#92400e/i, selector);
+    }
+    const reminderRulesWithRawAmber =
+      compiledCss.match(/\.(?:eod|plan-review)-reminder[^{]*\{[^}]*#fbbf24[^}]*\}/g) ?? [];
+    assert.deepEqual(reminderRulesWithRawAmber, [], 'dark values live in the tokens only');
+  });
+
+  it('uses the success and soft-danger tokens for toasts and the timesheet error', () => {
+    assert.match(ruleBody('.wl-toast-ok') ?? '', /var\(--success-bg\)/);
+    assert.match(ruleBody('.wl-toast-err') ?? '', /var\(--danger-soft-bg\)/);
+    assert.match(ruleBody('.eod-timesheet__status--error') ?? '', /var\(--danger-soft-ink\)/);
+  });
+});
