@@ -72,6 +72,9 @@
   --color-error: #c62828; /* invalid-input border (was an inline hex in JS) */
   --danger-ink: #991b1b; /* text/icons on a pale danger background */
   --danger-border: #b91c1c; /* outline of a danger action */
+  --danger-bg: rgba(198, 40, 40, 0.12); /* tinted badge/chip background for danger */
+  --warning-bg: #faeeda; /* tinted badge/chip background for warning */
+  --warning-ink: #854f0b; /* text on --warning-bg */
   --color-success: #16a34a; /* positive confirmation, e.g. the pomodoro completion tick */
 }
 
@@ -99,6 +102,9 @@
     --color-error: #f17070;
     --danger-ink: #fca5a5; /* pale red text on dark bg */
     --danger-border: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.16);
+    --warning-bg: rgba(234, 179, 8, 0.18);
+    --warning-ink: #fcd34d;
     --color-success: #4ade80;
     --live-deep: #7dd3fc;
     --live-soft: #0c2d4a;

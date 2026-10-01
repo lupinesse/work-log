@@ -81,3 +81,30 @@ describe('danger tokens (#532)', () => {
     }
   });
 });
+
+describe('Jira badge tokens (#494)', () => {
+  it('defines warning and danger badge tokens for light and dark', () => {
+    for (const token of ['--danger-bg', '--warning-bg', '--warning-ink']) {
+      const definitions = compiledCss.match(new RegExp(`${token}:`, 'g')) ?? [];
+      assert.equal(definitions.length, 2, `${token} needs a light and a dark value`);
+    }
+  });
+
+  it('keeps the light-mode badge colours identical to the former hard-coded values', () => {
+    assert.match(compiledCss, /--warning-bg:\s*#faeeda/);
+    assert.match(compiledCss, /--warning-ink:\s*#854f0b/);
+    assert.match(compiledCss, /--danger-bg:\s*rgba\(198, 40, 40, 0\.12\)/);
+  });
+
+  it('styles the badges through the tokens instead of raw colours', () => {
+    for (const selector of [
+      '.jira-badge-new',
+      '.jira-badge-status-blocked',
+      '.jira-badge-status-pending',
+    ]) {
+      const body = ruleBody(selector) ?? '';
+      assert.match(body, /var\(--(warning|danger)-bg\)/, selector);
+      assert.doesNotMatch(body, /#faeeda|#854f0b|#c62828|rgba\(198/i, selector);
+    }
+  });
+});
