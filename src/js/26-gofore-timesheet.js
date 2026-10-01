@@ -1,7 +1,16 @@
-/* ── Gofore timesheet submission (End of Day) ── */
-// The browser cannot call timesheet.gofore.com (CORS + Microsoft SSO), so the
-// entry goes to the local PowerShell server's /api/gofore-timesheet, which runs
-// scripts/gofore-timesheet.mjs against a saved browser session.
+/**
+ * @file 26-gofore-timesheet.js — End-of-day Gofore timesheet form: rendering,
+ * clipboard copy, and server submission.
+ *
+ * The browser cannot call timesheet.gofore.com directly (CORS + Microsoft SSO),
+ * so submissions go to the local PowerShell server's /api/gofore-timesheet,
+ * which drives a saved browser session via scripts/gofore-timesheet.mjs.
+ */
+
+import { buildTimesheetDayPayload, findTimesheetEntryProblem } from './pure-fns-timesheet.js';
+import { GOFORE_SUBMIT_ENABLED } from './00-config.js';
+import { getEntries, getCategories } from './state.js';
+import { wlLog } from './logger.js';
 
 /** Status-line suffix per submission route the server reports. */
 const TIMESHEET_ROUTE_NOTE = {
@@ -10,13 +19,26 @@ const TIMESHEET_ROUTE_NOTE = {
 };
 
 /**
+ * Returns the label for a category id, falling back to 'other'.
+ * Inlined here to avoid depending on the non-leaf getCatLabel in 02-utils.js.
+ * @param {string} id - Category id.
+ * @returns {string} The category's display label.
+ */
+function getCatLabel(id) {
+  const cats = getCategories();
+  const cat =
+    cats.find((category) => category.id === id) || cats.find((category) => category.id === 'other');
+  return cat ? cat.label : 'other';
+}
+
+/**
  * Returns the given day's entries that have a positive tracked duration and
  * are not cancelled — the same filter the plaintext export uses.
  * @param {string} dateKey - Day to read, `YYYY-MM-DD`.
  * @returns {Array<Object>} Timed entries for that day.
  */
 function timedEntriesForDay(dateKey) {
-  return entries.filter(
+  return getEntries().filter(
     (entry) =>
       entry.date === dateKey &&
       entry.tsEnd &&
@@ -41,7 +63,7 @@ function setTimesheetStatus(message, isError = false) {
  * tracked the form is disabled rather than submitting an empty day.
  * @param {string} dateKey - Day being ended, `YYYY-MM-DD`.
  */
-function renderEodTimesheet(dateKey) {
+export function renderEodTimesheet(dateKey) {
   const payload = buildTimesheetDayPayload(dateKey, timedEntriesForDay(dateKey), getCatLabel);
   const hoursEl = document.getElementById('eodTimesheetHours');
   const descEl = document.getElementById('eodTimesheetDesc');
