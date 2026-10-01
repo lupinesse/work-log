@@ -159,7 +159,7 @@ function exportBackup() {
       entries: getEntries(),
       categories: getCategories(),
       planTasks,
-      blocks,
+      blocks: getBlocks(),
       pomoLog: readOptionalLogForBackup(STORE_POMO_LOG, 'pomoLog'),
       devLog: readOptionalLogForBackup(STORE_DEV_LOG, 'devLog'),
       distractions: readOptionalLogForBackup(STORE_DISTRACTIONS, 'distractions'),

@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (210 lines) — Data Store
+#### **01-state.js** (209 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -45,7 +45,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 - `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
 - `categories` — Custom work categories (epic colors); held in `state.js` and read/written only via `getCategories()`/`setCategories()` (#423)
 - `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
-- `blocks` — Timeblock UI objects
+- `blocks` — Timeblock UI objects; held in `state.js` and read/written only via `getBlocks()`/`setBlocks()` (#423)
 
 **Key Functions**:
 - `load()` — Restore state from localStorage with validation
@@ -485,11 +485,11 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (318 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (326 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (344 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11a-timeblock-render.js` (342 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
 - `11b-timeblock-carry.js` (366 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
