@@ -15,7 +15,7 @@ Per-module line counts below exclude blank lines (`grep -c .`, not `wc -l`).
 
 ## Overview
 
-Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (67 source files across 30+ numbered modules — 28 of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
+Work Log is a single-page ADHD-friendly time tracking application built as one HTML file. It uses modular JavaScript (67 source files across 30+ numbered modules — 30 of which are real ES modules, see `LEAF_MODULES` in `build-config.js`) and organised SCSS, bundled via build.js.
 
 **Key Principle**: Client-side only. All data stored in localStorage. Runs in browser, no backend needed.
 
@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (211 lines) — Data Store
+#### **01-state.js** (141 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -49,9 +49,10 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 **Key Functions**:
 - `load()` — Restore state from localStorage with validation
-- `save()` — Persist entries/timer/timer backup
 - `savePlan()` — Persist tasks to localStorage
 - `validEntry()`, `validPlanTask()`, `validTimer()` — Schema validators (guards against corrupted data)
+
+Note: `save()`, `showSaveFailureBanner()`, and `hideSaveFailureBanner()` were extracted to `01c-save.js` (issue #336, extraction #15).
 
 **Data Format**:
 ```javascript
@@ -83,6 +84,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Responsibility**: One-shot localStorage migrations that run on startup to upgrade stored data to the current schema. Each migration is idempotent and guarded by a version key so it only runs once.
 
 **Pattern**: `migrate()` is called from `load()` in `01-state.js` before any data is read; each sub-migration patches entries/tasks/categories in place and sets a `wl_migrated_<name>` flag.
+
+---
+
+#### **01c-save.js** (95 lines) — localStorage Persistence (LEAF MODULE)
+**Responsibility**: `save()` + the transient save-failure banner. Extracted from `01-state.js` (issue #336, extraction #15). Imported as an ES module at the top of `script.js`.
+
+**Exports**: `save`, `showSaveFailureBanner`, `hideSaveFailureBanner`, `setExportBackupCallback`
+
+**Dependencies**: `app-constants.js` (STORE_* key names), `state.js` (getEntries/getActiveTimer/getCategories), `logger.js` (wlLog). `exportBackup` is a non-leaf function registered at startup via `setExportBackupCallback(fn)` in `12c-startup.js`.
 
 ---
 
@@ -446,14 +456,14 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-signifiers.js** (56 lines) — Entry Signifiers
-**Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime.
+#### **10b-signifiers.js** (76 lines) — Entry Signifiers (LEAF MODULE)
+**Responsibility**: Clickable status symbol on each entry row that cycles through: billable → event → flagged → migrated → cancelled → overtime. Extracted to a leaf ES module (issue #336, extraction #15); imported at the top of `script.js`.
 
-**Key functions**: `sigHtml(entry)`, `cycleSignifier(entryId)`, `bindSignifierClicks()`
+**Exports**: `setSignifierRenderCallback`, `cycleSignifier`, `sigHtml`, `bindSignifierClicks`
 
 **Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
 
-**Dependencies**: `SIG_SYMBOL`, `SIG_TITLE`, `sigSymbol()`, `sigTitle()` come from the `signifiers.js` leaf module (issue #336) — see below. `SIG_CYCLE`, `cycleSignifier()`, `sigHtml()`, `bindSignifierClicks()` stay here: they read the `entries` module state, call `save()`/`render()`, and do DOM binding, none of which a standalone ES module can reach.
+**Dependencies**: `01c-save.js` (save), `state.js` (getEntries), `logger.js` (wlLog), `pure-fns.js` (escHtml), `signifiers.js` (sigTitle, sigSymbol). `render()` is a non-leaf function registered at startup via `setSignifierRenderCallback(fn)` in `12c-startup.js`.
 
 ---
 
@@ -529,7 +539,7 @@ upcoming    → Scheduled for future date
 
 **Sub-modules**:
 - `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
-- `12c-startup.js` (42 lines) — Top-level bootstrap: calls `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
+- `12c-startup.js` (45 lines) — Top-level bootstrap: registers leaf-module callbacks (`setExportBackupCallback`, `setSignifierRenderCallback`), then calls `load`, `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (125 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
 - `12d-weeklyreport.js` (162 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
 
