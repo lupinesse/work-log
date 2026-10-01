@@ -22,9 +22,12 @@ import { clearTimerInterval, getTimerInterval, setTimerInterval } from '../../sr
 
 const timerSource = readFileSync(join(__dirname, '../../src/js/03-timer.js'), 'utf8');
 
-/** Restores the real clearInterval after a test that replaced it; set by loadTimer(). */
-let restoreClearInterval = null;
-afterEach(() => restoreClearInterval?.());
+// Captured once, at module load, so a test that calls loadTimer() more than
+// once can never mistake an earlier stub for the real function.
+const realClearInterval = globalThis.clearInterval;
+afterEach(() => {
+  globalThis.clearInterval = realClearInterval;
+});
 
 /**
  * Minimal stand-in for a DOM element: 03-timer.js binds listeners at load time
@@ -52,12 +55,8 @@ function loadTimer({ activeTimer = null, entries = [] } = {}) {
   const intervalsStarted = [];
   const intervalsCleared = [];
   // state.js's clearTimerInterval() calls the real global clearInterval, not
-  // the sandbox's, so intercept it there; afterEach puts the original back.
-  const realClearInterval = globalThis.clearInterval;
+  // the sandbox's, so intercept it there; the afterEach above restores it.
   globalThis.clearInterval = (id) => intervalsCleared.push(id);
-  restoreClearInterval = () => {
-    globalThis.clearInterval = realClearInterval;
-  };
   const noop = () => {};
   const sandbox = {
     clearTimerInterval,
