@@ -131,3 +131,21 @@ export function createDom(html = '') {
     runScripts: 'outside-only',
   });
 }
+
+/**
+ * Gives a jsdom window a stand-in for layout. jsdom has no layout engine, so
+ * `HTMLElement.offsetParent` is always null and focus-trap code that filters
+ * on `offsetParent !== null` would see no focusable elements at all. Every
+ * element reports its parent node instead; tests hide an element by
+ * overriding the property on that instance.
+ * @param {Window} window - A jsdom window, e.g. `createDom().window`.
+ * @returns {void}
+ */
+export function stubOffsetParent(window) {
+  Object.defineProperty(window.HTMLElement.prototype, 'offsetParent', {
+    configurable: true,
+    get() {
+      return this.parentNode;
+    },
+  });
+}
