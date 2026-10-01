@@ -33,7 +33,7 @@ function openMigration() {
   const m = now.getMonth();
   const prefix = `${y}-${String(m + 1).padStart(2, '0')}`;
 
-  _migItems = planTasks.filter(
+  _migItems = getPlanTasks().filter(
     (t) => t.date.startsWith(prefix) && t.status !== 'done' && !t._migrated
   );
   _migIdx = 0;
@@ -143,7 +143,7 @@ function carryMigTask(task) {
     _migrated: false,
   };
   task._migrated = true;
-  planTasks.push(newTask);
+  getPlanTasks().push(newTask);
   savePlan();
   wlLog.info('migration: carried task forward', { fromId: task.id, toDate: targetDate });
 }

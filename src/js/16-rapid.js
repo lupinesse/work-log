@@ -274,7 +274,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
 
   // ── To-do: today's open plan tasks ───────────────────────────────────
   const seen = new Set(inProgress.map((entry) => entry.text.toLowerCase()));
-  const todo = planTasks.filter(
+  const todo = getPlanTasks().filter(
     (task) =>
       task.date === todayKey &&
       task.status !== 'done' &&

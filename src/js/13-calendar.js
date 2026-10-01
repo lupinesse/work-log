@@ -157,11 +157,11 @@ function renderCalStrip(meetings) {
         getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
-      const exists = planTasks.find(
+      const exists = getPlanTasks().find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (!exists) {
-        planTasks.push({
+        getPlanTasks().push({
           id: Date.now() + '',
           text: subject,
           status: 'todo',
@@ -179,7 +179,7 @@ function renderCalStrip(meetings) {
         date: todayKey,
       };
       getEntries().push(entry);
-      const task = planTasks.find(
+      const task = getPlanTasks().find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (task && task.status === 'todo') {
@@ -288,7 +288,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     totalISOWeeks,
     entries: getEntries(),
     categories: getCategories(),
-    planTasks,
+    planTasks: getPlanTasks(),
     blocks: getBlocks(),
     activeTimer: () => getActiveTimer(),
     getTimerInterval,
@@ -327,7 +327,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     getState: () => ({
       entries: getEntries(),
       categories: getCategories(),
-      planTasks,
+      planTasks: getPlanTasks(),
       blocks: getBlocks(),
       activeTimer: getActiveTimer(),
       logNotes,

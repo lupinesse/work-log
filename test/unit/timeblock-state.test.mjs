@@ -15,27 +15,11 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import vm from 'node:vm';
 
-import { __dirname, withStateAccessors } from './_helpers.mjs';
+import { __dirname, extractFunctionSource, withStateAccessors } from './_helpers.mjs';
 
 const source = readFileSync(join(__dirname, '../../src/js/11-timeblock.js'), 'utf8');
 
-/**
- * Returns the full text of a top-level function declaration, found by
- * matching braces from its opening line.
- * @param {string} name - Function name to extract.
- * @returns {string} The function's source, from `function` to its closing brace.
- */
-function extractFunction(name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notEqual(start, -1, `function ${name} not found in 11-timeblock.js`);
-  let depth = 0;
-  for (let index = source.indexOf('{', start); index < source.length; index += 1) {
-    if (source[index] === '{') depth += 1;
-    if (source[index] === '}') depth -= 1;
-    if (depth === 0) return source.slice(start, index + 1);
-  }
-  throw new Error(`unterminated function ${name}`);
-}
+const extractFunction = (name) => extractFunctionSource(source, name);
 
 // The constants the functions read, copied from the file's own header lines.
 const headerConstants = source.slice(0, source.indexOf('function loadBlocks'));

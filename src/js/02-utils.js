@@ -25,7 +25,7 @@ function tidyStaleEpics() {
   const { staleIds, cutoffIso } = findStaleCategories({
     categories: getCategories(),
     entries: getEntries(),
-    planTasks,
+    planTasks: getPlanTasks(),
     todayIso: dk(new Date()),
     windowDays: EPIC_STALE_DAYS,
     selectedTag: getSelectedTag(),
@@ -84,7 +84,7 @@ function deleteSelectedEpic() {
   const cat = getCat(selectedTag);
   const usageCount =
     getEntries().filter((entry) => entry.tag === selectedTag).length +
-    planTasks.filter((task) => task.tag === selectedTag).length;
+    getPlanTasks().filter((task) => task.tag === selectedTag).length;
 
   const warning =
     usageCount > 0
@@ -417,7 +417,7 @@ function bindTagRowEvents() {
       const cat = getCat(getSelectedTag());
       cat.billable = cat.billable === false;
       // Retroactively update all tasks with this category
-      planTasks.forEach((task) => {
+      getPlanTasks().forEach((task) => {
         if (task.tag === getSelectedTag()) task.billable = cat.billable;
       });
       save();
