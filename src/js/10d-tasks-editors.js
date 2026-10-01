@@ -10,7 +10,7 @@
 function bindPlanCommentEvents(qa) {
   // Accept / skip / edit for status comment
   function saveComment(pid) {
-    const task = planTasks.find((task) => task.id === pid);
+    const task = getPlanTasks().find((task) => task.id === pid);
     if (!task) {
       _pendingCommentId = null;
       _pendingCommentText = '';
@@ -20,7 +20,9 @@ function bindPlanCommentEvents(qa) {
     if (!task.statusComments) task.statusComments = [];
     const inp = document.getElementById('pc-inp-' + pid);
     const val = inp ? inp.value.trim() : (_pendingCommentText || '').trim();
-    const entry = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
+    const entry = [...task.statusComments]
+      .reverse()
+      .find((comment) => comment.status === task.status);
     if (entry) {
       if (val) {
         entry.comment = val;
@@ -42,7 +44,7 @@ function bindPlanCommentEvents(qa) {
   });
   qa('.plan-comment-skip').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       if (task && task.statusComments && task.statusComments.length) {
         const last = task.statusComments[task.statusComments.length - 1];
         if (!last.comment) task.statusComments.pop();
@@ -55,10 +57,12 @@ function bindPlanCommentEvents(qa) {
   });
   qa('.plan-comment-edit').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       _pendingCommentId = btn.dataset.pid;
       if (task && task.statusComments) {
-        const ac = [...task.statusComments].reverse().find((comment) => comment.status === task.status);
+        const ac = [...task.statusComments]
+          .reverse()
+          .find((comment) => comment.status === task.status);
         _pendingCommentText = ac ? ac.comment || '' : '';
       } else {
         _pendingCommentText = '';
@@ -74,7 +78,7 @@ function bindPlanCommentEvents(qa) {
     inp.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') saveComment(inp.dataset.pid);
       if (event.key === 'Escape') {
-        const task = planTasks.find((task) => task.id === inp.dataset.pid);
+        const task = getPlanTasks().find((task) => task.id === inp.dataset.pid);
         if (task && task.statusComments && task.statusComments.length) {
           const last = task.statusComments[task.statusComments.length - 1];
           if (!last.comment) task.statusComments.pop();
@@ -153,7 +157,7 @@ function bindPlanNoteEvents(qa) {
       const pid = btn.dataset.pid;
       const ta = btn.closest('.plan-note-area').querySelector('.plan-note-input');
       const val = ta.value.trim();
-      const task = planTasks.find((task) => task.id === pid);
+      const task = getPlanTasks().find((task) => task.id === pid);
       if (task) {
         if (val) task.note = val;
         else delete task.note;
@@ -168,7 +172,7 @@ function bindPlanNoteEvents(qa) {
   qa('.plan-note-del').forEach((btn) => {
     btn.addEventListener('click', () => {
       const pid = btn.dataset.pid;
-      const task = planTasks.find((task) => task.id === pid);
+      const task = getPlanTasks().find((task) => task.id === pid);
       if (task) {
         delete task.note;
         savePlan();
@@ -232,7 +236,7 @@ function bindPlanCheckpointEvents(qa) {
   qa('.cp-check').forEach((el) => {
     el.addEventListener('click', (event) => {
       event.stopPropagation();
-      const task = planTasks.find((task) => task.id === el.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === el.dataset.pid);
       if (!task || !task.checkpoints) return;
       const idx = parseInt(el.dataset.cpidx);
       const cur = task.checkpoints[idx].done;
@@ -246,7 +250,7 @@ function bindPlanCheckpointEvents(qa) {
   qa('.cp-label').forEach((lbl) => {
     lbl.addEventListener('click', (event) => {
       event.stopPropagation();
-      const task = planTasks.find((task) => task.id === lbl.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === lbl.dataset.pid);
       if (!task || !task.checkpoints) return;
       const idx = parseInt(lbl.dataset.cpidx);
       const cur = task.checkpoints[idx].done;
@@ -275,7 +279,7 @@ function bindPlanCheckpointEvents(qa) {
   qa('.cp-edit-input').forEach((inp) => {
     const save = () => {
       const val = inp.value.trim();
-      const task = planTasks.find((task) => task.id === inp.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === inp.dataset.pid);
       if (task && task.checkpoints && val) task.checkpoints[parseInt(inp.dataset.cpidx)].text = val;
       _cpEditId = null;
       _cpEditIdx = null;
@@ -302,7 +306,7 @@ function bindPlanCheckpointEvents(qa) {
   qa('.cp-del-btn').forEach((btn) => {
     btn.addEventListener('click', (event) => {
       event.stopPropagation();
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       if (!task || !task.checkpoints) return;
       task.checkpoints.splice(parseInt(btn.dataset.cpidx), 1);
       savePlan();
@@ -316,7 +320,7 @@ function bindPlanCheckpointEvents(qa) {
       if (event.key !== 'Enter') return;
       const val = inp.value.trim();
       if (!val) return;
-      const task = planTasks.find((task) => task.id === inp.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === inp.dataset.pid);
       if (!task) return;
       if (!Array.isArray(task.checkpoints)) task.checkpoints = [];
       task.checkpoints.push({
@@ -358,7 +362,7 @@ function bindPlanCheckpointEvents(qa) {
       row.classList.remove('cp-drag-over');
       const targetIdx = parseInt(row.dataset.cpidx);
       if (_cpDragPid !== row.dataset.pid || _cpDragIdx === null || _cpDragIdx === targetIdx) return;
-      const task = planTasks.find((task) => task.id === _cpDragPid);
+      const task = getPlanTasks().find((task) => task.id === _cpDragPid);
       if (!task || !task.checkpoints) return;
       const moved = task.checkpoints.splice(_cpDragIdx, 1)[0];
       task.checkpoints.splice(targetIdx, 0, moved);

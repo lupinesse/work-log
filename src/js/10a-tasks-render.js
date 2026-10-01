@@ -7,7 +7,7 @@
  * @returns {{ todoTasks: object[], inProgressTasks: object[], todayDoneTasks: object[] }}
  */
 function groupTasksByColumn(viewKey) {
-  const allViewTasks = planTasks.filter((task) => task.date === viewKey);
+  const allViewTasks = getPlanTasks().filter((task) => task.date === viewKey);
   return {
     todoTasks: allViewTasks.filter((task) => !['inprogress', 'done'].includes(task.status)),
     inProgressTasks: allViewTasks.filter((task) => task.status === 'inprogress'),
@@ -126,12 +126,12 @@ function renderPlan() {
  */
 function renderBoardDoneHistory(doneListEl, viewKey) {
   const activeTodayTexts = new Set(
-    planTasks
+    getPlanTasks()
       .filter((task) => task.date === viewKey && task.status !== 'done')
       .map((task) => task.text.toLowerCase())
   );
 
-  const olderDone = planTasks
+  const olderDone = getPlanTasks()
     .filter((task) => {
       if (task.status !== 'done') return false;
       if (activeTodayTexts.has(task.text.toLowerCase())) return false;

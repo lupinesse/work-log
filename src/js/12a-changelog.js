@@ -52,7 +52,7 @@ function openEodModal() {
       .filter((entry) => entry.date === todayKey)
       .map((entry) => entry.text.toLowerCase().trim())
   );
-  const unfinishedTasks = planTasks.filter(
+  const unfinishedTasks = getPlanTasks().filter(
     (task) =>
       task.date === todayKey &&
       task.status !== 'done' &&

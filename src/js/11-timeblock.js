@@ -305,7 +305,7 @@ function tbStartBlock(blockId, overrideTs) {
   const b = getBlocks().find((bl) => bl.id === blockId);
   if (!b) return;
   const todayKey = dk(new Date());
-  let task = planTasks.find(
+  let task = getPlanTasks().find(
     (planTask) => planTask.date === todayKey && planTask.text.toLowerCase() === b.text.toLowerCase()
   );
   if (!task) {
@@ -316,7 +316,7 @@ function tbStartBlock(blockId, overrideTs) {
       tag: b.tag || 'other',
       date: todayKey,
     };
-    planTasks.push(task);
+    getPlanTasks().push(task);
   } else if (task.status !== 'done') {
     task.status = 'inprogress';
   }

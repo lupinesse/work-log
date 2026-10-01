@@ -52,8 +52,9 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`,
  * `getCategories`/`setCategories` over `sandbox.categories`,
  * `getSelectedTag`/`setSelectedTag` over `sandbox.selectedTag`,
- * `getViewDate`/`setViewDate` over `sandbox.viewDate`, and
- * `getBlocks`/`setBlocks` over `sandbox.blocks`.
+ * `getViewDate`/`setViewDate` over `sandbox.viewDate`,
+ * `getBlocks`/`setBlocks` over `sandbox.blocks`, and
+ * `getPlanTasks`/`setPlanTasks` over `sandbox.planTasks`.
  *
  * The app files under test read and write these only through the accessors, so
  * a sandbox that sets one of those properties keeps working unchanged: a
@@ -91,6 +92,10 @@ export function withStateAccessors(sandbox) {
   sandbox.getBlocks = () => sandbox.blocks;
   sandbox.setBlocks = (next) => {
     sandbox.blocks = next;
+  };
+  sandbox.getPlanTasks = () => sandbox.planTasks;
+  sandbox.setPlanTasks = (next) => {
+    sandbox.planTasks = next;
   };
   return sandbox;
 }
