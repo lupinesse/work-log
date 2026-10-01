@@ -492,6 +492,11 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
       join(__dirname, '../../src/js/04c-render-timeline.js'),
       'utf8'
     );
-    assert.match(timelineSrc, /input\.setAttribute\('aria-label', 'Rename entry'\)/);
+    // Label includes the entry text (`Rename entry: ${origText}`, #431) so the
+    // text the input replaces is still announced.
+    assert.match(
+      timelineSrc,
+      /input\.setAttribute\('aria-label', `Rename entry: \$\{origText\}`\)/
+    );
   });
 });
