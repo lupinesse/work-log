@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { JSDOM } from 'jsdom';
 
 export const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -95,4 +96,18 @@ export function loadRenderScriptSource() {
   ]
     .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
     .join('\n');
+}
+
+/**
+ * Builds a jsdom window for DOM/event unit tests. `runScripts: 'outside-only'`
+ * lets a test evaluate a src/js/ classic-script file inside the window via
+ * `vm.runInContext(src, dom.getInternalVMContext())` without executing any
+ * inline <script> in the markup.
+ * @param {string} [html] - Markup for the document body.
+ * @returns {import('jsdom').JSDOM} The JSDOM instance (`.window`, `.window.document`).
+ */
+export function createDom(html = '') {
+  return new JSDOM(`<!DOCTYPE html><html><body>${html}</body></html>`, {
+    runScripts: 'outside-only',
+  });
 }
