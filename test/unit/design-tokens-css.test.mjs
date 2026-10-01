@@ -18,9 +18,12 @@ const compiledCss = compile(join(__dirname, '../../src/css/styles.scss')).css;
  * @returns {string|null} Text between the braces, or null when there is no such rule.
  */
 function ruleBody(selector) {
-  const escaped = selector.replace(/[.:]/g, '\\$&');
-  const match = compiledCss.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`));
-  return match ? match[1] : null;
+  const text = `\n${compiledCss}`;
+  const marker = `\n${selector} {`;
+  const markerIndex = text.indexOf(marker);
+  if (markerIndex === -1) return null;
+  const bodyStart = markerIndex + marker.length;
+  return text.slice(bodyStart, text.indexOf('}', bodyStart));
 }
 
 describe('--color-success token (#511)', () => {
@@ -85,8 +88,8 @@ describe('danger tokens (#532)', () => {
 describe('Jira badge tokens (#494)', () => {
   it('defines warning and danger badge tokens for light and dark', () => {
     for (const token of ['--danger-bg', '--warning-bg', '--warning-ink']) {
-      const definitions = compiledCss.match(new RegExp(`${token}:`, 'g')) ?? [];
-      assert.equal(definitions.length, 2, `${token} needs a light and a dark value`);
+      const definitionCount = compiledCss.split(`${token}:`).length - 1;
+      assert.equal(definitionCount, 2, `${token} needs a light and a dark value`);
     }
   });
 
@@ -126,8 +129,8 @@ describe('modal and toast semantic tokens (#537)', () => {
       '--amber-accent',
       '--amber-hover-bg',
     ]) {
-      const definitions = compiledCss.match(new RegExp(`${token}:`, 'g')) ?? [];
-      assert.equal(definitions.length, 2, `${token} needs a light and a dark value`);
+      const definitionCount = compiledCss.split(`${token}:`).length - 1;
+      assert.equal(definitionCount, 2, `${token} needs a light and a dark value`);
     }
   });
 

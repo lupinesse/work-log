@@ -7,6 +7,9 @@
  * names the problem and the expected format.
  */
 
+// Anchored on both ends with one optional, character-class-only suffix: linear time, no
+// catastrophic backtracking — the plugin's star-height heuristic flags it anyway.
+// eslint-disable-next-line security/detect-unsafe-regex
 const RELEASE_TAG = /^v(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$/;
 
 /**
