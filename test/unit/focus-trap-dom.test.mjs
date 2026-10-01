@@ -146,16 +146,16 @@ for (const impl of IMPLEMENTATIONS) {
 
     // Regression (#556): `button:not([disabled])` used to match tabindex="-1"
     // controls, making an untabbable element the trap's edge.
-    for (const [label, control] of [
-      ['button', 'button'],
-      ['input', 'input'],
-      ['link', 'a href="#"'],
+    for (const [label, untabbable] of [
+      ['button', (id) => `<button id="${id}" tabindex="-1"></button>`],
+      ['input', (id) => `<input id="${id}" tabindex="-1">`],
+      ['link', (id) => `<a id="${id}" href="#" tabindex="-1"></a>`],
     ]) {
       it(`ignores a tabindex="-1" ${label} at either edge`, async () => {
         const dom = await impl.mount(
-          `<${control} id="phantomFirst" tabindex="-1"></${control.split(' ')[0]}>
+          `${untabbable('phantomFirst')}
            <button id="first">First</button><button id="last">Last</button>
-           <${control} id="phantomLast" tabindex="-1"></${control.split(' ')[0]}>`
+           ${untabbable('phantomLast')}`
         );
         window = dom.window;
         overlay = byId(impl.overlayId);
