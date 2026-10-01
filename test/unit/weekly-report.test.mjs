@@ -94,6 +94,15 @@ describe('12d-weeklyreport — copyWeeklyReportText', () => {
   });
 });
 
+describe('12d-weeklyreport — restoreWeeklyReportFocus', () => {
+  it('is a no-op when no trigger element was stored', async () => {
+    const { restoreWeeklyReportFocus } = await loadMods();
+    // _weeklyReportTrigger is null by default (openWeeklyReportOverlay needs a
+    // real overlay element to set it, which the stub DOM does not provide).
+    assert.doesNotThrow(() => restoreWeeklyReportFocus());
+  });
+});
+
 describe('12d-weeklyreport — initWeeklyReport', () => {
   it('is a no-op when all button elements are absent', async () => {
     const { initWeeklyReport } = await loadMods();
