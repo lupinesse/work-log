@@ -48,6 +48,19 @@ function saveBlocks() {
 }
 
 /**
+ * Removes one time block, persists the remaining blocks and redraws the grid.
+ * Shared by the block's delete button and the start prompt's "no" branches so
+ * all three drop a block the same way.
+ * @param {string} blockId - ID of the block to remove.
+ * @returns {void}
+ */
+function removeBlockById(blockId) {
+  setBlocks(getBlocks().filter((block) => block.id !== blockId));
+  saveBlocks();
+  renderTimeblock();
+}
+
+/**
  * Converts a 0-based half-hour slot index to an "HH:MM" label.
  * Slot 0 = `TB_START:00`, slot 2 = `TB_START+1:00`, etc.
  * @param {number} slot - 0-based slot index.
@@ -265,18 +278,14 @@ function checkBlockNotifications() {
         if (sw) {
           tbStartBlock(b.id);
         } else {
-          setBlocks(getBlocks().filter((bl) => bl.id !== b.id));
-          saveBlocks();
-          renderTimeblock();
+          removeBlockById(b.id);
         }
       } else {
         const go = confirm(`⏰ Time for: "${b.text}"\n\nStart timer?`);
         if (go) {
           tbStartBlock(b.id);
         } else {
-          setBlocks(getBlocks().filter((bl) => bl.id !== b.id));
-          saveBlocks();
-          renderTimeblock();
+          removeBlockById(b.id);
         }
       }
       break;

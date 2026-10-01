@@ -201,9 +201,7 @@ function renderTimeblock() {
     });
     el.querySelector('.tb-block-del').addEventListener('click', (event) => {
       event.stopPropagation();
-      setBlocks(getBlocks().filter((otherBlock) => otherBlock.id !== block.id));
-      saveBlocks();
-      renderTimeblock();
+      removeBlockById(block.id);
     });
     const startBtn = el.querySelector('.tb-block-start');
     if (startBtn)

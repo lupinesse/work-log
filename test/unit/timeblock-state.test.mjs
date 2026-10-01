@@ -40,7 +40,11 @@ function extractFunction(name) {
 // The constants the functions read, copied from the file's own header lines.
 const headerConstants = source.slice(0, source.indexOf('function loadBlocks'));
 const loadSource = `${headerConstants}\n${extractFunction('loadBlocks')}\n${extractFunction('saveBlocks')}`;
-const notifySource = `${headerConstants}\n${extractFunction('checkBlockNotifications')}`;
+const notifySource = [
+  headerConstants,
+  extractFunction('checkBlockNotifications'),
+  extractFunction('removeBlockById'),
+].join('\n');
 
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
