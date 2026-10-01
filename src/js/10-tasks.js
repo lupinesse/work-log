@@ -1,12 +1,7 @@
 /* ── Today's tasks — state and persistence ── */
 const STORE_PLAN = 'wl_plan_v1';
 
-/**
- * Plan task list — each item:
- * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority], [note] }`
- * @type {Array<Object>}
- */
-let planTasks = [];
+// planTasks lives in state.js (#423) — getPlanTasks()/setPlanTasks().
 let planCollapsed = readCollapseState('planSection', false);
 let pendingCollapsed = readCollapseState('pendingSection', true);
 // eslint-disable-next-line prefer-const -- reassigned by 10b-tasks-events.js
@@ -33,23 +28,25 @@ let doneHistoryOpen = false;
 let wipWarnDismissed = false;
 
 /**
- * Loads plan tasks from localStorage into `planTasks`, filtering out invalid
- * entries via `validPlanTask`. Drops are reported via wlLog.warn so data-quality
- * issues are visible in DevTools. Resets to empty array on parse error.
+ * Loads plan tasks from localStorage into the shared plan-task list, filtering
+ * out invalid entries via `validPlanTask`. Drops are reported via wlLog.warn so
+ * data-quality issues are visible in DevTools. Resets to empty array on parse error.
+ * Each task is
+ * `{ id, text, status, tag, date, [billable], [notionUrl], [emoji], [checkpoints], [parentId], [priority], [note] }`.
  * @returns {void}
  */
 function loadPlan() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_PLAN) || '[]');
     const all = Array.isArray(raw) ? raw : [];
-    planTasks = all.filter(validPlanTask);
-    if (planTasks.length < all.length)
-      wlLog.warn(`loadPlan: dropped ${all.length - planTasks.length} invalid task record(s)`, {
+    setPlanTasks(all.filter(validPlanTask));
+    if (getPlanTasks().length < all.length)
+      wlLog.warn(`loadPlan: dropped ${all.length - getPlanTasks().length} invalid task record(s)`, {
         total: all.length,
-        kept: planTasks.length,
+        kept: getPlanTasks().length,
       });
   } catch (err) {
-    planTasks = [];
+    setPlanTasks([]);
     wlLog.error('loadPlan: failed to parse plan tasks from localStorage', err);
   }
 }
@@ -59,7 +56,7 @@ function loadPlan() {
  * @returns {void}
  */
 function savePlan() {
-  localStorage.setItem(STORE_PLAN, JSON.stringify(planTasks));
+  localStorage.setItem(STORE_PLAN, JSON.stringify(getPlanTasks()));
 }
 
 /**
@@ -121,7 +118,7 @@ function addPlanTask() {
   const inp = document.getElementById('planInput');
   const text = inp.value.trim();
   if (!text) return;
-  planTasks.push({
+  getPlanTasks().push({
     id: Date.now() + '',
     text,
     status: 'todo',
@@ -146,12 +143,12 @@ function addPlanTask() {
  * @returns {void}
  */
 function promoteMatchingTaskToInProgress(text) {
-  const task = findPromotableTask(planTasks, text, dk(new Date()));
+  const task = findPromotableTask(getPlanTasks(), text, dk(new Date()));
   if (!task) return;
   task.status = 'inprogress';
   delete task.completedAt;
   if (task.parentId) {
-    const parent = planTasks.find((planTask) => planTask.id === task.parentId);
+    const parent = getPlanTasks().find((planTask) => planTask.id === task.parentId);
     if (parent && parent.status === 'todo') parent.status = 'inprogress';
   }
   savePlan();

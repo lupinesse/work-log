@@ -21,14 +21,14 @@
  */
 function patchCarriedTasks() {
   const todayKey = dk(new Date());
-  const todayTasks = planTasks.filter((task) => task.date === todayKey);
-  const pastTasks = planTasks.filter((task) => task.date < todayKey);
+  const todayTasks = getPlanTasks().filter((task) => task.date === todayKey);
+  const pastTasks = getPlanTasks().filter((task) => task.date < todayKey);
 
   // Migration: stamp billable on tasks and categories that predate the feature.
   // Assumption: the app was originally developed for billable contract work, so
   // any task or category without an explicit flag is assumed billable to avoid
   // retroactively understating tracked hours.
-  planTasks.forEach((task) => {
+  getPlanTasks().forEach((task) => {
     if (task.billable === undefined) task.billable = true;
   });
   getCategories().forEach((cat) => {
@@ -37,7 +37,7 @@ function patchCarriedTasks() {
 
   // Migration: stamp completedAt on any done task missing it
   let changed = false;
-  planTasks.forEach((task) => {
+  getPlanTasks().forEach((task) => {
     if (task.status === 'done' && !task.completedAt) {
       task.completedAt = new Date((task.date || todayKey) + 'T00:00:00').getTime();
       changed = true;
@@ -88,7 +88,7 @@ function autoCarryTasks() {
   // 'upcoming' tasks are intentionally scheduled for a future date by the user
   // and should never be auto-carried — they will appear naturally on their target date.
   // 'done' tasks are complete and need no carry.
-  const unfinished = planTasks.filter(
+  const unfinished = getPlanTasks().filter(
     (task) => task.date < todayKey && task.status !== 'done' && task.status !== 'upcoming'
   );
   // Don't set the guard key when nothing needs carrying — if the user later
@@ -110,7 +110,7 @@ function autoCarryTasks() {
   const idMap = {};
   let carried = 0;
   toCarry.forEach((task) => {
-    const exists = planTasks.some(
+    const exists = getPlanTasks().some(
       (existingTask) =>
         existingTask.date === todayKey &&
         existingTask.text.toLowerCase() === task.text.toLowerCase()
@@ -118,7 +118,7 @@ function autoCarryTasks() {
     if (!exists) {
       const newId = 'c' + Date.now() + Math.random().toString(36).slice(2);
       idMap[task.id] = newId;
-      planTasks.push({
+      getPlanTasks().push({
         id: newId,
         text: task.text,
         tag: task.tag,
@@ -262,11 +262,11 @@ function renderCompleted() {
   const viewKey = dk(getViewDate());
   // Tasks that are actively inprogress/todo on the current view date
   const activeTodayTexts = new Set(
-    planTasks
+    getPlanTasks()
       .filter((task) => task.date === viewKey && task.status !== 'done')
       .map((task) => task.text.toLowerCase())
   );
-  const done = planTasks
+  const done = getPlanTasks()
     .filter((task) => {
       if (task.status !== 'done') return false;
       // Don't show completed tasks that have a live version on this date
@@ -342,7 +342,7 @@ document.addEventListener(
     if (!btn) return;
     event.stopPropagation();
     if (btn.dataset.pid) {
-      const task = planTasks.find((task) => task.id === btn.dataset.pid);
+      const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
       if (!task) return;
       task.billable = task.billable === false ? true : false;
       savePlan();
@@ -360,7 +360,7 @@ document.addEventListener(
       entry.billable = !curBill;
       // Also update matching planTasks so plan rows stay in sync
       const key = entry.text.toLowerCase().trim();
-      planTasks
+      getPlanTasks()
         .filter((task) => task.text.toLowerCase().trim() === key)
         .forEach((task) => (task.billable = entry.billable));
       save();
@@ -378,7 +378,7 @@ document.addEventListener(
     const btn = event.target.closest('.prio-btn');
     if (!btn || !btn.dataset.pid) return;
     event.stopPropagation();
-    const task = planTasks.find((task) => task.id === btn.dataset.pid);
+    const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
     if (!task) return;
     const cur = task.priority || 0;
     const next = cur === 0 ? 1 : cur === 1 ? -1 : 0;

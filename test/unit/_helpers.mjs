@@ -52,8 +52,9 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
  * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`,
  * `getCategories`/`setCategories` over `sandbox.categories`,
  * `getSelectedTag`/`setSelectedTag` over `sandbox.selectedTag`,
- * `getViewDate`/`setViewDate` over `sandbox.viewDate`, and
- * `getBlocks`/`setBlocks` over `sandbox.blocks`.
+ * `getViewDate`/`setViewDate` over `sandbox.viewDate`,
+ * `getBlocks`/`setBlocks` over `sandbox.blocks`, and
+ * `getPlanTasks`/`setPlanTasks` over `sandbox.planTasks`.
  *
  * The app files under test read and write these only through the accessors, so
  * a sandbox that sets one of those properties keeps working unchanged: a
@@ -92,7 +93,32 @@ export function withStateAccessors(sandbox) {
   sandbox.setBlocks = (next) => {
     sandbox.blocks = next;
   };
+  sandbox.getPlanTasks = () => sandbox.planTasks;
+  sandbox.setPlanTasks = (next) => {
+    sandbox.planTasks = next;
+  };
   return sandbox;
+}
+
+/**
+ * Returns the full text of a top-level function declaration from a source
+ * string, found by matching braces from its opening line. Lets a test run one
+ * function from a concatenated-bundle file without evaluating the file's
+ * top-level DOM wiring.
+ * @param {string} source - File contents to search.
+ * @param {string} name - Function name to extract.
+ * @returns {string} The function's source, from `function` to its closing brace.
+ */
+export function extractFunctionSource(source, name) {
+  const start = source.indexOf(`function ${name}(`);
+  if (start === -1) throw new Error(`function ${name} not found`);
+  let depth = 0;
+  for (let index = source.indexOf('{', start); index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  throw new Error(`unterminated function ${name}`);
 }
 
 /**

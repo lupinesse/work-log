@@ -19,7 +19,9 @@ function renderEmergencyCps() {
     ? getEntries().find((e) => e.id === getActiveTimer().entryId)
     : null;
   const todayKey = dk(new Date());
-  const task = entry ? planTasks.find((t) => t.text === entry.text && t.date === todayKey) : null;
+  const task = entry
+    ? getPlanTasks().find((t) => t.text === entry.text && t.date === todayKey)
+    : null;
   const cps = task && Array.isArray(task.checkpoints) ? task.checkpoints : [];
   if (!cps.length) {
     wrap.style.display = 'none';
@@ -40,7 +42,7 @@ function renderEmergencyCps() {
     .join('');
   el.querySelectorAll('.emergency-cp-check').forEach((box) => {
     box.addEventListener('click', () => {
-      const t = planTasks.find((t) => t.id === box.dataset.tid);
+      const t = getPlanTasks().find((t) => t.id === box.dataset.tid);
       if (!t || !t.checkpoints) return;
       const cur = t.checkpoints[parseInt(box.dataset.cidx)].done;
       t.checkpoints[parseInt(box.dataset.cidx)].done =
@@ -98,7 +100,7 @@ function exitEmergency() {
   }
   // Auto-expand checkpoints for the active task so user can pick up where they left off
   if (entry) {
-    const activeTask = planTasks.find(
+    const activeTask = getPlanTasks().find(
       (t) =>
         t.text.toLowerCase() === entry.text.toLowerCase() &&
         Array.isArray(t.checkpoints) &&
