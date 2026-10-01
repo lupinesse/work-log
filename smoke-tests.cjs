@@ -2818,6 +2818,50 @@ async function runTests() {
     assert('getAnthropicKey not on window._wlNotion', exposed.hasGetKey === false);
     assert('setAnthropicKey not on window._wlNotion', exposed.hasSetKey === false);
     assert('wl_anthropic_key cleared from localStorage', exposed.lsKey === null);
+
+    // The fetch-title button must go through the local /api/ai proxy (which
+    // injects the key server-side), never straight to Anthropic or with a key.
+    const proxiedRequests = [];
+    const directAnthropicRequests = [];
+    page.on('request', (request) => {
+      if (request.url().includes('api.anthropic.com')) directAnthropicRequests.push(request.url());
+    });
+    await page.route('**/api/ai', async (route) => {
+      proxiedRequests.push({ headers: route.request().headers() });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ content: [{ type: 'text', text: 'Stub Page Title' }] }),
+      });
+    });
+    await page.evaluate(() => {
+      document.getElementById('notionUrl').value = 'https://example.com/page';
+      document.getElementById('notionName').value = '';
+      document.getElementById('notionFetchBtn').click();
+    });
+    // A boolean (not a thrown timeout) so a regression shows up as a failed
+    // assertion below instead of aborting the whole smoke run.
+    const nameFilled = await page
+      .waitForFunction(() => document.getElementById('notionName').value !== '', null, {
+        timeout: 3000,
+      })
+      .then(
+        () => true,
+        () => false
+      );
+    assert('Notion fetch-title posts once to /api/ai', proxiedRequests.length === 1);
+    assert(
+      'Notion fetch-title request carries no API key header',
+      proxiedRequests[0] && proxiedRequests[0].headers['x-api-key'] === undefined
+    );
+    assert(
+      'Notion fetch-title never calls api.anthropic.com directly',
+      directAnthropicRequests.length === 0
+    );
+    assert(
+      'Notion fetch-title fills the name from the proxy response',
+      nameFilled && (await page.inputValue('#notionName')) === 'Stub Page Title'
+    );
     await page.close();
   }
 
@@ -3104,16 +3148,28 @@ async function runTests() {
     // lane collapse to content width and left-align instead of filling the panel.
     const boardFill = await page.evaluate(() => {
       const widthOf = (el) => (el ? Math.round(el.getBoundingClientRect().width) : 0);
-      const colW = widthOf(document.getElementById('boardCols'));
       return {
-        colW,
-        tabsFill: colW > 0 && widthOf(document.getElementById('boardTabs')) >= colW - 1,
-        laneFill: colW > 0 && widthOf(document.querySelector('.kb-col.kb-col--active')) >= colW - 1,
+        colW: widthOf(document.getElementById('boardCols')),
+        tabsW: widthOf(document.getElementById('boardTabs')),
+        laneW: widthOf(document.querySelector('.kb-col.kb-col--active')),
       };
     });
-    assert('Board panel has non-zero width', boardFill.colW > 0);
-    assert('Tab bar stretches to full board width', boardFill.tabsFill);
-    assert('Active lane stretches to full board width', boardFill.laneFill);
+    // Widths are rounded to whole pixels, so two boxes that fill the same
+    // fractional width can differ by 1px; allow that and nothing more. Raw widths
+    // go into the failure message (0 means the element was not found).
+    const ROUNDING_TOLERANCE_PX = 1;
+    const widthDetail = `board ${boardFill.colW}px, tabs ${boardFill.tabsW}px, lane ${boardFill.laneW}px`;
+    assert('Board panel has non-zero width', boardFill.colW > 0, widthDetail);
+    assert(
+      'Tab bar stretches to full board width',
+      boardFill.colW > 0 && boardFill.tabsW >= boardFill.colW - ROUNDING_TOLERANCE_PX,
+      widthDetail
+    );
+    assert(
+      'Active lane stretches to full board width',
+      boardFill.colW > 0 && boardFill.laneW >= boardFill.colW - ROUNDING_TOLERANCE_PX,
+      widthDetail
+    );
 
     await page.close();
   }
