@@ -22,6 +22,8 @@ const workflowPath = path.join(
 const source = readFileSync(workflowPath, 'utf8').replace(/\r\n/g, '\n');
 
 const BOT_REST_LOGIN = 'chatgpt-reviewer-work-log[bot]';
+// GraphQL reports bot authors without the "[bot]" suffix that REST includes; the
+// workflow strips it for merge-gate, so the fake GraphQL data must use this form.
 const BOT_GRAPHQL_LOGIN = 'chatgpt-reviewer-work-log';
 const SCRIPT_INDENT = 12;
 
@@ -79,6 +81,8 @@ async function runScript(body, { github, context, env }) {
  * @returns {{github: object, state: {sizeCheckReached: boolean}}}
  */
 function fakeSynchronizeGithub({ commentLogins, reviewLogins }) {
+  // Never invoked: the fake paginate() below branches on which function it was
+  // handed, so these only need to exist as distinct references.
   const listComments = () => {};
   const listReviews = () => {};
   const listFiles = () => {};
@@ -172,12 +176,12 @@ describe('chatgpt-pr-review.yml — bot identity (#514)', () => {
       assert.equal(failures.length, 1);
     });
 
-    test('a resolved bot thread does not block', async () => {
+    test('a resolved bot thread does not block the merge gate', async () => {
       const { failures } = await gate([thread(BOT_GRAPHQL_LOGIN, true)]);
       assert.deepEqual(failures, []);
     });
 
-    test('unresolved threads from humans — even with "chatgpt" in the handle — do not block', async () => {
+    test('unresolved threads from humans — even with "chatgpt" in the handle — do not block the merge gate', async () => {
       const { failures } = await gate([thread('chatgpt-fan'), thread('lupinesse')]);
       assert.deepEqual(failures, []);
     });
