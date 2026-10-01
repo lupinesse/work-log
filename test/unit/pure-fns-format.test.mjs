@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   safeCssColor,
   escHtml,
+  jiraKeyLinkHtml,
   dk,
   fmtTime,
   fmtElapsed,
@@ -259,4 +260,17 @@ describe('calcStreak', () => {
       ]),
       2
     ));
+});
+
+describe('jiraKeyLinkHtml', () => {
+  const html = jiraKeyLinkHtml('https://example.atlassian.net/browse', 'AB-12');
+
+  it('links to the ticket under the base URL', () =>
+    assert.ok(html.includes('href="https://example.atlassian.net/browse/AB-12"')));
+  it('warns screen-reader users that the link opens in a new tab (regression, #471)', () =>
+    assert.ok(html.includes('<span class="sr-only"> (opens in new tab)</span>')));
+  it('keeps rel="noopener" on the target=_blank link', () =>
+    assert.ok(html.includes('target="_blank" rel="noopener"')));
+  it('escapes the key shown as link text', () =>
+    assert.ok(jiraKeyLinkHtml('https://x', '<b>').includes('&lt;b&gt;<span')));
 });
