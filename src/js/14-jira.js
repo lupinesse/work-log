@@ -68,7 +68,9 @@
   function jiraGetExistingToday() {
     const today = dk(new Date());
     return new Set(
-      planTasks.filter((task) => task.date === today).map((task) => task.text.toLowerCase().trim())
+      getPlanTasks()
+        .filter((task) => task.date === today)
+        .map((task) => task.text.toLowerCase().trim())
     );
   }
 
@@ -455,7 +457,9 @@
     }
     const today = dk(new Date());
     const existing = new Set(
-      planTasks.filter((task) => task.date === today).map((task) => task.text.toLowerCase().trim())
+      getPlanTasks()
+        .filter((task) => task.date === today)
+        .map((task) => task.text.toLowerCase().trim())
     );
 
     // Create any new categories
@@ -490,7 +494,7 @@
           return;
         }
         const cat = jiraGetCat(t);
-        planTasks.push({
+        getPlanTasks().push({
           id: 'jira_' + Date.now() + '_' + Math.random().toString(36).slice(2),
           text,
           status: jiraMapStatus(t.status),

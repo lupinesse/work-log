@@ -57,7 +57,7 @@ function buildDailyLogItems(dateKey) {
       }
     });
 
-  planTasks
+  getPlanTasks()
     .filter((t) => t.date === dateKey && Array.isArray(t.statusComments))
     .forEach((t) => {
       t.statusComments.forEach((c) => {

@@ -42,7 +42,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 **Exports**:
 - `entries` — Array of logged work entries (with timestamps); held in `state.js` and read/written only via `getEntries()`/`setEntries()` (#423)
-- `planTasks` — Array of today's tasks (with status, checkpoints, deadline)
+- `planTasks` — Array of today's tasks (with status, checkpoints, deadline); held in `state.js` and read/written only via `getPlanTasks()`/`setPlanTasks()` (#423)
 - `categories` — Custom work categories (epic colors); held in `state.js` and read/written only via `getCategories()`/`setCategories()` (#423)
 - `activeTimer` — Current timer state or null; held in `state.js` and read/written only via `getActiveTimer()`/`setActiveTimer()` (#423)
 - `blocks` — Timeblock UI objects; held in `state.js` and read/written only via `getBlocks()`/`setBlocks()` (#423)
@@ -270,7 +270,7 @@ Pure helpers (`groupEntriesByCategory`, `buildTimesheetSummaryLine`, `buildEntry
 
 ---
 
-#### **06-focus.js** (176 lines) — Focus Mode (Emergency Mode)
+#### **06-focus.js** (178 lines) — Focus Mode (Emergency Mode)
 **Responsibility**: Distraction-free focus interface
 
 **Features**:
@@ -402,7 +402,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (175 lines) — Task Management
+#### **10-tasks.js** (172 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -483,7 +483,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10d-tasks-editors.js** (355 lines) — Per-Card Inline Editors
+#### **10d-tasks-editors.js** (359 lines) — Per-Card Inline Editors
 **Responsibility**: Binds the inline comment, note, and checkpoint editors for individual task cards. One function per editor type; called from `10b-tasks-events.js`.
 
 **Key Functions**: `bindPlanCommentEvents(qa)`, `bindPlanNoteEvents(qa)`, `bindPlanCheckpointEvents(qa)`
@@ -596,7 +596,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (494 lines) — Jira Import
+#### **14-jira.js** (498 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:

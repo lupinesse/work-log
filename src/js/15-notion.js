@@ -83,7 +83,7 @@ async function addTaskToNotion(task) {
  * @param {string} url    - Notion page URL returned by the API.
  */
 function saveTaskNotionUrl(taskId, url) {
-  const t = planTasks.find((t) => t.id === taskId);
+  const t = getPlanTasks().find((t) => t.id === taskId);
   if (!t) return;
   t.notionUrl = url;
   savePlan();
@@ -97,7 +97,7 @@ document.addEventListener(
     const btn = e.target.closest('.notion-task-btn');
     if (!btn || !btn.dataset.pid) return;
     e.stopPropagation();
-    const t = planTasks.find((x) => x.id === btn.dataset.pid);
+    const t = getPlanTasks().find((x) => x.id === btn.dataset.pid);
     if (!t) return;
     // If already sent, open the Notion page
     if (t.notionUrl) {

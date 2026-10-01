@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 const notionSrc = readFileSync(join(__dirname, '../../src/js/15-notion.js'), 'utf8');
 
@@ -77,7 +77,7 @@ function loadNotionSandbox(overrides = {}) {
     console,
     ...overrides,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(notionSrc, sandbox);
   sandbox.__clickHandler = (event) => capturedClickHandler && capturedClickHandler(event);
   return sandbox;

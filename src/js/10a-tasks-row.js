@@ -287,7 +287,7 @@ function renderRow(t) {
       </div>`;
   }
 
-  const childCount = planTasks.filter(
+  const childCount = getPlanTasks().filter(
     (c) => c.parentId === t.id && c.date === viewKey && c.status !== 'done'
   ).length;
   const childBadge = childCount > 0 ? `<span class="plan-child-badge">${childCount}</span>` : '';

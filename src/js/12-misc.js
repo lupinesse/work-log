@@ -115,7 +115,7 @@ function renderParked() {
       const p = parkedThoughts.find((thought) => thought.id === btn.dataset.id);
       if (!p) return;
       const todayKey = dk(new Date());
-      planTasks.push({
+      getPlanTasks().push({
         id: Date.now() + '',
         text: p.text,
         status: 'todo',
@@ -224,7 +224,7 @@ function renderParked() {
   btn.addEventListener('click', (event) => {
     event.stopPropagation();
     const todayKey = dk(new Date());
-    const candidates = planTasks.filter(
+    const candidates = getPlanTasks().filter(
       (task) => task.date === todayKey && task.status === 'todo' && !task.parentId
     );
     if (!candidates.length) return;
