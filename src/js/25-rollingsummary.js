@@ -179,7 +179,7 @@ export function renderRollingSummary() {
           <span class="rs-session" aria-label="Session">${sodStr} – ${eodStr}</span>
           <span class="rs-total" aria-label="Tracked total">${totalStr}</span>
         </div>
-        <div class="rs-tasks" role="group" aria-label="Top tasks">${tasksHtml}</div>
+        <div class="rs-tasks" role="group" aria-label="Top tasks for ${fmtDateLabel(row.dateKey)}">${tasksHtml}</div>
       </div>`;
     })
     .join('');
