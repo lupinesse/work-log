@@ -58,8 +58,8 @@ let selectedTag = 'work';
 let logNotes = [];
 // eslint-disable-next-line prefer-const -- reassigned by 22-trackers.js (loadTrackers)
 let trackers = [];
-let entries = [];
-let activeTimer = null;
+// entries lives in state.js (#423) — getEntries()/setEntries().
+// activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
 let categories = [...DEFAULT_CATS];
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
@@ -80,23 +80,26 @@ function load() {
   try {
     const parsedEntries = JSON.parse(localStorage.getItem(STORE_ENTRIES) || '[]');
     const allEntries = Array.isArray(parsedEntries) ? parsedEntries : [];
-    entries = allEntries.filter(validEntry);
-    if (entries.length < allEntries.length)
-      wlLog.warn(`load: dropped ${allEntries.length - entries.length} invalid entry record(s)`, {
-        total: allEntries.length,
-        kept: entries.length,
-      });
+    setEntries(allEntries.filter(validEntry));
+    if (getEntries().length < allEntries.length)
+      wlLog.warn(
+        `load: dropped ${allEntries.length - getEntries().length} invalid entry record(s)`,
+        {
+          total: allEntries.length,
+          kept: getEntries().length,
+        }
+      );
   } catch (err) {
-    entries = [];
+    setEntries([]);
     wlLog.error('load: failed to parse entries from localStorage', err);
   }
   try {
     const parsedTimer = JSON.parse(localStorage.getItem(STORE_TIMER) || 'null');
-    activeTimer = parsedTimer && validTimer(parsedTimer) ? parsedTimer : null;
+    setActiveTimer(parsedTimer && validTimer(parsedTimer) ? parsedTimer : null);
     if (parsedTimer && !validTimer(parsedTimer))
       wlLog.warn('load: discarded invalid timer state', parsedTimer);
   } catch (err) {
-    activeTimer = null;
+    setActiveTimer(null);
     wlLog.error('load: failed to parse timer state', err);
   }
   try {
@@ -116,11 +119,11 @@ function load() {
     wlLog.error('load: failed to parse categories', err);
   }
   // Auto-restore from snapshot if entries are unexpectedly empty
-  if (!entries.length) {
+  if (!getEntries().length) {
     try {
       const snap = JSON.parse(localStorage.getItem('wl_snapshot') || 'null');
       if (snap && Array.isArray(snap.entries) && snap.entries.length) {
-        entries = snap.entries.filter(validEntry);
+        setEntries(snap.entries.filter(validEntry));
         if (Array.isArray(snap.categories) && snap.categories.length)
           categories = snap.categories.filter(validCategory);
         wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
@@ -213,13 +216,13 @@ function hideSaveFailureBanner() {
 function save() {
   // Never overwrite real data with empty arrays
   const existing = localStorage.getItem(STORE_ENTRIES);
-  if (!entries.length && existing && existing !== '[]') {
+  if (!getEntries().length && existing && existing !== '[]') {
     wlLog.warn('save() blocked — refusing to overwrite existing entries with empty array');
     return;
   }
   try {
-    localStorage.setItem(STORE_ENTRIES, JSON.stringify(entries));
-    localStorage.setItem(STORE_TIMER, JSON.stringify(activeTimer));
+    localStorage.setItem(STORE_ENTRIES, JSON.stringify(getEntries()));
+    localStorage.setItem(STORE_TIMER, JSON.stringify(getActiveTimer()));
     localStorage.setItem(STORE_CATS, JSON.stringify(categories));
     hideSaveFailureBanner();
   } catch (err) {

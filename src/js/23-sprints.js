@@ -95,11 +95,11 @@ function startSprint() {
     date: dk(new Date()),
     _sprintDuration,
   };
-  entries.push(entry);
+  getEntries().push(entry);
   _sprintEntryId = entry.id;
   save();
 
-  if (activeTimer) stopTimer();
+  if (getActiveTimer()) stopTimer();
   startTimer(entry.id);
 
   const focusIntention = document.getElementById('sprintFocusIntention');
@@ -194,7 +194,7 @@ function showSprintReview() {
       hasNote: !!note,
     });
 
-    const entry = entries.find((e) => e.id === _sprintEntryId);
+    const entry = getEntries().find((e) => e.id === _sprintEntryId);
     if (entry) {
       entry._sprintOutcome = _outcome;
       save();

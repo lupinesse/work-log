@@ -101,9 +101,9 @@ function fmtHm(ts) {
  * @returns {number} 0 if no timer is active for this entry.
  */
 function activeTimerDurationMs(entry) {
-  if (!activeTimer || activeTimer.entryId !== entry.id) return 0;
-  if (activeTimer.paused) return activeTimer.accumulatedMs || 0;
-  return Math.max(0, Date.now() - (activeTimer.startTs || entry.ts));
+  if (!getActiveTimer() || getActiveTimer().entryId !== entry.id) return 0;
+  if (getActiveTimer().paused) return getActiveTimer().accumulatedMs || 0;
+  return Math.max(0, Date.now() - (getActiveTimer().startTs || entry.ts));
 }
 
 /**
@@ -128,7 +128,7 @@ function renderDayStrip(dateKey) {
 
   // Completed entry footprints — skip entries entirely outside the strip
   // (right === left after clamping) to avoid phantom slivers at the edges.
-  const bars = entries
+  const bars = getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .map((entry) => {
       const cat = getCat(entry.tag);
@@ -142,8 +142,8 @@ function renderDayStrip(dateKey) {
   // Live timer footprint — endpoint freezes at pause so the bar doesn't keep
   // growing while the user is paused (matches renderFlowHeader's totals math).
   let liveBar = '';
-  if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
+  if (getActiveTimer() && isToday(viewDate)) {
+    const liveEntry = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
     if (liveEntry && liveEntry.date === dateKey) {
       const liveEndMins = tsToMins(liveEntry.ts + activeTimerDurationMs(liveEntry));
       const left = stripPct(Math.max(TF_STRIP_START, tsToMins(liveEntry.ts)));
@@ -176,7 +176,7 @@ function renderDayStrip(dateKey) {
  */
 function findLargestGap(dateKey) {
   if (!isToday(viewDate)) return null;
-  const timed = entries
+  const timed = getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled')
     .sort((a, b) => a.ts - b.ts);
 
@@ -193,7 +193,7 @@ function findLargestGap(dateKey) {
   // Trailing gap: last entry's end → now (or EOD if the day has been ended).
   // Suppressed while a live timer is running, since the user is actively
   // tracking and the gap will close itself.
-  if (timed.length && !activeTimer) {
+  if (timed.length && !getActiveTimer()) {
     const last = timed[timed.length - 1];
     const eodTs = getEodTs();
     const ceiling = eodTs || Date.now();
@@ -239,7 +239,7 @@ function renderFlowHeader(dateKey, activeView) {
   const el = document.getElementById('tfHeader');
   if (!el) return;
 
-  const dayEntries = entries.filter(
+  const dayEntries = getEntries().filter(
     (entry) => entry.date === dateKey && entry.tsEnd && entry.signifier !== 'cancelled'
   );
   let totalMs = dayEntries.reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
@@ -248,8 +248,8 @@ function renderFlowHeader(dateKey, activeView) {
     .reduce((sum, e) => sum + (e.tsEnd - e.ts), 0);
 
   // Include live timer duration so both totals update while tracking
-  if (activeTimer && isToday(viewDate)) {
-    const liveEntry = entries.find((entry) => entry.id === activeTimer.entryId);
+  if (getActiveTimer() && isToday(viewDate)) {
+    const liveEntry = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
     if (liveEntry && liveEntry.date === dateKey && !liveEntry.tsEnd) {
       const liveMs = activeTimerDurationMs(liveEntry);
       totalMs += liveMs;
@@ -458,7 +458,7 @@ function renderFlowView(dateKey) {
       // Look up the underlying entry object for entry-type items
       const entryObj =
         item.type === 'entry' && item.entryId
-          ? entries.find((entry) => entry.id === item.entryId)
+          ? getEntries().find((entry) => entry.id === item.entryId)
           : null;
 
       // Look up the task object for task-type items (status update rows)
@@ -471,7 +471,7 @@ function renderFlowView(dateKey) {
       let durMs = 0;
       let isLive = false;
       if (entryObj) {
-        isLive = !!(activeTimer && activeTimer.entryId === entryObj.id);
+        isLive = !!(getActiveTimer() && getActiveTimer().entryId === entryObj.id);
         // Use the paused-aware helper for live entries so the duration freezes
         // while the timer is paused, matching renderFlowHeader and renderDayStrip.
         const liveMs = isLive ? activeTimerDurationMs(entryObj) : 0;

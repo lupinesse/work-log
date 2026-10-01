@@ -9,7 +9,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as appConstants from '../../src/js/app-constants.js';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 import {
   getEntries,
   setEntries,
@@ -55,11 +55,15 @@ function loadStateSandbox(overrides = {}) {
     console,
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     localStorage: { getItem: () => null, setItem: () => {} },
+    // entries and activeTimer live in state.js now (#423); 01-state.js reaches
+    // them through the accessors, which withStateAccessors backs with these.
+    entries: [],
+    activeTimer: null,
     ...appConstants,
     ...overrides,
   };
 
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(stateSrc, sandbox);
   return sandbox;
 }
@@ -249,6 +253,142 @@ describe('save() — localStorage failure handling', () => {
     sandbox.save();
     assert.equal(setItemCalls.length, 0);
     assert.equal(doc.prepended.length, 0);
+  });
+});
+
+describe('load() — entries', () => {
+  /**
+   * Copies a value out of the VM sandbox as plain JSON. Arrays built inside the
+   * sandbox have a different Array.prototype from the test's, so strict
+   * deepEqual would reject them even when the contents match.
+   * @param {*} value - A value read from the sandbox.
+   * @returns {*} A same-realm deep copy.
+   */
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+
+  /**
+   * Loads 01-state.js with just enough collaborators for load() to run, and a
+   * localStorage backed by `store`. Records every wlLog warn/error call.
+   * @param {Record<string, string>} store - Raw localStorage values by key.
+   * @param {Array<object>} [seedEntries] - What the entries array holds before load().
+   * @param {object|null} [seedActiveTimer] - What activeTimer holds before load().
+   * @param {Function} [validTimer] - Stand-in for the timer schema validator.
+   * @returns {{ sandbox: object, warnings: string[], errors: string[] }}
+   */
+  function loadWithStore(store, seedEntries = [], seedActiveTimer = null, validTimer = () => true) {
+    const warnings = [];
+    const errors = [];
+    const sandbox = loadStateSandbox({
+      entries: seedEntries,
+      activeTimer: seedActiveTimer,
+      localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
+      wlLog: {
+        warn: (message) => warnings.push(message),
+        error: (message) => errors.push(message),
+        info: () => {},
+        debug: () => {},
+      },
+      validEntry: (entry) => !!entry && typeof entry.id === 'string',
+      validTimer,
+      validCategory: () => true,
+      loadTrackers: () => {},
+    });
+    return { sandbox, warnings, errors };
+  }
+
+  it('keeps valid stored entries, drops invalid ones, and warns about the drop', () => {
+    const { sandbox, warnings } = loadWithStore({
+      wl_entries_v1: JSON.stringify([{ id: 'a' }, { nope: true }]),
+    });
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), [{ id: 'a' }]);
+    assert.match(warnings.join('\n'), /dropped 1 invalid entry record/);
+  });
+
+  it('resets entries to an empty array and logs an error when the stored JSON is corrupt', () => {
+    const { sandbox, errors } = loadWithStore({ wl_entries_v1: '{not json' }, [{ id: 'stale' }]);
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), []);
+    assert.match(errors.join('\n'), /load: failed to parse entries/);
+  });
+
+  it('restores entries from the snapshot when primary storage holds none', () => {
+    const { sandbox, warnings } = loadWithStore({
+      wl_entries_v1: '[]',
+      wl_snapshot: JSON.stringify({ entries: [{ id: 'snap' }, { nope: true }] }),
+    });
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.entries), [{ id: 'snap' }]);
+    assert.match(warnings.join('\n'), /restored from snapshot/);
+  });
+
+  it('ignores a snapshot whose entries field is not an array, without throwing', () => {
+    const { sandbox, warnings, errors } = loadWithStore({
+      wl_entries_v1: '[]',
+      wl_snapshot: JSON.stringify({ entries: 'corrupted' }),
+    });
+    assert.doesNotThrow(() => sandbox.load());
+    assert.deepEqual(plain(sandbox.entries), []);
+    assert.deepEqual(errors, []);
+    // Without the Array.isArray guard, `'corrupted'.filter` throws and the
+    // surrounding try/catch turns it into this warning instead.
+    assert.doesNotMatch(warnings.join('\n'), /failed to parse snapshot/);
+  });
+});
+
+describe('load() — activeTimer', () => {
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+  const runningTimer = { entryId: 'e1', startTs: 1, accumulatedMs: 0, paused: false };
+
+  /**
+   * Loads 01-state.js with a localStorage backed by `store`.
+   * @param {Record<string, string>} store - Raw localStorage values by key.
+   * @param {object|null} seedActiveTimer - activeTimer before load().
+   * @param {Function} [validTimer] - Stand-in for the timer schema validator.
+   * @returns {{ sandbox: object, warnings: string[], errors: string[] }}
+   */
+  function loadWithTimerStore(store, seedActiveTimer, validTimer = () => true) {
+    const warnings = [];
+    const errors = [];
+    const sandbox = loadStateSandbox({
+      activeTimer: seedActiveTimer,
+      localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
+      wlLog: {
+        warn: (message) => warnings.push(message),
+        error: (message) => errors.push(message),
+        info: () => {},
+        debug: () => {},
+      },
+      validEntry: () => true,
+      validTimer,
+      validCategory: () => true,
+      loadTrackers: () => {},
+    });
+    return { sandbox, warnings, errors };
+  }
+
+  it('restores a valid stored timer', () => {
+    const { sandbox } = loadWithTimerStore({ wl_timer_v1: JSON.stringify(runningTimer) }, null);
+    sandbox.load();
+    assert.deepEqual(plain(sandbox.activeTimer), runningTimer);
+  });
+
+  it('discards an invalid stored timer and warns', () => {
+    const { sandbox, warnings } = loadWithTimerStore(
+      { wl_timer_v1: JSON.stringify({ bogus: true }) },
+      runningTimer,
+      () => false
+    );
+    sandbox.load();
+    assert.equal(sandbox.activeTimer, null);
+    assert.match(warnings.join('\n'), /discarded invalid timer state/);
+  });
+
+  it('clears a previously held timer and logs an error when the stored JSON is corrupt', () => {
+    const { sandbox, errors } = loadWithTimerStore({ wl_timer_v1: '{not json' }, runningTimer);
+    sandbox.load();
+    assert.equal(sandbox.activeTimer, null);
+    assert.match(errors.join('\n'), /load: failed to parse timer state/);
   });
 });
 

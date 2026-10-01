@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
 
 /**
  * Loads 06a-hero.js into a VM sandbox. All of the file's DOM binding happens
@@ -46,7 +46,7 @@ function loadHeroSandbox(overrides = {}) {
     ...overrides,
   };
   sandbox._composerInput = composerInput;
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(heroSrc, sandbox);
   return sandbox;

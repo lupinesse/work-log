@@ -160,7 +160,7 @@ function renderEodReminder() {
   const todayKey = dk(today);
   const sodTs = getDayStart(today);
   const eodTs = getEodTs(today);
-  const hasEntriesToday = entries.some((e) => e.date === todayKey);
+  const hasEntriesToday = getEntries().some((e) => e.date === todayKey);
   const shouldShow =
     _eodReminderDismissedDate !== todayKey &&
     isWorkdayLikelyOver({ sodTs, eodTs, hasEntriesToday, now: Date.now() });
@@ -298,7 +298,7 @@ document.getElementById('captureInput').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') addEntry(false);
 });
 document.getElementById('timerPause').addEventListener('click', () => {
-  if (activeTimer && activeTimer.paused) resumeTimer();
+  if (getActiveTimer() && getActiveTimer().paused) resumeTimer();
   else pauseTimer();
 });
 initHero();
@@ -341,7 +341,7 @@ document.getElementById('nextDay').addEventListener('click', () => {
  */
 function saveSnapshot() {
   const todayKey = dk(new Date());
-  const dayEntries = entries
+  const dayEntries = getEntries()
     .filter((e) => e.date === todayKey)
     .slice()
     .sort((a, b) => a.ts - b.ts);
@@ -374,7 +374,7 @@ function saveSnapshot() {
     JSON.stringify({
       date: todayKey,
       text: lines.join('\n'),
-      entries: entries,
+      entries: getEntries(),
       categories: categories,
     })
   );
@@ -390,7 +390,7 @@ setInterval(renderEodReminder, 5 * 60 * 1000);
 // Auto-pause when the user switches away (controlled by AUTO_PAUSE_ON_TAB_SWITCH in 00-config.js)
 document.addEventListener('visibilitychange', () => {
   if (!AUTO_PAUSE_ON_TAB_SWITCH) return;
-  if (document.hidden && activeTimer && !activeTimer.paused) {
+  if (document.hidden && getActiveTimer() && !getActiveTimer().paused) {
     pauseTimer();
     wlLog.info('auto-pause: tab hidden while timer running');
   }
@@ -405,12 +405,12 @@ setTimeout(() => {
     version: '1.8.2',
     date: dk(new Date()),
     // Persistent state counts (from localStorage after load + migration)
-    entries: entries.length,
+    entries: getEntries().length,
     categories: categories.length,
     planTasks: planTasks.length,
     blocks: blocks.length,
     // Runtime state
-    timer: activeTimer ? 'active' : 'idle',
+    timer: getActiveTimer() ? 'active' : 'idle',
     snapshot: !!localStorage.getItem('wl_snapshot'),
     // Environment: true when the PS API server responded (weather / calendar live)
     apiServer: !!localStorage.getItem('wl_api_ok'),

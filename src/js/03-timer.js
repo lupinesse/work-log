@@ -7,9 +7,9 @@
  * @returns {number} Elapsed time in milliseconds.
  */
 function getElapsedMs() {
-  if (!activeTimer) return 0;
-  const acc = activeTimer.accumulatedMs || 0;
-  return activeTimer.paused ? acc : acc + (Date.now() - activeTimer.startTs);
+  if (!getActiveTimer()) return 0;
+  const acc = getActiveTimer().accumulatedMs || 0;
+  return getActiveTimer().paused ? acc : acc + (Date.now() - getActiveTimer().startTs);
 }
 /**
  * Starts (or restarts) the timer for the given entry.
@@ -21,7 +21,7 @@ function startTimer(entryId) {
   clearTimerInterval();
   _lastChimeMinute = null;
   _longRunningWarnDismissed = false;
-  activeTimer = { entryId, startTs: Date.now(), accumulatedMs: 0, paused: false };
+  setActiveTimer({ entryId, startTs: Date.now(), accumulatedMs: 0, paused: false });
   save();
   setTimerInterval(setInterval(tickTimer, 1000)); // set up BEFORE first tick so it always runs
   tickTimer();
@@ -34,11 +34,11 @@ function startTimer(entryId) {
  * No-ops if no timer is active or it is already paused.
  */
 function pauseTimer() {
-  if (!activeTimer || activeTimer.paused) return;
+  if (!getActiveTimer() || getActiveTimer().paused) return;
   clearTimerInterval();
-  activeTimer.accumulatedMs = getElapsedMs();
-  activeTimer.paused = true;
-  activeTimer.startTs = null;
+  getActiveTimer().accumulatedMs = getElapsedMs();
+  getActiveTimer().paused = true;
+  getActiveTimer().startTs = null;
   save();
   updateTimerBar();
   updateTabAndFavicon();
@@ -49,9 +49,9 @@ function pauseTimer() {
  * No-ops if no timer is active or it is not paused.
  */
 function resumeTimer() {
-  if (!activeTimer || !activeTimer.paused) return;
-  activeTimer.paused = false;
-  activeTimer.startTs = Date.now();
+  if (!getActiveTimer() || !getActiveTimer().paused) return;
+  getActiveTimer().paused = false;
+  getActiveTimer().startTs = Date.now();
   save();
   setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
@@ -65,14 +65,14 @@ function resumeTimer() {
  * capture input if open. No-ops if no timer is active.
  */
 function stopTimer() {
-  if (!activeTimer) return;
+  if (!getActiveTimer()) return;
   clearTimerInterval();
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = getEntries().find((e) => e.id === getActiveTimer().entryId);
   if (entry) entry.tsEnd = roundToNearest30IfBillable(entry.ts + getElapsedMs(), entry);
   // Enter the 6-second confirmation panel before clearing activeTimer so
   // heroEnterStopped() can snapshot the entry details.
   if (entry) heroEnterStopped(entry);
-  activeTimer = null;
+  setActiveTimer(null);
   _lastChimeMinute = null;
   save();
   render();
@@ -93,8 +93,8 @@ function stopTimer() {
  */
 function updateLiveBlock() {
   const el = document.getElementById('tb-live-block');
-  if (!el || !activeTimer) return;
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  if (!el || !getActiveTimer()) return;
+  const entry = getEntries().find((e) => e.id === getActiveTimer().entryId);
   if (!entry) return;
   const tbStartMins = TB_START * 60,
     tbEndMins = TB_END * 60;
@@ -197,19 +197,19 @@ function setFavicon(state) {
  * non-meeting tasks.
  */
 function updateTabAndFavicon() {
-  if (!activeTimer) {
+  if (!getActiveTimer()) {
     document.title = 'Work Log';
     setFavicon('idle');
     return;
   }
-  const entry = entries.find((e) => e.id === activeTimer.entryId);
+  const entry = getEntries().find((e) => e.id === getActiveTimer().entryId);
   const taskText = entry ? entry.text : '…';
   const elapsedMs = getElapsedMs();
   const elapsed = fmtElapsed(elapsedMs);
   const isMeeting = entry && entry.text.startsWith('📅');
   const isHyperfocus = !isMeeting && elapsedMs > HYPERFOCUS_MINS * 60 * 1000;
 
-  if (activeTimer.paused) {
+  if (getActiveTimer().paused) {
     document.title = `⏸ ${elapsed} — ${taskText}`;
     setFavicon('paused');
   } else if (isHyperfocus) {
@@ -245,7 +245,7 @@ document.getElementById('chimeIntervalSel').addEventListener('change', function 
  * @param {number} elapsedMs - Elapsed time in milliseconds.
  */
 function checkChime(elapsedMs) {
-  if (!activeTimer || activeTimer.paused) return;
+  if (!getActiveTimer() || getActiveTimer().paused) return;
   const elapsedMins = Math.floor(elapsedMs / 60000);
   if (elapsedMins === _lastChimeMinute) return;
   if (CHIME_INTERVALS_MINS.some((n) => elapsedMins > 0 && elapsedMins % n === 0)) {
@@ -312,8 +312,8 @@ function updateTimerArc(elapsedMs) {
  */
 function tickTimer() {
   try {
-    if (!activeTimer) return;
-    const entry = entries.find((e) => e.id === activeTimer.entryId);
+    if (!getActiveTimer()) return;
+    const entry = getEntries().find((e) => e.id === getActiveTimer().entryId);
     const elapsed = getElapsedMs();
     // Update hero card clock every tick
     heroUpdateClock();
@@ -345,11 +345,11 @@ function updateTimerBar() {
   // Keep the pause-button label update so existing event listeners remain valid.
   const pauseBtn = document.getElementById('timerPause');
   const hookBtn = document.getElementById('timerHookBtn');
-  if (!activeTimer) {
+  if (!getActiveTimer()) {
     if (hookBtn) hookBtn.disabled = true;
     return;
   }
-  if (pauseBtn) pauseBtn.textContent = activeTimer.paused ? 'resume' : 'pause';
+  if (pauseBtn) pauseBtn.textContent = getActiveTimer().paused ? 'resume' : 'pause';
   if (hookBtn) hookBtn.disabled = false;
 }
 /**
@@ -367,19 +367,19 @@ function updateTimerBtn(running) {
  * tracking no longer exists the timer is cleared. No-ops if no timer is active.
  */
 function resumeTimerIfActive() {
-  if (!activeTimer) return;
-  if (!entries.find((e) => e.id === activeTimer.entryId)) {
+  if (!getActiveTimer()) return;
+  if (!getEntries().find((e) => e.id === getActiveTimer().entryId)) {
     if (
-      entries.length > 0 ||
+      getEntries().length > 0 ||
       !localStorage.getItem(STORE_ENTRIES) ||
       localStorage.getItem(STORE_ENTRIES) === '[]'
     ) {
-      activeTimer = null;
+      setActiveTimer(null);
       save();
     }
     return;
   }
-  if (!activeTimer.paused) setTimerInterval(setInterval(tickTimer, 1000));
+  if (!getActiveTimer().paused) setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
@@ -401,7 +401,7 @@ document.addEventListener('visibilitychange', () => {
   }
   const hiddenAt = _timerHiddenAt;
   _timerHiddenAt = null;
-  if (!hiddenAt || !activeTimer || activeTimer.paused) return;
+  if (!hiddenAt || !getActiveTimer() || getActiveTimer().paused) return;
   const hiddenMs = Date.now() - hiddenAt;
   if (hiddenMs <= IDLE_RETURN_THRESHOLD_MS) return;
   const hiddenMins = Math.round(hiddenMs / 60000);
@@ -424,7 +424,7 @@ function commitBannerNote() {
   const inp = document.getElementById('tbNoteInput');
   if (!inp) return;
   const note = inp.value.trim();
-  if (!note || !activeTimer) return;
+  if (!note || !getActiveTimer()) return;
 
   const snTs = Date.now();
   logNotes.push({
@@ -433,7 +433,7 @@ function commitBannerNote() {
     ts: snTs,
     date: dk(new Date()),
     type: 'session-note',
-    entryId: activeTimer.entryId,
+    entryId: getActiveTimer().entryId,
   });
   saveLogNotes();
   inp.value = '';
@@ -460,7 +460,7 @@ function logUtilEntry(kind) {
     ts: safeRoundedStart(),
     date: dk(new Date()),
   };
-  entries.push(entry);
+  getEntries().push(entry);
   save();
   render();
 }

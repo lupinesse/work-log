@@ -15,7 +15,9 @@ function renderEmergencyCps() {
   const wrap = document.getElementById('emergencyCpsWrap');
   const el = document.getElementById('emergencyCps');
   if (!wrap || !el) return;
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   const todayKey = dk(new Date());
   const task = entry ? planTasks.find((t) => t.text === entry.text && t.date === todayKey) : null;
   const cps = task && Array.isArray(task.checkpoints) ? task.checkpoints : [];
@@ -58,7 +60,9 @@ function renderEmergencyCps() {
 function enterEmergency() {
   emergencyMode = true;
   document.body.classList.add('emergency');
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   document.getElementById('emergencyTask').textContent = entry
     ? entry.text
     : 'No active task — start one first';
@@ -80,7 +84,9 @@ function exitEmergency() {
   emergencyMode = false;
   document.body.classList.remove('emergency');
   // Save the next action note
-  const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+  const entry = getActiveTimer()
+    ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+    : null;
   const note = document.getElementById('emergencyNext').value.trim();
   if (entry && note) localStorage.setItem('wl_emergency_next_' + entry.id, note);
   else if (entry) localStorage.removeItem('wl_emergency_next_' + entry.id);
@@ -159,7 +165,9 @@ document.getElementById('timerStop').addEventListener('click', () => {
     document.getElementById('timerStop').textContent = 'done ✓';
   } else {
     // Second click — save note and stop
-    const entry = activeTimer ? entries.find((e) => e.id === activeTimer.entryId) : null;
+    const entry = getActiveTimer()
+      ? getEntries().find((e) => e.id === getActiveTimer().entryId)
+      : null;
     const note = handoffEl.value.trim();
     if (entry) saveHandoffNote(entry.text, note);
     hideHandoffInput();

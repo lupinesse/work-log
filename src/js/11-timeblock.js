@@ -94,7 +94,7 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
       if (newStartMins < e && newEndMins > s) hits.push(block.text);
     });
   // Check against completed log entries
-  entries
+  getEntries()
     .filter((entry) => entry.date === dateKey && entry.tsEnd && entry.tsEnd > entry.ts)
     .forEach((entry) => {
       const s = new Date(entry.ts).getHours() * 60 + new Date(entry.ts).getMinutes();
@@ -230,14 +230,14 @@ function checkBlockNotifications() {
       if (nowMins >= startMins && nowMins < endMins) {
         notifiedBlocks.add(b.id);
         // Skip if already logged or timer already running for this meeting
-        const alreadyLogged = entries.some(
+        const alreadyLogged = getEntries().some(
           (entry) =>
             entry.date === todayKey &&
             entry.text.toLowerCase() === b.text.toLowerCase() &&
             !entry.tsEnd // only count open entries — not pre-created completed ones
         );
-        const curEntry = activeTimer
-          ? entries.find((entry) => entry.id === activeTimer.entryId)
+        const curEntry = getActiveTimer()
+          ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
           : null;
         const alreadyActive = curEntry && curEntry.text.toLowerCase() === b.text.toLowerCase();
         if (!alreadyLogged && !alreadyActive) {
@@ -258,8 +258,8 @@ function checkBlockNotifications() {
       // Task blocks — prompt within 3-minute window after start
       if (nowMins < startMins || nowMins >= startMins + 3) continue;
       notifiedBlocks.add(b.id);
-      if (activeTimer) {
-        const cur = entries.find((entry) => entry.id === activeTimer.entryId);
+      if (getActiveTimer()) {
+        const cur = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
         const curName = cur ? cur.text : 'current task';
         const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
         if (sw) {
@@ -312,7 +312,7 @@ function tbStartBlock(blockId, overrideTs) {
     task.status = 'inprogress';
   }
   savePlan();
-  if (activeTimer) stopTimer();
+  if (getActiveTimer()) stopTimer();
   const ts = overrideTs || safeRoundedStart();
   const entry = {
     id: Date.now() + 1 + '',
@@ -321,11 +321,11 @@ function tbStartBlock(blockId, overrideTs) {
     ts,
     date: todayKey,
   };
-  entries.push(entry);
+  getEntries().push(entry);
   // Set timer startTs so elapsed = time since scheduled start, not since now
   viewDate = new Date();
   save();
-  activeTimer = { entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false };
+  setActiveTimer({ entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false });
   save();
   tickTimer();
   setTimerInterval(setInterval(tickTimer, 1000));

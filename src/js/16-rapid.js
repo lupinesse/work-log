@@ -98,7 +98,7 @@ function _qcLogOnly() {
   };
   if (parsed.signifier) entry.signifier = parsed.signifier;
 
-  entries.push(entry);
+  getEntries().push(entry);
   save();
   wlLog.info('_qcLogOnly: entry created', {
     tag,
@@ -115,7 +115,7 @@ function _qcLogOnly() {
 /** Starts a 1-second interval to update the elapsed-time label in the running strip. */
 function _qcStartTick() {
   _qcStopTick();
-  if (activeTimer) {
+  if (getActiveTimer()) {
     _qcTickInterval = setInterval(_qcUpdateElapsed, 1000);
   }
 }
@@ -131,7 +131,7 @@ function _qcStopTick() {
 /** Updates only the elapsed-time label; called every second by the ticker. */
 function _qcUpdateElapsed() {
   const el = document.getElementById('qcRunElapsed');
-  if (!el || !activeTimer) return;
+  if (!el || !getActiveTimer()) return;
   el.textContent = fmtElapsed(getElapsedMs());
 }
 
@@ -155,13 +155,13 @@ function _qcRenderRunningStrip() {
   const overlay = document.getElementById('rapidOverlay');
   if (!strip) return;
 
-  if (!activeTimer) {
+  if (!getActiveTimer()) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
     return;
   }
 
-  const entry = entries.find((logEntry) => logEntry.id === activeTimer.entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
   if (!entry) {
     strip.style.display = 'none';
     overlay && overlay.classList.remove('qc-is-running');
@@ -222,10 +222,10 @@ function _qcRenderCatChips() {
  * @returns {string} HTML string.
  */
 function _qcTaskRowHtml(rowId, text, cat, isActive) {
-  const actionLabel = isActive ? '■ now' : activeTimer ? '▸ switch' : '▸ start';
+  const actionLabel = isActive ? '■ now' : getActiveTimer() ? '▸ switch' : '▸ start';
   const ariaLabel = isActive
     ? `Currently tracking: ${text}`
-    : `${activeTimer ? 'Switch to' : 'Start'}: ${text}`;
+    : `${getActiveTimer() ? 'Switch to' : 'Start'}: ${text}`;
   return (
     `<div class="qc-task-row${isActive ? ' qc-task-row--active' : ''}"` +
     ` role="option" aria-selected="${isActive}">` +
@@ -258,8 +258,8 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   const matchCat = (tag) => !_qcFilterCat || tag === _qcFilterCat;
 
   // ── In progress: the currently-running entry (if any) ─────────────────
-  const activeEntry = activeTimer
-    ? entries.find((entry) => entry.id === activeTimer.entryId)
+  const activeEntry = getActiveTimer()
+    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
 
   /** @type {Object[]} */
@@ -284,9 +284,10 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   // ── Recent: unique entries from today, excluding the active one ───────
   /** @type {Object[]} */
   const recent = [];
-  [...entries]
+  [...getEntries()]
     .filter(
-      (entry) => entry.date === todayKey && entry.id !== (activeTimer ? activeTimer.entryId : '')
+      (entry) =>
+        entry.date === todayKey && entry.id !== (getActiveTimer() ? getActiveTimer().entryId : '')
     )
     .reverse()
     .forEach((entry) => {
@@ -454,11 +455,13 @@ function _qcActivateRow(rowId, text, tag, isActive) {
     return;
   }
 
-  const switching = !!activeTimer;
+  const switching = !!getActiveTimer();
   if (switching) stopTimer();
 
   // Re-use the existing entry for log entries; always create new for plan tasks.
-  let entry = rowId.startsWith('plan:') ? null : entries.find((logEntry) => logEntry.id === rowId);
+  let entry = rowId.startsWith('plan:')
+    ? null
+    : getEntries().find((logEntry) => logEntry.id === rowId);
 
   if (!entry) {
     entry = {
@@ -468,7 +471,7 @@ function _qcActivateRow(rowId, text, tag, isActive) {
       ts: safeRoundedStart(),
       date: dk(new Date()),
     };
-    entries.push(entry);
+    getEntries().push(entry);
     save();
     wlLog.info('_qcActivateRow: new entry created', { rowId, tag, switched: switching });
   } else {
@@ -525,7 +528,7 @@ function initRapid() {
 
   // Stop current timer from the running strip
   document.getElementById('qcRunStop')?.addEventListener('click', () => {
-    if (activeTimer) {
+    if (getActiveTimer()) {
       stopTimer();
       render();
     }

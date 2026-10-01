@@ -170,7 +170,7 @@ function renderCalStrip(meetings) {
         });
         savePlan();
       }
-      if (activeTimer) stopTimer();
+      if (getActiveTimer()) stopTimer();
       const entry = {
         id: Date.now() + '',
         text: subject,
@@ -178,7 +178,7 @@ function renderCalStrip(meetings) {
         ts: safeRoundedStart(),
         date: todayKey,
       };
-      entries.push(entry);
+      getEntries().push(entry);
       const task = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
@@ -286,11 +286,11 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     dk,
     getISOWeek,
     totalISOWeeks,
-    entries,
+    entries: getEntries(),
     categories,
     planTasks,
     blocks,
-    activeTimer: () => activeTimer,
+    activeTimer: () => getActiveTimer(),
     getTimerInterval,
     tbStartBlock,
     load,
@@ -323,7 +323,15 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
     validateBackupFile,
     getHook,
     saveHook,
-    getState: () => ({ entries, categories, planTasks, blocks, activeTimer, logNotes, trackers }),
+    getState: () => ({
+      entries: getEntries(),
+      categories,
+      planTasks,
+      blocks,
+      activeTimer: getActiveTimer(),
+      logNotes,
+      trackers,
+    }),
     cycleSignifier,
     isEntryBillable,
     addLogNote,

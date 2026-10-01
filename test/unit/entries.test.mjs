@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 /**
  * Loads 05-entries.js into a VM sandbox. `captureInput` is exposed on the
@@ -41,7 +41,7 @@ function loadEntriesSandbox(overrides = {}) {
     ...overrides,
   };
   sandbox._captureInput = captureInput;
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(entriesSrc, sandbox);
   return sandbox;
 }

@@ -63,6 +63,25 @@ function assert(name, condition, detail = '') {
   }
 }
 
+/**
+ * Closes an entry's inline time editor via its own Cancel button and reports
+ * whether the panel is actually closed afterwards. Tests that open the editor
+ * must call this so the open state cannot leak into later assertions (#470).
+ * @param {import('playwright').Page} page - Page with the timeline rendered.
+ * @param {string} entryId - Id of the entry whose time editor was opened.
+ * @returns {Promise<boolean>} True when `#ed-<entryId>` no longer has `.open`.
+ */
+async function closeTimeEditor(page, entryId) {
+  await page.evaluate(
+    (id) => document.querySelector(`.etime-cancel[data-id="${id}"]`)?.click(),
+    entryId
+  );
+  return page.evaluate(
+    (id) => !document.getElementById(`ed-${id}`)?.classList.contains('open'),
+    entryId
+  );
+}
+
 function dk(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -2212,6 +2231,16 @@ async function runTests() {
       'Deleting the timed entry clears the accessor',
       (await page.evaluate(() => window.__wl.getTimerInterval())) === null
     );
+    // The delete handler also has to drop the entry itself from the shared
+    // entries array (setEntries in 04c-render-timeline.js).
+    assert(
+      'Deleting an entry removes it from the log',
+      await page.evaluate(() => !window.__wl.getState().entries.some((entry) => entry.id === 'ti2'))
+    );
+    assert(
+      'Deleting an entry leaves the other entries in place',
+      await page.evaluate(() => window.__wl.getState().entries.some((entry) => entry.id === 'ti1'))
+    );
 
     // A timeblock-triggered start stores an interval (11-timeblock tbStartBlock).
     await page.evaluate(() => window.__wl.tbStartBlock('tib1'));
@@ -2249,8 +2278,9 @@ async function runTests() {
       await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
     );
 
-    // Rename: Tab-focus the entry text, activate with Space (no click) —
-    // independent of the time editor opened above, so no cleanup needed first.
+    assert('Cancel closes the time editor opened with Enter', await closeTimeEditor(page, 'kb1'));
+
+    // Rename: Tab-focus the entry text, activate with Space (no click).
     await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
     await page.keyboard.press(' ');
     const renameInputValue = await page.evaluate(
@@ -2304,15 +2334,14 @@ async function runTests() {
     );
 
     // Symmetric key coverage: both elements' keydown handlers accept either
-    // Enter or Space, not just the one key exercised above per element. The
-    // Escape press earlier triggered a full render(), so kb1's markup here
-    // is freshly rebuilt with no leftover 'open'/editing state to interfere.
+    // Enter or Space, not just the one key exercised above per element.
     await page.evaluate(() => document.querySelector('.etime-display[data-id="kb1"]')?.focus());
     await page.keyboard.press(' ');
     assert(
       'Space on .etime-display also opens the time editor',
       await page.evaluate(() => document.getElementById('ed-kb1')?.classList.contains('open'))
     );
+    assert('Cancel closes the time editor opened with Space', await closeTimeEditor(page, 'kb1'));
     await page.evaluate(() => document.querySelector('.etext[data-id="kb1"]')?.focus());
     await page.keyboard.press('Enter');
     const renameInputValue2 = await page.evaluate(

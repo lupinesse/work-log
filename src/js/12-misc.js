@@ -11,8 +11,8 @@ function loadDistractions() {
   }
 }
 function saveDistraction(note) {
-  const entry = activeTimer
-    ? entries.find((logEntry) => logEntry.id === activeTimer.entryId)
+  const entry = getActiveTimer()
+    ? getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId)
     : null;
   const d = {
     ts: Date.now(),
@@ -57,12 +57,12 @@ function renderDistractionCount() {
 
 document.getElementById('timerDistract').addEventListener('click', () => {
   // Pause the timer if running
-  if (activeTimer && !activeTimer.paused) pauseTimer();
+  if (getActiveTimer() && !getActiveTimer().paused) pauseTimer();
   // Optional note — short prompt, easily dismissable
   const note = prompt('What pulled you away? (optional — press Enter to skip)');
   if (note === null) {
     // Cancelled — resume timer without logging
-    if (activeTimer && activeTimer.paused) pauseTimer();
+    if (getActiveTimer() && getActiveTimer().paused) pauseTimer();
     return;
   }
   saveDistraction(note.trim() || null);
@@ -166,7 +166,9 @@ function renderParked() {
         btn.classList.remove('active');
         return;
       }
-      const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
+      const liveEntry = getActiveTimer()
+        ? getEntries().find((en) => en.id === getActiveTimer().entryId)
+        : null;
       parkedThoughts.push({
         id: Date.now() + '',
         text,
@@ -195,7 +197,9 @@ function renderParked() {
     if (event.key === 'Enter') {
       const text = inp.value.trim();
       if (!text) return;
-      const liveEntry = activeTimer ? entries.find((en) => en.id === activeTimer.entryId) : null;
+      const liveEntry = getActiveTimer()
+        ? getEntries().find((en) => en.id === getActiveTimer().entryId)
+        : null;
       parkedThoughts.push({
         id: Date.now() + '',
         text,
@@ -296,8 +300,8 @@ Requirements:
 
   btn.addEventListener('click', async (event) => {
     event.stopPropagation();
-    if (!activeTimer) return;
-    const entry = entries.find((en) => en.id === activeTimer.entryId);
+    if (!getActiveTimer()) return;
+    const entry = getEntries().find((en) => en.id === getActiveTimer().entryId);
     if (!entry) return;
     const taskText = entry.text.trim();
     const cached = getHook(taskText);
@@ -340,8 +344,8 @@ Requirements:
   if (regenBtn) {
     regenBtn.addEventListener('click', async (event) => {
       event.stopPropagation();
-      if (!activeTimer) return;
-      const entry = entries.find((en) => en.id === activeTimer.entryId);
+      if (!getActiveTimer()) return;
+      const entry = getEntries().find((en) => en.id === getActiveTimer().entryId);
       if (!entry) return;
       saveHook(entry.text.trim(), null);
       btn.click();

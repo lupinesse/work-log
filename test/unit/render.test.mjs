@@ -8,7 +8,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource, loadRenderScriptSource } from './_helpers.mjs';
+import {
+  __dirname,
+  loadPureFnsScriptSource,
+  loadRenderScriptSource,
+  withStateAccessors,
+} from './_helpers.mjs';
 
 // buildEntryMetaHtml moved to 04a-render-entry-meta.js in the 04-render.js
 // split (QA finding: module size) — read that file directly rather than the
@@ -38,7 +43,7 @@ function loadEntryMetaSandbox(overrides = {}) {
     _pendingNoteConfirm: null,
     ...overrides,
   };
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(match[0], sandbox);
   return sandbox;
 }
@@ -91,7 +96,7 @@ function loadRenderSandbox(overrides = {}) {
     ...overrides,
   };
 
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(renderSrc, sandbox);
   return sandbox;
@@ -231,7 +236,7 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
       ...overrides,
       _elements: elements,
     };
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(renderSrc, sb);
     return sb;
   }
@@ -302,7 +307,7 @@ describe('regression: non-billable relabeled as "internal"', () => {
 
   function loadTasksRowSandbox() {
     const sb = {};
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(tasksRowSrc, sb);
     return sb;
   }
@@ -395,7 +400,7 @@ describe('regression: timeline time-editor inputs have accessible labels (#429)'
       },
       _elements: elements,
     };
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(loadRenderScriptSource(), sb);
     return sb;
   }
@@ -472,7 +477,7 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
       window: { scrollY: 0, innerWidth: 1024 },
       setTimeout: () => {}, // deferred click-outside-to-close listener; not exercised here
     };
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(timeblockSrc, sb);
     vm.runInContext("openBlockEmojiPicker('b1', { getBoundingClientRect: () => ({}) });", sb);
 
@@ -512,7 +517,7 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
       },
       fakeTimeline,
     };
-    vm.createContext(sb);
+    vm.createContext(withStateAccessors(sb));
     vm.runInContext(loadRenderScriptSource(), sb);
     vm.runInContext('bindTimelineEntryEvents(fakeTimeline);', sb);
 

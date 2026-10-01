@@ -11,7 +11,7 @@ function renderQuickPick() {
   const qp = document.getElementById('quickPick');
   const seen = new Set();
   // Build deduplicated recent list, then filter out hidden ones
-  const allRecent = [...entries].reverse().filter((entry) => {
+  const allRecent = [...getEntries()].reverse().filter((entry) => {
     const k = entry.text.toLowerCase();
     if (seen.has(k)) return false;
     seen.add(k);

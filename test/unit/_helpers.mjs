@@ -46,6 +46,35 @@ export function localMs(y, m, d, hh = 0, mm = 0, ss = 0) {
 }
 
 /**
+ * Gives a VM sandbox the accessor pairs that state.js provides in the real
+ * bundle (#423), each backed by the sandbox's own property of the same name:
+ * `getEntries`/`setEntries` over `sandbox.entries`, and
+ * `getActiveTimer`/`setActiveTimer` over `sandbox.activeTimer`. The app files
+ * under test read and write these only through the accessors, so a sandbox
+ * that sets `entries` or `activeTimer` keeps working unchanged: a
+ * `setActiveTimer(next)` shows up as `sandbox.activeTimer`, and vice versa.
+ *
+ * Each variable moved onto state.js adds one pair here, so a test never needs
+ * to know which variables have migrated yet.
+ *
+ * Call it before `vm.createContext(sandbox)`; it returns the same object so it
+ * can wrap the call.
+ * @param {object} sandbox - The sandbox object about to become a VM context.
+ * @returns {object} The same sandbox, with the accessor pairs added.
+ */
+export function withStateAccessors(sandbox) {
+  sandbox.getEntries = () => sandbox.entries;
+  sandbox.setEntries = (next) => {
+    sandbox.entries = next;
+  };
+  sandbox.getActiveTimer = () => sandbox.activeTimer;
+  sandbox.setActiveTimer = (next) => {
+    sandbox.activeTimer = next;
+  };
+  return sandbox;
+}
+
+/**
  * Reads the pure-fns sub-modules as classic-script source for the VM sandboxes.
  * pure-fns.js is a barrel of `export { … } from …` re-exports, which are not
  * valid classic-script syntax, so the sandboxes concatenate the sub-modules
@@ -109,5 +138,23 @@ export function loadRenderScriptSource() {
 export function createDom(html = '') {
   return new JSDOM(`<!DOCTYPE html><html><body>${html}</body></html>`, {
     runScripts: 'outside-only',
+  });
+}
+
+/**
+ * Gives a jsdom window a stand-in for layout. jsdom has no layout engine, so
+ * `HTMLElement.offsetParent` is always null and focus-trap code that filters
+ * on `offsetParent !== null` would see no focusable elements at all. Every
+ * element reports its parent node instead; tests hide an element by
+ * overriding the property on that instance.
+ * @param {Window} window - A jsdom window, e.g. `createDom().window`.
+ * @returns {void}
+ */
+export function stubOffsetParent(window) {
+  Object.defineProperty(window.HTMLElement.prototype, 'offsetParent', {
+    configurable: true,
+    get() {
+      return this.parentNode;
+    },
   });
 }

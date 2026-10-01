@@ -12,7 +12,7 @@ const SIG_CYCLE = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
  * @param {string} entryId - ID of the entry to update.
  */
 function cycleSignifier(entryId) {
-  const entry = entries.find((e) => e.id === entryId);
+  const entry = getEntries().find((e) => e.id === entryId);
   if (!entry) {
     // No matching entry usually means a stale click during a re-render —
     // a misuse-shaped event, not a routine info-level branch.
