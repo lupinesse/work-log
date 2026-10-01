@@ -191,7 +191,7 @@ function New-MockFolder {
 }
 
 function New-MockDiagnostics {
-    return [ordered]@{ pass2Error = ''; exceptionsScanned = 0 }
+    return [ordered]@{ pass2Error = @(); exceptionsScanned = 0 }
 }
 
 Describe 'Day membership (Test-MeetingOnDate)' {
@@ -658,7 +658,7 @@ Describe 'Recurring occurrences (Add-RecurringOccurrence)' {
         $broken = New-MockAppointment 'Broken series' $masterStart $masterEnd 'S9'
         $broken | Add-Member -MemberType ScriptMethod -Name GetRecurrencePattern -Value { throw 'MAPI failure' }
         Add-RecurringOccurrence $broken 'acct' $day $seen $sink $debugInfo | Should Be 0
-        $debugInfo.pass2Error | Should Match 'Broken series'
+        ($debugInfo.pass2Error -join ' ') | Should Match 'Broken series'
     }
 
     It 'keeps scanning after one exception entry blows up' {
