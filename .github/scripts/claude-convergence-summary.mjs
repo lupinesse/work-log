@@ -55,6 +55,7 @@ const die = (msg) => {
  * @returns {string}
  */
 const must = (key) => {
+  // eslint-disable-next-line security/detect-object-injection -- process.env keyed by a hard-coded variable name at every call site
   const v = process.env[key];
   if (!v) die(`Missing required env var: ${key}`);
   return v;
@@ -146,6 +147,7 @@ One sentence: overall status. Examples: "Blocked on N agreed fixes." / "Clean â€
   const user = `All review threads (${threads.length} total, resolved and open):\n\n${threadBlock}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
   for (let i = 0; i < AUTH_CHAIN.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     const auth = AUTH_CHAIN[i];
     const model = selectModel(auth.source, MODEL_OVERRIDE);
 

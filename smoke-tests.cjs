@@ -29,6 +29,7 @@ function startServer() {
           return;
         }
         const ext = path.extname(file);
+        // eslint-disable-next-line security/detect-object-injection -- path.extname() always starts with '.', so ext can never be '__proto__'
         res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
         res.end(data);
       });

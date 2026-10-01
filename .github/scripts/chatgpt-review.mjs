@@ -53,6 +53,7 @@ const die = (msg) => {
  * @returns {string}
  */
 const must = (key) => {
+  // eslint-disable-next-line security/detect-object-injection -- process.env keyed by a hard-coded variable name at every call site
   const value = process.env[key];
   if (!value) die(`Missing required env var: ${key}`);
   return value;
