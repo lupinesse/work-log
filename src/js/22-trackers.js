@@ -109,7 +109,7 @@ export function renderTrackers() {
               : status === 'partial'
                 ? tracker.color + '55'
                 : 'var(--bg3)';
-          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}"></div>`;
+          return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}" aria-label="${dateKey}: ${status}"></div>`;
         })
         .join('');
       const hitCount = days.filter((day) => trackerDayStatus(tracker, day) === 'hit').length;
@@ -125,9 +125,9 @@ export function renderTrackers() {
           <span class="tracker-name">${escHtml(tracker.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
           ${streak ? `<span class="tracker-streak">🔥 ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
-          <button class="tracker-delete" data-id="${escHtml(tracker.id)}" aria-label="Delete tracker">✕</button>
+          <button class="tracker-delete" data-id="${escHtml(tracker.id)}" aria-label="Delete tracker: ${escHtml(tracker.name)}">✕</button>
         </div>
-        <div class="tr-grid">${cells}</div>
+        <div class="tr-grid" role="img" aria-label="28-day activity grid for ${escHtml(tracker.name)}">${cells}</div>
         <div class="tracker-footer"><span>${hitCount}/28 days hit</span></div>
       </div>`;
     })
@@ -169,8 +169,8 @@ function openTrackerForm() {
         <input class="capture-input" id="trFormMins" type="number"
                min="5" max="480" value="60" style="width:80px" />
       </div>
-      <div class="tr-form-row">
-        <label class="tr-form-lbl">Categories to count</label>
+      <fieldset class="tr-form-row tr-form-row--fieldset">
+        <legend class="tr-form-lbl">Categories to count</legend>
         <div class="tr-form-tags" id="trFormTags">
           ${pickableCategories(cats)
             .map(
@@ -182,7 +182,7 @@ function openTrackerForm() {
             )
             .join('')}
         </div>
-      </div>
+      </fieldset>
       <div class="tr-form-row">
         <label class="tr-form-lbl" for="trFormColor">Colour</label>
         <input type="color" id="trFormColor" value="${defaultColor}"
