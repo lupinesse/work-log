@@ -79,6 +79,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 
 ### Export & review
 - **End the day** — one-click summary with test areas and tomorrow's notes, exported as .txt
+- **Gofore timesheet draft** — the End of Day modal shows a draft of the day's timesheet entry: total hours plus an `activity (ticket, ticket)` description built from your log. Edit it and press "copy description" to paste into timesheet.gofore.com. One-click submit (Claude in Chrome first, Playwright as fallback) is built but switched off: set `GOFORE_SUBMIT_ENABLED = true` in `src/js/00-config.local.js` to show the submit button. It needs `start-server.ps1`, the Claude Code CLI with the Claude in Chrome extension, and/or a one-time `npm run timesheet:login` (Microsoft SSO) for the Playwright fallback, whose page selectors are unverified defaults — override them in `scripts/gofore-timesheet.selectors.json`.
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
 - **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
 - **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
@@ -96,6 +97,12 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Weather** — current conditions, rain forecast, sunrise/sunset (Helsinki)
 - **Moon phase** — current phase, illumination %, and zodiac sign
 - **Finnish nameday** — fetched live from nimipaivat.fi
+
+## Troubleshooting
+
+**My entries are gone after reopening the page.** Entries live in `localStorage`, scoped to the exact `origin:port`. Reload `http://localhost:8080/work-log.html` (see the note under *How to use*). If you still see nothing, check that your browser isn't set to clear site data on exit, then restore from the newest file in `JSON backups/` (written automatically at end-of-day).
+
+**The timer didn't save.** Same cause as above — a different port or cleared site data. Log the missed time manually from the Log tab.
 
 ## Project documentation
 

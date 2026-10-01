@@ -4,14 +4,18 @@
  *
  * eslint.config.js's `no-restricted-syntax` rule for a single-letter arrow
  * parameter (`NO_SINGLE_LETTER_ARROW_PARAM`) is deliberately `'warn'`, not
- * `'error'` — the ~292 pre-existing instances across `src/js/` were never
- * going to be bulk-renamed, so failing lint on them would just make `npm run
- * lint` permanently red for no fix anyone intends to make. But a warning
- * alone did not stop the count growing: it rose from 294 to 297 over two
- * weeks before dropping back to 292 as unrelated refactors touched some of
- * the flagged files. This ratchet is the actual enforcement the weekly QA
- * review kept recommending — new code cannot add to the pile, even though
- * the existing pile is left alone.
+ * `'error'` — the pre-existing instances across `src/js/` were never going to
+ * be bulk-renamed, so failing lint on them would just make `npm run lint`
+ * permanently red for no fix anyone intends to make. But a warning alone did
+ * not stop the count growing: it rose from 294 to 297 over two weekly QA
+ * reviews before unrelated refactors brought it back down. This ratchet is the
+ * actual enforcement those reviews kept recommending — new code cannot add to
+ * the pile, even though the existing pile is left alone.
+ *
+ * `BASELINE_COUNT` below is the only place the current size of that pile is
+ * recorded. Prose here deliberately doesn't restate it: the figure was
+ * duplicated across this docblock and eslint.config.js's comment, and both
+ * copies were left saying 292 when a rebase moved the real baseline to 289.
  */
 
 /** Baseline as measured on `main` on 2026-09-14. Never raise this by hand —
@@ -71,4 +75,50 @@ export function evaluateRatchet(count, baseline = BASELINE_COUNT) {
  */
 export function isSuspiciouslyZero(count) {
   return count === 0;
+}
+
+/**
+ * Splits a thrown value into a human-readable reason and its stack frames.
+ *
+ * Two things make a raw `error` awkward to report straight out of a `catch`.
+ * It is not guaranteed to be an `Error` — a misbehaving ESLint plugin can
+ * reject with a string or a plain object, and interpolating `.message` on
+ * one of those yields the literal "undefined", which is a worse diagnostic
+ * than the bare trace the catch exists to replace. And `error.stack` already
+ * opens with `${name}: ${message}`, so printing the reason and then the whole
+ * stack repeats it.
+ *
+ * @param {unknown} error - The value thrown or rejected with.
+ * @returns {{reason: string, frames: string}} `reason` — a one-line
+ *   description: `.message` for an `Error`, the same field for a plain
+ *   object that carries a non-empty string one, and `String(error)` for
+ *   anything else. `frames` — the stack with its duplicated
+ *   `name: message` header removed, or an empty string when there is no
+ *   usable stack.
+ */
+export function describeRatchetFailure(error) {
+  if (!(error instanceof Error)) {
+    // A library that rejects with a plain object often still puts a usable
+    // string in `message`; reporting that beats the "[object Object]" a bare
+    // String() would produce, and this function exists to keep the diagnostic
+    // readable.
+    const carried = typeof error === 'object' && error !== null ? error.message : undefined;
+    const reason = typeof carried === 'string' && carried !== '' ? carried : String(error);
+    return { reason, frames: '' };
+  }
+
+  const reason = error.message;
+  if (typeof error.stack !== 'string' || error.stack === '') {
+    return { reason, frames: '' };
+  }
+
+  // V8 renders the stack's first line as bare `Error` when the message is
+  // empty -- no trailing `: ` -- so building the header unconditionally
+  // would fail to match and leave that line in the frames.
+  const header = reason ? `${error.name}: ${reason}` : error.name;
+  const frames = error.stack.startsWith(header)
+    ? error.stack.slice(header.length).replace(/^\r?\n/, '')
+    : error.stack;
+
+  return { reason, frames };
 }

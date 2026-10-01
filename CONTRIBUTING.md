@@ -437,6 +437,12 @@ wl_handoff           // End-of-day handoff notes
 - Change `wl_entries_v1` to `wl_entries_v2` if schema changes
 - Old data won't be accessible, but won't cause errors
 
+## Dependency Updates
+
+- Run `npm audit` at least monthly and before each release; fix or document every finding.
+- Pin versions in `package.json`, commit `package-lock.json`, and run `npm run build && npm run lint && npm test` before committing an upgrade.
+- Record security fixes under `### Security` in `CHANGELOG.md`.
+
 ## Performance Guidelines
 
 - Render calls should complete in <100ms

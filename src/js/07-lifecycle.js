@@ -311,6 +311,7 @@ initSprints();
 initTrackers();
 initBannerControls();
 initLocation();
+initWeeklyReport();
 
 document.getElementById('prevDay').addEventListener('click', () => {
   viewDate = new Date(viewDate);

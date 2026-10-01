@@ -264,6 +264,19 @@ gh pr merge <N> --squash --delete-branch
 git checkout main && git pull
 ```
 
+### Weekly QA report PRs
+
+Weekly QA report PRs are intentionally branch-based, not merged directly to `main`.
+This repo uses protection on `main`, and report generation is a process artifact
+rather than a product change.
+
+The intended lifecycle is:
+- a weekly review creates a dated report in `docs/qa-reports/`
+- the report is committed on a branch and opened as a draft PR
+- the newest report supersedes older report PRs
+- when a newer report exists, older open QA report PRs are closed as superseded
+- stale report PRs are not treated as policy failures if they were explicitly superseded
+
 ---
 
 ## Out of scope for you (team responsibility — do not fake these)

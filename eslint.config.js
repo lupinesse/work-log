@@ -3,7 +3,8 @@ import globals from 'globals';
 import security from 'eslint-plugin-security';
 
 // Flags a new single-letter arrow-function parameter, e.g. `(a) => a.x`.
-// Doesn't touch the ~292 existing instances across src/js/ (severity 'warn',
+// Doesn't touch the existing instances across src/js/ (counted by BASELINE_COUNT
+// in .github/scripts/lib/arrow-param-ratchet.mjs, not restated here; severity 'warn',
 // not 'error' — retroactively failing lint on unrelated pre-existing code
 // isn't this rule's job) or arrow functions with more than one parameter,
 // where a short name in a `.map`/`.reduce`/`.sort` comparator chain reads
@@ -56,16 +57,22 @@ export default [
     },
   },
 
-  // Extracted ES-module files — logger.js, app-constants.js, date-labels.js,
+  // Extracted ES-module files — logger.js, app-constants.js, state.js,
+  // 05b-filesystem.js, 01b-migrate.js, 24-location.js, date-labels.js,
   // 12b-changelog-data.js, signifiers.js, and the pure-fns barrel plus its
-  // pure-fns-*.js sub-modules use 'export' syntax and are imported directly
-  // by unit tests. They run in the browser context.
+  // pure-fns-*.js sub-modules use 'export' syntax and are imported directly by
+  // unit tests. They run in the browser context.
   // detect-object-injection: bracket-notation keys are internal constants,
   // never from untrusted external input.
   {
     files: [
       'src/js/logger.js',
       'src/js/app-constants.js',
+      'src/js/state.js',
+      'src/js/05b-filesystem.js',
+      'src/js/01b-migrate.js',
+      'src/js/24-location.js',
+      'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
@@ -104,6 +111,11 @@ export default [
     ignores: [
       'src/js/logger.js',
       'src/js/app-constants.js',
+      'src/js/state.js',
+      'src/js/05b-filesystem.js',
+      'src/js/01b-migrate.js',
+      'src/js/24-location.js',
+      'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/12b-changelog-data.js',
       'src/js/signifiers.js',
