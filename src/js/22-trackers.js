@@ -124,7 +124,7 @@ export function renderTrackers() {
           <span class="edot" style="background:${safeCssColor(tracker.color)}" aria-hidden="true"></span>
           <span class="tracker-name">${escHtml(tracker.name)}</span>
           <span class="tracker-target">${targetLabel}</span>
-          ${streak ? `<span class="tracker-streak">🔥 ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
+          ${streak ? `<span class="tracker-streak"><span aria-hidden="true">🔥</span> ${streak} day streak</span>` : '<span class="tracker-streak"></span>'}
           <button class="tracker-delete" data-id="${escHtml(tracker.id)}" aria-label="Delete tracker: ${escHtml(tracker.name)}">✕</button>
         </div>
         <div class="tr-grid" role="img" aria-label="28-day activity grid for ${escHtml(tracker.name)}">${cells}</div>
@@ -211,6 +211,7 @@ function closeTrackerForm() {
   const formEl = document.getElementById('trackerNewForm');
   if (formEl) formEl.style.display = 'none';
   _trackerFormOpen = false;
+  document.getElementById('trackerAddBtn')?.focus();
 }
 
 /**
