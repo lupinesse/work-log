@@ -427,7 +427,7 @@ describe('buildSessionNotesHtml', () => {
 
 const carryFileSrc = readFileSync(join(__dirname, '../../src/js/11b-timeblock-carry.js'), 'utf8');
 
-describe('regression #227: autoCarryTasks guard key', () => {
+describe('autoCarryTasks: guard key not set when nothing is carried', () => {
   /**
    * Creates a minimal VM sandbox for autoCarryTasks tests.
    * @param {{ today: string, planTasks: object[], guardAlreadySet?: boolean }} opts
