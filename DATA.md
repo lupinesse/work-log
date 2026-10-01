@@ -374,11 +374,13 @@ Shared between the pomodoro module and changelog weekly-clear logic.
 
 ---
 
-## Anthropic API key (legacy)
+## Anthropic API key (retired)
 
 ### `wl_anthropic_key`
-String. Kept for backward compatibility with the Notion URL-bookmarking form.
-No longer required for task-to-Notion imports (handled server-side).
+No longer stored. The Anthropic key lives server-side in `config.local.ps1` and
+the `/api/ai` and `/api/notion-ai` proxies inject it; the browser never holds
+it. Any value left in localStorage by an older version is deleted on load by
+`purgeLegacyAnthropicKey()` in `src/js/15-notion.js`.
 
 ---
 
