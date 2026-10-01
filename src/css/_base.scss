@@ -51,7 +51,7 @@
   /* ── Pomodoro & epic label colours ── */
   --pom-red: #e23744; /* Time-Timer red wedge */
   --pom-red-soft: #fef2f2; /* Pomodoro card tint */
-  --pom-red-deep: #991b1b; /* Pomodoro text on pale red bg */
+  --pom-red-deep: var(--danger-ink); /* Pomodoro text on pale red bg */
   --epic-purple: #7c3aed; /* Epic label — violet */
   --epic-blue: #2563eb; /* Epic label — blue */
   --epic-teal: #0d9488; /* Epic label — teal */
@@ -70,6 +70,8 @@
 
   /* ── Validation ── */
   --color-error: #c62828; /* invalid-input border (was an inline hex in JS) */
+  --danger-ink: #991b1b; /* text/icons on a pale danger background */
+  --danger-border: #b91c1c; /* outline of a danger action */
   --color-success: #16a34a; /* positive confirmation, e.g. the pomodoro completion tick */
 }
 
@@ -95,6 +97,8 @@
     --ink-faint: #475569;
     --live: #38bdf8;
     --color-error: #f17070;
+    --danger-ink: #fca5a5; /* pale red text on dark bg */
+    --danger-border: #f87171;
     --color-success: #4ade80;
     --live-deep: #7dd3fc;
     --live-soft: #0c2d4a;
@@ -113,7 +117,6 @@
     /* ── Pomodoro & epic label colours — dark mode ── */
     --pom-red: #f04d5a; /* slightly lighter red on dark bg */
     --pom-red-soft: #1f0909; /* dark red wash */
-    --pom-red-deep: #fca5a5; /* pale red text on dark bg */
     --epic-purple: #a78bfa;
     --epic-blue: #60a5fa;
     --epic-teal: #5eead4;
@@ -187,14 +190,13 @@ body {
   background: #fee2e2;
   border-bottom: 1px solid #fecaca;
   font-size: 13px;
-  color: #991b1b;
+  color: var(--danger-ink);
 }
 
 @media (prefers-color-scheme: dark) {
   .save-fail-banner {
     background: rgba(220, 38, 38, 0.14);
     border-bottom-color: rgba(220, 38, 38, 0.35);
-    color: #fca5a5;
   }
 }
 
@@ -206,19 +208,12 @@ body {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: var(--radius);
-  border: var(--border-hairline) solid #b91c1c;
+  border: var(--border-hairline) solid var(--danger-border);
   cursor: pointer;
   background: none;
-  color: #991b1b;
+  color: var(--danger-ink);
   font-family: var(--font);
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .save-fail-banner__action {
-    border-color: #f87171;
-    color: #fca5a5;
-  }
 }
 
 .save-fail-banner__dismiss {
@@ -227,15 +222,9 @@ body {
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
-  color: #991b1b;
+  color: var(--danger-ink);
   padding: 0 2px;
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .save-fail-banner__dismiss {
-    color: #fca5a5;
-  }
 }
 
 /* Marks a text input whose value was rejected (duplicate or unusable epic
