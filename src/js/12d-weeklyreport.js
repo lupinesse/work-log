@@ -117,6 +117,40 @@ export function copyWeeklyReportText() {
 }
 
 /**
+ * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
+ * Wraps forward from the last focusable element back to the first (Tab) and
+ * backward from the first to the last (Shift-Tab). Private to this module
+ * because 12d-weeklyreport.js is a leaf ES module and cannot import from the
+ * concatenated 02-utils.js where the shared copy lives; consolidate into a
+ * proper shared leaf module when 12c-gapreport.js is also extracted (#336).
+ * @param {HTMLElement} overlayEl - The open overlay container.
+ * @param {KeyboardEvent} e - The Tab keydown event.
+ * @returns {void}
+ */
+function trapFocusInOverlay(overlayEl, e) {
+  const focusable = Array.from(
+    overlayEl.querySelectorAll(
+      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
+        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => el.offsetParent !== null);
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}
+
+/**
  * Binds the weekly-report modal buttons. Called exactly once from the boot
  * sequence in 07-lifecycle.js. Safe to call when any button is missing.
  * @returns {void}
@@ -136,6 +170,7 @@ export function initWeeklyReport() {
     });
     weeklyReportOverlay.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeWeeklyReportOverlay();
+      if (e.key === 'Tab') trapFocusInOverlay(weeklyReportOverlay, e);
     });
   }
 }

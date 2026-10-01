@@ -128,6 +128,7 @@ if (gapReportOverlay) {
   });
   gapReportOverlay.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeGapReportOverlay();
+    if (e.key === 'Tab') trapFocusInOverlay(gapReportOverlay, e);
   });
 }
 if (gapReportList) {
