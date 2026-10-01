@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (212 lines) — Data Store
+#### **01-state.js** (211 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -151,7 +151,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 **Internals**:
 - `tickTimer()` — Called every 100ms to update elapsed time
-- `timerInterval` — setInterval reference for cleanup
+- `timerInterval` — setInterval reference for cleanup; held in `state.js` and read/written only via `getTimerInterval()`/`setTimerInterval()` (#423)
 - Tab title updates with format: `▶ 0:30 Timer task` (running) or `⏸ 0:30 Timer task` (paused)
 
 **Data Persistence**:
