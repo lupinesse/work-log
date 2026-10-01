@@ -55,6 +55,8 @@ on:
 # (the synchronize guard and merge-gate) compare against it by exact equality; a
 # substring match would also match any human handle containing "chatgpt" (#514).
 # This is the REST login. GraphQL reports the same bot without the "[bot]" suffix.
+# Update it if the "ChatGPT Reviewer" App is renamed: a stale value matches nothing,
+# which stops the already-reviewed guard working and lets merge-gate pass.
 env:
   CHATGPT_REVIEW_BOT_LOGIN: 'chatgpt-reviewer-work-log[bot]'
 
