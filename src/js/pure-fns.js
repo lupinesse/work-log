@@ -56,6 +56,12 @@ export {
 } from './pure-fns-tasks.js';
 
 export {
+  buildTimesheetDescription,
+  buildTimesheetDayPayload,
+  findTimesheetEntryProblem,
+} from './pure-fns-timesheet.js';
+
+export {
   parseJiraLabel,
   groupEntriesByCategory,
   buildTimesheetSummaryLine,

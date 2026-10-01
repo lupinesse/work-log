@@ -90,3 +90,18 @@ const CAL_ACCOUNT_LABELS = {
  * @default false
  */
 const AUTO_PAUSE_ON_TAB_SWITCH = false;
+
+// ---------------------------------------------------------------------------
+// Gofore timesheet — End of Day submit button
+// ---------------------------------------------------------------------------
+
+/**
+ * When true, the End of Day timesheet form shows a "submit to
+ * timesheet.gofore.com" button that posts the entry through the local server
+ * (Claude in Chrome, then Playwright). When false (default) the form is a
+ * draft to copy from: hours and description are shown with a copy button and
+ * nothing is sent. Override in 00-config.local.js.
+ * @type {boolean}
+ * @default false
+ */
+const GOFORE_SUBMIT_ENABLED = false;

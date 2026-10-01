@@ -6,6 +6,20 @@ recorded" requirement of the UK Government Higher QA checklist.
 
 ---
 
+## Tested browsers and platforms
+
+Only combinations that have actually been exercised are marked as tested.
+
+| Browser | Platform | Status | How / when |
+|---|---|---|---|
+| Chrome | Windows 11 | Tested | Manual spot-check at v1.8.1–v1.8.4 sign-off (2026-05-27) |
+| Chromium | Linux | Tested | Automated Playwright smoke suite in CI |
+| Edge | Windows 11 | Untested | — |
+| Safari | macOS | Untested | — |
+| Firefox | any | Untested | — |
+
+---
+
 ## v1.8.0 — 2026-05-26
 
 ### QA checklist
