@@ -193,8 +193,8 @@ function Get-TodayMeetings {
             unreadableItems   = 0
             exceptionsScanned = 0
             lookBackYears     = 0
-            pass1Error        = ''
-            pass2Error        = ''
+            pass1Error        = @()
+            pass2Error        = @()
             dateRange         = ''
             sep               = ''
             yearAnchor        = ''
@@ -329,7 +329,7 @@ function Get-TodayMeetings {
                             [void](Invoke-ComMethod -Target $items -Name 'Sort' -Arguments @('[Start]'))
                             $sortOk = $true
                             $debugInfo.lateBoundMembers++
-                        } catch { $debugInfo.pass1Error += "Sort: $($_.Exception.Message); " }
+                        } catch { $debugInfo.pass1Error += "Sort: $($_.Exception.Message)" }
                     }
                     if ($sortOk) {
                         try { $items.IncludeRecurrences = $true; $incRecurOk = $true }
@@ -338,7 +338,7 @@ function Get-TodayMeetings {
                                 Set-ComProperty -Target $items -Name 'IncludeRecurrences' -Value $true
                                 $incRecurOk = $true
                                 $debugInfo.lateBoundMembers++
-                            } catch { $debugInfo.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                            } catch { $debugInfo.pass1Error += "IncludeRecurrences: $($_.Exception.Message)" }
                         }
                     }
                     $useGetNext = $false  # overridden to $true in the GetFirst fallback below
@@ -371,7 +371,7 @@ function Get-TodayMeetings {
                         }
                         $cur = Add-ComRef (Get-ComCursorItem $items $(if ($useGetNext) { 'GetNext' } else { 'FindNext' }))
                     }
-                } catch { $debugInfo.pass1Error += "$($_.Exception.Message); " }
+                } catch { $debugInfo.pass1Error += "$($_.Exception.Message)" }
 
                 # Pass 2 — plain appointments, and recurring series Pass 1 could not
                 # expand. IncludeRecurrences=false is the default; setting it
@@ -399,7 +399,7 @@ function Get-TodayMeetings {
                         try {
                             Set-ComProperty -Target $items2 -Name 'IncludeRecurrences' -Value $false
                             $debugInfo.lateBoundMembers++
-                        } catch { $debugInfo.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                        } catch { $debugInfo.pass2Error += "IncludeRecurrences: $($_.Exception.Message)" }
                     }
                     $fromAnchor     = Get-YearAnchor -Year $scanFromYear -Separator $sep
                     $nextYearAnchor = Get-YearAnchor -Year ($today.Year + 1) -Separator $sep
@@ -427,7 +427,7 @@ function Get-TodayMeetings {
                             $debugInfo.pass2Count += $occurrencesAdded
                         } catch { continue }
                     }
-                } catch { $debugInfo.pass2Error += "$($_.Exception.Message); " }
+                } catch { $debugInfo.pass2Error += "$($_.Exception.Message)" }
             }
 
             Write-Host "[cal] $($results.Count) meeting(s) from $($debugInfo.folderCount) calendar(s); pass1=$($debugInfo.pass1Count) pass2=$($debugInfo.pass2Count) degraded=$($debugInfo.pass1Degraded) unreadable=$($debugInfo.unreadableItems)" -ForegroundColor DarkGray
