@@ -1,10 +1,10 @@
 /**
- * Regression tests for #503: every third-party action in the PR-review
- * workflows must be pinned to a full-length commit SHA, because a floating
- * tag (e.g. `@v7`) can be re-pointed without any review.
+ * Regression tests for #503: every action in every workflow must be pinned
+ * to a full-length commit SHA, because a floating tag (e.g. `@v7`) can be
+ * re-pointed without any review.
  */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test, { describe } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -15,8 +15,8 @@ const workflowsDirectory = path.join(
   '..',
   'workflows'
 );
-const PINNED_WORKFLOWS = ['chatgpt-pr-review.yml', 'pr-review.yml'];
-const PINNED_USES_PATTERN = /^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+$/;
+const WORKFLOW_FILE_NAMES = readdirSync(workflowsDirectory).filter((name) => name.endsWith('.yml'));
+const PINNED_USES_PATTERN = /^[\w.-]+\/[\w./-]+@[0-9a-f]{40} # v\d[\d.]*$/;
 
 /**
  * Extracts the value of every `uses:` step key in a workflow file.
@@ -30,7 +30,7 @@ function readUsesValues(workflowFileName) {
 }
 
 describe('workflow action pinning (#503)', () => {
-  for (const workflowFileName of PINNED_WORKFLOWS) {
+  for (const workflowFileName of WORKFLOW_FILE_NAMES) {
     test(`${workflowFileName} has at least one action reference`, () => {
       assert.ok(readUsesValues(workflowFileName).length > 0);
     });
