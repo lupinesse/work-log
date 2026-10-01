@@ -3698,6 +3698,42 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 46. Deleting a time block drops it from the shared blocks array (#423) ─
+  console.log('\n46. Time-block delete button removes the block');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_blocks_v1: [
+        { id: 'delb1', date: today, slot: 4, duration: 2, text: 'Delete me', tag: 'work' },
+        { id: 'delb2', date: today, slot: 8, duration: 2, text: 'Keep me', tag: 'work' },
+      ],
+      wl_cats_v1: CATS,
+    });
+    const blockIds = () =>
+      page.evaluate(() => window.__wl.getState().blocks.map((block) => block.id));
+    await page.waitForSelector('.tb-block-del[data-bid="delb1"]', {
+      state: 'attached',
+      timeout: 3000,
+    });
+    await page.evaluate(() => document.querySelector('.tb-block-del[data-bid="delb1"]').click());
+    const remaining = await blockIds();
+    assert(
+      'Deleting a block removes it and keeps the others',
+      remaining.length === 1 && remaining[0] === 'delb2',
+      JSON.stringify(remaining)
+    );
+    assert(
+      'The deleted block is gone from storage too',
+      await page.evaluate(
+        () =>
+          !JSON.parse(localStorage.getItem('wl_blocks_v1') || '[]').some(
+            (block) => block.id === 'delb1'
+          )
+      )
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
