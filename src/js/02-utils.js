@@ -45,7 +45,7 @@ function tidyStaleEpics() {
     planTasks,
     todayIso: dk(new Date()),
     windowDays: EPIC_STALE_DAYS,
-    selectedTag,
+    selectedTag: getSelectedTag(),
   });
   wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
     total: getCategories().length,
@@ -90,15 +90,17 @@ function tidyStaleEpics() {
  *   user declined the confirm.
  */
 function deleteSelectedEpic() {
-  if (PROTECTED_CAT_IDS.includes(selectedTag)) {
-    wlLog.warn('deleteSelectedEpic: refused to delete a built-in epic', { selectedTag });
-    window.alert(`"${getCatLabel(selectedTag)}" is a built-in epic and can't be deleted.`);
+  if (PROTECTED_CAT_IDS.includes(getSelectedTag())) {
+    wlLog.warn('deleteSelectedEpic: refused to delete a built-in epic', {
+      selectedTag: getSelectedTag(),
+    });
+    window.alert(`"${getCatLabel(getSelectedTag())}" is a built-in epic and can't be deleted.`);
     return false;
   }
-  const cat = getCat(selectedTag);
+  const cat = getCat(getSelectedTag());
   const usageCount =
-    getEntries().filter((entry) => entry.tag === selectedTag).length +
-    planTasks.filter((task) => task.tag === selectedTag).length;
+    getEntries().filter((entry) => entry.tag === getSelectedTag()).length +
+    planTasks.filter((task) => task.tag === getSelectedTag()).length;
 
   const warning =
     usageCount > 0
@@ -111,8 +113,8 @@ function deleteSelectedEpic() {
     return false;
   }
 
-  setCategories(getCategories().filter((category) => category.id !== selectedTag));
-  selectedTag = 'work';
+  setCategories(getCategories().filter((category) => category.id !== getSelectedTag()));
+  setSelectedTag('work');
   save();
   wlLog.info('deleteSelectedEpic: deleted epic', { catId: cat.id, usageCount });
   return true;
@@ -269,7 +271,7 @@ function buildManageRowHtml(selCat) {
  * @returns {string} HTML to assign to #tagRow.
  */
 function buildTagRowHtml() {
-  const selCat = getCat(selectedTag);
+  const selCat = getCat(getSelectedTag());
   const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
@@ -281,11 +283,11 @@ function buildTagRowHtml() {
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect" aria-label="Select epic">
-        ${pickableCategories([...getCategories()], selectedTag)
+        ${pickableCategories([...getCategories()], getSelectedTag())
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (category) =>
-              `<option value="${category.id}"${category.id === selectedTag ? ' selected' : ''}>${escHtml(category.label)}</option>`
+              `<option value="${category.id}"${category.id === getSelectedTag() ? ' selected' : ''}>${escHtml(category.label)}</option>`
           )
           .join('')}
         </select>
@@ -309,7 +311,7 @@ function buildTagRowHtml() {
 function bindTagRowEvents() {
   // Select change
   document.getElementById('catSelect').addEventListener('change', (event) => {
-    selectedTag = event.target.value;
+    setSelectedTag(event.target.value);
     editingCatId = null;
     addingNewCat = false;
     renderTagRow();
@@ -330,7 +332,7 @@ function bindTagRowEvents() {
       if (dot) dot.style.background = safeCssColor(quickColorPick.value);
     });
     quickColorPick.addEventListener('change', () => {
-      const cat = getCategories().find((category) => category.id === selectedTag);
+      const cat = getCategories().find((category) => category.id === getSelectedTag());
       if (cat) {
         cat.color = safeCssColor(quickColorPick.value);
         save();
@@ -346,7 +348,7 @@ function bindTagRowEvents() {
   const renBtn = document.getElementById('catRenBtn');
   if (renBtn)
     renBtn.addEventListener('click', () => {
-      editingCatId = selectedTag;
+      editingCatId = getSelectedTag();
       addingNewCat = false;
       renderTagRow();
     });
@@ -428,11 +430,11 @@ function bindTagRowEvents() {
   const billBtn = document.getElementById('catBillBtn');
   if (billBtn)
     billBtn.addEventListener('click', () => {
-      const cat = getCat(selectedTag);
+      const cat = getCat(getSelectedTag());
       cat.billable = cat.billable === false;
       // Retroactively update all tasks with this category
       planTasks.forEach((task) => {
-        if (task.tag === selectedTag) task.billable = cat.billable;
+        if (task.tag === getSelectedTag()) task.billable = cat.billable;
       });
       save();
       savePlan();
@@ -462,7 +464,7 @@ function bindTagRowEvents() {
       const color = nextDistinctColor();
       const id = 'cat_' + Date.now();
       getCategories().push({ id, label, color });
-      selectedTag = id;
+      setSelectedTag(id);
       addingNewCat = false;
       catManageOpen = false;
       document.getElementById('captureInput').value = '';

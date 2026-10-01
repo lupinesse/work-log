@@ -86,7 +86,7 @@ function _qcLogOnly() {
   const tag =
     parsed.tag ||
     _qcFilterCat ||
-    selectedTag ||
+    getSelectedTag() ||
     (getCategories()[0] && getCategories()[0].id) ||
     'other';
   const entryDate = parsed.date || dk(new Date());

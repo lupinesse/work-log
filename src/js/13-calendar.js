@@ -156,7 +156,7 @@ function renderCalStrip(meetings) {
         getCategories().find((c) => c.id === 'meeting') ||
         getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
-      const meetingTag = meetingCat ? meetingCat.id : selectedTag;
+      const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
       const exists = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
