@@ -48,7 +48,9 @@ function timedEntriesForDay(dateKey) {
 }
 
 /**
- * Shows a status message under the timesheet form.
+ * Shows a status message under the timesheet form. Plain text only: the
+ * element is an aria-live region, so emoji would be read aloud to screen-reader
+ * users; the error modifier class carries the visual distinction instead.
  * @param {string} message - Text to display.
  * @param {boolean} [isError] - Adds the error modifier class when true.
  */
@@ -88,10 +90,10 @@ export function renderEodTimesheet(dateKey) {
 async function copyEodTimesheetDescription() {
   try {
     await navigator.clipboard.writeText(document.getElementById('eodTimesheetDesc').value);
-    setTimesheetStatus('✅ Description copied');
+    setTimesheetStatus('Description copied');
   } catch (err) {
     wlLog.warn('copyEodTimesheetDescription: clipboard write failed', err);
-    setTimesheetStatus('⚠ Could not copy — select the text and copy it manually', true);
+    setTimesheetStatus('Could not copy — select the text and copy it manually', true);
   }
 }
 
@@ -110,11 +112,11 @@ async function submitEodTimesheet() {
   };
   const problem = findTimesheetEntryProblem(body);
   if (problem) {
-    setTimesheetStatus(`⚠ ${problem}`, true);
+    setTimesheetStatus(problem, true);
     return;
   }
   submitBtn.disabled = true;
-  setTimesheetStatus('⏳ Submitting…');
+  setTimesheetStatus('Submitting…');
   try {
     const res = await fetch('/api/gofore-timesheet', {
       method: 'POST',
@@ -124,14 +126,14 @@ async function submitEodTimesheet() {
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       const route = TIMESHEET_ROUTE_NOTE[data.method] || '';
-      setTimesheetStatus(`✅ Timesheet entry saved for ${body.date}${route}`);
+      setTimesheetStatus(`Timesheet entry saved for ${body.date}${route}`);
       return;
     }
     wlLog.warn('submitEodTimesheet: server rejected the entry', res.status, data);
-    setTimesheetStatus(`⚠ ${data.error || `Server returned ${res.status}`}`, true);
+    setTimesheetStatus(data.error || `Server returned ${res.status}`, true);
   } catch (err) {
     wlLog.warn('submitEodTimesheet: request failed', err);
-    setTimesheetStatus('⚠ Could not reach the local server — is start-server.ps1 running?', true);
+    setTimesheetStatus('Could not reach the local server — is start-server.ps1 running?', true);
   } finally {
     submitBtn.disabled = false;
   }

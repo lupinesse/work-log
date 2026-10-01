@@ -147,8 +147,9 @@ function openEodModal() {
     ];
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
       const btn = document.getElementById('eodCopyBtn');
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => (btn.textContent = '📋 copy to clipboard'), 2000);
+      const originalLabelHtml = btn.innerHTML;
+      btn.textContent = 'Copied!';
+      setTimeout(() => (btn.innerHTML = originalLabelHtml), 2000);
     });
   };
 
