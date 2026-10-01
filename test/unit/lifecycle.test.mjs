@@ -30,10 +30,19 @@ function loadCollapseSandbox(preloaded = {}) {
       },
     },
   };
+  // Anchored on the code itself (the prefix constant through the end of
+  // writeCollapseState), not on the section's comment headings, so reworded
+  // comments cannot break this test.
   const match = lifecycleSrc.match(
-    /\/\*.+Section collapse state persistence.+\*\/([\s\S]*?)(?=\/\*.+Section collapse handlers)/
+    /const COLLAPSE_PREFIX\b[\s\S]*?function writeCollapseState\([^)]*\) \{[\s\S]*?\n\}/
   );
-  if (!match) throw new Error('Collapse-state block not found in 07-lifecycle.js');
+  if (!match) {
+    throw new Error(
+      'Could not extract the collapse-state helpers from 07-lifecycle.js: expected ' +
+        '`const COLLAPSE_PREFIX` followed by `function writeCollapseState(...) { ... }`. ' +
+        'If they were renamed or moved, update loadCollapseSandbox() in this test.'
+    );
+  }
   vm.createContext(sandbox);
   vm.runInContext(match[0], sandbox);
   return {
@@ -146,14 +155,18 @@ function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
       calls.renderTimeblock++;
     },
   };
-  // Evaluate from the start of the file up to (not including) the section
-  // collapse handlers, which run top-level DOM code. This range includes the SOD
-  // and EOD helper declarations; the only top-level executable in it is the
-  // sodBtn listener, whose bind is a no-op because fakeEl.addEventListener is
-  // stubbed.
-  const cutIdx = lifecycleSrc.indexOf('/* ── Section collapse handlers ── */');
+  // Evaluate from the start of the file up to (not including)
+  // `const COLLAPSE_PREFIX`; everything after it runs top-level DOM code. This
+  // range includes the SOD and EOD helper declarations; the only top-level
+  // executable in it is the sodBtn listener, whose bind is a no-op because
+  // fakeEl.addEventListener is stubbed. Cut on a code identifier rather than a
+  // comment heading so rewording comments cannot break the test.
+  const cutIdx = lifecycleSrc.indexOf('const COLLAPSE_PREFIX');
   if (cutIdx === -1)
-    throw new Error('Could not locate collapse handlers marker in 07-lifecycle.js');
+    throw new Error(
+      'Could not find `const COLLAPSE_PREFIX` in 07-lifecycle.js; if it was renamed or moved, ' +
+        'update the cut point in loadSodSandbox() in this test.'
+    );
   vm.createContext(sandbox);
   vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
   // renderSodBtn was defined by the vm script (function declaration). Replace
