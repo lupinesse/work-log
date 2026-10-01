@@ -76,7 +76,7 @@ function _qcLogOnly() {
     return;
   }
 
-  const parsed = parseRapidTokens(raw, categories);
+  const parsed = parseRapidTokens(raw, getCategories());
   if (!parsed.text) {
     // Tokens present but no description — ask the user to add one
     if (inp) inp.focus();
@@ -84,7 +84,11 @@ function _qcLogOnly() {
   }
 
   const tag =
-    parsed.tag || _qcFilterCat || selectedTag || (categories[0] && categories[0].id) || 'other';
+    parsed.tag ||
+    _qcFilterCat ||
+    selectedTag ||
+    (getCategories()[0] && getCategories()[0].id) ||
+    'other';
   const entryDate = parsed.date || dk(new Date());
 
   /** @type {Object} */
@@ -188,7 +192,7 @@ function _qcRenderCatChips() {
     `<button class="qc-cat-chip${!_qcFilterCat ? ' active' : ''}"` +
     ` data-cat="" aria-pressed="${!_qcFilterCat}">All</button>`;
 
-  const catBtns = pickableCategories(categories, _qcFilterCat)
+  const catBtns = pickableCategories(getCategories(), _qcFilterCat)
     .map(
       (category) =>
         `<button class="qc-cat-chip${_qcFilterCat === category.id ? ' active' : ''}"` +
@@ -509,7 +513,7 @@ function initRapid() {
   const inp = document.getElementById('rapidInput');
   if (inp) {
     inp.addEventListener('input', () => {
-      const parsed = parseRapidTokens(inp.value, categories);
+      const parsed = parseRapidTokens(inp.value, getCategories());
       // Use the token-stripped text for task-list filtering
       _qcSearch = parsed.text;
       // Auto-activate the category chip when a #cat token is recognised;

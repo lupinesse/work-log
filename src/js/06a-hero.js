@@ -305,7 +305,7 @@ function _heroHandleStart() {
   const text = inp ? inp.value.trim() : '';
 
   if (text) {
-    const tag = selectedTag || (categories[0] ? categories[0].id : 'other');
+    const tag = selectedTag || (getCategories()[0] ? getCategories()[0].id : 'other');
     const entry = {
       id: Date.now() + '',
       text,
@@ -409,7 +409,7 @@ function _heroSetCategory(elId, tag, interactive = false) {
   }
 
   const panelId = `${elId}-panel`;
-  const itemsHtml = pickableCategories(categories, tag)
+  const itemsHtml = pickableCategories(getCategories(), tag)
     .map(
       (category) =>
         `<button class="hero-cat-item" role="menuitem" data-tag="${escHtml(category.id)}"` +

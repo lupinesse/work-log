@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
 
 /**
  * Creates a VM sandbox with pure-fns.js and 14-jira.js loaded.
@@ -74,7 +74,7 @@ function loadJiraSandbox(overrides = {}) {
     ...overrides,
   };
 
-  vm.createContext(sandbox);
+  vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(jiraSrc, sandbox);
   return { sandbox, getContainerHtml: () => capturedHtml };

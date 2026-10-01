@@ -133,7 +133,7 @@ function renderRow(t) {
 
   const isLive = liveText && t.text.toLowerCase() === liveText;
   const catOpts =
-    pickableCategories([...categories], t.tag)
+    pickableCategories([...getCategories()], t.tag)
       .sort((a, b) => a.label.localeCompare(b.label))
       .map(
         (c) =>

@@ -49,7 +49,7 @@ function loadSandbox(options) {
     entries,
     fetch,
     getEntries: () => entries,
-    getCategories: () => [
+    categories: [
       { id: 'work', label: 'work', color: '#aaa' },
       { id: 'meeting', label: 'meeting', color: '#bbb' },
       { id: 'other', label: 'other', color: '#888780' },

@@ -23,7 +23,7 @@ function saveQpHidden() {
  * @returns {string} A CSS colour string (hex or hsl).
  */
 function nextDistinctColor() {
-  const usedColors = new Set(categories.map((c) => c.color.toLowerCase()));
+  const usedColors = new Set(getCategories().map((c) => c.color.toLowerCase()));
   const pick = CUSTOM_PALETTE.find((c) => !usedColors.has(c.toLowerCase()));
   if (pick) return pick;
   // All palette colours used — generate by golden-angle hue steps
@@ -42,12 +42,12 @@ function nextDistinctColor() {
 function createCategory(rawLabel) {
   const label = String(rawLabel).trim();
   if (!label) return null;
-  if (categories.find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
+  if (getCategories().find((cat) => cat.label.toLowerCase() === label.toLowerCase())) {
     wlLog.warn('createCategory: rejected duplicate label', { label });
     return null;
   }
   const category = { id: 'cat_' + Date.now(), label, color: nextDistinctColor() };
-  categories.push(category);
+  getCategories().push(category);
   return category;
 }
 
@@ -61,7 +61,7 @@ let trackers = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
-let categories = [...DEFAULT_CATS];
+// categories lives in state.js (#423) — getCategories()/setCategories().
 // eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
 let blocks = [];
 
@@ -105,13 +105,13 @@ function load() {
   try {
     const parsedCategories = JSON.parse(localStorage.getItem(STORE_CATS) || 'null');
     if (Array.isArray(parsedCategories) && parsedCategories.length) {
-      categories = parsedCategories.filter(validCategory);
-      if (categories.length < parsedCategories.length)
+      setCategories(parsedCategories.filter(validCategory));
+      if (getCategories().length < parsedCategories.length)
         wlLog.warn(
-          `load: dropped ${parsedCategories.length - categories.length} invalid category record(s)`,
+          `load: dropped ${parsedCategories.length - getCategories().length} invalid category record(s)`,
           {
             total: parsedCategories.length,
-            kept: categories.length,
+            kept: getCategories().length,
           }
         );
     }
@@ -125,7 +125,7 @@ function load() {
       if (snap && Array.isArray(snap.entries) && snap.entries.length) {
         setEntries(snap.entries.filter(validEntry));
         if (Array.isArray(snap.categories) && snap.categories.length)
-          categories = snap.categories.filter(validCategory);
+          setCategories(snap.categories.filter(validCategory));
         wlLog.warn('load: restored from snapshot — entries were missing from primary storage');
       }
     } catch (err) {
@@ -223,7 +223,7 @@ function save() {
   try {
     localStorage.setItem(STORE_ENTRIES, JSON.stringify(getEntries()));
     localStorage.setItem(STORE_TIMER, JSON.stringify(getActiveTimer()));
-    localStorage.setItem(STORE_CATS, JSON.stringify(categories));
+    localStorage.setItem(STORE_CATS, JSON.stringify(getCategories()));
     hideSaveFailureBanner();
   } catch (err) {
     wlLog.error('save: localStorage.setItem failed — data is not persisting', err);
