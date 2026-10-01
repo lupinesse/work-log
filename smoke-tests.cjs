@@ -2824,7 +2824,10 @@ async function runTests() {
     const proxiedRequests = [];
     const directAnthropicRequests = [];
     page.on('request', (request) => {
-      if (request.url().includes('api.anthropic.com')) directAnthropicRequests.push(request.url());
+      // Compare the parsed host, not a substring: a proxy URL may merely mention the name.
+      if (new URL(request.url()).hostname === 'api.anthropic.com') {
+        directAnthropicRequests.push(request.url());
+      }
     });
     await page.route('**/api/ai', async (route) => {
       proxiedRequests.push({ headers: route.request().headers() });
