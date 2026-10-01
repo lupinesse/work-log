@@ -28,7 +28,12 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Smoke tests
+      # `npm test` is the whole suite -- unit, smoke and CI-script tests --
+      # not just the smoke run this step was named for. It bundled only one
+      # script-test file until the glob fix, which is where the old name came
+      # from. This is the job with Playwright installed, so the smoke tests
+      # have to run here.
+      - name: Full test suite (unit + smoke + CI scripts)
         run: npm test
 
   # .nvmrc/package.json's engines.node declare a floor of 22.22.1 (#353), but
