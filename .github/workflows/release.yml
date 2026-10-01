@@ -1,25 +1,13 @@
 name: GitHub Release
 
-# Publishes a GitHub Release whenever a version tag is pushed.
-# The release body is extracted from the matching section in CHANGELOG.md.
+# Publishes a GitHub Release whenever a version tag is pushed, with the body
+# taken from the matching "## [X.Y.Z]" section of CHANGELOG.md (the tag's "v"
+# prefix is stripped; the tag must look like v1.2.3 or the run fails early).
 #
-# Usage:
-#   git tag v1.8.0 && git push origin v1.8.0
-#
-# CHANGELOG.md follows the Keep a Changelog heading format, e.g.
-# "## [1.8.0] — 2026-05-01" (see the v1.9.0 consolidation, #216) — the tag's
-# "v" prefix is stripped before matching against the bracketed version.
-#
-# Can also be re-run manually (Actions tab -> Run workflow) to re-sync an
-# existing release's notes with the current CHANGELOG.md — e.g. after a
-# post-publish correction like #332/#340. Dispatch it from the branch where
-# the correction landed (main, the UI's default) — the checkout step doesn't
-# override ref for a dispatch run, so it reads whichever branch/tag was
-# selected there, not the tag itself; the "tag" input only picks which
-# CHANGELOG section to extract and which release to update. The "Create or
-# update GitHub Release" step below edits the existing release in place
-# rather than erroring, since gh release create refuses to create one for a
-# tag that already has a release.
+# Re-run it by hand (Actions tab -> Run workflow) to re-sync an existing
+# release's notes after a CHANGELOG correction. Dispatch it from the branch
+# that holds the correction: checkout reads the selected branch, not the tag,
+# and the "tag" input only picks the section and which release to edit.
 
 on:
   push:
@@ -28,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to re-sync release notes for, e.g. v1.9.2'
+        description: 'Existing tag to re-sync release notes for; must start with v, e.g. v1.9.2'
         required: true
         type: string
 
@@ -66,7 +54,7 @@ jobs:
           TAG_OUTPUT: ${{ steps.notes.outputs.tag }}
         run: |
           TAG="$TAG_OUTPUT"
-          if gh release view "$TAG" --json id >/dev/null 2>&1; then
+          if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" \
               --title "$TAG" \
               --notes-file release-notes.md
