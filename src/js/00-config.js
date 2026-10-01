@@ -1,17 +1,18 @@
-/* ── App configuration ──
+/**
+ * @file 00-config.js — App configuration defaults and runtime setters.
  *
- * Static defaults — used when the app is opened directly as a file,
- * or when the local server is not running.
+ * Static defaults used when the app is opened directly as a file, or when the
+ * local server is not running.
  *
- * When the local server IS running, location values are overridden at
- * startup by /api/config, which reads from your gitignored config.local.ps1.
- * Edit config.local.ps1 (copy from config.local.example.ps1) to set your
- * actual location without touching source code.
+ * When the local server IS running, location values are overridden at startup
+ * by /api/config (via {@link setWeatherConfig}), which reads from the gitignored
+ * config.local.ps1. Edit config.local.ps1 (copy from config.local.example.ps1)
+ * to set your actual location without touching source code.
  *
  * JIRA_BASE can be overridden without editing this file:
  *   1. Copy src/js/00-config.local.example.js → src/js/00-config.local.js
- *   2. Set your real Jira instance URL in that file.
- *   3. Run `npm run build`.  That file is gitignored and will never be committed.
+ *   2. Call setJiraBase('https://your-instance.atlassian.net/browse') in that file.
+ *   3. Run `npm run build`. That file is gitignored and will never be committed.
  */
 
 // ---------------------------------------------------------------------------
@@ -23,24 +24,36 @@
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
-// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
-let WEATHER_LAT = 60.1887;
+export let WEATHER_LAT = 60.1887;
 
 /**
  * Longitude of the work location (decimal degrees).
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {number}
  */
-// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
-let WEATHER_LON = 24.927;
+export let WEATHER_LON = 24.927;
 
 /**
  * Display name for the work location shown next to the weather widget.
  * Default used when the server is not running; normally set via config.local.ps1.
  * @type {string}
  */
-// eslint-disable-next-line prefer-const -- reassigned at runtime by 09-clock-weather.js via /api/config
-let WEATHER_NAME = 'Helsinki';
+export let WEATHER_NAME = 'Helsinki';
+
+/**
+ * Updates the weather location from the /api/config response. Each parameter
+ * is applied only when the server sends a valid value; missing or invalid
+ * values leave the corresponding default unchanged.
+ * @param {number|undefined} lat - Latitude (decimal degrees).
+ * @param {number|undefined} lon - Longitude (decimal degrees).
+ * @param {string|undefined} name - Display name for the location.
+ * @returns {void}
+ */
+export function setWeatherConfig(lat, lon, name) {
+  if (Number.isFinite(lat)) WEATHER_LAT = lat;
+  if (Number.isFinite(lon)) WEATHER_LON = lon;
+  if (name) WEATHER_NAME = name;
+}
 
 // ---------------------------------------------------------------------------
 // Jira — base URL used to turn ticket keys (e.g. PROJ-123) into links
@@ -50,12 +63,20 @@ let WEATHER_NAME = 'Helsinki';
  * Base URL for Jira ticket links. Ticket keys found in task names are
  * converted to `<a href="${JIRA_BASE}/${key}">` anchors.
  * Set to `''` to disable link generation.
- * Override in src/js/00-config.local.js (gitignored) — copy from
- * src/js/00-config.local.example.js and set your real instance URL.
+ * Override via setJiraBase() in src/js/00-config.local.js (gitignored) — copy
+ * from src/js/00-config.local.example.js and set your real instance URL.
  * @type {string}
  */
-// eslint-disable-next-line prefer-const -- overridden in 00-config.local.js (concatenated before runtime modules)
-let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
+export let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
+
+/**
+ * Overrides the Jira base URL at runtime. Call this from 00-config.local.js.
+ * @param {string} url - Jira base URL, e.g. 'https://your-instance.atlassian.net/browse'.
+ * @returns {void}
+ */
+export function setJiraBase(url) {
+  JIRA_BASE = url;
+}
 
 // ---------------------------------------------------------------------------
 // Outlook calendar account labels
@@ -71,7 +92,7 @@ let JIRA_BASE = 'https://your-instance.atlassian.net/browse';
  *
  * @type {Object.<string, string>}
  */
-const CAL_ACCOUNT_LABELS = {
+export const CAL_ACCOUNT_LABELS = {
   // Replace with your own account keys and labels, e.g.:
   // acme: 'Acme Corp',
   // contractor: 'My Contractor',
@@ -89,7 +110,7 @@ const CAL_ACCOUNT_LABELS = {
  * @type {boolean}
  * @default false
  */
-const AUTO_PAUSE_ON_TAB_SWITCH = false;
+export const AUTO_PAUSE_ON_TAB_SWITCH = false;
 
 // ---------------------------------------------------------------------------
 // Gofore timesheet — End of Day submit button
@@ -104,4 +125,4 @@ const AUTO_PAUSE_ON_TAB_SWITCH = false;
  * @type {boolean}
  * @default false
  */
-const GOFORE_SUBMIT_ENABLED = false;
+export const GOFORE_SUBMIT_ENABLED = false;
