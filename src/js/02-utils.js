@@ -10,8 +10,8 @@
  */
 function getCat(id) {
   const cat =
-    categories.find((category) => category.id === id) ||
-    categories.find((category) => category.id === 'other');
+    getCategories().find((category) => category.id === id) ||
+    getCategories().find((category) => category.id === 'other');
   if (!cat) return { id: 'other', label: 'other', color: '#888780' };
   return { ...cat, color: safeCssColor(cat.color) };
 }
@@ -40,7 +40,7 @@ let catManageOpen = false;
  */
 function tidyStaleEpics() {
   const { staleIds, cutoffIso } = findStaleCategories({
-    categories,
+    categories: getCategories(),
     entries: getEntries(),
     planTasks,
     todayIso: dk(new Date()),
@@ -48,7 +48,7 @@ function tidyStaleEpics() {
     selectedTag,
   });
   wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
-    total: categories.length,
+    total: getCategories().length,
     stale: staleIds.length,
     cutoffIso,
     windowDays: EPIC_STALE_DAYS,
@@ -67,7 +67,7 @@ function tidyStaleEpics() {
     wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
     return 0;
   }
-  categories = applyEpicArchive(categories, staleIds);
+  setCategories(applyEpicArchive(getCategories(), staleIds));
   save();
   wlLog.info('tidyStaleEpics: archived stale epics', { archived: staleIds.length, cutoffIso });
   return staleIds.length;
@@ -111,7 +111,7 @@ function deleteSelectedEpic() {
     return false;
   }
 
-  categories = categories.filter((category) => category.id !== selectedTag);
+  setCategories(getCategories().filter((category) => category.id !== selectedTag));
   selectedTag = 'work';
   save();
   wlLog.info('deleteSelectedEpic: deleted epic', { catId: cat.id, usageCount });
@@ -143,7 +143,7 @@ function renderEpicsManager() {
   const body = document.getElementById('epicsManagerBody');
   if (!body) return;
 
-  const archived = categories.filter((cat) => cat.archived);
+  const archived = getCategories().filter((cat) => cat.archived);
   body.innerHTML = archived.length
     ? `<ul class="epics-list">` +
       archived
@@ -164,7 +164,7 @@ function renderEpicsManager() {
     const btn = document.getElementById(`epicRestore-${idx}`);
     if (!btn) return;
     btn.addEventListener('click', () => {
-      categories = restoreArchivedCategory(categories, cat.id);
+      setCategories(restoreArchivedCategory(getCategories(), cat.id));
       save();
       wlLog.info('renderEpicsManager: restored archived epic', { catId: cat.id });
       renderEpicsManager();
@@ -281,7 +281,7 @@ function buildTagRowHtml() {
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect" aria-label="Select epic">
-        ${pickableCategories([...categories], selectedTag)
+        ${pickableCategories([...getCategories()], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (category) =>
@@ -330,7 +330,7 @@ function bindTagRowEvents() {
       if (dot) dot.style.background = safeCssColor(quickColorPick.value);
     });
     quickColorPick.addEventListener('change', () => {
-      const cat = categories.find((category) => category.id === selectedTag);
+      const cat = getCategories().find((category) => category.id === selectedTag);
       if (cat) {
         cat.color = safeCssColor(quickColorPick.value);
         save();
@@ -364,7 +364,7 @@ function bindTagRowEvents() {
         return;
       }
       if (
-        categories.find(
+        getCategories().find(
           (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
         )
       ) {
@@ -372,7 +372,7 @@ function bindTagRowEvents() {
         input.focus();
         return;
       }
-      const cat = categories.find((category) => category.id === id);
+      const cat = getCategories().find((category) => category.id === id);
       if (cat) cat.label = label;
       editingCatId = null;
       catManageOpen = false;
@@ -452,14 +452,16 @@ function bindTagRowEvents() {
         renderTagRow();
         return;
       }
-      if (categories.find((category) => category.label.toLowerCase() === label.toLowerCase())) {
+      if (
+        getCategories().find((category) => category.label.toLowerCase() === label.toLowerCase())
+      ) {
         input.style.borderColor = '#C62828';
         input.focus();
         return;
       }
       const color = nextDistinctColor();
       const id = 'cat_' + Date.now();
-      categories.push({ id, label, color });
+      getCategories().push({ id, label, color });
       selectedTag = id;
       addingNewCat = false;
       catManageOpen = false;

@@ -375,7 +375,7 @@ function saveSnapshot() {
       date: todayKey,
       text: lines.join('\n'),
       entries: getEntries(),
-      categories: categories,
+      categories: getCategories(),
     })
   );
 }
@@ -406,7 +406,7 @@ setTimeout(() => {
     date: dk(new Date()),
     // Persistent state counts (from localStorage after load + migration)
     entries: getEntries().length,
-    categories: categories.length,
+    categories: getCategories().length,
     planTasks: planTasks.length,
     blocks: blocks.length,
     // Runtime state
