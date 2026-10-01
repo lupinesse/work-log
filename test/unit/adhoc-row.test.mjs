@@ -19,7 +19,7 @@ const STUBS = `
   var pushedEntries = [];
   var saveCalls = 0;
   var renderCalls = 0;
-  var selectedTag = 'work';
+  var getSelectedTag = () => 'work';
   var getCategories = () => [{ id: 'work' }];
   var getEntries = () => pushedEntries;
   var safeRoundedStart = () => 1000;
