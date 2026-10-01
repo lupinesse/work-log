@@ -25,7 +25,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ### Core Modules
 
-#### **00-config.js** (95 lines) — App Configuration
+#### **00-config.js** (114 lines) — App Configuration
 **Responsibility**: Centralised constants and feature flags that operators may need to adjust (no secrets).
 
 **Key constants**:
@@ -273,7 +273,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **06a-hero.js** (515 lines) — Hero Card State Machine
+#### **06a-hero.js** (519 lines) — Hero Card State Machine
 **Responsibility**: Drive the four visual states of the `#heroCard` widget that replaced the legacy `#timerBar`.
 
 **States**:
@@ -353,7 +353,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (547 lines) — Live Info Widgets
+#### **09-clock-weather.js** (545 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -487,7 +487,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (431 lines) — Miscellaneous Features
+#### **12-misc.js** (437 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -564,7 +564,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (491 lines) — Jira Import
+#### **14-jira.js** (492 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -602,7 +602,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (536 lines) — Today's Flow Unified Section
+#### **11-timeflow.js** (540 lines) — Today's Flow Unified Section
 **Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
 **Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
