@@ -96,6 +96,20 @@ export function withStateAccessors(sandbox) {
 }
 
 /**
+ * Reads `cat-utils.js` as classic-script source for VM sandboxes.
+ * Strips the ESM import lines and `export` declaration prefixes so the file
+ * can be evaluated with `vm.runInContext`. Requires `safeCssColor` (from
+ * `loadPureFnsScriptSource`) and `getCategories` (from `withStateAccessors`)
+ * to already be in the sandbox context before calling the resulting functions.
+ * @returns {string} cat-utils.js source, safe for vm.runInContext.
+ */
+export function loadCatUtilsScriptSource() {
+  return readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8')
+    .replace(/^import\s[^;]*;\s*$/gm, '')
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+}
+
+/**
  * Reads the pure-fns sub-modules as classic-script source for the VM sandboxes.
  * pure-fns.js is a barrel of `export { … } from …` re-exports, which are not
  * valid classic-script syntax, so the sandboxes concatenate the sub-modules

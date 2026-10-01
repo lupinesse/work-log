@@ -123,7 +123,6 @@ wl_snapshot        → backup (auto-restore on failure)
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
-- `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
 - `renderTagRow()` — orchestrates the epic row: assigns the markup from `buildTagRowHtml()`, then calls `bindTagRowEvents()`
 - `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
 - `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
@@ -132,7 +131,7 @@ wl_snapshot        → backup (auto-restore on failure)
 - `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js` — see below.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`, and the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js` — see below.
 
 ---
 
@@ -147,6 +146,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Responsibility**: `isToday(d)` and `fmtLabel(d)` — stateless date helpers used across 8 files (`04-render.js`, `07-lifecycle.js`, `08-pomodoro.js`, `10a-tasks-render.js`, `11-timeblock.js`, `11-timeflow.js`, `11a-timeblock-render.js`, and formerly `02-utils.js` itself). Only depends on `dk()` from the `pure-fns.js` leaf module. Extracted from `02-utils.js` (issue #336) — the second ES-module extraction, and the model case for "pull the stateless part out, leave the entangled part alone" rather than forcing a whole-file extraction.
 
 **Exports**: `isToday`, `fmtLabel`
+
+---
+
+#### **cat-utils.js** (44 lines) — Category Lookup Helpers (LEAF MODULE)
+**Responsibility**: `getCat(id)`, `getCatColor(id)`, and `getCatLabel(id)` — stateless category accessors that route through a single fallback chain: id → `'other'` → hardcoded stub. The returned colour is always sanitised through `safeCssColor()`, which is the choke point every colour-rendering template in the app relies on (audited against XSS alert #2). Extracted from `02-utils.js` (issue #336, extraction #16) — sister to `date-labels.js`: both pull the stateless lookup out of a heavily-entangled file and leave the DOM-binding code behind. Used by `26-gofore-timesheet.js` and `22-trackers.js` (previously both had an inline copy or direct reference).
+
+**Exports**: `getCat`, `getCatColor`, `getCatLabel`
+
+**Dependencies**: `getCategories` from `state.js`; `safeCssColor` from `pure-fns.js`.
 
 ---
 
@@ -713,7 +721,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 **Key export**: `renderEodTimesheet(dateKey)`
 
-**Dependencies**: `buildTimesheetDayPayload()`, `findTimesheetEntryProblem()` from `pure-fns-timesheet.js`; `GOFORE_SUBMIT_ENABLED` from `00-config.js`; `getEntries()`, `getCategories()` from `state.js`; `wlLog` from `logger.js`.
+**Dependencies**: `buildTimesheetDayPayload()`, `findTimesheetEntryProblem()` from `pure-fns-timesheet.js`; `GOFORE_SUBMIT_ENABLED` from `00-config.js`; `getEntries()` from `state.js`; `wlLog` from `logger.js`; `getCatLabel` from `cat-utils.js`.
 
 ---
 

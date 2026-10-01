@@ -9,7 +9,12 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dk } from '../../src/js/pure-fns.js';
-import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
+import {
+  __dirname,
+  loadCatUtilsScriptSource,
+  loadPureFnsScriptSource,
+  withStateAccessors,
+} from './_helpers.mjs';
 
 /**
  * Loads pure-fns, 02-utils.js, and 10a-tasks-render.js into one VM sandbox
@@ -41,6 +46,7 @@ function loadTrackRecentSandbox(overrides = {}) {
 
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(loadCatUtilsScriptSource(), sandbox);
   vm.runInContext(utilsSrc, sandbox);
   vm.runInContext(tasksRenderSrc, sandbox);
   return { sandbox, container };
