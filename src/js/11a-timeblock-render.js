@@ -83,7 +83,7 @@ function renderTimeblock() {
   }
 
   const meetingNames = new Set(
-    blocks
+    getBlocks()
       .filter((block) => block.date === dateKey && block.type === 'meeting')
       .map((block) => block.text.toLowerCase())
   );
@@ -129,7 +129,7 @@ function renderTimeblock() {
     const le = getEntries().find((entry) => entry.id === liveId);
     const isMeetingBlock =
       le &&
-      blocks.some(
+      getBlocks().some(
         (block) =>
           block.date === dateKey &&
           block.type === 'meeting' &&
@@ -145,7 +145,7 @@ function renderTimeblock() {
   }
 
   // ── Manual planned blocks (render last = on top, dashed border) ──
-  const dayBlocks = blocks.filter((block) => block.date === dateKey);
+  const dayBlocks = getBlocks().filter((block) => block.date === dateKey);
   const tbLiveEntry = getActiveTimer()
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
@@ -201,7 +201,7 @@ function renderTimeblock() {
     });
     el.querySelector('.tb-block-del').addEventListener('click', (event) => {
       event.stopPropagation();
-      blocks = blocks.filter((otherBlock) => otherBlock.id !== block.id);
+      setBlocks(getBlocks().filter((otherBlock) => otherBlock.id !== block.id));
       saveBlocks();
       renderTimeblock();
     });
@@ -263,7 +263,7 @@ function renderTimeblock() {
       for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
     }
   }
-  blocks
+  getBlocks()
     .filter((block) => block.date === dateKey)
     .forEach((block) => {
       for (let s = block.slot; s < Math.min(TB_SLOTS, block.slot + block.duration); s++)
@@ -323,7 +323,7 @@ function renderTimeblock() {
     const target = grid._dragSlot;
 
     if (tbDragSource === 'grid' && tbDragId) {
-      const draggedBlock = blocks.find((block) => block.id === tbDragId);
+      const draggedBlock = getBlocks().find((block) => block.id === tbDragId);
       if (draggedBlock) {
         const newSlot = Math.min(target, TB_SLOTS - draggedBlock.duration);
         const newStart = TB_START * 60 + newSlot * 30;

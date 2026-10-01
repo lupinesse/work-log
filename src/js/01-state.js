@@ -58,8 +58,7 @@ let logNotes = [];
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
 // categories lives in state.js (#423) — getCategories()/setCategories().
-// eslint-disable-next-line prefer-const -- reassigned by 11-timeblock.js (loadBlocks)
-let blocks = [];
+// blocks lives in state.js (#423) — getBlocks()/setBlocks().
 
 /* ── Load / Save ── */
 // Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,

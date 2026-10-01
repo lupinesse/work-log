@@ -419,7 +419,7 @@ setTimeout(() => {
     entries: getEntries().length,
     categories: getCategories().length,
     planTasks: planTasks.length,
-    blocks: blocks.length,
+    blocks: getBlocks().length,
     // Runtime state
     timer: getActiveTimer() ? 'active' : 'idle',
     snapshot: !!localStorage.getItem('wl_snapshot'),

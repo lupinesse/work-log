@@ -25,26 +25,26 @@ function loadBlocks() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_BLOCKS) || '[]');
     const all = Array.isArray(raw) ? raw : [];
-    blocks = all.filter(validBlock);
-    if (blocks.length < all.length)
-      wlLog.warn(`loadBlocks: dropped ${all.length - blocks.length} invalid block record(s)`, {
+    setBlocks(all.filter(validBlock));
+    if (getBlocks().length < all.length)
+      wlLog.warn(`loadBlocks: dropped ${all.length - getBlocks().length} invalid block record(s)`, {
         total: all.length,
-        kept: blocks.length,
+        kept: getBlocks().length,
       });
   } catch (err) {
-    blocks = [];
+    setBlocks([]);
     wlLog.error('loadBlocks: failed to parse time blocks from localStorage', err);
   }
   // One-time migration: TB_START shifted from 8→7, add 2 slots to all existing blocks
   if (!localStorage.getItem('wl_tb_migrated_7')) {
-    blocks = blocks.map((block) => ({ ...block, slot: block.slot + 2 }));
+    setBlocks(getBlocks().map((block) => ({ ...block, slot: block.slot + 2 })));
     saveBlocks();
     localStorage.setItem('wl_tb_migrated_7', '1');
   }
 }
 /** Persists the current `blocks` array to localStorage. */
 function saveBlocks() {
-  localStorage.setItem(STORE_BLOCKS, JSON.stringify(blocks));
+  localStorage.setItem(STORE_BLOCKS, JSON.stringify(getBlocks()));
 }
 
 /**
@@ -86,7 +86,7 @@ function timeToSlot(hhmm, m2) {
 function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
   const hits = [];
   // Check against manual planned blocks
-  blocks
+  getBlocks()
     .filter((block) => block.date === dateKey && block.id !== excludeId)
     .forEach((block) => {
       const s = TB_START * 60 + block.slot * 30,
@@ -124,7 +124,7 @@ function openBlockEmojiPicker(bid, anchor) {
     }
   }
   _emojiPickerPid = bid;
-  const block = blocks.find((timeBlock) => timeBlock.id === bid);
+  const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
 
   const picker = document.createElement('div');
@@ -191,7 +191,7 @@ function openBlockEmojiPicker(bid, anchor) {
  * @param {string|null} emoji - Emoji character to assign, or null to remove.
  */
 function setBlockEmoji(bid, emoji) {
-  const block = blocks.find((timeBlock) => timeBlock.id === bid);
+  const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
   if (emoji) block.emoji = emoji;
   else delete block.emoji;
@@ -217,7 +217,7 @@ function checkBlockNotifications() {
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
 
-  const pending = blocks.filter(
+  const pending = getBlocks().filter(
     (block) => block.date === todayKey && !notifiedBlocks.has(block.id)
   );
 
@@ -265,7 +265,7 @@ function checkBlockNotifications() {
         if (sw) {
           tbStartBlock(b.id);
         } else {
-          blocks = blocks.filter((bl) => bl.id !== b.id);
+          setBlocks(getBlocks().filter((bl) => bl.id !== b.id));
           saveBlocks();
           renderTimeblock();
         }
@@ -274,7 +274,7 @@ function checkBlockNotifications() {
         if (go) {
           tbStartBlock(b.id);
         } else {
-          blocks = blocks.filter((bl) => bl.id !== b.id);
+          setBlocks(getBlocks().filter((bl) => bl.id !== b.id));
           saveBlocks();
           renderTimeblock();
         }
@@ -293,7 +293,7 @@ function checkBlockNotifications() {
  * @param {number} [overrideTs]  - Optional explicit start timestamp (ms). Defaults to `safeRoundedStart()`.
  */
 function tbStartBlock(blockId, overrideTs) {
-  const b = blocks.find((bl) => bl.id === blockId);
+  const b = getBlocks().find((bl) => bl.id === blockId);
   if (!b) return;
   const todayKey = dk(new Date());
   let task = planTasks.find(
