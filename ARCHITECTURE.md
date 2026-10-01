@@ -335,7 +335,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **pomo-storage.js** (44 lines) — Pomodoro Session Log Storage *(leaf ES module)*
+#### **pomo-storage.js** (48 lines) — Pomodoro Session Log Storage *(leaf ES module)*
 **Responsibility**: Read and write the pomodoro session log from `localStorage`. Extracted from `08-pomodoro.js` (issue #336, extraction #14).
 
 **Exports**: `pomoGetLog()`, `pomoSaveSession(session)`

@@ -44,5 +44,9 @@ export function pomoGetLog() {
 export function pomoSaveSession(session) {
   const log = pomoGetLog();
   log.unshift(session);
-  localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
+  try {
+    localStorage.setItem(STORE_POMO_LOG, JSON.stringify(log.slice(0, 100)));
+  } catch (err) {
+    wlLog.error('pomoSaveSession: failed to persist pomodoro log', err);
+  }
 }
