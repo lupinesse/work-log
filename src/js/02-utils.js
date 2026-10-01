@@ -564,3 +564,35 @@ function calcStreak() {
   return streak;
 }
 // escHtml() is defined in 00-pure-fns.js.
+
+/**
+ * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
+ * Wraps forward from the last focusable element back to the first (Tab) and
+ * backward from the first to the last (Shift-Tab). Call from the overlay's
+ * `keydown` handler whenever `e.key === 'Tab'`.
+ * @param {HTMLElement} overlayEl - The open overlay container.
+ * @param {KeyboardEvent} e - The Tab keydown event.
+ * @returns {void}
+ */
+function trapFocusInOverlay(overlayEl, e) {
+  const focusable = Array.from(
+    overlayEl.querySelectorAll(
+      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
+        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter((el) => el.offsetParent !== null);
+  if (focusable.length === 0) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (e.shiftKey) {
+    if (document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    }
+  } else {
+    if (document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+}

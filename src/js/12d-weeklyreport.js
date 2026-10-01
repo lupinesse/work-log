@@ -112,5 +112,6 @@ if (weeklyReportOverlay) {
   });
   weeklyReportOverlay.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeWeeklyReportOverlay();
+    if (e.key === 'Tab') trapFocusInOverlay(weeklyReportOverlay, e);
   });
 }
