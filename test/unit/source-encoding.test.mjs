@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { __dirname } from './_helpers.mjs';
 
-const BYTE_ORDER_MARK = '﻿';
+const BYTE_ORDER_MARK = '\uFEFF';
 const SOURCE_ROOT = join(__dirname, '../../src');
 
 /**
