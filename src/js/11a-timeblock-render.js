@@ -20,7 +20,7 @@ let tbDragId = null; // block id when dragging from grid
  * moving existing blocks and dropping tasks from the plan list.
  */
 function renderTimeblock() {
-  const dateKey = dk(viewDate);
+  const dateKey = dk(getViewDate());
   const liveEntry = getActiveTimer()
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
@@ -115,10 +115,10 @@ function renderTimeblock() {
       entry.id !== liveId &&
       !meetingNames.has(entry.text.replace(/^📅\s*/, '').toLowerCase()) &&
       !meetingNames.has(entry.text.toLowerCase()) &&
-      (entry.tsEnd || isToday(viewDate))
+      (entry.tsEnd || isToday(getViewDate()))
   );
   mergeAutoEntries(dayAutoEntries).forEach((entry) => {
-    const endTs = entry._mergedEnd || (isToday(viewDate) ? Date.now() : null);
+    const endTs = entry._mergedEnd || (isToday(getViewDate()) ? Date.now() : null);
     if (!endTs) return;
     const el = autoBlockEl(entry.text, entry.tag, entry.ts, endTs, false);
     if (el) grid.appendChild(el);
@@ -219,12 +219,12 @@ function renderTimeblock() {
   });
 
   // Untracked time — show faint label on past slots with no coverage (any viewed date)
-  const nowMins = isToday(viewDate)
+  const nowMins = isToday(getViewDate())
     ? new Date().getHours() * 60 + new Date().getMinutes()
     : TB_END * 60; // for past days, all slots are "past"
 
   // Use start-of-day as floor — slots before work started aren't "untracked"
-  const sodTs = isToday(viewDate) ? getDayStart() : null;
+  const sodTs = isToday(getViewDate()) ? getDayStart() : null;
   const sodMins = sodTs
     ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
     : TB_START * 60; // no start set — use grid start as default
@@ -284,7 +284,7 @@ function renderTimeblock() {
   }
 
   // Current time indicator (today only)
-  if (isToday(viewDate)) {
+  if (isToday(getViewDate())) {
     const nowLine = document.createElement('div');
     nowLine.className = 'tb-now-line';
     nowLine.id = 'tbNowLine';

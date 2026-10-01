@@ -186,7 +186,7 @@ function renderCalStrip(meetings) {
         task.status = 'inprogress';
         savePlan();
       }
-      viewDate = new Date();
+      setViewDate(new Date());
       save();
       startTimer(entry.id);
       render();
@@ -361,9 +361,9 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
   // Live viewDate getter/setter so tests can change the view date
   // and renderCompleted re-runs automatically
   Object.defineProperty(window.__wl, 'viewDate', {
-    get: () => viewDate,
+    get: () => getViewDate(),
     set: (v) => {
-      viewDate = v instanceof Date ? v : new Date(v);
+      setViewDate(v instanceof Date ? v : new Date(v));
       renderCompleted();
     },
     enumerable: true,

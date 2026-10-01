@@ -58,7 +58,7 @@ function renderTimelineSection(list) {
   const timelineEl = document.getElementById('timeline');
 
   // Ad-hoc inline log row — shown only when viewing today, pinned at the bottom
-  const adHocRow = isToday(viewDate)
+  const adHocRow = isToday(getViewDate())
     ? `<div class="tl-adhoc-row">
          <input class="tl-adhoc-input" id="tlAdHocInput"
                 aria-label="Log an entry directly in the time log"
@@ -71,7 +71,7 @@ function renderTimelineSection(list) {
   if (!list.length) {
     timelineEl.innerHTML =
       '<div class="empty-state">' +
-      (isToday(viewDate)
+      (isToday(getViewDate())
         ? 'nothing logged yet — type something below.'
         : 'nothing was logged on this day.') +
       '</div>' +
@@ -340,7 +340,7 @@ function bindTimelineEntryEvents(timelineEl) {
       if (getActiveTimer()) stopTimer();
       const newEntry = createRestartedEntry(sourceEntry.text, sourceEntry.tag);
       getEntries().push(newEntry);
-      viewDate = new Date();
+      setViewDate(new Date());
       save();
       startTimer(newEntry.id);
       render();

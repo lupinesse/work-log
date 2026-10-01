@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (211 lines) — Data Store
+#### **01-state.js** (210 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -301,7 +301,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (385 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (395 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:

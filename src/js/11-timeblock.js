@@ -212,7 +212,7 @@ function setBlockEmoji(bid, emoji) {
  * No-ops when not viewing today.
  */
 function checkBlockNotifications() {
-  if (!isToday(viewDate)) return;
+  if (!isToday(getViewDate())) return;
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
@@ -323,7 +323,7 @@ function tbStartBlock(blockId, overrideTs) {
   };
   getEntries().push(entry);
   // Set timer startTs so elapsed = time since scheduled start, not since now
-  viewDate = new Date();
+  setViewDate(new Date());
   save();
   setActiveTimer({ entryId: entry.id, startTs: ts, accumulatedMs: 0, paused: false });
   save();

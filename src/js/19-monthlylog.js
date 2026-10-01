@@ -113,7 +113,7 @@ function renderMonthlyCalendar(calEl, year, month) {
   calEl.querySelectorAll('.ml-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
       wlLog.info('monthlyLog: cell clicked, navigating', { dateKey: cell.dataset.date });
-      viewDate = new Date(cell.dataset.date + 'T12:00:00');
+      setViewDate(new Date(cell.dataset.date + 'T12:00:00'));
       _mlActive = false;
       setFlowView('log');
       render();

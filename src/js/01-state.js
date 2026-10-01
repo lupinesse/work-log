@@ -51,8 +51,7 @@ function createCategory(rawLabel) {
   return category;
 }
 
-// eslint-disable-next-line prefer-const -- reassigned by 04c-render-timeline.js, 05-entries.js, 07-lifecycle.js, and others
-let viewDate = new Date();
+// viewDate lives in state.js (#423) — getViewDate()/setViewDate().
 // selectedTag lives in state.js (#423) — getSelectedTag()/setSelectedTag().
 let logNotes = [];
 // entries lives in state.js (#423) — getEntries()/setEntries().
