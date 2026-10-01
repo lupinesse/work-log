@@ -5,7 +5,7 @@
  * VM-sandbox tests cannot reach.
  */
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -35,6 +35,9 @@ describe('gap report overlay (jsdom)', () => {
     overlay = window.document.getElementById('gapReportOverlay');
     vm.runInContext(gapReportSrc, dom.getInternalVMContext());
   });
+
+  // Close the jsdom window so timers and listeners do not leak across tests.
+  afterEach(() => window.close());
 
   it('closes the overlay on Escape', () => {
     pressKey('Escape');
