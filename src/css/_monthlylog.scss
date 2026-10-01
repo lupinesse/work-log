@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* ── Monthly Log ── */
 
 #monthlyLogSection {
@@ -94,12 +96,7 @@
 }
 
 .ml-sum-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  @include mixins.label-caps;
 }
 
 .ml-sum-row {
