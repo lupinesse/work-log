@@ -115,25 +115,30 @@ function jumpToGapReportEntry(entryId, entryDate) {
   }, 0);
 }
 
-const gapReportBtn = document.getElementById('gapReportBtn');
-const gapReportOverlay = document.getElementById('gapReportOverlay');
-const gapReportClose = document.getElementById('gapReportClose');
-const gapReportList = document.getElementById('gapReportList');
+// Wrapped in a named IIFE (as 12-misc.js does) so these element lookups are not
+// top-level consts in the concatenated script.js, where a same-named binding in
+// another file would be a redeclaration SyntaxError.
+(function bindGapReportOverlay() {
+  const gapReportBtn = document.getElementById('gapReportBtn');
+  const gapReportOverlay = document.getElementById('gapReportOverlay');
+  const gapReportClose = document.getElementById('gapReportClose');
+  const gapReportList = document.getElementById('gapReportList');
 
-if (gapReportBtn) gapReportBtn.addEventListener('click', openGapReportOverlay);
-if (gapReportClose) gapReportClose.addEventListener('click', closeGapReportOverlay);
-if (gapReportOverlay) {
-  gapReportOverlay.addEventListener('click', (e) => {
-    if (e.target === gapReportOverlay) closeGapReportOverlay();
-  });
-  gapReportOverlay.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeGapReportOverlay();
-    if (e.key === 'Tab') trapFocusInOverlay(gapReportOverlay, e);
-  });
-}
-if (gapReportList) {
-  gapReportList.addEventListener('click', (e) => {
-    const btn = e.target.closest('.gap-report-fix');
-    if (btn) jumpToGapReportEntry(btn.dataset.id, btn.dataset.date);
-  });
-}
+  if (gapReportBtn) gapReportBtn.addEventListener('click', openGapReportOverlay);
+  if (gapReportClose) gapReportClose.addEventListener('click', closeGapReportOverlay);
+  if (gapReportOverlay) {
+    gapReportOverlay.addEventListener('click', (e) => {
+      if (e.target === gapReportOverlay) closeGapReportOverlay();
+    });
+    gapReportOverlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeGapReportOverlay();
+      if (e.key === 'Tab') trapFocusInOverlay(gapReportOverlay, e);
+    });
+  }
+  if (gapReportList) {
+    gapReportList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.gap-report-fix');
+      if (btn) jumpToGapReportEntry(btn.dataset.id, btn.dataset.date);
+    });
+  }
+})();
