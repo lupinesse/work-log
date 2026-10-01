@@ -101,6 +101,27 @@ export function withStateAccessors(sandbox) {
 }
 
 /**
+ * Returns the full text of a top-level function declaration from a source
+ * string, found by matching braces from its opening line. Lets a test run one
+ * function from a concatenated-bundle file without evaluating the file's
+ * top-level DOM wiring.
+ * @param {string} source - File contents to search.
+ * @param {string} name - Function name to extract.
+ * @returns {string} The function's source, from `function` to its closing brace.
+ */
+export function extractFunctionSource(source, name) {
+  const start = source.indexOf(`function ${name}(`);
+  if (start === -1) throw new Error(`function ${name} not found`);
+  let depth = 0;
+  for (let index = source.indexOf('{', start); index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+  throw new Error(`unterminated function ${name}`);
+}
+
+/**
  * Reads the pure-fns sub-modules as classic-script source for the VM sandboxes.
  * pure-fns.js is a barrel of `export { … } from …` re-exports, which are not
  * valid classic-script syntax, so the sandboxes concatenate the sub-modules
