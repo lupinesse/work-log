@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (557 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (519 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -174,7 +174,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **entry-utils.js** (42 lines) — Entry Timestamp and View Helpers (LEAF MODULE)
+#### **entry-utils.js** (40 lines) — Entry Timestamp and View Helpers (LEAF MODULE)
 **Responsibility**: `safeRoundedStart()` and `viewEntries()` — stateless entry helpers extracted from `02-utils.js` (issue #336, extraction #18). `safeRoundedStart()` rounds `Date.now()` to the nearest 30-minute boundary then takes the maximum of that and the latest `tsEnd` among today's completed entries, preventing new entries from appearing to start before a prior entry's end time. `viewEntries()` returns entries for the currently viewed date, sorted newest-first by start time (`ts`), keeping retroactively added entries at the correct position. Both are the most-called utilities in the codebase that were previously untestable without a full DOM environment.
 
 **Exports**: `safeRoundedStart`, `viewEntries`
