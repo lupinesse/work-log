@@ -53,7 +53,9 @@ export function extractDocumentedCounts(markdown) {
  * @returns {number} The non-blank line count.
  */
 export function countNonBlankLines(contents) {
-  return contents.split('\n').filter((line) => line !== '').length;
+  // Strip trailing \r so CRLF blank lines (\r\n → \r after split) are excluded,
+  // matching grep -c . on both Windows (CRLF) and Linux (LF) checkouts.
+  return contents.split('\n').filter((line) => line.replace(/\r$/, '') !== '').length;
 }
 
 /**
