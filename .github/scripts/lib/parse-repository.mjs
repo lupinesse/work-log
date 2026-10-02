@@ -19,7 +19,9 @@
 export function parseRepository(value) {
   const parts = String(value).split('/');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    throw new Error(`GITHUB_REPOSITORY must look like "owner/repo", got: ${JSON.stringify(value)}`);
+    throw new Error(
+      `GITHUB_REPOSITORY must look like "owner/repo" (for example "lupinesse/work-log"), got: ${JSON.stringify(value)}`
+    );
   }
   return { owner: parts[0], repo: parts[1] };
 }
