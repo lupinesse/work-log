@@ -19,6 +19,27 @@ let tbDragId = null; // block id when dragging from grid
  * and the plan-task drag targets. Also handles drag-and-drop wiring for
  * moving existing blocks and dropping tasks from the plan list.
  */
+/**
+ * Builds the action buttons shown on a planned block: start (task blocks
+ * only), add/change emoji, and delete. Each button's accessible name includes
+ * the block's text because a glyph or "▶ start" alone is announced identically
+ * on every block, so screen-reader users cannot tell which one they are on
+ * (WCAG 4.1.2 / 2.4.6).
+ * @param {{ id: string, text: string, type?: string, emoji?: string }} block - The planned block.
+ * @returns {string} HTML for the buttons, ready to append inside the block element.
+ */
+function buildBlockActionButtonsHtml(block) {
+  const subject = escHtml(block.text);
+  const startButton =
+    block.type !== 'meeting'
+      ? `<button class="tb-block-start" data-bid="${block.id}" aria-label="Start tracking: ${subject}" draggable="false">▶ start</button>`
+      : '';
+  const emojiVerb = block.emoji ? 'Change' : 'Add';
+  const emojiButton = `<button class="tb-block-emoji${block.emoji ? ' has-emoji' : ''}" data-bid="${block.id}" aria-label="${emojiVerb} emoji: ${subject}" title="${emojiVerb.toLowerCase()} emoji" draggable="false">${block.emoji ? escHtml(block.emoji) : '✦'}</button>`;
+  const deleteButton = `<button class="tb-block-del" data-bid="${block.id}" aria-label="Delete block: ${subject}" draggable="false">&times;</button>`;
+  return startButton + emojiButton + deleteButton;
+}
+
 function renderTimeblock() {
   const dateKey = dk(getViewDate());
   const liveEntry = getActiveTimer()
@@ -184,11 +205,7 @@ function renderTimeblock() {
       (block.duration > 1
         ? `<div class="tb-block-sub">${escHtml(cat.label)} · ${durStr}</div>`
         : '') +
-      (block.type !== 'meeting'
-        ? `<button class="tb-block-start" data-bid="${block.id}" draggable="false">▶ start</button>`
-        : '') +
-      `<button class="tb-block-emoji${block.emoji ? ' has-emoji' : ''}" data-bid="${block.id}" title="add emoji" draggable="false">${block.emoji ? escHtml(block.emoji) : '✦'}</button>` +
-      `<button class="tb-block-del" data-bid="${block.id}" draggable="false">&times;</button>`;
+      buildBlockActionButtonsHtml(block);
 
     el.addEventListener('dragstart', (event) => {
       tbDragSource = 'grid';
