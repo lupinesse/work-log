@@ -10,18 +10,26 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, stubOffsetParent, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const gapReportSrc = readFileSync(join(__dirname, '../../src/js/12c-gapreport.js'), 'utf8');
+// 12c calls trapFocusInOverlay, which the real bundle imports from the leaf
+// module focus-utils.js; strip its ESM syntax so the sandbox gets it too (#602).
+const focusUtilsSrc = readFileSync(join(__dirname, '../../src/js/focus-utils.js'), 'utf8').replace(
+  /^export function/m,
+  'function'
+);
 
 const MARKUP = `
   <button id="gapReportBtn">Gap report</button>
   <div id="gapReportOverlay" class="show">
     <button id="gapReportClose">Close</button>
+    <button id="gapReportLast">Last</button>
     <div id="gapReportList"></div>
   </div>`;
 
 describe('gap report overlay (jsdom)', () => {
+  let dom;
   let window;
   let overlay;
 
@@ -30,14 +38,20 @@ describe('gap report overlay (jsdom)', () => {
     overlay.dispatchEvent(new window.KeyboardEvent('keydown', { key, bubbles: true }));
 
   beforeEach(() => {
-    const dom = createDom(MARKUP);
+    dom = createDom(MARKUP);
     window = dom.window;
+    stubOffsetParent(window);
     overlay = window.document.getElementById('gapReportOverlay');
+    vm.runInContext(focusUtilsSrc, dom.getInternalVMContext());
     vm.runInContext(gapReportSrc, dom.getInternalVMContext());
   });
 
-  // Close the jsdom window so timers and listeners do not leak across tests.
-  afterEach(() => window.close());
+  // A handler that throws would otherwise only be logged by jsdom (#602).
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    // Close the jsdom window so timers and listeners do not leak across tests.
+    window.close();
+  });
 
   it('closes the overlay on Escape', () => {
     pressKey('Escape');
@@ -45,7 +59,21 @@ describe('gap report overlay (jsdom)', () => {
   });
 
   it('ignores other keys', () => {
-    pressKey('Tab');
+    pressKey('Home');
+    assert.equal(overlay.classList.contains('show'), true);
+  });
+
+  it('keeps Tab inside the dialog by wrapping from the last control to the first (#602)', () => {
+    const last = window.document.getElementById('gapReportLast');
+    last.focus();
+    const event = new window.KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    overlay.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(window.document.activeElement, window.document.getElementById('gapReportClose'));
     assert.equal(overlay.classList.contains('show'), true);
   });
 

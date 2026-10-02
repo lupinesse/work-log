@@ -6,10 +6,11 @@
  * the dirname(fileURLToPath(import.meta.url)) boilerplate.
  */
 
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 
 export const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -197,13 +198,41 @@ export function loadRenderScriptSource() {
  * lets a test evaluate a src/js/ classic-script file inside the window via
  * `vm.runInContext(src, dom.getInternalVMContext())` without executing any
  * inline <script> in the markup.
+ *
+ * jsdom swallows an exception thrown inside an event listener and only logs
+ * it, so a broken handler (e.g. a ReferenceError for a missing helper, #602)
+ * would leave the test green. Each such error is therefore also collected on
+ * `dom.uncaughtErrors`; call {@link assertNoUncaughtErrors} in `afterEach`.
  * @param {string} [html] - Markup for the document body.
- * @returns {import('jsdom').JSDOM} The JSDOM instance (`.window`, `.window.document`).
+ * @returns {import('jsdom').JSDOM & { uncaughtErrors: Error[] }} The JSDOM instance
+ *   (`.window`, `.window.document`) plus the collected handler errors.
  */
 export function createDom(html = '') {
-  return new JSDOM(`<!DOCTYPE html><html><body>${html}</body></html>`, {
-    runScripts: 'outside-only',
+  const uncaughtErrors = [];
+  const virtualConsole = new VirtualConsole();
+  virtualConsole.forwardTo(console, { jsdomErrors: 'none' });
+  virtualConsole.on('jsdomError', (error) => {
+    uncaughtErrors.push(error.cause ?? error);
   });
+  const dom = new JSDOM(`<!DOCTYPE html><html><body>${html}</body></html>`, {
+    runScripts: 'outside-only',
+    virtualConsole,
+  });
+  dom.uncaughtErrors = uncaughtErrors;
+  return dom;
+}
+
+/**
+ * Fails the current test if an event listener in the jsdom window threw.
+ * @param {{ uncaughtErrors: Error[] }} dom - A DOM from {@link createDom}.
+ * @returns {void}
+ */
+export function assertNoUncaughtErrors(dom) {
+  assert.deepEqual(
+    dom.uncaughtErrors.map((error) => String(error)),
+    [],
+    'an event handler threw inside the jsdom window'
+  );
 }
 
 /**
