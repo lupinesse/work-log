@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (554 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -174,7 +174,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (548 lines) — Timer Logic
+#### **03-timer.js** (551 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -512,12 +512,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (340 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (339 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
 - `11a-timeblock-render.js` (358 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (367 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11b-timeblock-carry.js` (368 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -534,7 +534,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (447 lines) — Miscellaneous Features
+#### **12-misc.js** (448 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -640,7 +640,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (498 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (494 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -669,7 +669,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** (272 lines) — Monthly Log Heatmap
+#### **19-monthlylog.js** (280 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`

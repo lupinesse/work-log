@@ -14,12 +14,6 @@ let tbDragSource = null; // 'grid' | 'plan'
 let tbDragId = null; // block id when dragging from grid
 
 /**
- * Renders the full time-block grid for the currently viewed date: time labels,
- * grid rows, planned blocks (with drag-to-move), live timer block, a "now" line,
- * and the plan-task drag targets. Also handles drag-and-drop wiring for
- * moving existing blocks and dropping tasks from the plan list.
- */
-/**
  * Builds the action buttons shown on a planned block: start (task blocks
  * only), add/change emoji, and delete. Each button's accessible name includes
  * the block's text because a glyph or "▶ start" alone is announced identically
@@ -40,11 +34,19 @@ function buildBlockActionButtonsHtml(block) {
   return startButton + emojiButton + deleteButton;
 }
 
+/**
+ * Renders the full time-block grid for the currently viewed date: time labels,
+ * grid rows, planned blocks (with drag-to-move), live timer block, a "now" line,
+ * and the plan-task drag targets. Also handles drag-and-drop wiring for
+ * moving existing blocks and dropping tasks from the plan list.
+ */
 function renderTimeblock() {
-  const dateKey = dk(getViewDate());
-  const liveEntry = getActiveTimer()
-    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
-    : null;
+  const viewDate = getViewDate();
+  const dateKey = dk(viewDate);
+  const timer = getActiveTimer();
+  const entries = getEntries();
+  const blocks = getBlocks();
+  const liveEntry = timer ? entries.find((entry) => entry.id === timer.entryId) : null;
 
   // Time labels
   const timesEl = document.getElementById('tbTimes');
@@ -67,7 +69,7 @@ function renderTimeblock() {
   }
 
   // ── Auto blocks from log entries (render first = below manual blocks) ──
-  const liveId = getActiveTimer() ? getActiveTimer().entryId : null;
+  const liveId = timer ? timer.entryId : null;
   const tbStart = TB_START * 60,
     tbEnd = TB_END * 60;
 
@@ -130,16 +132,16 @@ function renderTimeblock() {
     return merged;
   }
 
-  const dayAutoEntries = getEntries().filter(
+  const dayAutoEntries = entries.filter(
     (entry) =>
       entry.date === dateKey &&
       entry.id !== liveId &&
       !meetingNames.has(entry.text.replace(/^📅\s*/, '').toLowerCase()) &&
       !meetingNames.has(entry.text.toLowerCase()) &&
-      (entry.tsEnd || isToday(getViewDate()))
+      (entry.tsEnd || isToday(viewDate))
   );
   mergeAutoEntries(dayAutoEntries).forEach((entry) => {
-    const endTs = entry._mergedEnd || (isToday(getViewDate()) ? Date.now() : null);
+    const endTs = entry._mergedEnd || (isToday(viewDate) ? Date.now() : null);
     if (!endTs) return;
     const el = autoBlockEl(entry.text, entry.tag, entry.ts, endTs, false);
     if (el) grid.appendChild(el);
@@ -147,18 +149,18 @@ function renderTimeblock() {
 
   // Live timer block — skip if the active timer is a meeting block (it will pulse instead)
   if (liveId) {
-    const le = getEntries().find((entry) => entry.id === liveId);
+    const le = entries.find((entry) => entry.id === liveId);
     const isMeetingBlock =
       le &&
-      getBlocks().some(
+      blocks.some(
         (block) =>
           block.date === dateKey &&
           block.type === 'meeting' &&
           block.text.toLowerCase() === le.text.toLowerCase()
       );
     if (le && le.date === dateKey && !isMeetingBlock) {
-      const fakeEnd = getActiveTimer().paused
-        ? le.ts + (getActiveTimer().accumulatedMs || 0) // paused: stop at pause point
+      const fakeEnd = timer.paused
+        ? le.ts + (timer.accumulatedMs || 0) // paused: stop at pause point
         : Math.max(Date.now(), le.ts + 60000); // running: extend to now
       const el = autoBlockEl(le.text, le.tag, le.ts, fakeEnd, true);
       if (el) grid.appendChild(el);
@@ -166,10 +168,8 @@ function renderTimeblock() {
   }
 
   // ── Manual planned blocks (render last = on top, dashed border) ──
-  const dayBlocks = getBlocks().filter((block) => block.date === dateKey);
-  const tbLiveEntry = getActiveTimer()
-    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
-    : null;
+  const dayBlocks = blocks.filter((block) => block.date === dateKey);
+  const tbLiveEntry = liveEntry;
   dayBlocks.forEach((block) => {
     const cat = getCat(block.tag || 'other');
     const el = document.createElement('div');
@@ -234,19 +234,19 @@ function renderTimeblock() {
   });
 
   // Untracked time — show faint label on past slots with no coverage (any viewed date)
-  const nowMins = isToday(getViewDate())
+  const nowMins = isToday(viewDate)
     ? new Date().getHours() * 60 + new Date().getMinutes()
     : TB_END * 60; // for past days, all slots are "past"
 
   // Use start-of-day as floor — slots before work started aren't "untracked"
-  const sodTs = isToday(getViewDate()) ? getDayStart() : null;
+  const sodTs = isToday(viewDate) ? getDayStart() : null;
   const sodMins = sodTs
     ? new Date(sodTs).getHours() * 60 + new Date(sodTs).getMinutes()
     : TB_START * 60; // no start set — use grid start as default
 
   // Build a set of 30-min slots that have coverage (from entries or planned blocks)
   const coveredSlots = new Set();
-  getEntries()
+  entries
     .filter((entry) => entry.date === dateKey && entry.tsEnd)
     .forEach((entry) => {
       const startSlot = timeToSlot(new Date(entry.ts).getHours(), new Date(entry.ts).getMinutes());
@@ -263,14 +263,14 @@ function renderTimeblock() {
       for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
         coveredSlots.add(s);
     });
-  if (getActiveTimer() && liveEntry && liveEntry.date === dateKey) {
+  if (timer && liveEntry && liveEntry.date === dateKey) {
     const startSlot = timeToSlot(
       new Date(liveEntry.ts).getHours(),
       new Date(liveEntry.ts).getMinutes()
     );
-    if (getActiveTimer().paused) {
+    if (timer.paused) {
       // Paused: only cover slots up to the pause point
-      const pauseEnd = new Date(liveEntry.ts + (getActiveTimer().accumulatedMs || 0));
+      const pauseEnd = new Date(liveEntry.ts + (timer.accumulatedMs || 0));
       const endSlot = timeToSlot(pauseEnd.getHours(), pauseEnd.getMinutes());
       for (let s = Math.max(0, startSlot); s < Math.min(TB_SLOTS, endSlot + 1); s++)
         coveredSlots.add(s);
@@ -278,7 +278,7 @@ function renderTimeblock() {
       for (let s = Math.max(0, startSlot); s < TB_SLOTS; s++) coveredSlots.add(s);
     }
   }
-  getBlocks()
+  blocks
     .filter((block) => block.date === dateKey)
     .forEach((block) => {
       for (let s = block.slot; s < Math.min(TB_SLOTS, block.slot + block.duration); s++)
@@ -299,7 +299,7 @@ function renderTimeblock() {
   }
 
   // Current time indicator (today only)
-  if (isToday(getViewDate())) {
+  if (isToday(viewDate)) {
     const nowLine = document.createElement('div');
     nowLine.className = 'tb-now-line';
     nowLine.id = 'tbNowLine';
