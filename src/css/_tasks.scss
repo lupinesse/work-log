@@ -132,7 +132,7 @@
 }
 
 .jira-msg.ok {
-  color: #1d9e75;
+  color: var(--success-ink);
 }
 
 .plan-section {
@@ -315,14 +315,14 @@
 }
 
 .plan-status.done-st {
-  background-color: #0a3d1f;
+  background-color: var(--success-bg);
   color: #5dcaa5;
-  border-color: #1d9e75;
+  border-color: var(--success-ink);
 }
 
 .plan-status.upcoming {
   background-color: rgba(29, 158, 117, 0.12);
-  color: #1d9e75;
+  color: var(--status-upcoming);
   border-color: rgba(29, 158, 117, 0.4);
 }
 
@@ -336,7 +336,7 @@
 
 .plan-status.pending {
   background-color: rgba(123, 97, 255, 0.15);
-  color: #9b7dff;
+  color: var(--note-pending-ink);
   border-color: rgba(123, 97, 255, 0.5);
 }
 
@@ -395,7 +395,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #1d9e75;
+  color: var(--success-ink);
   padding: 0 3px;
   flex-shrink: 0;
 }
@@ -486,7 +486,7 @@
 
 .plan-comment-history-badge.pending {
   background: rgba(123, 97, 255, 0.12);
-  color: #9b7dff;
+  color: var(--note-pending-ink);
   border-color: rgba(123, 97, 255, 0.4);
 }
 
@@ -613,7 +613,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #1d9e75;
+  color: var(--success-ink);
   padding: 0 2px;
 }
 
@@ -938,13 +938,12 @@
 
 .kb-col--wip {
   background: #fffbeb;
-  border-color: #fde68a;
+  border-color: var(--amber-border);
 }
 
 @media (prefers-color-scheme: dark) {
   .kb-col--wip {
     background: rgba(245, 158, 11, 0.08);
-    border-color: rgba(245, 158, 11, 0.3);
   }
 }
 
@@ -1010,18 +1009,10 @@
   padding: 6px 8px;
   margin-bottom: 7px;
   border-radius: var(--radius);
-  background: #fef3c7;
-  border: var(--border-hairline) solid #fde68a;
+  background: var(--amber-bg);
+  border: var(--border-hairline) solid var(--amber-border);
   font-size: 11px;
-  color: #92400e;
-}
-
-@media (prefers-color-scheme: dark) {
-  .wip-warn {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.3);
-    color: #fbbf24;
-  }
+  color: var(--amber-ink);
 }
 
 .wip-warn__msg {
@@ -1034,15 +1025,9 @@
   cursor: pointer;
   font-size: 15px;
   line-height: 1;
-  color: #b45309;
+  color: var(--amber-accent);
   padding: 0 2px;
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .wip-warn__dismiss {
-    color: #fbbf24;
-  }
 }
 
 /* Done column history expander */

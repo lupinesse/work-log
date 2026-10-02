@@ -32,7 +32,7 @@
 
 .cp-badge.cp-has-progress {
   background: rgba(255, 184, 48, 0.15);
-  color: #ef9f27;
+  color: var(--sig-flagged);
   border-color: rgba(255, 184, 48, 0.4);
 
   /* Slightly heavier weight draws attention to the ✓ prefix */
@@ -41,7 +41,7 @@
 
 .cp-badge.cp-done-all {
   background: rgba(29, 158, 117, 0.18);
-  color: #1d9e75;
+  color: var(--success-ink);
   border-color: rgba(29, 158, 117, 0.5);
 
   /* Bolder weight celebrates full completion */
@@ -56,7 +56,7 @@
 
 .cp-badge.cp-st-pending {
   background: rgba(123, 97, 255, 0.12);
-  color: #9b7dff;
+  color: var(--note-pending-ink);
   border-color: rgba(123, 97, 255, 0.4);
 }
 
@@ -149,8 +149,8 @@
 }
 
 .cp-check.cp-checked {
-  background: #1d9e75;
-  border-color: #1d9e75;
+  background: var(--success-ink);
+  border-color: var(--success-ink);
   color: #fff;
 }
 
@@ -274,7 +274,7 @@
   border: none;
   cursor: pointer;
   font-size: 14px;
-  color: #1d9e75;
+  color: var(--success-ink);
   padding: 0 2px;
 }
 
@@ -317,7 +317,7 @@
 
 .completed-title {
   font-size: 11px;
-  color: #1d9e75;
+  color: var(--success-ink);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   flex: 1;
@@ -330,7 +330,7 @@
 
 .completed-count {
   font-size: 11px;
-  color: #1d9e75;
+  color: var(--success-ink);
   opacity: 0.85;
 }
 

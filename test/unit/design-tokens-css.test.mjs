@@ -1,7 +1,7 @@
 /**
  * @file design-tokens-css.test.mjs
  * Compiles the real stylesheet and checks that semantic colour tokens exist for
- * both themes and are used instead of raw hex values (#526, #527, #532, #494, #493, #537, #511).
+ * both themes and are used instead of raw hex values (#526, #527, #532, #494, #493, #537, #511, #586).
  */
 
 import { describe, it } from 'node:test';
@@ -155,5 +155,83 @@ describe('--color-success token (#511)', () => {
     const body = ruleBody('.pomo-checkmark') ?? '';
     assert.match(body, /color:\s*var\(--color-success\)/);
     assert.doesNotMatch(body, /#16a34a/i);
+  });
+});
+
+describe('colour tokenisation outside _modals.scss (#586)', () => {
+  /**
+   * Strips all :root { ... } blocks from CSS so we only scan rule bodies.
+   * @param {string} css - Full compiled stylesheet.
+   * @returns {string} CSS with :root blocks removed.
+   */
+  function nonRootCss(css) {
+    return css.replace(/:root\s*\{[^}]*\}/g, '');
+  }
+
+  const outsideRoot = nonRootCss(compiledCss);
+
+  it('defines --sig-event-subtle with light and dark values', () => {
+    const defs = compiledCss.split('--sig-event-subtle:').length - 1;
+    assert.equal(defs, 2, '--sig-event-subtle needs a light and a dark value');
+  });
+
+  it('has no raw #1d9e75 outside :root token definitions', () => {
+    assert.doesNotMatch(outsideRoot, /#1d9e75/i);
+  });
+
+  it('has no raw #ef9f27 outside :root token definitions', () => {
+    assert.doesNotMatch(outsideRoot, /#ef9f27/i);
+  });
+
+  it('has no raw #9b7dff outside :root token definitions', () => {
+    assert.doesNotMatch(outsideRoot, /#9b7dff/i);
+  });
+
+  it('has no raw #0a3d1f outside :root token definitions', () => {
+    assert.doesNotMatch(outsideRoot, /#0a3d1f/i);
+  });
+
+  it('has no raw #fde68a outside :root token definitions', () => {
+    assert.doesNotMatch(outsideRoot, /#fde68a/i);
+  });
+
+  it('styles done-state checkboxes through --success-ink', () => {
+    const body = ruleBody('.cp-check.cp-checked') ?? '';
+    assert.match(body, /var\(--success-ink\)/);
+    assert.doesNotMatch(body, /#1d9e75/i);
+  });
+
+  it('styles pending badge text through --note-pending-ink', () => {
+    const body = ruleBody('.plan-status.pending') ?? '';
+    assert.match(body, /var\(--note-pending-ink\)/);
+    assert.doesNotMatch(body, /#9b7dff/i);
+  });
+
+  it('styles done-st badge through --success-bg and --success-ink', () => {
+    const body = ruleBody('.plan-status.done-st') ?? '';
+    assert.match(body, /var\(--success-bg\)/);
+    assert.match(body, /var\(--success-ink\)/);
+    assert.doesNotMatch(body, /#0a3d1f|#1d9e75/i);
+  });
+
+  it('styles wip-warn banner through amber tokens with no dark-mode copies', () => {
+    const body = ruleBody('.wip-warn') ?? '';
+    assert.match(body, /var\(--amber-bg\)/);
+    assert.match(body, /var\(--amber-border\)/);
+    assert.match(body, /var\(--amber-ink\)/);
+    assert.doesNotMatch(body, /#fde68a|#fef3c7|#92400e/i);
+  });
+
+  it('styles hero-longrun-warn banner through amber tokens with no dark-mode copies', () => {
+    const body = ruleBody('.hero-longrun-warn') ?? '';
+    assert.match(body, /var\(--amber-bg\)/);
+    assert.match(body, /var\(--amber-border\)/);
+    assert.doesNotMatch(body, /#fde68a|#fef3c7|#92400e/i);
+  });
+
+  it('uses --sig-event-subtle for the split-input default border', () => {
+    const body = ruleBody('.plan-split-input') ?? '';
+    assert.match(body, /var\(--sig-event-subtle\)/);
+    assert.doesNotMatch(body, /#1d9e75/i);
   });
 });
