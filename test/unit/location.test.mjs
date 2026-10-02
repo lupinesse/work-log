@@ -14,14 +14,18 @@ import assert from 'node:assert/strict';
 function makeLocalStorageMock(initial = {}) {
   const store = { ...initial };
   return {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     getItem: (key) => (Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null),
     setItem: (key, value) => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       store[key] = String(value);
     },
     removeItem: (key) => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       delete store[key];
     },
     clear: () => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       Object.keys(store).forEach((k) => delete store[k]);
     },
     _store: store,

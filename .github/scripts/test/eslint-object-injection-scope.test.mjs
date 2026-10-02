@@ -3,11 +3,12 @@
  * eslint.config.js (#484).
  *
  * The rule used to be switched off for every glob, so a new bracket lookup with
- * an untrusted key never warned anywhere. It is now a warning for the Node
- * tooling and CI scripts (where every existing site carries an inline disable
- * naming why its key is safe) and stays off for the browser bundle and tests,
- * which would need a ratchet first. This test pins that boundary using the real
- * ESLint API, so neither side can drift silently.
+ * an untrusted key never warned anywhere. It is now a warning for every config
+ * block — node tooling, CI scripts, browser bundle (`src/js`), and tests.
+ * Every existing bracket-notation site in those files carries an inline disable
+ * comment naming why its key is safe; new sites warn on the first lint run.
+ * This test pins that behaviour using the real ESLint API, so it cannot drift
+ * silently.
  *
  * Run: node --test .github/scripts/test/eslint-object-injection-scope.test.mjs
  */
@@ -17,6 +18,7 @@ import test, { describe } from 'node:test';
 import { ESLint } from 'eslint';
 
 const UNTRUSTED_LOOKUP = 'export const read = (store, key) => store[key];\n';
+const UNTRUSTED_LOOKUP_SCRIPT = 'const read = (store, key) => store[key];\n';
 const UNTRUSTED_LOOKUP_COMMONJS = 'module.exports = (store, key) => store[key];\n';
 
 /**
@@ -40,22 +42,14 @@ describe('security/detect-object-injection scope (eslint.config.js)', () => {
     ['a CI script library', '.github/scripts/lib/scratch-fixture.mjs', UNTRUSTED_LOOKUP],
     ['workstation tooling', 'scripts/lib/scratch-fixture.mjs', UNTRUSTED_LOOKUP],
     ['a root CommonJS file', 'scratch-fixture.cjs', UNTRUSTED_LOOKUP_COMMONJS],
+    ['the browser bundle (src/js)', 'src/js/scratch-fixture.js', UNTRUSTED_LOOKUP_SCRIPT],
+    ['unit tests', 'test/unit/scratch-fixture.mjs', UNTRUSTED_LOOKUP],
   ];
   for (const [label, filePath, code] of WARNS) {
     test(`warns on a variable-keyed lookup in ${label}`, async () => {
       const messages = await lintObjectInjection(code, filePath);
       assert.equal(messages.length, 1);
       assert.equal(messages[0].severity, 1, 'a warning, not an error');
-    });
-  }
-
-  const STAYS_OFF = [
-    ['the browser bundle (src/js, pending a ratchet)', 'src/js/scratch-fixture.js'],
-    ['unit tests', 'test/unit/scratch-fixture.mjs'],
-  ];
-  for (const [label, filePath] of STAYS_OFF) {
-    test(`stays off for ${label}`, async () => {
-      assert.deepEqual(await lintObjectInjection(UNTRUSTED_LOOKUP, filePath), []);
     });
   }
 

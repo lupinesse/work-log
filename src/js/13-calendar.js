@@ -72,13 +72,20 @@ function calAccountLabel(account) {
 
   // 1. Exact match (case-insensitive)
   for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (key.toLowerCase() === lower) return CAL_ACCOUNT_LABELS[key];
   }
   // 2. Email-style: extract second-level domain (e.g. "x@gofore.com" → "gofore")
   const emailMatch = lower.match(/@([^.@\s]+)\./);
-  if (emailMatch && CAL_ACCOUNT_LABELS[emailMatch[1]]) return CAL_ACCOUNT_LABELS[emailMatch[1]];
+  const emailDomain = emailMatch ? emailMatch[1] : null;
+  // Own-property check: a domain such as "constructor" must not resolve to an inherited member.
+  if (emailDomain && Object.hasOwn(CAL_ACCOUNT_LABELS, emailDomain)) {
+    // eslint-disable-next-line security/detect-object-injection -- emailDomain comes from calendar account text, but Object.hasOwn guarantees it is an own key of CAL_ACCOUNT_LABELS
+    return CAL_ACCOUNT_LABELS[emailDomain];
+  }
   // 3. Substring match (e.g. "Gofore Mailbox" contains "gofore")
   for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (lower.includes(key.toLowerCase())) return CAL_ACCOUNT_LABELS[key];
   }
   return null;

@@ -18,11 +18,14 @@ function installBrowserStubs() {
   if (!globalThis.localStorage) {
     const store = {};
     globalThis.localStorage = {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (k) => (Object.prototype.hasOwnProperty.call(store, k) ? store[k] : null),
       setItem: (k, v) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         store[k] = String(v);
       },
       removeItem: (k) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         delete store[k];
       },
     };
