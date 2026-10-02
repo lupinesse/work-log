@@ -188,40 +188,6 @@ body.emergency .emergency-screen {
   background: rgba(29, 158, 117, 0.12);
 }
 
-/* Handoff note in timer bar */
-.timer-handoff {
-  display: none;
-  flex: 1;
-  font-size: 12px;
-  padding: 3px 10px;
-  border-radius: var(--radius);
-  border: var(--border-hairline) solid rgba(255, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.2);
-  color: #ffffff;
-  font-family: var(--font);
-  outline: none;
-}
-
-.timer-handoff::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.timer-handoff.show {
-  display: block;
-}
-
-.timer-handoff-lbl {
-  display: none;
-  font-size: 11px;
-  color: var(--sig-flagged);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.timer-handoff-lbl.show {
-  display: block;
-}
-
 /* Handoff note shown on quick-pick items */
 .qp-handoff {
   font-size: 10px;
