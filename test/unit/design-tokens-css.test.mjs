@@ -1,7 +1,7 @@
 /**
  * @file design-tokens-css.test.mjs
  * Compiles the real stylesheet and checks that semantic colour tokens exist for
- * both themes and are used instead of raw hex values (#526, #527, #532, #494, #493, #537).
+ * both themes and are used instead of raw hex values (#526, #527, #532, #494, #493, #537, #511).
  */
 
 import { describe, it } from 'node:test';
@@ -141,5 +141,19 @@ describe('modal and toast semantic tokens (#537)', () => {
     assert.match(ruleBody('.wl-toast-ok') ?? '', /var\(--success-bg\)/);
     assert.match(ruleBody('.wl-toast-err') ?? '', /var\(--danger-soft-bg\)/);
     assert.match(ruleBody('.eod-timesheet__status--error') ?? '', /var\(--danger-soft-ink\)/);
+  });
+});
+
+describe('--color-success token (#511)', () => {
+  it('is defined for the light theme and overridden for dark', () => {
+    const definitions = compiledCss.match(/--color-success:\s*(#[0-9a-f]{6})/g) ?? [];
+    assert.equal(definitions.length, 2, 'one light and one dark definition');
+    assert.notEqual(definitions[0], definitions[1], 'dark value differs from light');
+  });
+
+  it('colours the pomodoro completion tick instead of a hard-coded hex', () => {
+    const body = ruleBody('.pomo-checkmark') ?? '';
+    assert.match(body, /color:\s*var\(--color-success\)/);
+    assert.doesNotMatch(body, /#16a34a/i);
   });
 });

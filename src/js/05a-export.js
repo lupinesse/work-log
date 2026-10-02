@@ -56,10 +56,7 @@ function exportTxt() {
   // Billable / non-billable breakdown. Entries are annotated with their
   // resolved billable status up front so both the header totals and the
   // summary line (below) read from the same source of truth.
-  const entriesWithBillingStatus = timedEntries.map((entry) => ({
-    ...entry,
-    _billable: isEntryBillable(entry),
-  }));
+  const entriesWithBillingStatus = annotateBillableStatus(timedEntries);
   const totalTrackedMs = entriesWithBillingStatus.reduce(
     (sum, entry) => sum + (entry.tsEnd - entry.ts),
     0

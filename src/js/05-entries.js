@@ -113,3 +113,16 @@ function isEntryBillable(entry) {
   // Same `!== false` convention for categories — undefined → billable.
   return getCat(entry.tag || 'other').billable !== false;
 }
+
+/**
+ * Returns copies of `entries` each carrying its resolved billable status as a
+ * `_billable` flag. Pure helpers such as findGapReportEntries() have no access
+ * to the category/task lookups isEntryBillable() needs, so callers resolve the
+ * status up front and hand it over on the entry. The input entries are not
+ * mutated.
+ * @param {Array<Object>} entries - Log entries to annotate.
+ * @returns {Array<Object>} New entry objects with `_billable` set.
+ */
+function annotateBillableStatus(entries) {
+  return entries.map((entry) => ({ ...entry, _billable: isEntryBillable(entry) }));
+}
