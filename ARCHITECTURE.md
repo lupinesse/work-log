@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (539 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -481,8 +481,6 @@ upcoming    → Scheduled for future date
 **Data**: `entry.signifier` field (`'billable' | 'event' | 'flagged' | 'migrated' | 'cancelled' | 'overtime' | null`)
 
 **Dependencies**: `01c-save.js` (save), `state.js` (getEntries), `logger.js` (wlLog), `pure-fns.js` (escHtml), `signifiers.js` (sigTitle, sigSymbol). `render()` is a non-leaf function registered at startup via `setSignifierRenderCallback(fn)` in `12c-startup.js`.
-
-**Load order**: this file shares the `10b-` prefix with `10b-tasks-events.js`, and `10a-tasks-render.js` shares `10a-` with `10a-tasks-row.js`. `build.js` concatenates `src/js/*.js` with a plain `.sort()`, so within each pair the order is by the characters after the prefix: `10b-signifiers.js` before `10b-tasks-events.js`, and `10a-tasks-render.js` before `10a-tasks-row.js`. The order is incidental, not a dependency: none of these files calls into its sibling at load time (only inside functions that run after the whole bundle has loaded), so no rename is needed. If a load-time dependency is ever added between a pair, give the files distinct numeric prefixes instead of relying on the sort.
 
 ---
 
