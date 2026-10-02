@@ -131,11 +131,11 @@
 }
 
 .ml-sum-row .ml-sum-green {
-  color: #1d9e75;
+  color: var(--sig-event);
 }
 
 .ml-sum-row .ml-sum-amber {
-  color: #ef9f27;
+  color: var(--sig-flagged);
 }
 
 .ml-sum-row .ml-sum-muted {
