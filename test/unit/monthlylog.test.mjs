@@ -8,7 +8,19 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname } from './_helpers.mjs';
+import { __dirname, createDom } from './_helpers.mjs';
+
+const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
+
+/**
+ * Builds the `YYYY-MM` month prefix for the given year and 0-based month.
+ * @param {number} year - Full year.
+ * @param {number} month - Month index, 0-based.
+ * @returns {string}
+ */
+function monthPrefix(year, month) {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
 
 /**
  * Loads 19-monthlylog.js into a VM sandbox so its function declarations
@@ -19,7 +31,6 @@ import { __dirname } from './_helpers.mjs';
  * @returns {Object} Populated VM sandbox.
  */
 function loadMonthlyLogSandbox() {
-  const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
   const sandbox = {
     document: { getElementById: () => null, addEventListener: () => {} },
     entries: [],
@@ -33,6 +44,8 @@ function loadMonthlyLogSandbox() {
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
     console,
   };
+  sandbox.getEntries = () => sandbox.entries;
+  sandbox.getPlanTasks = () => sandbox.planTasks;
   vm.createContext(sandbox);
   vm.runInContext(monthlySrc, sandbox);
   return sandbox;
@@ -147,5 +160,145 @@ describe('calcMonthTaskCounts', () => {
     ];
     const counts = calcMonthTaskCounts(data, PREFIX);
     assert.equal(counts.migrated, 2, 'both BuJo and programmatic markers count');
+  });
+});
+
+// ── buildMonthlyCalendarHtml — WCAG keyboard and label tests ──────────────────
+
+describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons', () => {
+  // May 2026: 31 days, starts on a Friday (offset 4)
+  const YEAR = 2026;
+  const MONTH = 4; // May (0-indexed)
+  const PREFIX = monthPrefix(YEAR, MONTH);
+
+  it('renders every day cell as a <button> element (WCAG 2.1.1 Keyboard)', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const { window } = createDom(`<div>${html}</div>`);
+    const cells = [...window.document.querySelectorAll('.ml-cell')];
+    assert.ok(cells.length > 0, 'at least one day cell rendered');
+    assert.ok(
+      cells.every((c) => c.tagName === 'BUTTON'),
+      'all .ml-cell elements must be <button> for native keyboard access'
+    );
+  });
+
+  it('day cell buttons have type="button" to avoid accidental form submission', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const { window } = createDom(`<div>${html}</div>`);
+    const cells = [...window.document.querySelectorAll('button.ml-cell')];
+    assert.ok(
+      cells.every((c) => c.getAttribute('type') === 'button'),
+      'type="button" present on every day cell'
+    );
+  });
+
+  it('day cell aria-label includes the day number (WCAG 4.1.2)', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const { window } = createDom(`<div>${html}</div>`);
+    const cell = window.document.querySelector('.ml-cell[data-date="2026-05-01"]');
+    assert.ok(cell, 'day 1 cell present');
+    const label = cell.getAttribute('aria-label') ?? '';
+    assert.ok(label.length > 0, 'aria-label must not be empty');
+    assert.match(label, /\b1\b/, 'aria-label includes the day number 1');
+  });
+
+  it('day cell aria-label includes logged hours (WCAG 4.1.2)', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const { window } = createDom(`<div>${html}</div>`);
+    const cell = window.document.querySelector('.ml-cell[data-date="2026-05-15"]');
+    assert.ok(cell, 'day 15 cell present');
+    // Sandbox has no entries → 0.0h for every cell.
+    assert.match(cell.getAttribute('aria-label') ?? '', /0\.0h/, 'zero hours reflected in label');
+  });
+
+  it('day cells are keyboard-operable: click triggers setViewDate with correct date', () => {
+    // Load the full module into a jsdom window context so event bindings work.
+    const dom = createDom(
+      '<div id="mlCalendar"></div><div id="mlSummary"></div><div id="mlTasks"></div>'
+    );
+    const ctx = dom.getInternalVMContext();
+
+    ctx.entries = [];
+    ctx.getEntries = () => ctx.entries;
+    ctx.planTasks = [];
+    ctx.getPlanTasks = () => ctx.planTasks;
+    ctx.viewDate = new dom.window.Date();
+    ctx.fmtDur = () => '';
+    ctx.escHtml = (s) => String(s);
+    ctx.getCatLabel = () => '';
+    ctx.isEntryBillable = () => false;
+    ctx.wlLog = { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} };
+    ctx.console = console;
+
+    let capturedDate = null;
+    ctx.setViewDate = (d) => {
+      capturedDate = d;
+    };
+    ctx.setFlowView = () => {};
+    ctx.render = () => {};
+
+    vm.runInContext(monthlySrc, ctx);
+    ctx.renderMonthlyLog = () => {}; // prevent full re-render during tests
+
+    const calEl = dom.window.document.getElementById('mlCalendar');
+    ctx.renderMonthlyCalendar(calEl, YEAR, MONTH, PREFIX);
+
+    const cell = dom.window.document.querySelector('.ml-cell[data-date="2026-05-10"]');
+    assert.ok(cell, 'day 10 cell is in the DOM after render');
+    cell.click();
+    assert.ok(capturedDate !== null, 'setViewDate called on cell click');
+    assert.match(capturedDate.toISOString(), /^2026-05-10/, 'navigates to May 10');
+
+    dom.window.close();
+  });
+});
+
+describe('buildMonthlyCalendarHtml — prev/next buttons have accessible names', () => {
+  it('mlPrev aria-label names the previous month (WCAG 4.1.2)', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    // May 2026 → prev is April 2026
+    const html = buildMonthlyCalendarHtml(2026, 4, monthPrefix(2026, 4));
+    const { window } = createDom(`<div>${html}</div>`);
+    const btn = window.document.getElementById('mlPrev');
+    assert.ok(btn, 'mlPrev button rendered');
+    const label = btn.getAttribute('aria-label') ?? '';
+    const expected = new Date(2026, 3, 1).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+    assert.ok(label.includes(expected), `aria-label "${label}" must include "${expected}"`);
+  });
+
+  it('mlNext aria-label names the next month (WCAG 4.1.2)', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    // May 2026 → next is June 2026
+    const html = buildMonthlyCalendarHtml(2026, 4, monthPrefix(2026, 4));
+    const { window } = createDom(`<div>${html}</div>`);
+    const btn = window.document.getElementById('mlNext');
+    assert.ok(btn, 'mlNext button rendered');
+    const label = btn.getAttribute('aria-label') ?? '';
+    const expected = new Date(2026, 5, 1).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+    assert.ok(label.includes(expected), `aria-label "${label}" must include "${expected}"`);
+  });
+
+  it('month wrap: prev label is correct at January year boundary', () => {
+    const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
+    // January 2027 → prev is December 2026
+    const html = buildMonthlyCalendarHtml(2027, 0, monthPrefix(2027, 0));
+    const { window } = createDom(`<div>${html}</div>`);
+    const btn = window.document.getElementById('mlPrev');
+    const label = btn?.getAttribute('aria-label') ?? '';
+    const expected = new Date(2026, 11, 1).toLocaleString('default', {
+      month: 'long',
+      year: 'numeric',
+    });
+    assert.ok(label.includes(expected), `year wrap: label "${label}" must include "${expected}"`);
   });
 });

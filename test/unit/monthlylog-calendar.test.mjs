@@ -56,7 +56,7 @@ describe('monthly calendar split (jsdom)', () => {
       const html = evaluate("buildMonthlyCalendarHtml(2026, 4, '2026-05')");
       assert.equal((html.match(/class="ml-cell"/g) ?? []).length, 31);
       assert.equal(
-        (html.match(/<div><\/div>/g) ?? []).length,
+        (html.match(/<div aria-hidden="true"><\/div>/g) ?? []).length,
         4,
         'four blank cells before Fri 1st'
       );
