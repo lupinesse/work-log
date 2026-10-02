@@ -1,3 +1,5 @@
+@use 'mixins';
+
 *,
 *::before,
 *::after {
@@ -19,15 +21,13 @@
   --info-text: #185fa5;
   --radius: 8px;
   --radius-lg: 12px;
+  --radius-pill: 99px; /* fully rounded pills and chips */
+  --border-hairline: 0.5px; /* thin divider/outline width used across cards and controls */
   --font: -apple-system, 'Segoe UI', sans-serif;
   --mono: 'SF Mono', 'Fira Code', monospace;
 
   /* ── Unified cool palette ── */
   --paper: #eef2f7; /* page background — cool pale blue-grey */
-  --card-soft: #f5f8fc; /* section header tint (= --bg2) */
-  --line-strong: #c9d3e0; /* stronger border on cards (= --border2) */
-  --ink2: #475569; /* secondary text (= --text2) */
-  --ink-muted: #7a8597; /* tertiary text (= --text3) */
   --ink-faint: #aab4c2; /* ghost / placeholder */
   --live: #0284c7; /* running-state accent (sky-600) */
   --live-deep: #075985; /* darker live for text on light bg */
@@ -47,7 +47,7 @@
   /* ── Pomodoro & epic label colours ── */
   --pom-red: #e23744; /* Time-Timer red wedge */
   --pom-red-soft: #fef2f2; /* Pomodoro card tint */
-  --pom-red-deep: #991b1b; /* Pomodoro text on pale red bg */
+  --pom-red-deep: var(--danger-ink); /* Pomodoro text on pale red bg */
   --epic-purple: #7c3aed; /* Epic label — violet */
   --epic-blue: #2563eb; /* Epic label — blue */
   --epic-teal: #0d9488; /* Epic label — teal */
@@ -66,6 +66,25 @@
 
   /* ── Semantic state colours ── */
   --color-success: #16a34a; /* positive confirmation, e.g. the pomodoro completion tick */
+
+  /* ── Danger / validation ── */
+  --color-error: #c62828; /* error text and invalid-input border */
+  --danger-ink: #991b1b; /* text/icons on a pale danger background */
+  --danger-border: #b91c1c; /* outline of a danger action */
+  --danger-bg: rgba(198, 40, 40, 0.12); /* tinted badge/chip background for danger */
+  --warning-bg: #faeeda; /* tinted badge/chip background for warning */
+  --warning-ink: #854f0b; /* text on --warning-bg */
+  --success-ink: #1d9e75; /* confirmation text/border in modals and toasts */
+  --success-bg: #0a3d1f; /* deep green behind --success-ink */
+  --danger-soft-ink: #f17070; /* soft red text/border for error toasts and chips */
+  --danger-soft-bg: rgba(241, 112, 112, 0.18); /* tint behind --danger-soft-ink */
+  --note-inprogress-ink: #ef9f27; /* EOD note status chip: in progress */
+  --note-pending-ink: #9b7dff; /* EOD note status chip: pending */
+  --amber-bg: #fef3c7; /* dismissible reminder banner background */
+  --amber-border: #fde68a; /* reminder banner outline */
+  --amber-ink: #92400e; /* reminder banner text */
+  --amber-accent: #b45309; /* reminder action outline and dismiss glyph */
+  --amber-hover-bg: rgba(180, 83, 9, 0.1); /* reminder action hover wash */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -83,13 +102,20 @@
 
     /* ── Unified cool palette — dark mode ── */
     --paper: #161a20;
-    --card-soft: #1e2530;
-    --line-strong: rgba(255, 255, 255, 0.18);
-    --ink2: #94a3b8;
-    --ink-muted: #64748b;
     --ink-faint: #475569;
     --live: #38bdf8;
     --color-success: #4ade80;
+    --color-error: #f17070;
+    --danger-ink: #fca5a5; /* pale red text on dark bg */
+    --danger-border: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.16);
+    --warning-bg: rgba(234, 179, 8, 0.18);
+    --warning-ink: #fcd34d;
+    --amber-bg: rgba(245, 158, 11, 0.12);
+    --amber-border: rgba(245, 158, 11, 0.3);
+    --amber-ink: #fbbf24;
+    --amber-accent: #fbbf24;
+    --amber-hover-bg: rgba(251, 191, 36, 0.12);
     --live-deep: #7dd3fc;
     --live-soft: #0c2d4a;
     --live-softer: #082030;
@@ -107,7 +133,6 @@
     /* ── Pomodoro & epic label colours — dark mode ── */
     --pom-red: #f04d5a; /* slightly lighter red on dark bg */
     --pom-red-soft: #1f0909; /* dark red wash */
-    --pom-red-deep: #fca5a5; /* pale red text on dark bg */
     --epic-purple: #a78bfa;
     --epic-blue: #60a5fa;
     --epic-teal: #5eead4;
@@ -167,12 +192,7 @@ body {
 
 // Small-caps label sitting above an input or button row inside a modal form.
 .field-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 8px;
+  @include mixins.label-caps;
 }
 
 // Persistent data-loss warning banner — shown when save() fails to write to
@@ -186,14 +206,13 @@ body {
   background: #fee2e2;
   border-bottom: 1px solid #fecaca;
   font-size: 13px;
-  color: #991b1b;
+  color: var(--danger-ink);
 }
 
 @media (prefers-color-scheme: dark) {
   .save-fail-banner {
     background: rgba(220, 38, 38, 0.14);
     border-bottom-color: rgba(220, 38, 38, 0.35);
-    color: #fca5a5;
   }
 }
 
@@ -205,19 +224,12 @@ body {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid #b91c1c;
+  border: var(--border-hairline) solid var(--danger-border);
   cursor: pointer;
   background: none;
-  color: #991b1b;
+  color: var(--danger-ink);
   font-family: var(--font);
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .save-fail-banner__action {
-    border-color: #f87171;
-    color: #fca5a5;
-  }
 }
 
 .save-fail-banner__dismiss {
@@ -226,13 +238,14 @@ body {
   cursor: pointer;
   font-size: 16px;
   line-height: 1;
-  color: #991b1b;
+  color: var(--danger-ink);
   padding: 0 2px;
   flex-shrink: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  .save-fail-banner__dismiss {
-    color: #fca5a5;
-  }
+/* Marks a text input whose value was rejected (duplicate or unusable epic
+   name). Element-qualified so it outranks the single-class border rules of
+   the inline inputs regardless of partial order. Toggled by markInputInvalid(). */
+input.input--invalid {
+  border-color: var(--color-error);
 }

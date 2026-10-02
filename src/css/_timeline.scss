@@ -1,6 +1,6 @@
 /* Timeline */
 #timeline {
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: 14px;
@@ -20,7 +20,7 @@
   gap: 10px;
   align-items: flex-start;
   padding: 9px 12px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .entry:last-child {
@@ -97,7 +97,7 @@
 .etime-input {
   font-size: 11px;
   font-family: var(--mono);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: 4px;
   padding: 2px 5px;
   background: var(--bg);
@@ -124,7 +124,7 @@
 .etime-save,
 .etime-cancel {
   font-size: 11px;
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: 4px;
   padding: 2px 7px;
   cursor: pointer;
@@ -201,7 +201,7 @@
   font-weight: 500;
   font-family: var(--font);
   background: var(--bg2);
-  border: 0.5px solid var(--info-text);
+  border: var(--border-hairline) solid var(--info-text);
   border-radius: 3px;
   padding: 1px 4px;
   color: var(--text);
@@ -219,11 +219,11 @@
   font-size: 11px;
   color: var(--text3);
   background: none;
-  border: 0.5px solid transparent;
+  border: var(--border-hairline) solid transparent;
   cursor: pointer;
   font-family: var(--font);
   padding: 1px 5px 1px 0;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -257,8 +257,8 @@
 .cat-opt {
   font-size: 11px;
   padding: 2px 9px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border);
   cursor: pointer;
   font-family: var(--font);
   background: var(--bg);
@@ -277,8 +277,8 @@
 .cat-cancel {
   font-size: 11px;
   padding: 2px 9px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border);
   cursor: pointer;
   font-family: var(--font);
   background: transparent;
@@ -360,188 +360,6 @@
   border-radius: 2px;
 }
 
-/* Bar chart */
-.chart-section {
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  margin-bottom: 14px;
-}
-
-.chart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg2);
-  padding: 8px 12px;
-}
-
-.chart-body {
-  padding: 10px 12px 8px;
-}
-
-.chart-title {
-  font-size: 11px;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.chart-toggle {
-  display: flex;
-  gap: 3px;
-}
-
-.chart-tog {
-  font-size: 11px;
-  padding: 2px 9px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
-  cursor: pointer;
-  background: var(--bg);
-  color: var(--text3);
-  font-family: var(--font);
-}
-
-.chart-tog:hover {
-  background: var(--bg2);
-}
-
-.chart-tog.active {
-  background: var(--info-bg);
-  color: var(--info-text);
-  border-color: transparent;
-}
-
-.chart-empty {
-  font-size: 13px;
-  color: var(--text3);
-  padding: 6px 0 4px;
-  font-style: italic;
-}
-
-.chart-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.chart-row:last-child {
-  margin-bottom: 0;
-}
-
-.chart-row-live .chart-label {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.chart-row-live .chart-dur {
-  color: var(--text);
-  font-weight: 500;
-}
-
-.chart-row-live .chart-bar {
-  animation: chart-live-pulse 2.4s ease-in-out infinite;
-}
-
-.chart-live-dot {
-  color: #1d9e75;
-  font-size: 9px;
-  margin-right: 5px;
-  animation: chart-live-pulse 2.4s ease-in-out infinite;
-  vertical-align: middle;
-}
-
-@keyframes chart-live-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-
-  50% {
-    opacity: 1;
-  }
-}
-
-.chart-label {
-  font-size: 12px;
-  color: var(--text2);
-  width: 200px;
-  min-width: 200px;
-  text-align: left;
-  flex-shrink: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chart-track {
-  flex: 1;
-  min-width: 0;
-  background: var(--bg2);
-  border-radius: 3px;
-  height: 18px;
-  overflow: hidden;
-  position: relative;
-}
-
-.chart-bar {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  min-width: 2px;
-}
-
-.chart-bill {
-  font-size: 13px;
-  line-height: 1;
-  flex-shrink: 0;
-  opacity: 0.85;
-}
-
-.chart-dur {
-  font-size: 11px;
-  color: var(--text2);
-  font-family: var(--mono);
-  min-width: 38px;
-  flex-shrink: 0;
-}
-
-.bar-work {
-  background: #378add;
-}
-
-.bar-meeting {
-  background: #7ec8e3;
-}
-
-.bar-focus {
-  background: #1d9e75;
-}
-
-.bar-break {
-  background: #ba7517;
-}
-
-.bar-other {
-  background: #888780;
-}
-
-.chart-total {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--text3);
-}
-
-.chart-total span {
-  font-weight: 500;
-  color: var(--text2);
-  margin-left: 4px;
-}
-
 /* Entry proof-link / note indicator + inline editor */
 .emeta {
   margin-top: 4px;
@@ -564,8 +382,8 @@
 .emeta-btn {
   font-size: 12px;
   padding: 1px 6px;
-  border: 0.5px solid var(--border2);
-  border-radius: 99px;
+  border: var(--border-hairline) solid var(--border2);
+  border-radius: var(--radius-pill);
   background: none;
   cursor: pointer;
   color: var(--text3);
@@ -602,7 +420,7 @@
   box-sizing: border-box;
   font-size: 12px;
   padding: 5px 7px;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   background: var(--bg2);
   color: var(--text);
@@ -634,8 +452,8 @@
 .emeta-actions button {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border2);
   background: none;
   cursor: pointer;
   color: var(--text2);
@@ -672,7 +490,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 6px 8px;
-  border: 0.5px solid var(--info-text);
+  border: var(--border-hairline) solid var(--info-text);
   border-radius: var(--radius);
   background: var(--info-bg);
 }
@@ -699,8 +517,8 @@
 .emeta-restart-no {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border2);
   background: none;
   cursor: pointer;
   color: var(--text2);

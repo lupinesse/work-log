@@ -336,7 +336,7 @@ if (new URLSearchParams(window.location.search).get('test') === '1') {
       planTasks: getPlanTasks(),
       blocks: getBlocks(),
       activeTimer: getActiveTimer(),
-      logNotes,
+      logNotes: getLogNotes(),
       trackers: getTrackers(),
     }),
     cycleSignifier,

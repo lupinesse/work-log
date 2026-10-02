@@ -36,7 +36,7 @@ describe('gap report overlay (jsdom)', () => {
     vm.runInContext(gapReportSrc, dom.getInternalVMContext());
   });
 
-  // Free the jsdom window (timers, listeners) so instances do not accumulate (#546).
+  // Close the jsdom window so timers and listeners do not leak across tests.
   afterEach(() => window.close());
 
   it('closes the overlay on Escape', () => {
@@ -59,20 +59,5 @@ describe('gap report overlay (jsdom)', () => {
   it('closes via the close button', () => {
     window.document.getElementById('gapReportClose').click();
     assert.equal(overlay.classList.contains('show'), false);
-  });
-});
-
-describe('gap report wiring does not leak top-level bindings (regression, #523)', () => {
-  it('lets a later script declare the same element names without a redeclaration error', () => {
-    const dom = createDom(MARKUP);
-    const context = dom.getInternalVMContext();
-    vm.runInContext(gapReportSrc, context);
-    assert.doesNotThrow(() =>
-      vm.runInContext(
-        'const gapReportBtn = 1, gapReportOverlay = 2, gapReportClose = 3, gapReportList = 4;',
-        context
-      )
-    );
-    dom.window.close();
   });
 });

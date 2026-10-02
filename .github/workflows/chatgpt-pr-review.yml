@@ -83,10 +83,10 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const LABEL           = 'chatgpt-review';
+            const LABEL = 'chatgpt-review';
             const LINES_THRESHOLD = 200;
             const FILES_THRESHOLD = 4;
-            const GENERATED       = /^(script\.js|styles\.css|docs\/.+\.html|package-lock\.json)$/;
+            const GENERATED = /^(script\.js|styles\.css|docs\/.+\.html|package-lock\.json)$/;
             const action          = context.payload.action;
 
             // Path 1 — explicit label event: only run for this specific label.
@@ -208,7 +208,7 @@ jobs:
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
           MODEL:             gpt-4o-2024-08-06
           MAX_DIFF_CHARS:    '30000'
-          MAX_TOKENS:        '3072'
+          MAX_COMPLETION_TOKENS: '3072'
         run: node .github/scripts/chatgpt-review.mjs
 
   # ─── Phase 2: Claude responds to ChatGPT's findings ───────────────────────
@@ -374,7 +374,7 @@ jobs:
           HEAD_SHA:          ${{ github.event.pull_request.head.sha }}
           MODEL:             gpt-4o-mini
           MAX_DIFF_CHARS:    '25000'
-          MAX_TOKENS:        '3072'
+          MAX_COMPLETION_TOKENS: '3072'
           MAX_CONTEXT_CHARS: '3000'
         run: node .github/scripts/chatgpt-claude-dialogue.mjs
 

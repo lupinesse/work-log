@@ -366,17 +366,23 @@ function a11yHeaderKeydown(el) {
   });
 }
 
-// Wire keyboard nav to all collapsible section headers that have role="button".
-// planHeader is excluded: it contains a nested <button> (idkwBtn), so the outer
-// div must not also carry role="button" or keyboard events would be ambiguous.
-[
+// Every collapsible section header that has role="button" must be listed here, or
+// keyboard users can tab to it but not toggle it (WCAG 2.1.1). A test checks
+// this list against work-log.html. planHeader is excluded: it contains a nested
+// <button> (idkwBtn), so the outer div must not also carry role="button" or
+// keyboard events would be ambiguous.
+const KEYBOARD_ACTIVATED_HEADER_IDS = [
   'calHeader',
   'upcomingHeader',
   'pendingHeader',
   'completedHeader',
   'jiraHeader',
   'notionLinksHeader',
-].forEach((id) => {
+  'analyticsHeader',
+  'parkHeader',
+  'pomoHeader',
+];
+KEYBOARD_ACTIVATED_HEADER_IDS.forEach((id) => {
   a11yHeaderKeydown(document.getElementById(id));
 });
 

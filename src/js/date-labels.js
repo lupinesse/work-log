@@ -13,8 +13,8 @@ import { dk } from './pure-fns.js';
 
 /**
  * Returns true if `d` falls on today's calendar date.
- * @param {Date} d
- * @returns {boolean}
+ * @param {Date} d - The date to test; only its local calendar day is compared.
+ * @returns {boolean} True when `d` is on the same calendar day as now.
  */
 export function isToday(d) {
   return dk(d) === dk(new Date());
@@ -22,8 +22,8 @@ export function isToday(d) {
 
 /**
  * Returns a human-readable day label: 'today', 'yesterday', or a short locale date string.
- * @param {Date} d
- * @returns {string}
+ * @param {Date} d - The date to label.
+ * @returns {string} 'today', 'yesterday', or a short locale date such as 'Mon, Jan 5'.
  */
 export function fmtLabel(d) {
   if (isToday(d)) return 'today';

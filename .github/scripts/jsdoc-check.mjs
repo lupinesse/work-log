@@ -79,6 +79,7 @@ export function jsdocBefore(lines, exportIdx) {
   // Walk up from the export, skipping blank lines, looking for */
   let endIdx = -1;
   for (let j = exportIdx - 1; j >= 0; j--) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     const t = lines[j].trim();
     if (t === '') continue;
     if (t.endsWith('*/')) {
@@ -91,6 +92,7 @@ export function jsdocBefore(lines, exportIdx) {
 
   // Walk up to /** start
   for (let j = endIdx; j >= 0; j--) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     if (lines[j].trim().startsWith('/**')) {
       return lines.slice(j, endIdx + 1).join('\n');
     }
@@ -129,6 +131,7 @@ export function bodyHasReturn(lines, exportLineIdx) {
   let depth = 0;
 
   for (let i = exportLineIdx; i < Math.min(exportLineIdx + 60, lines.length); i++) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     const line = lines[i];
 
     // Update brace depth for every character on this line
@@ -184,6 +187,7 @@ function scanFile(filePath, acc) {
   const lines = src.split('\n');
 
   for (let i = 0; i < lines.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     const line = lines[i];
 
     // Skip re-exports: export { x } from '…'

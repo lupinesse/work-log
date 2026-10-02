@@ -83,12 +83,14 @@ function loadNotionSandbox(overrides = {}) {
   return sandbox;
 }
 
-it('regression #33: removes wl_anthropic_key from localStorage on load', () => {
-  const removed = [];
-  loadNotionSandbox({
-    localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} },
+describe('localStorage cleanup on load', () => {
+  it('regression #33: removes wl_anthropic_key from localStorage on load', () => {
+    const removed = [];
+    loadNotionSandbox({
+      localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} },
+    });
+    assert.ok(removed.includes('wl_anthropic_key'));
   });
-  assert.ok(removed.includes('wl_anthropic_key'));
 });
 
 it('exposes purgeLegacyAnthropicKey and removes only the legacy key (#490)', () => {
