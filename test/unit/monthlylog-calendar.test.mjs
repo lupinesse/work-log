@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
 
@@ -49,11 +49,14 @@ describe('monthly calendar split (jsdom)', () => {
     calEl = dom.window.document.getElementById('mlCalendar');
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
 
   describe('buildMonthlyCalendarHtml', () => {
     it('renders one cell per day, offset to a Monday start (May 2026 starts on a Friday)', () => {
-      const html = evaluate("buildMonthlyCalendarHtml(2026, 4, '2026-05')");
+      const html = evaluate('buildMonthlyCalendarHtml(2026, 4)');
       assert.equal((html.match(/class="ml-cell"/g) ?? []).length, 31);
       assert.equal(
         (html.match(/<div aria-hidden="true"><\/div>/g) ?? []).length,
@@ -62,21 +65,38 @@ describe('monthly calendar split (jsdom)', () => {
       );
     });
 
-    it('builds each cell date key from the monthPrefix it is given', () => {
-      const html = evaluate("buildMonthlyCalendarHtml(2026, 4, '2026-05')");
+    it('derives each cell date key from the year and month', () => {
+      const html = evaluate('buildMonthlyCalendarHtml(2026, 4)');
       assert.ok(html.includes('data-date="2026-05-01"'));
       assert.ok(html.includes('data-date="2026-05-31"'));
     });
 
+    it('pads the month of a January calendar', () => {
+      const html = evaluate('buildMonthlyCalendarHtml(2027, 0)');
+      assert.ok(html.includes('data-date="2027-01-01"'));
+    });
+
     it('does not touch the DOM', () => {
-      evaluate("buildMonthlyCalendarHtml(2026, 4, '2026-05')");
+      evaluate('buildMonthlyCalendarHtml(2026, 4)');
       assert.equal(calEl.innerHTML, '');
     });
   });
 
+  describe('mlMonthPrefix', () => {
+    for (const [year, month, expected] of [
+      [2026, 0, '2026-01'],
+      [2026, 8, '2026-09'],
+      [2026, 11, '2026-12'],
+    ]) {
+      it(`maps (${year}, ${month}) to ${expected}`, () => {
+        assert.equal(evaluate(`mlMonthPrefix(${year}, ${month})`), expected);
+      });
+    }
+  });
+
   describe('renderMonthlyCalendar + bindMonthlyCalendarEvents', () => {
     beforeEach(() =>
-      evaluate("renderMonthlyCalendar(document.getElementById('mlCalendar'), 2026, 4, '2026-05')")
+      evaluate("renderMonthlyCalendar(document.getElementById('mlCalendar'), 2026, 4)")
     );
 
     it('writes the markup into the container', () => {

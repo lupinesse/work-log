@@ -8,12 +8,18 @@
  * bundle) and `12d-weeklyreport.js` (ES module, imports it directly).
  */
 
-import { describe, it, beforeEach, after } from 'node:test';
+import { describe, it, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom, stubOffsetParent, stripEsmSyntax } from './_helpers.mjs';
+import {
+  __dirname,
+  createDom,
+  stubOffsetParent,
+  stripEsmSyntax,
+  assertNoUncaughtErrors,
+} from './_helpers.mjs';
 
 // 12d-weeklyreport.js reads `document` / `localStorage` as globals; restore them
 // afterwards so this file leaves the process as it found it.
@@ -88,10 +94,23 @@ for (const impl of IMPLEMENTATIONS) {
       return event;
     };
 
+    // Several tests mount a second DOM; every one must be checked for handler errors.
+    const mountedDoms = [];
+    const mount = async (inner) => {
+      const dom = await impl.mount(inner);
+      mountedDoms.push(dom);
+      return dom;
+    };
+
     beforeEach(async () => {
-      const dom = await impl.mount(FOCUSABLES);
+      mountedDoms.length = 0;
+      const dom = await mount(FOCUSABLES);
       window = dom.window;
       overlay = byId(impl.overlayId);
+    });
+
+    afterEach(() => {
+      mountedDoms.forEach(assertNoUncaughtErrors);
     });
 
     it('sees focusable elements at all (guards against a vacuous pass)', () => {
@@ -126,7 +145,7 @@ for (const impl of IMPLEMENTATIONS) {
     }
 
     it('skips disabled buttons and tabindex="-1" non-buttons when finding the edges', async () => {
-      const dom = await impl.mount(
+      const dom = await mount(
         `<button id="first">First</button><button id="last">Last</button>
          <button id="disabled" disabled>Disabled</button>
          <div id="skipped" tabindex="-1">Skipped</div>`
@@ -145,7 +164,7 @@ for (const impl of IMPLEMENTATIONS) {
       ['link', (id) => `<a id="${id}" href="#" tabindex="-1"></a>`],
     ]) {
       it(`ignores a tabindex="-1" ${label} at either edge`, async () => {
-        const dom = await impl.mount(
+        const dom = await mount(
           `${untabbable('phantomFirst')}
            <button id="first">First</button><button id="last">Last</button>
            ${untabbable('phantomLast')}`
@@ -160,7 +179,7 @@ for (const impl of IMPLEMENTATIONS) {
     }
 
     it('does not throw or prevent default when nothing is focusable', async () => {
-      const dom = await impl.mount('<p id="text">No controls</p>');
+      const dom = await mount('<p id="text">No controls</p>');
       window = dom.window;
       overlay = byId(impl.overlayId);
       const event = new window.KeyboardEvent('keydown', {

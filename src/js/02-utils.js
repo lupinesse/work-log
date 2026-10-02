@@ -266,7 +266,8 @@ function buildManageRowHtml(selCat) {
  * @returns {string} HTML to assign to #tagRow.
  */
 function buildTagRowHtml() {
-  const selCat = getCat(getSelectedTag());
+  const selectedTag = getSelectedTag();
+  const selCat = getCat(selectedTag);
   const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
@@ -278,11 +279,11 @@ function buildTagRowHtml() {
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect" aria-label="Select epic">
-        ${pickableCategories([...getCategories()], getSelectedTag())
+        ${pickableCategories([...getCategories()], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (category) =>
-              `<option value="${category.id}"${category.id === getSelectedTag() ? ' selected' : ''}>${escHtml(category.label)}</option>`
+              `<option value="${category.id}"${category.id === selectedTag ? ' selected' : ''}>${escHtml(category.label)}</option>`
           )
           .join('')}
         </select>
@@ -551,23 +552,38 @@ function viewEntries() {
     .sort((a, b) => b.ts - a.ts);
 }
 /**
+ * Tracks inputs that already have a pending clear-on-edit listener, so that
+ * calling markInputInvalid() repeatedly before the user edits does not stack
+ * multiple listeners on the same element.
+ * @type {WeakSet<HTMLInputElement>}
+ */
+const _invalidListenerPending = new WeakSet();
+
+/**
  * Flags a text input as rejected: red border via `.input--invalid`, exposed to
  * assistive tech through `aria-invalid`, and focused. The mark clears itself
  * on the next edit so a corrected value is not left looking wrong.
+ *
+ * Safe to call multiple times without an intervening edit: the clear-on-edit
+ * listener is added only once per input.
  * @param {HTMLInputElement} input - The input whose value was rejected.
  * @returns {void}
  */
 function markInputInvalid(input) {
   input.classList.add('input--invalid');
   input.setAttribute('aria-invalid', 'true');
-  input.addEventListener(
-    'input',
-    () => {
-      input.classList.remove('input--invalid');
-      input.removeAttribute('aria-invalid');
-    },
-    { once: true }
-  );
+  if (!_invalidListenerPending.has(input)) {
+    _invalidListenerPending.add(input);
+    input.addEventListener(
+      'input',
+      () => {
+        input.classList.remove('input--invalid');
+        input.removeAttribute('aria-invalid');
+        _invalidListenerPending.delete(input);
+      },
+      { once: true }
+    );
+  }
   input.focus();
 }
 
