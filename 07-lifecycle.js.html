@@ -90,11 +90,12 @@ function ensureDayStarted() {
 
 document.getElementById('sodBtn').addEventListener('click', () => {
   const existing = getDayStart();
-  if (existing || !isToday(getViewDate())) {
+  const viewDate = getViewDate();
+  if (existing || !isToday(viewDate)) {
     // Set or correct the start time for the day in view. Also the path for
     // back-filling a past day that has no recorded start (no "restore" prompt —
     // that only makes sense for today's first start).
-    const base = existing ? new Date(existing) : new Date(getViewDate());
+    const base = existing ? new Date(existing) : new Date(viewDate);
     const cur =
       String(base.getHours()).padStart(2, '0') + ':' + String(base.getMinutes()).padStart(2, '0');
     const val = prompt(`Started at (HH:MM):`, cur);
@@ -102,7 +103,7 @@ document.getElementById('sodBtn').addEventListener('click', () => {
     const [h, m] = val.split(':').map(Number);
     if (isNaN(h) || isNaN(m)) return;
     // Anchor the timestamp to the viewed day's calendar date, not today's.
-    const ts = new Date(getViewDate());
+    const ts = new Date(viewDate);
     ts.setHours(h, m, 0, 0);
     localStorage.setItem(sodKey(), String(ts.getTime()));
     renderSodBtn();
