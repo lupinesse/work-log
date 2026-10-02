@@ -572,37 +572,6 @@ function markInputInvalid(input) {
 
 // calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
 
-/**
- * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
- * Wraps forward from the last focusable element back to the first (Tab) and
- * backward from the first to the last (Shift-Tab). Call from the overlay's
- * `keydown` handler whenever `e.key === 'Tab'`. Used by concatenated modules
- * (12c-gapreport.js); 12d-weeklyreport.js keeps a private copy because it is
- * a leaf ES module and cannot import from this concatenated file — consolidate
- * both into a shared leaf module when 12c-gapreport.js is extracted (#336).
- * @param {HTMLElement} overlayEl - The open overlay container.
- * @param {KeyboardEvent} e - The Tab keydown event.
- * @returns {void}
- */
-function trapFocusInOverlay(overlayEl, e) {
-  const focusable = Array.from(
-    overlayEl.querySelectorAll(
-      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
-        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  ).filter((el) => el.offsetParent !== null && el.tabIndex >= 0); // tabindex="-1" is not in Tab order (#556)
-  if (focusable.length === 0) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (e.shiftKey) {
-    if (document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    }
-  } else {
-    if (document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }
-}
+// trapFocusInOverlay() was extracted to focus-utils.js (issue #336, extraction #17).
+// It is injected into this concatenated scope by build.js because focus-utils.js
+// is a LEAF_MODULE that precedes this file in the bundle order.

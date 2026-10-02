@@ -41,7 +41,7 @@ function loadFlatSortSandbox(overrides = {}) {
     viewDate: new Date(),
     pendingCollapsed: false,
     planCollapsed: false,
-    wlLog: { warn: () => {}, error: () => {}, info: () => {} },
+    wlLog: { debug: () => {}, warn: () => {}, error: () => {}, info: () => {} },
     validPlanTask: () => true,
     selectedTag: 'other',
     render: () => {},

@@ -35,14 +35,14 @@
 .jira-badge {
   font-size: 10px;
   padding: 2px 6px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   flex-shrink: 0;
   white-space: nowrap;
 }
 
 .jira-badge-new {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .jira-badge-dup {
@@ -61,13 +61,13 @@
 }
 
 .jira-badge-status-blocked {
-  background: rgba(198, 40, 40, 0.12);
-  color: #c62828;
+  background: var(--danger-bg);
+  color: var(--color-error);
 }
 
 .jira-badge-status-pending {
-  background: #faeeda;
-  color: #854f0b;
+  background: var(--warning-bg);
+  color: var(--warning-ink);
 }
 
 .jira-task-rows {
@@ -83,7 +83,7 @@
   gap: 9px;
   padding: 7px 10px;
   border-radius: var(--radius);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   cursor: pointer;
 }
 
@@ -137,7 +137,7 @@
 
 .plan-section {
   margin-bottom: 14px;
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -202,7 +202,7 @@
   flex: 1;
   font-size: 13px;
   font-family: var(--font);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 5px 10px;
   background: var(--bg);
@@ -222,7 +222,7 @@
   font-size: 12px;
   padding: 5px 12px;
   border-radius: var(--radius);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   cursor: pointer;
   background: var(--bg);
   color: var(--text2);
@@ -283,7 +283,7 @@
   font-family: var(--font);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
@@ -295,6 +295,11 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%23888' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   padding-right: 18px;
   margin-right: 8px;
+}
+
+.plan-status:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
 }
 
 .plan-status.todo {
@@ -373,7 +378,7 @@
   flex: 1;
   font-size: 11px;
   font-family: var(--font);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius);
   padding: 2px 7px;
   background: var(--bg);
@@ -472,8 +477,8 @@
 .plan-comment-history-badge {
   font-size: 9px;
   padding: 1px 6px;
-  border-radius: 99px;
-  border: 0.5px solid;
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   flex-shrink: 0;
@@ -545,7 +550,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  border-left: 0.5px solid var(--border);
+  border-left: var(--border-hairline) solid var(--border);
   padding-left: 6px;
   opacity: 0;
   transition: opacity 0.1s;
@@ -563,8 +568,8 @@
 .pcat-add-btn {
   font-size: 11px;
   padding: 2px 9px;
-  border-radius: 99px;
-  border: 0.5px dashed var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) dashed var(--border2);
   cursor: pointer;
   background: none;
   color: var(--text3);
@@ -591,7 +596,7 @@
   flex: 1;
   font-size: 11px;
   font-family: var(--font);
-  border: 0.5px solid var(--info-text);
+  border: var(--border-hairline) solid var(--info-text);
   border-radius: 3px;
   padding: 2px 6px;
   background: var(--bg);
@@ -730,8 +735,8 @@
 .plan-log-btn {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border2);
   cursor: pointer;
   background: none;
   color: var(--text3);
@@ -864,7 +869,7 @@
 
 /* ── TRACK RECENT strip ── */
 .plan-track-recent {
-  border-top: 0.5px solid var(--border);
+  border-top: var(--border-hairline) solid var(--border);
   margin-top: 4px;
   padding-top: 6px;
 }
@@ -889,8 +894,8 @@
   align-items: center;
   gap: 5px;
   background: none;
-  border: 0.5px solid var(--border2);
-  border-radius: 99px;
+  border: var(--border-hairline) solid var(--border2);
+  border-radius: var(--radius-pill);
   padding: 3px 9px;
   font-size: 11px;
   color: var(--text2);
@@ -926,7 +931,7 @@
 
 .kb-col {
   background: var(--bg2);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-lg);
   padding: 10px;
   min-width: 0;
@@ -955,7 +960,7 @@
   gap: 6px;
   padding-bottom: 8px;
   margin-bottom: 8px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .kb-col__dot {
@@ -1007,7 +1012,7 @@
   margin-bottom: 7px;
   border-radius: var(--radius);
   background: #fef3c7;
-  border: 0.5px solid #fde68a;
+  border: var(--border-hairline) solid #fde68a;
   font-size: 11px;
   color: #92400e;
 }
@@ -1049,7 +1054,7 @@
   font-size: 11px;
   font-family: var(--font);
   color: #047857;
-  border: 0.5px dashed #a7f3d0;
+  border: var(--border-hairline) dashed #a7f3d0;
   border-radius: var(--radius);
   background: transparent;
   cursor: pointer;
@@ -1090,7 +1095,7 @@
 /* Card appearance: white card with colored left accent border (status via position + border) */
 .kb-cards .plan-item {
   background: var(--bg);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-left: 3px solid var(--border2);
   border-radius: 5px;
   padding: 6px 8px;
@@ -1144,7 +1149,7 @@
   min-width: 0;
   font-size: 10px;
   padding: 2px 8px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background-image: none;
   margin-right: 6px;
 }
@@ -1228,7 +1233,7 @@
   display: flex;
   gap: 3px;
   background: var(--bg2);
-  border: 0.5px solid var(--border);
+  border: var(--border-hairline) solid var(--border);
   border-radius: var(--radius-lg);
   padding: 3px;
 }
@@ -1264,8 +1269,8 @@
   font-size: 10px;
   color: var(--text3);
   background: var(--bg);
-  border: 0.5px solid var(--border);
-  border-radius: 99px;
+  border: var(--border-hairline) solid var(--border);
+  border-radius: var(--radius-pill);
   padding: 0 6px;
   min-width: 18px;
   text-align: center;
@@ -1310,7 +1315,7 @@
   text-align: left;
   font-family: var(--font);
   background: var(--live-softer);
-  border: 0.5px solid var(--live);
+  border: var(--border-hairline) solid var(--live);
   border-left: 3px solid var(--live);
   border-radius: var(--radius);
   padding: 8px 10px;
@@ -1466,7 +1471,7 @@
   button {
     font-size: 11px;
     padding: 2px 8px;
-    border-radius: 99px;
+    border-radius: var(--radius-pill);
     border: 1px solid var(--border2);
     background: none;
     cursor: pointer;

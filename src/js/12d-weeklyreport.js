@@ -21,6 +21,7 @@ import {
 import { mondayOfWeek, fmtDurLong } from './pure-fns-format.js';
 import { wlLog } from './logger.js';
 import { getEntries } from './state.js';
+import { trapFocusInOverlay } from './focus-utils.js';
 
 // Element that had focus when the report was opened, restored on close —
 // same convention as the gap-report modal in 12c-gapreport.js.
@@ -114,40 +115,6 @@ export function copyWeeklyReportText() {
     .catch((err) => {
       wlLog.warn('copyWeeklyReportText: clipboard write failed', err);
     });
-}
-
-/**
- * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
- * Wraps forward from the last focusable element back to the first (Tab) and
- * backward from the first to the last (Shift-Tab). Private to this module
- * because 12d-weeklyreport.js is a leaf ES module and cannot import from the
- * concatenated 02-utils.js where the shared copy lives; consolidate into a
- * proper shared leaf module when 12c-gapreport.js is also extracted (#336).
- * @param {HTMLElement} overlayEl - The open overlay container.
- * @param {KeyboardEvent} e - The Tab keydown event.
- * @returns {void}
- */
-function trapFocusInOverlay(overlayEl, e) {
-  const focusable = Array.from(
-    overlayEl.querySelectorAll(
-      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
-        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  ).filter((el) => el.offsetParent !== null && el.tabIndex >= 0); // tabindex="-1" is not in Tab order (#556)
-  if (focusable.length === 0) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (e.shiftKey) {
-    if (document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    }
-  } else {
-    if (document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }
 }
 
 /**

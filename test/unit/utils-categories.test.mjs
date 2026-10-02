@@ -143,7 +143,6 @@ describe('getCat / getCatColor — colour sanitisation', () => {
       categories: [{ id: 'work', label: 'Work', color: '"><script>alert(1)</script>' }],
     });
     assert.equal(sandbox.getCatColor('work'), '#888780');
-    assert.ok(!sandbox.getCatColor('work').includes('<script>'));
   });
 
   it('getCatColor() passes a legitimate hex colour through unchanged', () => {

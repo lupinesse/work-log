@@ -30,12 +30,12 @@ function isWithinRetentionWindow(date, cutoffDate) {
  * The cutoff is computed from `nowMs` so the function stays pure and testable.
  *
  * @param {Array<{date: (string|undefined)}>} entries - Raw entries array from localStorage.
- * @param {number} retentionDays - How many days back to keep (e.g. 90).
+ * @param {number} retentionDays - How many days back to keep (the app uses 21).
  * @param {number} nowMs - Current time as a Unix timestamp in milliseconds.
  * @returns {{ retainedEntries: Array, dropped: number }} The filtered entries
  *   and count of dropped ones.
  * @example
- * applyBackupRetention(entries, 90, Date.now())
+ * applyBackupRetention(entries, 21, Date.now())
  * // → { retainedEntries: [...], dropped: 12 }
  */
 export function applyBackupRetention(entries, retentionDays, nowMs) {

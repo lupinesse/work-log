@@ -173,7 +173,7 @@ function exportBackup() {
     const total = droppedPairs.reduce((sum, [, n]) => sum + n, 0);
     const detail = droppedPairs.map(([label, n]) => `${label}: ${n}`).join(', ');
     wlLog.info(
-      `exportBackup: excluded ${total} record${total === 1 ? '' : 's'} older than ${BACKUP_RETENTION_DAYS} days (${detail})`
+      `exportBackup: excluded ${total} record${total === 1 ? '' : 's'} outside the ${BACKUP_RETENTION_DAYS}-day retention window or with a missing/invalid date (${detail})`
     );
   }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

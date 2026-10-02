@@ -171,8 +171,9 @@ async function fetchClaudeIssueComments() {
     // Gate the footer fallback on !isSynthesis so a synthesis comment that
     // happens to mention claude.ai/claude-code (current attribution doesn't,
     // but attribution wording can drift) is never mis-classified as the final
-    // /pr-review verdict. The HTML marker stays a primary signal regardless
-    // because it's only injected by the pr-review-comment workflow step.
+    // /pr-review verdict. The HTML marker is the primary signal because it's
+    // only injected by the pr-review-comment workflow step; it is still
+    // subject to the !isSynthesis gate below like the footer fallback.
     if (
       !finalReview &&
       !isSynthesis &&
