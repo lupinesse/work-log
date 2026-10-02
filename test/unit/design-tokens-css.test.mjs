@@ -18,7 +18,7 @@ const compiledCss = compile(join(__dirname, '../../src/css/styles.scss')).css;
  * @returns {string|null} Text between the braces, or null when there is no such rule.
  */
 function ruleBody(selector) {
-  const escaped = selector.replace(/[.:]/g, '\\$&');
+  const escaped = selector.replace(/[\\.:]/g, '\\$&');
   const match = compiledCss.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`));
   return match ? match[1] : null;
 }
