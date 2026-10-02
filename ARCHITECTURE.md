@@ -534,7 +534,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (441 lines) — Miscellaneous Features
+#### **12-misc.js** (447 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
