@@ -227,6 +227,11 @@
   outline: none;
 }
 
+.emoji-picker-input:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
+}
+
 .emoji-picker-grid {
   display: flex;
   flex-wrap: wrap;

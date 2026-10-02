@@ -211,6 +211,13 @@
   padding: 2px 0;
 }
 
+/* Same ring as .date-nav-location:focus-visible; the outline is removed above
+   because the field has no border to show focus (WCAG 2.4.7). */
+.cp-add-input:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
+}
+
 .cp-add-input::placeholder {
   color: var(--text3);
 }
