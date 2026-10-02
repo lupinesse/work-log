@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **CI scripts: `github-threads.mjs` error messages are now uniform and include the function name (#588)** — all eleven throw sites in `.github/scripts/lib/github-threads.mjs` now use the pattern `<functionName> HTTP <status>: <body>` and `<functionName> GraphQL errors: <json>`, so every failure in a CI job log names the exact operation that failed without needing to consult the source file.
+
 ### Fixed
 - **Time-block, emoji-picker and meeting buttons now say which block or meeting they act on (#598)** — the `×` delete, `✦` emoji and `▶ start` buttons on planned blocks, the emoji options, and the `▶ start` / `✕` buttons in the meeting strip were announced identically on every row (WCAG 4.1.2 / 2.4.6). Each now has an `aria-label` that includes the block or meeting text (e.g. "Delete block: Write report", "Select 😀"). The button markup moved into `buildBlockActionButtonsHtml()`, `createEmojiOptionButton()` and `buildMeetingButtonsHtml()` so it is unit-tested.
 - **Monthly calendar derives its own `YYYY-MM` prefix (#587 follow-up)** — `buildMonthlyCalendarHtml()` and `renderMonthlyCalendar()` took `monthPrefix` as a parameter even though it is a pure function of `year` and `month`, so a caller could pass a prefix that disagreed with them. Both now compute it through a new `mlMonthPrefix()`, which `renderMonthlyLog()` also uses for the summary and task panels. No behaviour change. 1 test in `test/unit/monthlylog-calendar.test.mjs`.
