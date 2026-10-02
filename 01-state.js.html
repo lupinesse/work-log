@@ -81,7 +81,7 @@ function createCategory(rawLabel) {
 
 // viewDate lives in state.js (#423) — getViewDate()/setViewDate().
 // selectedTag lives in state.js (#423) — getSelectedTag()/setSelectedTag().
-let logNotes = [];
+// logNotes lives in state.js (#423) — getLogNotes()/setLogNotes().
 // entries lives in state.js (#423) — getEntries()/setEntries().
 // activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
 // timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
@@ -162,15 +162,15 @@ function load() {
 function loadLogNotes() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
-    logNotes = Array.isArray(raw) ? raw : [];
+    setLogNotes(Array.isArray(raw) ? raw : []);
   } catch (err) {
-    logNotes = [];
+    setLogNotes([]);
     wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', err);
   }
 }
 
 function saveLogNotes() {
-  localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
+  localStorage.setItem(STORE_LOGNOTES, JSON.stringify(getLogNotes()));
 }
 
 // save(), showSaveFailureBanner(), and hideSaveFailureBanner() have been
