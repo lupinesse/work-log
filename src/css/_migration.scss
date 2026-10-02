@@ -116,7 +116,7 @@
 }
 
 .mig-schedule {
-  color: #ef9f27;
+  color: var(--sig-flagged);
   border-color: rgba(239, 159, 39, 0.3);
 }
 
@@ -127,14 +127,14 @@
 
 .mig-done-icon {
   font-size: 28px;
-  color: #1d9e75;
+  color: var(--success-ink);
   margin-bottom: 6px;
 }
 
 .mig-done-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1d9e75;
+  color: var(--success-ink);
 }
 
 .mig-done-sub {
