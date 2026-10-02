@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (542 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -158,7 +158,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **entry-billable.js** (34 lines) — Entry Billable Rule (LEAF MODULE)
+#### **entry-billable.js** (60 lines) — Entry Billable Rule (LEAF MODULE)
 **Responsibility**: Implements the three-tier billable lookup that determines whether a log entry counts as billable time: (1) entry-level `billable` flag, (2) matching plan-task `billable` flag, (3) category default. Cancelled entries are always non-billable. Also exports `roundToNearest30IfBillable`, which rounds a timestamp to the nearest 30-minute mark only when the entry is billable, unblocking its use from other leaf modules. Extracted from `05-entries.js` (for `isEntryBillable`) and `02-utils.js` (for `roundToNearest30IfBillable`) as issue #336, extraction #19.
 
 **Exports**: `isEntryBillable`, `roundToNearest30IfBillable`
