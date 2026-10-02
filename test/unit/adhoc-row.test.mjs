@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const timelineSrc = readFileSync(join(__dirname, '../../src/js/04c-render-timeline.js'), 'utf8');
 
@@ -45,7 +45,10 @@ describe('bindAdHocRow keyboard handling (jsdom)', () => {
     input = dom.window.document.getElementById('tlAdHocInput');
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
 
   it('commits the typed text as a new entry on Enter', () => {
     input.value = '  write tests ';

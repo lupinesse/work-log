@@ -17,6 +17,16 @@ function mlDaysInMonth(y, m) {
 }
 
 /**
+ * Builds the `YYYY-MM` prefix that entries and tasks are matched against.
+ * @param {number} year - Full year (e.g. 2026).
+ * @param {number} month - Month index, 0-based (0 = January).
+ * @returns {string} Zero-padded prefix, e.g. `2026-05`.
+ */
+function mlMonthPrefix(year, month) {
+  return `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+/**
  * Sums tracked milliseconds for all non-cancelled entries on a given day.
  * @param {string} dateKey
  * @returns {number} Total hours (as a float).
@@ -56,10 +66,10 @@ function mlHeatColor(hours) {
  *
  * @param {number} year - Full year to render.
  * @param {number} month - Month index, 0-based.
- * @param {string} monthPrefix - `YYYY-MM` prefix for the month, used to build each cell's date key.
  * @returns {string} HTML for the calendar container's contents.
  */
-function buildMonthlyCalendarHtml(year, month, monthPrefix) {
+function buildMonthlyCalendarHtml(year, month) {
+  const monthPrefix = mlMonthPrefix(year, month);
   const days = mlDaysInMonth(year, month);
   const firstDow = new Date(year, month, 1).getDay(); // 0 = Sun
   const offset = (firstDow + 6) % 7; // shift to Mon-start
@@ -173,11 +183,10 @@ function bindMonthlyCalendarEvents(calEl) {
  * @param {HTMLElement} calEl - The `#mlCalendar` container.
  * @param {number} year - Full year to render.
  * @param {number} month - Month index, 0-based.
- * @param {string} monthPrefix - `YYYY-MM` prefix for the month.
  * @returns {void}
  */
-function renderMonthlyCalendar(calEl, year, month, monthPrefix) {
-  calEl.innerHTML = buildMonthlyCalendarHtml(year, month, monthPrefix);
+function renderMonthlyCalendar(calEl, year, month) {
+  calEl.innerHTML = buildMonthlyCalendarHtml(year, month);
   bindMonthlyCalendarEvents(calEl);
 }
 
@@ -287,9 +296,9 @@ function renderMonthlyLog() {
   const taskEl = document.getElementById('mlTasks');
   if (!calEl) return;
 
-  const monthPrefix = `${_mlYear}-${String(_mlMonth + 1).padStart(2, '0')}`;
+  const monthPrefix = mlMonthPrefix(_mlYear, _mlMonth);
 
-  renderMonthlyCalendar(calEl, _mlYear, _mlMonth, monthPrefix);
+  renderMonthlyCalendar(calEl, _mlYear, _mlMonth);
   renderMonthlySummary(sumEl, monthPrefix);
   renderMonthlyTasks(taskEl, monthPrefix);
 }
