@@ -114,6 +114,21 @@ describe('End of Day timesheet form', () => {
     assert.match(elements.eodTimesheetStatus.textContent, /copied/);
   });
 
+  it('keeps emoji out of the aria-live status text (regression, #545)', async () => {
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      clipboard: {
+        writeText: async () => {
+          throw new Error('denied');
+        },
+      },
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    await elements.eodTimesheetCopy.listeners.click();
+    assert.doesNotMatch(elements.eodTimesheetStatus.textContent, /\p{Extended_Pictographic}/u);
+  });
+
   it('tells the user to copy manually when the clipboard API is missing', async () => {
     // navigator.clipboard is undefined on non-secure pages, so writeText itself is absent.
     const { sandbox, elements } = loadSandbox({

@@ -23,11 +23,14 @@
  *   MODEL              default 'gpt-4o-2024-08-06'
  *   PROMPT             default = the project's review brief (below)
  *   MAX_DIFF_CHARS     default 30000 — truncate larger diffs
- *   MAX_TOKENS         default '3072'
+ *   MAX_COMPLETION_TOKENS  default 3072 (legacy name MAX_TOKENS still read, deprecated)
  *   DIFF_PATH          default 'pr.diff'
  */
 
 import { readFileSync } from 'node:fs';
+import { readMaxCompletionTokens } from './lib/max-completion-tokens.mjs';
+import { formatTokenUsage } from './lib/format-token-usage.mjs';
+import { parseRepository } from './lib/parse-repository.mjs';
 import {
   addReactionToComment,
   fetchAllThreads,
@@ -62,13 +65,13 @@ const must = (key) => {
 
 const OPENAI_API_KEY = must('OPENAI_API_KEY');
 const GITHUB_TOKEN = must('GITHUB_TOKEN');
-const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
+const { owner: OWNER, repo: REPO } = parseRepository(must('GITHUB_REPOSITORY'));
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 
 const MODEL = process.env.MODEL || 'gpt-4o-2024-08-06';
 const MAX_DIFF_CHARS = parseInt(process.env.MAX_DIFF_CHARS || '30000', 10);
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '3072', 10);
+const MAX_COMPLETION_TOKENS = readMaxCompletionTokens(process.env, 3072);
 const DIFF_PATH = process.env.DIFF_PATH || 'pr.diff';
 
 const ATTRIBUTION = `*Automated review by ChatGPT \`${MODEL}\` · commit \`${HEAD_SHA.slice(0, 7)}\`*`;
@@ -143,7 +146,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.2,
-      max_completion_tokens: MAX_TOKENS,
+      max_completion_tokens: MAX_COMPLETION_TOKENS,
       messages: [
         { role: 'system', content: PROMPT },
         { role: 'user', content: userContent },
@@ -154,11 +157,7 @@ async function reviewWithOpenAI(diff, existingThreads) {
   if (!response.ok) die(`OpenAI API ${response.status}: ${await response.text()}`);
   const data = await response.json();
   if (data.error) die(`OpenAI API error (${data.error.code}): ${data.error.message}`);
-  const usage = data.usage ?? {};
-  console.log(
-    `  tokens: ${usage.prompt_tokens ?? '?'} in / ${usage.completion_tokens ?? '?'} out` +
-      (usage.total_tokens != null ? ` / ${usage.total_tokens} total` : '')
-  );
+  console.log(formatTokenUsage(data.usage));
   return (data.choices?.[0]?.message?.content || '').trim();
 }
 

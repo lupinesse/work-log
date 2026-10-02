@@ -273,8 +273,7 @@ function bindTimelineEntryEvents(timelineEl) {
       }
       const category = createCategory(input.value);
       if (!category) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const entry = getEntries().find((logEntry) => logEntry.id === btn.dataset.id);

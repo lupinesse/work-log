@@ -238,3 +238,10 @@ body {
   padding: 0 2px;
   flex-shrink: 0;
 }
+
+/* Marks a text input whose value was rejected (duplicate or unusable epic
+   name). Element-qualified so it outranks the single-class border rules of
+   the inline inputs regardless of partial order. Toggled by markInputInvalid(). */
+input.input--invalid {
+  border-color: var(--color-error);
+}

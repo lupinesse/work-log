@@ -103,11 +103,11 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (93 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (94 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
-- `pure-fns-format.js` (234 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
+- `pure-fns-format.js` (248 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
 - `pure-fns-export.js` (309 lines) — Billable-export grouping and merging: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `computeDayBounds`, `isWorkdayLikelyOver`, `buildTaskNoteMap`, `buildEntryNoteMap`, `buildEntryLinkMap`, `mergeNoteMaps`
 - `pure-fns-gapreport.js` (194 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
 - `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (511 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (539 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -167,7 +167,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04b-render-stats.js** (149 lines) — Header Stat Tiles (LEAF MODULE)
+#### **04b-render-stats.js** (154 lines) — Header Stat Tiles (LEAF MODULE)
 **Responsibility**: Renders the three header stat tiles (distinct tasks today / distinct epics this week / current streak) and the three sub-stat tiles beneath them (top task today / top task this week / best streak day). Reads entries via `getEntries()` from `state.js`; pure rendering with no side-effects beyond DOM writes. Extracted from the render-family concat (issue #336) — the thirteenth ES-module extraction. The only former blocker was `calcStreak()`, which was itself extracted to `pure-fns-format.js` as a pure function in the same PR.
 
 **Exports**: `renderHeaderStatTiles`, `renderSubStatTiles`
@@ -209,8 +209,8 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (149 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
-- `04c-render-timeline.js` (437 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04b-render-stats.js` (154 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
+- `04c-render-timeline.js` (436 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -419,7 +419,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (169 lines) — Task Management
+#### **10-tasks.js** (172 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -466,7 +466,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (335 lines) — Task Event Binding
+#### **10b-tasks-events.js** (334 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -551,7 +551,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (261 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (275 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
@@ -725,7 +725,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **26-gofore-timesheet.js** (121 lines) — Gofore Timesheet
+#### **26-gofore-timesheet.js** (123 lines) — Gofore Timesheet
 **Responsibility**: End-of-day Gofore timesheet form — renders a draft entry from the day's tracked time, supports clipboard copy, and posts to the local PowerShell server's `/api/gofore-timesheet` endpoint for submission via a saved browser session.
 
 **Key export**: `renderEodTimesheet(dateKey)`
