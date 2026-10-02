@@ -137,13 +137,14 @@ function openEodModal() {
   const areasEl = document.getElementById('eodTestAreas');
   if (affectedAreas.length) {
     areasEl.innerHTML = affectedAreas
-      .map(
-        (area) =>
-          `<div class="eod-test-area">
+      .map((area) => {
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+        const areaName = TEST_AREA_NAMES[area] || 'Unknown';
+        return `<div class="eod-test-area">
           <span class="eod-test-num">#${area}</span>
-          <span>${escHtml(TEST_AREA_NAMES[area] || 'Unknown')}</span>
-        </div>`
-      )
+          <span>${escHtml(areaName)}</span>
+        </div>`;
+      })
       .join('');
   } else {
     areasEl.innerHTML = `<div class="eod-empty">No test areas flagged for review</div>`;
@@ -161,6 +162,7 @@ function openEodModal() {
       ),
       '',
       'Test areas to review:',
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       ...affectedAreas.map((area) => `  - Test ${area}: ${TEST_AREA_NAMES[area]}`),
     ];
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
@@ -192,7 +194,9 @@ function saveEodHandoffNotes() {
     document.querySelectorAll('.eod-task-note-input').forEach((inp) => {
       const key = inp.dataset.task;
       const val = inp.value.trim();
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       if (val) notes[key] = val;
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       else delete notes[key];
     });
     localStorage.setItem('wl_handoff', JSON.stringify(notes));

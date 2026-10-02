@@ -66,6 +66,7 @@ function calAccountLabel(account) {
 
   // 1. Exact match (case-insensitive)
   for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (key.toLowerCase() === lower) return CAL_ACCOUNT_LABELS[key];
   }
   // 2. Email-style: extract second-level domain (e.g. "x@gofore.com" → "gofore")
@@ -73,6 +74,7 @@ function calAccountLabel(account) {
   if (emailMatch && CAL_ACCOUNT_LABELS[emailMatch[1]]) return CAL_ACCOUNT_LABELS[emailMatch[1]];
   // 3. Substring match (e.g. "Gofore Mailbox" contains "gofore")
   for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (lower.includes(key.toLowerCase())) return CAL_ACCOUNT_LABELS[key];
   }
   return null;

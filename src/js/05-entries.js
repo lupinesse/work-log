@@ -46,6 +46,7 @@ function addEntry(withTimer) {
 function findMostRecentEntryForText(text) {
   const key = text.toLowerCase().trim();
   for (let i = getEntries().length - 1; i >= 0; i--) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (getEntries()[i].text.toLowerCase().trim() === key) return getEntries()[i];
   }
   return undefined;

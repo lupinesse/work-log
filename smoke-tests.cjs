@@ -29,6 +29,7 @@ function startServer() {
           return;
         }
         const ext = path.extname(file);
+        // eslint-disable-next-line security/detect-object-injection -- MIME is a static map keyed by path.extname(), not user-controlled input
         res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
         res.end(data);
       });

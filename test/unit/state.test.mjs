@@ -139,6 +139,7 @@ describe('load() — entries', () => {
     const sandbox = loadStateSandbox({
       entries: seedEntries,
       activeTimer: seedActiveTimer,
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
       wlLog: {
         warn: (message) => warnings.push(message),
@@ -210,6 +211,7 @@ describe('load() — categories', () => {
   function loadWithCategoryStore(store) {
     const warnings = [];
     const sandbox = loadStateSandbox({
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
       wlLog: {
         warn: (message) => warnings.push(message),
@@ -261,6 +263,7 @@ describe('loadLogNotes()', () => {
     const warnings = [];
     const sandbox = loadStateSandbox({
       logNotes: seedNotes,
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
       wlLog: {
         warn: (message) => warnings.push(message),
@@ -330,6 +333,7 @@ describe('load() — activeTimer', () => {
     const errors = [];
     const sandbox = loadStateSandbox({
       activeTimer: seedActiveTimer,
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       localStorage: { getItem: (key) => store[key] ?? null, setItem: () => {} },
       wlLog: {
         warn: (message) => warnings.push(message),

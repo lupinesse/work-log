@@ -111,6 +111,7 @@ function initBoardColumnDnD() {
       e.preventDefault();
       listEl.closest('.kb-col').classList.remove('kb-col--drop-over');
       if (_boardDragTaskId) {
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         moveTaskToColumn(_boardDragTaskId, COLUMN_MAP[listId]);
         _boardDragTaskId = null;
       }

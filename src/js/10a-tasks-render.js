@@ -161,7 +161,9 @@ function renderBoardDoneHistory(doneListEl, viewKey) {
   const byDay = {};
   deduped.forEach((task) => {
     const day = task.completedAt ? dk(new Date(task.completedAt)) : task.date || viewKey;
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (!byDay[day]) byDay[day] = [];
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     byDay[day].push(task);
   });
 

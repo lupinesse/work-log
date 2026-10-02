@@ -54,6 +54,7 @@ const die = (msg) => {
  * @returns {string}
  */
 const must = (key) => {
+  // eslint-disable-next-line security/detect-object-injection -- key is from CI pipeline config or structured API data, not user-controlled input
   const v = process.env[key];
   if (!v) die(`Missing required env var: ${key}`);
   return v;

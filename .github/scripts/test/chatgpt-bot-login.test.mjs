@@ -57,6 +57,7 @@ async function runScript(body, { github, context, env }) {
   const core = {
     info: () => {},
     setOutput: (name, value) => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       outputs[name] = value;
     },
     setFailed: (message) => failures.push(message),

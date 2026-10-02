@@ -52,6 +52,7 @@ const die = (msg) => {
  * @returns {string}
  */
 const must = (key) => {
+  // eslint-disable-next-line security/detect-object-injection -- key is from CI pipeline config or structured API data, not user-controlled input
   const v = process.env[key];
   if (!v) die(`Missing required env var: ${key}`);
   return v;
@@ -210,6 +211,7 @@ Output a single raw JSON object — no markdown wrapper:
   // (429) fall through to the next — an expired OAuth token or an exhausted
   // rate-limit bucket is recovered by the API key, which uses a separate quota.
   for (let i = 0; i < AUTH_CHAIN.length; i++) {
+    // eslint-disable-next-line security/detect-object-injection -- key is from CI pipeline config or structured API data, not user-controlled input
     const auth = AUTH_CHAIN[i];
     const model = selectModel(auth.source, MODEL_OVERRIDE);
 

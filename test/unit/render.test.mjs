@@ -39,6 +39,7 @@ function loadEntryMetaSandbox(overrides = {}) {
   if (!match) throw new Error('buildEntryMetaHtml block not found in 04a-render-entry-meta.js');
   const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const sandbox = {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     escHtml: (s) => String(s).replace(/[&<>"']/g, (c) => escapeMap[c]),
     _pendingNoteConfirm: null,
     ...overrides,
@@ -178,6 +179,7 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
       value: '',
       disabled: false,
       addEventListener(type, handler) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         (this._listeners[type] = this._listeners[type] || []).push(handler);
       },
       focus() {},
@@ -198,6 +200,7 @@ describe('regression: ad-hoc log row binds even when render() takes the empty-st
    */
   function makeRenderSandbox(overrides = {}) {
     const elements = {};
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     const getElementById = (id) => (elements[id] ??= makeMockElement());
     const sb = {
       entries: [],
@@ -370,6 +373,7 @@ describe('regression: timeline time-editor inputs have accessible labels (#429)'
    */
   function makeTimelineSandbox() {
     const elements = {};
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     const getElementById = (id) => (elements[id] ??= makeMockTimelineElement());
     const sb = {
       entries: [],
@@ -447,9 +451,11 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
       _attrs: {},
       style: {},
       setAttribute(name, value) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         this._attrs[name] = value;
       },
       getAttribute(name) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         return this._attrs[name];
       },
       appendChild() {},
@@ -500,6 +506,7 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
       setAttribute() {},
       appendChild() {},
       addEventListener(type, handler) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         handlers[type] = handler;
       },
     };

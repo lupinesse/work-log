@@ -184,8 +184,10 @@ function findLargestGap(dateKey) {
 
   // Internal gaps between consecutive completed entries
   for (let i = 0; i < timed.length - 1; i++) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     const gapMin = Math.floor((timed[i + 1].ts - timed[i].tsEnd) / 60000);
     if (gapMin >= 15 && (!largest || gapMin > largest.gapMin)) {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       largest = { startTs: timed[i].tsEnd, endTs: timed[i + 1].ts, gapMin };
     }
   }
@@ -267,6 +269,7 @@ function renderFlowHeader(dateKey, activeView) {
   // Roving tabindex: only the active tab is in the tab order; arrows move within.
   const segHtml = TF_VIEWS.map((view) => {
     const isActive = view === activeView;
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     return `<button type="button" role="tab" class="tf-seg-btn${isActive ? ' active' : ''}" data-view="${view}" id="tfTab-${view}" aria-selected="${isActive}" aria-controls="${TF_PANE_IDS[view]}" tabindex="${isActive ? '0' : '-1'}">${TF_VIEW_LABELS[view]}</button>`;
   }).join('');
 
@@ -293,7 +296,9 @@ function partitionSessionNotes(allItems) {
       wlLog.warn('partitionSessionNotes: orphaned session-note discarded, id=' + item.id);
       return false;
     }
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (!sessionNotesByEntry[pid]) sessionNotesByEntry[pid] = [];
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     sessionNotesByEntry[pid].push(item);
     return false;
   });
@@ -551,6 +556,7 @@ function renderTodayFlow() {
  * @param {number} nextIndex
  */
 function focusTabAt(nextIndex) {
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const view = TF_VIEWS[nextIndex];
   setFlowView(view);
   renderTodayFlow();

@@ -99,7 +99,7 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
       'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
@@ -114,9 +114,8 @@ export default [
   // still reported. caughtErrors:'none' allows `catch (err)` fallbacks that do not
   // inspect the error (paired with the allowEmptyCatch policy below). Cross-file dead
   // top-level symbols are found with the dead-code skill, not this rule.
-  // detect-object-injection is disabled: bracket-notation on internal state arrays
-  // (entries, categories, planTasks) is intentional and the data is never from
-  // untrusted external input at that point.
+  // detect-object-injection: warn (not off) so new bracket-notation sites with
+  // untrusted keys are caught; existing sites carry per-line disable comments.
   {
     files: ['src/js/*.js'],
     ignores: [
@@ -157,7 +156,7 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
       'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
@@ -167,8 +166,8 @@ export default [
   // sharing this checkout (#268). They use Node globals (process, console).
   // detect-non-literal-fs-filename: lock paths are built from the git common
   // directory and a sanitised session id, never from untrusted input.
-  // detect-object-injection: the only bracket lookup is a static escape table
-  // keyed by a single character matched against that table first.
+  // detect-object-injection: warn (not off); existing sites carry per-line
+  // disable comments. The static escape-table lookup is documented there.
   {
     files: ['scripts/**/*.mjs'],
     languageOptions: {
@@ -180,7 +179,7 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
@@ -188,8 +187,8 @@ export default [
   // These power the chatgpt/claude PR-review pipeline. They use Node globals
   // (process, console, fetch). detect-non-literal-fs-filename: any file paths
   // here are derived from internal config or trusted CI output, not external
-  // input. detect-object-injection: bracket lookups key off internal source
-  // labels and parsed CI data, never untrusted user input at that point.
+  // input. detect-object-injection: warn (not off); existing sites carry
+  // per-line disable comments.
   {
     files: ['.github/scripts/**/*.mjs'],
     languageOptions: {
@@ -201,14 +200,15 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
   // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
   // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
   // detect-non-literal-fs-filename: paths come from internal config, not external input.
-  // detect-object-injection: MIME[ext] is a static lookup keyed by path.extname(), not user data.
+  // detect-object-injection: warn (not off); MIME[ext] and other existing sites
+  // carry per-line disable comments.
   {
     files: ['*.cjs', 'test/**/*.cjs', 'scripts/**/*.cjs'],
     languageOptions: {
@@ -219,13 +219,14 @@ export default [
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
   // ESM unit tests — run with Node's built-in test runner.
   // Includes browser globals because tests use vm.runInContext with browser-side code.
-  // detect-object-injection suppressed for the same reason as the cjs block above.
+  // detect-object-injection: warn (not off); test fixtures carry per-line
+  // disable comments.
   {
     files: ['test/**/*.mjs'],
     languageOptions: {
@@ -237,7 +238,7 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 

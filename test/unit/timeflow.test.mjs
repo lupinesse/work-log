@@ -40,14 +40,18 @@ function loadTimeflowSandbox(overrides = {}) {
     buildDailyLogItems: () => [],
     addLogNote: () => {},
     localStorage: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (k) => store[k] ?? null,
       setItem: (k, v) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         store[k] = v;
       },
       removeItem: (k) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         delete store[k];
       },
       clear: () => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         Object.keys(store).forEach((k) => delete store[k]);
       },
     },

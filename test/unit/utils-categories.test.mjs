@@ -45,6 +45,7 @@ function loadTagRowSandbox(overrides = {}) {
         focus: () => {},
         select: () => {},
         addEventListener: (type, handler) => {
+          // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
           el._listeners[type] = handler;
         },
       };
@@ -673,11 +674,13 @@ describe('markInputInvalid — rejected epic names (regression, #524)', () => {
       setAttribute: (name, value) => attributes.set(name, value),
       removeAttribute: (name) => attributes.delete(name),
       addEventListener: (type, handler) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         listeners[type] = handler;
       },
       focus() {
         this.focused = true;
       },
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       fire: (type) => listeners[type](),
     };
   }

@@ -52,8 +52,10 @@ function makePomoSandboxBase(extra = {}) {
     isToday: () => true,
     escHtml: (s) => String(s),
     localStorage: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (key) => store[key] ?? null,
       setItem: (key, val) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         store[key] = String(val);
       },
     },
