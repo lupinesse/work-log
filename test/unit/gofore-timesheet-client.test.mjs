@@ -10,7 +10,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
+import {
+  __dirname,
+  loadCatUtilsScriptSource,
+  loadPureFnsScriptSource,
+  withStateAccessors,
+} from './_helpers.mjs';
 
 const clientSrc = readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8')
   .replace(/^import\s[^;]*;\s*$/gm, '')
@@ -65,6 +70,7 @@ function loadSandbox(options) {
   };
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(loadPureFnsScriptSource(), sandbox);
+  vm.runInContext(loadCatUtilsScriptSource(), sandbox);
   vm.runInContext(clientSrc, sandbox);
   return { sandbox, elements };
 }
@@ -106,6 +112,21 @@ describe('End of Day timesheet form', () => {
     await elements.eodTimesheetCopy.listeners.click();
     assert.equal(copied, 'test execution (AITO-1: Flow)');
     assert.match(elements.eodTimesheetStatus.textContent, /copied/);
+  });
+
+  it('keeps emoji out of the aria-live status text (regression, #545)', async () => {
+    const { sandbox, elements } = loadSandbox({
+      entries: dayEntries,
+      fetch: async () => ({}),
+      clipboard: {
+        writeText: async () => {
+          throw new Error('denied');
+        },
+      },
+    });
+    sandbox.renderEodTimesheet('2026-09-30');
+    await elements.eodTimesheetCopy.listeners.click();
+    assert.doesNotMatch(elements.eodTimesheetStatus.textContent, /\p{Extended_Pictographic}/u);
   });
 
   it('tells the user to copy manually when the clipboard API is missing', async () => {

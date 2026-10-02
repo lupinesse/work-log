@@ -41,7 +41,7 @@ function loadFlatSortSandbox(overrides = {}) {
     viewDate: new Date(),
     pendingCollapsed: false,
     planCollapsed: false,
-    wlLog: { warn: () => {}, error: () => {}, info: () => {} },
+    wlLog: { debug: () => {}, warn: () => {}, error: () => {}, info: () => {} },
     validPlanTask: () => true,
     selectedTag: 'other',
     render: () => {},
@@ -72,6 +72,21 @@ describe('flatSort', () => {
     assert.equal(result[2].status, 'pending');
     assert.equal(result[3].status, 'blocked');
     assert.equal(result[4].status, 'done');
+  });
+
+  it('ranks upcoming tasks with todo (explicit, not the fallback) and ahead of pending', () => {
+    const { flatSort } = loadFlatSortSandbox();
+    const tasks = [
+      { id: '1', text: 'pending task', status: 'pending' },
+      { id: '2', text: 'b upcoming', status: 'upcoming' },
+      { id: '3', text: 'a todo', status: 'todo' },
+      { id: '4', text: 'c upcoming', status: 'upcoming', priority: 1 },
+    ];
+    assert.deepEqual(
+      Array.from(flatSort(tasks), (task) => task.id),
+      ['4', '3', '2', '1'],
+      'high-priority upcoming first, then todo/upcoming by text, then pending'
+    );
   });
 
   it('orders by priority within same status: high(1) > normal(0) > low(-1)', () => {

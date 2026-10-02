@@ -32,9 +32,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # bash -e aborts the step on a non-2xx from gh api before the "no PR"
-          # fallback runs; set +e/-e around the call lets a failed lookup take
-          # the same skip path as a PR-less run.
+          # Root cause: bash -e would abort the step on a non-2xx gh api
+          # response before the "no PR" fallback ran, so errexit is off here.
           set +e
           PR=$(gh api \
             "repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/pulls" \

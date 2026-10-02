@@ -167,9 +167,9 @@ jobs:
           # CLAUDE_REVIEWER_APP_ID configured) or fails (bad secret /
           # uninstalled App), so the review comment still gets posted.
           GH_TOKEN: ${{ steps.claude-token.outputs.token || github.token }}
-          # GH_REPO bypasses gh's git-based repo detection. Defence-in-depth:
-          # this step runs under always(), so if checkout failed earlier gh
-          # would otherwise call `git rev-parse` and crash with no repo found.
+          # GH_REPO bypasses gh's git-based repo detection. Defence in depth:
+          # if the checkout step failed (this step runs under always()), gh
+          # would otherwise call `git rev-parse` in a non-repo directory.
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
