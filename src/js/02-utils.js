@@ -510,34 +510,10 @@ function renderTagRow() {
 // isEntryBillable() and roundToNearest30IfBillable() have been extracted to
 // src/js/entry-billable.js (leaf ES module, issue #336, extraction #19).
 
-/**
- * Returns a rounded start timestamp that does not overlap any existing entry for today.
- * Prevents new entries from appearing to start before a prior entry's end time.
- * @returns {number} Unix timestamp in milliseconds.
- */
-function safeRoundedStart() {
-  const ts = roundToNearest30(Date.now());
-  const todayKey = dk(new Date());
-  const lastEnd = getEntries()
-    .filter((entry) => entry.date === todayKey && entry.tsEnd)
-    .reduce((max, e) => Math.max(max, e.tsEnd), 0);
-  return Math.max(ts, lastEnd);
-}
-
-/**
- * Returns entries for the currently viewed date, sorted newest-first by
- * start time (`ts`) — not by insertion order. This keeps retroactively
- * added entries (e.g. filling in a missed morning slot after the day is
- * already logged) positioned correctly rather than jumping to the top or
- * staying at the bottom based on when they were typed in.
- * @returns {Array<object>}
- */
-function viewEntries() {
-  return getEntries()
-    .filter((entry) => entry.date === dk(getViewDate()))
-    .slice()
-    .sort((a, b) => b.ts - a.ts);
-}
+// safeRoundedStart() and viewEntries() were extracted to entry-utils.js
+// (issue #336, extraction #18). They are injected into this concatenated scope
+// by build.js because entry-utils.js is a LEAF_MODULE that precedes this file
+// in the bundle order.
 /**
  * Tracks inputs that already have a pending clear-on-edit listener, so that
  * calling markInputInvalid() repeatedly before the user edits does not stack

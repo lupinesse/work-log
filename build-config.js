@@ -90,6 +90,8 @@ export const DEST_FILE = '.portable-dest';
  * extracted from `02-utils.js` (issue #336).
  * `26-gofore-timesheet.js` now imports `getCatLabel` from `cat-utils.js`, so
  * `cat-utils.js` must precede it in the list.
+ * `entry-utils.js` depends on `state.js` and `pure-fns.js` (for `dk` and
+ * `roundToNearest30`), so it is listed after both (issue #336, extraction #18).
  * `entry-billable.js` depends on `state.js`, `cat-utils.js`, and `pure-fns.js`,
  * so it is listed after all of them (issue #336, extraction #19).
  * Change the list here — build.js, vite.config.js, and build-portable.js all
@@ -119,6 +121,7 @@ export const LEAF_MODULES = [
   '12d-weeklyreport.js',
   'date-labels.js',
   'cat-utils.js',
+  'entry-utils.js',
   'entry-billable.js',
   '04b-render-stats.js',
   '12b-changelog-data.js',
