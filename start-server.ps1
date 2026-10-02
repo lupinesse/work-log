@@ -168,7 +168,7 @@ function Get-TodayMeetings {
             if ($adapterWorked) { return $item }
             try {
                 $item = Invoke-ComMethod -Target $collection -Name $member -Arguments $parameters
-                $dbg.lateBoundMembers++
+                $debugInfo.lateBoundMembers++
                 return $item
             } catch { return $null }
         }
@@ -179,7 +179,7 @@ function Get-TodayMeetings {
         # tracker as a parameter instead of calling it directly.
         $trackComRef = { param($ComObject) Add-ComRef $ComObject }
 
-        $dbg = [ordered]@{
+        $debugInfo = [ordered]@{
             storeCount        = 0
             storesSkipped     = 0
             foldersExcluded   = 0
@@ -193,8 +193,8 @@ function Get-TodayMeetings {
             unreadableItems   = 0
             exceptionsScanned = 0
             lookBackYears     = 0
-            pass1Error        = ''
-            pass2Error        = ''
+            pass1Error        = @()
+            pass2Error        = @()
             dateRange         = ''
             sep               = ''
             yearAnchor        = ''
@@ -213,16 +213,16 @@ function Get-TodayMeetings {
             # Filtering uses locale-independent year-boundary anchors (see Pass 1/2).
             # dateRange is kept in the debug payload using en-US strings for readability.
             $enUS = [Globalization.CultureInfo]::new('en-US')
-            $dbg.dateRange = "$($today.ToString('M/d/yyyy HH:mm', $enUS)) → $($tomorrow.ToString('M/d/yyyy HH:mm', $enUS))"
+            $debugInfo.dateRange = "$($today.ToString('M/d/yyyy HH:mm', $enUS)) → $($tomorrow.ToString('M/d/yyyy HH:mm', $enUS))"
             # Year anchors use the system locale's date separator so Outlook's MAPI
             # filter parser accepts the string.  Day=1 and month=1 are identical in
             # both d/M and M/d orderings, so the anchor date is locale-independent.
             $sep = [Globalization.CultureInfo]::CurrentCulture.DateTimeFormat.DateSeparator
-            $dbg.sep        = $sep
+            $debugInfo.sep        = $sep
             $yearAnchor     = Get-YearAnchor -Year $today.Year -Separator $sep
-            $dbg.yearAnchor = $yearAnchor
+            $debugInfo.yearAnchor = $yearAnchor
             $lookBack       = Get-CalendarLookBackYears -Requested $CalendarLookBackYears
-            $dbg.lookBackYears = $lookBack
+            $debugInfo.lookBackYears = $lookBack
 
             $seen    = @{}
             $results = [System.Collections.Generic.List[object]]::new()
@@ -231,7 +231,7 @@ function Get-TodayMeetings {
             $calFolders = @()
             $stores = Add-ComRef ($ns.Stores)
             foreach ($store in $stores) {
-                $dbg.storeCount++
+                $debugInfo.storeCount++
                 $storeType = try { [int]$store.ExchangeStoreType } catch { -1 }
                 # Determine account key (ASCII-safe, mapped to display label in JS)
                 $storeDisplay = try { $store.DisplayName } catch { '' }
@@ -240,11 +240,11 @@ function Get-TodayMeetings {
                 # Skip shared/delegate mailboxes and public-folder stores — only
                 # the user's own mailbox, its archive, and local stores are
                 # "personal" (see Test-PersonalCalendarStore).
-                if (-not (Test-PersonalCalendarStore -StoreType $storeType)) { $dbg.storesSkipped++; continue }
+                if (-not (Test-PersonalCalendarStore -StoreType $storeType)) { $debugInfo.storesSkipped++; continue }
                 # Skip a whole store the user named explicitly, e.g. a shared
                 # mailbox that happens to report as an ordinary mailbox type.
                 if (Test-CalendarNameExcluded -Name $storeDisplay -ExcludeNames $CalendarExcludeNames) {
-                    $dbg.storesSkipped++; continue
+                    $debugInfo.storesSkipped++; continue
                 }
 
                 $beforeCount = $calFolders.Count
@@ -255,7 +255,7 @@ function Get-TodayMeetings {
                     $defaultFolder     = Add-ComRef ($store.GetDefaultFolder(9))
                     $defaultFolderName = try { [string](Read-ComProperty $defaultFolder 'Name') } catch { '' }
                     if (Test-CalendarNameExcluded -Name $defaultFolderName -ExcludeNames $CalendarExcludeNames) {
-                        $dbg.foldersExcluded++
+                        $debugInfo.foldersExcluded++
                     } else {
                         $calFolders += @{ folder = $defaultFolder; label = $accountKey }
                     }
@@ -268,7 +268,7 @@ function Get-TodayMeetings {
                         try {
                             $folderName = [string](Read-ComProperty $folder 'Name')
                             if (Test-CalendarNameExcluded -Name $folderName -ExcludeNames $CalendarExcludeNames) {
-                                $dbg.foldersExcluded++
+                                $debugInfo.foldersExcluded++
                                 continue
                             }
                             $entryId      = Read-ComProperty $folder 'EntryID'
@@ -278,18 +278,18 @@ function Get-TodayMeetings {
                     }
                 } catch {}
 
-                $dbg.stores += [ordered]@{
+                $debugInfo.stores += [ordered]@{
                     name        = $storeDisplay
                     type        = $storeType
                     foldersFound = ($calFolders.Count - $beforeCount)
                 }
             }
 
-            $dbg.folderCount = $calFolders.Count
+            $debugInfo.folderCount = $calFolders.Count
             # Sub-folder names used to be listed here to reveal calendars the
             # single-level walk was missing; the walk now recurses into them, so
             # the folders themselves appear in this list instead.
-            $dbg.folders = @($calFolders | ForEach-Object {
+            $debugInfo.folders = @($calFolders | ForEach-Object {
                 $fn        = [string](Read-ComProperty $_.folder 'Name')
                 $itemCount = -1
                 try { $folderItems = Add-ComRef ($_.folder.Items); $itemCount = $folderItems.Count } catch {}
@@ -328,8 +328,8 @@ function Get-TodayMeetings {
                         try {
                             [void](Invoke-ComMethod -Target $items -Name 'Sort' -Arguments @('[Start]'))
                             $sortOk = $true
-                            $dbg.lateBoundMembers++
-                        } catch { $dbg.pass1Error += "Sort: $($_.Exception.Message); " }
+                            $debugInfo.lateBoundMembers++
+                        } catch { $debugInfo.pass1Error += "Sort: $($_.Exception.Message)" }
                     }
                     if ($sortOk) {
                         try { $items.IncludeRecurrences = $true; $incRecurOk = $true }
@@ -337,8 +337,8 @@ function Get-TodayMeetings {
                             try {
                                 Set-ComProperty -Target $items -Name 'IncludeRecurrences' -Value $true
                                 $incRecurOk = $true
-                                $dbg.lateBoundMembers++
-                            } catch { $dbg.pass1Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                                $debugInfo.lateBoundMembers++
+                            } catch { $debugInfo.pass1Error += "IncludeRecurrences: $($_.Exception.Message)" }
                         }
                     }
                     $useGetNext = $false  # overridden to $true in the GetFirst fallback below
@@ -349,13 +349,13 @@ function Get-TodayMeetings {
                     if ($null -eq $cur) {
                         Write-Host '[cal] Pass 1: using GetFirst fallback (Sort/IncludeRecurrences unavailable or Find returned null)' -ForegroundColor Yellow
                         $useGetNext = $true
-                        $dbg.pass1UsedGetFirst = $true
+                        $debugInfo.pass1UsedGetFirst = $true
                         $cur = Add-ComRef (Get-ComCursorItem $items 'GetFirst')
                     }
                     # Whether the walk ever started. A cursor that is null from the
                     # outset means Pass 1 contributed nothing, which Pass 2 has to
                     # know about even when the properties above were settable.
-                    if ($null -ne $cur) { $dbg.pass1Walked++ } else { $pass1Started = $false }
+                    if ($null -ne $cur) { $debugInfo.pass1Walked++ } else { $pass1Started = $false }
                     while ($null -ne $cur) {
                         $itemStart = Read-ComDate $cur 'Start'
                         $itemEnd   = Read-ComDate $cur 'End'
@@ -364,14 +364,14 @@ function Get-TodayMeetings {
                         # can no longer truncate the rest of the day.
                         $action = Get-ScanAction -Start $itemStart -End $itemEnd -Day $today -Sorted $incRecurOk
                         if ($action -eq 'stop') { break }
-                        if ($null -eq $itemStart) { $dbg.unreadableItems++ }
+                        if ($null -eq $itemStart) { $debugInfo.unreadableItems++ }
                         if ($action -eq 'take' -and
                             (Add-MeetingForDay -Item $cur -AccountKey $accountKey -Day $today -SeenKeys $seen -Sink $results)) {
-                            $dbg.pass1Count++
+                            $debugInfo.pass1Count++
                         }
                         $cur = Add-ComRef (Get-ComCursorItem $items $(if ($useGetNext) { 'GetNext' } else { 'FindNext' }))
                     }
-                } catch { $dbg.pass1Error += "$($_.Exception.Message); " }
+                } catch { $debugInfo.pass1Error += "$($_.Exception.Message)" }
 
                 # Pass 2 — plain appointments, and recurring series Pass 1 could not
                 # expand. IncludeRecurrences=false is the default; setting it
@@ -387,7 +387,7 @@ function Get-TodayMeetings {
                 # Degraded covers both shapes of failure: recurrences that could not
                 # be expanded, and a walk that never got a cursor to start from.
                 $pass1Degraded = (-not $incRecurOk) -or (-not $pass1Started)
-                if ($pass1Degraded) { $dbg.pass1Degraded++ }
+                if ($pass1Degraded) { $debugInfo.pass1Degraded++ }
                 $scanFromYear = if ($pass1Degraded) { $today.Year - $lookBack } else { $today.Year }
                 if ($pass1Degraded) {
                     Write-Host "[cal] '$folderName': pass 1 could not expand recurrences; pass 2 probing series from $scanFromYear" -ForegroundColor Yellow
@@ -398,8 +398,8 @@ function Get-TodayMeetings {
                     catch {
                         try {
                             Set-ComProperty -Target $items2 -Name 'IncludeRecurrences' -Value $false
-                            $dbg.lateBoundMembers++
-                        } catch { $dbg.pass2Error += "IncludeRecurrences: $($_.Exception.Message); " }
+                            $debugInfo.lateBoundMembers++
+                        } catch { $debugInfo.pass2Error += "IncludeRecurrences: $($_.Exception.Message)" }
                     }
                     $fromAnchor     = Get-YearAnchor -Year $scanFromYear -Separator $sep
                     $nextYearAnchor = Get-YearAnchor -Year ($today.Year + 1) -Separator $sep
@@ -412,9 +412,9 @@ function Get-TodayMeetings {
                     foreach ($item in $filtered) {
                         try {
                             $itemStart = Read-ComDate $item 'Start'
-                            if ($null -eq $itemStart) { $dbg.unreadableItems++; continue }
+                            if ($null -eq $itemStart) { $debugInfo.unreadableItems++; continue }
                             if (Add-MeetingForDay -Item $item -AccountKey $accountKey -Day $today -SeenKeys $seen -Sink $results) {
-                                $dbg.pass2Count++
+                                $debugInfo.pass2Count++
                                 continue
                             }
                             # Not itself on today — but a recurring series can still
@@ -423,15 +423,15 @@ function Get-TodayMeetings {
                             try { $isRecurring = [bool]$item.IsRecurring } catch {}
                             if (-not $isRecurring) { continue }
                             $occurrencesAdded = Add-RecurringOccurrence -Master $item -AccountKey $accountKey -Day $today `
-                                                        -SeenKeys $seen -Sink $results -Diagnostics $dbg -Track $trackComRef
-                            $dbg.pass2Count += $occurrencesAdded
+                                                        -SeenKeys $seen -Sink $results -Diagnostics $debugInfo -Track $trackComRef
+                            $debugInfo.pass2Count += $occurrencesAdded
                         } catch { continue }
                     }
-                } catch { $dbg.pass2Error += "$($_.Exception.Message); " }
+                } catch { $debugInfo.pass2Error += "$($_.Exception.Message)" }
             }
 
-            Write-Host "[cal] $($results.Count) meeting(s) from $($dbg.folderCount) calendar(s); pass1=$($dbg.pass1Count) pass2=$($dbg.pass2Count) degraded=$($dbg.pass1Degraded) unreadable=$($dbg.unreadableItems)" -ForegroundColor DarkGray
-            return @{ meetings = $results; debug = $dbg }
+            Write-Host "[cal] $($results.Count) meeting(s) from $($debugInfo.folderCount) calendar(s); pass1=$($debugInfo.pass1Count) pass2=$($debugInfo.pass2Count) degraded=$($debugInfo.pass1Degraded) unreadable=$($debugInfo.unreadableItems)" -ForegroundColor DarkGray
+            return @{ meetings = $results; debug = $debugInfo }
         } catch {
             return @{ error = $_.Exception.Message }
         } finally {

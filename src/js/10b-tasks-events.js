@@ -77,8 +77,7 @@ function bindPlanEvents(lists) {
       }
       const category = createCategory(input.value);
       if (!category) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const task = getPlanTasks().find((task) => task.id === btn.dataset.pid);
@@ -110,7 +109,7 @@ function bindPlanEvents(lists) {
   qa('.plan-status').forEach((sel) => {
     sel.addEventListener('change', () => {
       const planTasks = getPlanTasks();
-      const task = planTasks.find((task) => task.id === sel.dataset.pid);
+      const task = planTasks.find((planTask) => planTask.id === sel.dataset.pid);
       if (!task) return;
       const prevStatus = task.status;
       const newStatus = sel.value;

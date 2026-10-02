@@ -59,9 +59,13 @@ function tidyStaleEpics() {
 
 /**
  * Deletes the currently selected epic after confirming with the user, unless
- * it is a built-in (PROTECTED_CAT_IDS) — those are never offered for
- * deletion at all, since 'work' is the hardcoded startup/reset fallback and
- * 'other' is getCat()'s own fallback for unknown tags.
+ * it is a built-in (PROTECTED_CAT_IDS: work, meeting, focus, break, other) —
+ * those are never offered for deletion at all, since 'work' is the hardcoded
+ * startup/reset fallback and 'other' is getCat()'s own fallback for unknown
+ * tags. A selectedTag that matches no stored epic (stale after an import or
+ * a delete elsewhere) is also refused, because getCat() would silently
+ * substitute 'other' and the function would save and log a deletion that
+ * never happened.
  *
  * Unlike tidyStaleEpics()/archiving, this is a hard delete: the category
  * record itself is removed, not flagged. Any log entry or board task still
@@ -70,8 +74,8 @@ function tidyStaleEpics() {
  * left to restore. The confirm text says so explicitly and names how many
  * entries/tasks would be affected, mirroring tidyStaleEpics()'s pattern of
  * showing the user what is about to happen before it happens.
- * @returns {boolean} True if the epic was deleted, false if blocked or the
- *   user declined the confirm.
+ * @returns {boolean} True if the epic was deleted, false if blocked, unknown
+ *   or the user declined the confirm.
  */
 function deleteSelectedEpic() {
   const selectedTag = getSelectedTag();
@@ -80,6 +84,12 @@ function deleteSelectedEpic() {
       selectedTag,
     });
     window.alert(`"${getCatLabel(selectedTag)}" is a built-in epic and can't be deleted.`);
+    return false;
+  }
+  if (!getCategories().some((category) => category.id === selectedTag)) {
+    wlLog.warn('deleteSelectedEpic: selected epic does not exist, nothing deleted', {
+      selectedTag,
+    });
     return false;
   }
   const cat = getCat(selectedTag);
@@ -356,8 +366,7 @@ function bindTagRowEvents() {
           (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
         )
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const cat = getCategories().find((category) => category.id === id);
@@ -443,8 +452,7 @@ function bindTagRowEvents() {
       if (
         getCategories().find((category) => category.label.toLowerCase() === label.toLowerCase())
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const color = nextDistinctColor();
@@ -543,6 +551,42 @@ function viewEntries() {
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
+/**
+ * Tracks inputs that already have a pending clear-on-edit listener, so that
+ * calling markInputInvalid() repeatedly before the user edits does not stack
+ * multiple listeners on the same element.
+ * @type {WeakSet<HTMLInputElement>}
+ */
+const _invalidListenerPending = new WeakSet();
+
+/**
+ * Flags a text input as rejected: red border via `.input--invalid`, exposed to
+ * assistive tech through `aria-invalid`, and focused. The mark clears itself
+ * on the next edit so a corrected value is not left looking wrong.
+ *
+ * Safe to call multiple times without an intervening edit: the clear-on-edit
+ * listener is added only once per input.
+ * @param {HTMLInputElement} input - The input whose value was rejected.
+ * @returns {void}
+ */
+function markInputInvalid(input) {
+  input.classList.add('input--invalid');
+  input.setAttribute('aria-invalid', 'true');
+  if (!_invalidListenerPending.has(input)) {
+    _invalidListenerPending.add(input);
+    input.addEventListener(
+      'input',
+      () => {
+        input.classList.remove('input--invalid');
+        input.removeAttribute('aria-invalid');
+        _invalidListenerPending.delete(input);
+      },
+      { once: true }
+    );
+  }
+  input.focus();
+}
+
 // calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
 
 // trapFocusInOverlay() was extracted to focus-utils.js (issue #336, extraction #17).

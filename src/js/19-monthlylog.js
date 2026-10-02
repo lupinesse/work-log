@@ -45,47 +45,59 @@ function mlHeatColor(hours) {
 }
 
 /**
- * Renders the heatmap calendar grid: navigation header, day labels, day cells,
- * and the colour legend. Binds cell-click (navigate to that day) and prev/next
- * month buttons. Writes its full HTML to `calEl`.
+ * Builds the heatmap calendar markup: navigation header, day labels, day cells
+ * and the colour legend. Pure string building (reads hours per day through
+ * `mlHoursForDay`); touches no DOM.
  *
- * Implicit dependency: the prev/next handlers mutate module-level `_mlYear` /
- * `_mlMonth` and then call `renderMonthlyLog()` to re-render the whole view.
- * Both globals must therefore be in scope when this function is called.
+ * Day cells are rendered as `<button>` elements so keyboard users can reach
+ * them with Tab and activate them with Enter or Space (WCAG 2.1.1 Keyboard).
+ * The prev/next buttons carry `aria-label` values that include the target
+ * month name, satisfying WCAG 4.1.2 Name, Role, Value.
  *
- * @param {HTMLElement} calEl - The `#mlCalendar` container.
  * @param {number} year - Full year to render.
  * @param {number} month - Month index, 0-based.
- * @returns {void}
- * @see renderMonthlyLog
+ * @param {string} monthPrefix - `YYYY-MM` prefix for the month, used to build each cell's date key.
+ * @returns {string} HTML for the calendar container's contents.
  */
-function renderMonthlyCalendar(calEl, year, month) {
+function buildMonthlyCalendarHtml(year, month, monthPrefix) {
   const days = mlDaysInMonth(year, month);
   const firstDow = new Date(year, month, 1).getDay(); // 0 = Sun
   const offset = (firstDow + 6) % 7; // shift to Mon-start
 
-  const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
   const monthName = new Date(year, month, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+  const prevMonthName = new Date(year, month - 1, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+  const nextMonthName = new Date(year, month + 1, 1).toLocaleString('default', {
     month: 'long',
     year: 'numeric',
   });
 
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const emptyCells = Array(offset).fill('<div></div>').join('');
+  const emptyCells = Array(offset).fill('<div aria-hidden="true"></div>').join('');
   const dayCells = Array.from({ length: days }, (_, i) => {
     const d = i + 1;
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const hrs = mlHoursForDay(dateKey);
-    return `<div class="ml-cell" data-date="${dateKey}"
-                  title="${d} — ${hrs.toFixed(1)}h"
-                  style="background:${mlHeatColor(hrs)}"></div>`;
+    const dayName = new Date(year, month, d).toLocaleString('default', {
+      day: 'numeric',
+      month: 'long',
+    });
+    return `<button type="button" class="ml-cell" data-date="${dateKey}"
+                    aria-label="${dayName} — ${hrs.toFixed(1)}h logged"
+                    title="${d} — ${hrs.toFixed(1)}h"
+                    style="background:${mlHeatColor(hrs)}"></button>`;
   }).join('');
 
-  calEl.innerHTML = `
+  return `
     <div class="ml-nav">
-      <button class="ml-nav-btn" id="mlPrev">←</button>
+      <button class="ml-nav-btn" id="mlPrev" aria-label="Previous month: ${prevMonthName}">←</button>
       <span class="ml-month-title">${monthName}</span>
-      <button class="ml-nav-btn" id="mlNext">→</button>
+      <button class="ml-nav-btn" id="mlNext" aria-label="Next month: ${nextMonthName}">→</button>
     </div>
     <div class="ml-grid">
       ${dayLabels.map((d) => `<div class="ml-day-lbl">${d}</div>`).join('')}
@@ -108,7 +120,22 @@ function renderMonthlyCalendar(calEl, year, month) {
         )
         .join('')}
     </div>`;
+}
 
+/**
+ * Binds the calendar's interactions inside `calEl`: clicking a day cell
+ * navigates to that day's Log view, and the prev/next buttons move the viewed
+ * month.
+ *
+ * Implicit dependency: the prev/next handlers mutate module-level `_mlYear` /
+ * `_mlMonth` and then call `renderMonthlyLog()` to re-render the whole view.
+ * Both globals must therefore be in scope when this function is called.
+ *
+ * @param {HTMLElement} calEl - The `#mlCalendar` container whose markup was just rendered.
+ * @returns {void}
+ * @see renderMonthlyLog
+ */
+function bindMonthlyCalendarEvents(calEl) {
   // Cell click → navigate to that day and switch to the Log view
   calEl.querySelectorAll('.ml-cell').forEach((cell) => {
     cell.addEventListener('click', () => {
@@ -137,6 +164,21 @@ function renderMonthlyCalendar(calEl, year, month) {
     }
     renderMonthlyLog();
   });
+}
+
+/**
+ * Renders the heatmap calendar into `calEl`: builds its markup, then binds its
+ * events. Kept as the single entry point so callers never render without binding.
+ *
+ * @param {HTMLElement} calEl - The `#mlCalendar` container.
+ * @param {number} year - Full year to render.
+ * @param {number} month - Month index, 0-based.
+ * @param {string} monthPrefix - `YYYY-MM` prefix for the month.
+ * @returns {void}
+ */
+function renderMonthlyCalendar(calEl, year, month, monthPrefix) {
+  calEl.innerHTML = buildMonthlyCalendarHtml(year, month, monthPrefix);
+  bindMonthlyCalendarEvents(calEl);
 }
 
 /**
@@ -247,7 +289,7 @@ function renderMonthlyLog() {
 
   const monthPrefix = `${_mlYear}-${String(_mlMonth + 1).padStart(2, '0')}`;
 
-  renderMonthlyCalendar(calEl, _mlYear, _mlMonth);
+  renderMonthlyCalendar(calEl, _mlYear, _mlMonth, monthPrefix);
   renderMonthlySummary(sumEl, monthPrefix);
   renderMonthlyTasks(taskEl, monthPrefix);
 }

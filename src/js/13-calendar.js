@@ -3,6 +3,12 @@
 // CAL_ACCOUNT_LABELS is defined in 00-config.js
 let _calMeetingsCache = null;
 
+// Elements already set up by renderCalStrip(). Tracked in WeakSets rather than as
+// expando properties on the DOM nodes, so the state lives in the module and the
+// elements stay free of ad-hoc fields.
+const calSectionsWithRestoredCollapse = new WeakSet();
+const calHeadersWithClickBound = new WeakSet();
+
 /** localStorage key prefix for the meetings a user has hidden on a given day. */
 const HIDDEN_MEETINGS_PREFIX = 'wl_hidden_meetings_';
 
@@ -150,14 +156,15 @@ function renderCalStrip(meetings) {
     btn.addEventListener('click', () => {
       const subject = btn.dataset.subject;
       const todayKey = dk(new Date());
+      const categories = getCategories();
+      const planTasks = getPlanTasks();
       // Meetings always default to the "meeting" category. Try the default id first,
       // then any category whose label matches; fall back to selectedTag if absent.
       const meetingCat =
-        getCategories().find((c) => c.id === 'meeting') ||
-        getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
+        categories.find((c) => c.id === 'meeting') ||
+        categories.find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
-      const planTasks = getPlanTasks();
       const exists = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
@@ -212,15 +219,15 @@ function renderCalStrip(meetings) {
   section.style.display = '';
   // Restore stored collapse state the first time the section is shown.
   // The flag prevents re-applying on subsequent re-renders.
-  if (!section._collapseRestored) {
-    section._collapseRestored = true;
+  if (!calSectionsWithRestoredCollapse.has(section)) {
+    calSectionsWithRestoredCollapse.add(section);
     section.classList.toggle('collapsed', readCollapseState('calSection', false));
   }
 
   // Collapsible header
   const hdr = document.getElementById('calHeader');
-  if (hdr && !hdr._calBound) {
-    hdr._calBound = true;
+  if (hdr && !calHeadersWithClickBound.has(hdr)) {
+    calHeadersWithClickBound.add(hdr);
     hdr.addEventListener('click', () => {
       section.classList.toggle('collapsed');
       writeCollapseState('calSection', section.classList.contains('collapsed'));

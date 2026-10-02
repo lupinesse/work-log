@@ -4,8 +4,8 @@
  *
  * Usage: node .github/scripts/render-release-notes.mjs <tag> > release-notes.md
  *
- * <tag> is the pushed git tag (e.g. "v1.9.1"); its leading "v" is stripped
- * before matching against CHANGELOG.md's "## [X.Y.Z] — <date>" headings.
+ * <tag> is the pushed git tag (e.g. "v1.9.1"), validated by parseReleaseTag();
+ * its leading "v" is stripped before matching against CHANGELOG.md's "## [X.Y.Z] — <date>" headings.
  * The decision logic itself is unit-tested in
  * test/extract-changelog-section.test.mjs; this file is a thin, untested
  * I/O shim, same convention as the rest of .github/scripts/.
@@ -13,6 +13,7 @@
 
 import { readFileSync } from 'fs';
 import { extractChangelogSection } from './lib/extract-changelog-section.mjs';
+import { parseReleaseTag } from './lib/parse-release-tag.mjs';
 
 const tag = process.argv[2];
 if (!tag) {
@@ -20,7 +21,13 @@ if (!tag) {
   process.exit(1);
 }
 
-const version = tag.replace(/^v/, '');
+let version;
+try {
+  version = parseReleaseTag(tag);
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 const changelog = readFileSync('CHANGELOG.md', 'utf8');
 const section = extractChangelogSection(changelog, version);
 

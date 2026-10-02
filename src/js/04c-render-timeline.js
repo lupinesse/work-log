@@ -38,9 +38,7 @@ function bindAdHocRow() {
   adHocBtn.addEventListener('click', commitAdHoc);
   adHocInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') commitAdHoc();
-  });
-  // Prevent Space from opening the rapid-log overlay while typing here
-  adHocInput.addEventListener('keydown', (event) => {
+    // Prevent Space from opening the rapid-log overlay while typing here
     if (event.code === 'Space') event.stopPropagation();
   });
 }
@@ -273,8 +271,7 @@ function bindTimelineEntryEvents(timelineEl) {
       }
       const category = createCategory(input.value);
       if (!category) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const entry = getEntries().find((logEntry) => logEntry.id === btn.dataset.id);

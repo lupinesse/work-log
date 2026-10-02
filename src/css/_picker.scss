@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* Quick pick */
 .qp-wrap {
   margin-bottom: 14px;
@@ -228,8 +230,7 @@
 }
 
 .emoji-picker-input:focus-visible {
-  outline: 2px solid var(--live);
-  outline-offset: 1px;
+  @include mixins.focus-ring;
 }
 
 .emoji-picker-grid {
@@ -305,6 +306,10 @@
   background: var(--bg);
   color: var(--text);
   outline: none;
+}
+
+.cat-inline-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .cat-inline-ok {

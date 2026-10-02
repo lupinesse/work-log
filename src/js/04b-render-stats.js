@@ -8,7 +8,14 @@
 
 import { JIRA_BASE } from './00-config.js';
 import { getEntries } from './state.js';
-import { dk, mondayOfWeek, fmtDur, escHtml, calcStreak } from './pure-fns-format.js';
+import {
+  dk,
+  mondayOfWeek,
+  fmtDur,
+  escHtml,
+  jiraKeyLinkHtml,
+  calcStreak,
+} from './pure-fns-format.js';
 import { parseJiraLabel } from './pure-fns-export.js';
 import { isToday } from './date-labels.js';
 
@@ -54,9 +61,7 @@ export function renderHeaderStatTiles() {
  */
 function buildStatSubHtml(label, ms) {
   const { ticket, name } = parseJiraLabel(label);
-  const keyHtml = ticket
-    ? `<a class="jira-key-link" href="${JIRA_BASE}/${ticket}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(ticket)}</a>`
-    : null;
+  const keyHtml = ticket ? jiraKeyLinkHtml(JIRA_BASE, ticket) : null;
   return keyHtml
     ? `${keyHtml}${name ? `<div class="stat-sub-title">${escHtml(name)}</div>` : ''}<div class="stat-sub-value">${fmtDur(ms)}</div>`
     : `<div class="stat-sub-title">${escHtml(label)}</div><div class="stat-sub-value">${fmtDur(ms)}</div>`;
@@ -70,9 +75,10 @@ function buildStatSubHtml(label, ms) {
  */
 export function renderSubStatTiles() {
   const todayKey = dk(new Date());
+  const entries = getEntries();
 
   // Today: task with most tracked time
-  const todayTimed = getEntries().filter(
+  const todayTimed = entries.filter(
     (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const todayByTask = {};
@@ -94,7 +100,7 @@ export function renderSubStatTiles() {
   const thisWeekStart = new Date();
   thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
   thisWeekStart.setHours(0, 0, 0, 0);
-  const weekTimed = getEntries().filter(
+  const weekTimed = entries.filter(
     (entry) => new Date(entry.ts) >= thisWeekStart && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const weekByTask = {};
@@ -117,7 +123,7 @@ export function renderSubStatTiles() {
   {
     const streakCursor = new Date();
     streakCursor.setDate(streakCursor.getDate() - 1);
-    const daysWithEntries = new Set(getEntries().map((entry) => entry.date));
+    const daysWithEntries = new Set(entries.map((entry) => entry.date));
     while (daysWithEntries.has(dk(streakCursor))) {
       streakDays.push(dk(streakCursor));
       streakCursor.setDate(streakCursor.getDate() - 1);

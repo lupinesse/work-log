@@ -29,6 +29,7 @@ function startServer() {
           return;
         }
         const ext = path.extname(file);
+        // eslint-disable-next-line security/detect-object-injection -- path.extname() always starts with '.', so ext can never be '__proto__'
         res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
         res.end(data);
       });
@@ -3849,7 +3850,7 @@ async function runTests() {
     await page.evaluate(() => {
       document.getElementById('trackerAddBtn').click();
       document.getElementById('trFormName').value = 'Form tracker';
-      document.querySelector('#trFormTags input[type=checkbox]').checked = true;
+      document.querySelector('#trFormTags input[type=checkbox]').click();
       document.getElementById('trFormSave').click();
     });
     assert(
@@ -3869,7 +3870,11 @@ async function runTests() {
       (await trackerNames()).length === 0,
       JSON.stringify(await trackerNames())
     );
-    assert('The deleted tracker is gone from storage too', (await storedNames()).length === 0);
+    assert(
+      'The deleted tracker is gone from storage too',
+      (await storedNames()).length === 0,
+      JSON.stringify(await storedNames())
+    );
     await page.close();
   }
 

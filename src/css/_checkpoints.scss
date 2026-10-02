@@ -1,3 +1,5 @@
+@use 'mixins';
+
 /* ── Task checkpoints ── */
 .cp-badge {
   display: inline-flex;
@@ -214,8 +216,7 @@
 /* Same ring as .date-nav-location:focus-visible; the outline is removed above
    because the field has no border to show focus (WCAG 2.4.7). */
 .cp-add-input:focus-visible {
-  outline: 2px solid var(--live);
-  outline-offset: 1px;
+  @include mixins.focus-ring;
 }
 
 .cp-add-input::placeholder {
@@ -233,6 +234,10 @@
   color: var(--text);
   padding: 0 2px;
   line-height: 1.4;
+}
+
+.cp-edit-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .cp-add-icon {
@@ -258,6 +263,10 @@
   background: var(--bg);
   color: var(--text);
   outline: none;
+}
+
+.plan-inline-input:focus-visible {
+  @include mixins.focus-ring;
 }
 
 .plan-inline-ok {
