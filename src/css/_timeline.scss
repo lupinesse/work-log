@@ -164,7 +164,7 @@
 }
 
 .dot-focus {
-  background: #1d9e75;
+  background: var(--sig-event);
 }
 
 .dot-break {
@@ -307,7 +307,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #1d9e75;
+  color: var(--sig-event);
   font-size: 13px;
   line-height: 1;
   padding: 0 2px;

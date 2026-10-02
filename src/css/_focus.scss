@@ -82,8 +82,8 @@ body.emergency .pomo-chime {
 }
 
 .emergency-cp-check.cp-done {
-  background: #1d9e75;
-  border-color: #1d9e75;
+  background: var(--success-ink);
+  border-color: var(--success-ink);
   color: #fff;
 }
 
@@ -150,7 +150,7 @@ body.emergency .emergency-screen {
 }
 
 .emergency-next:focus {
-  border-color: #1d9e75;
+  border-color: var(--sig-event);
 }
 
 .emergency-next::placeholder {
@@ -177,7 +177,7 @@ body.emergency .emergency-screen {
   font-size: 13px;
   padding: 5px 16px;
   border-radius: var(--radius);
-  border: var(--border-hairline) solid #1d9e75;
+  border: var(--border-hairline) solid var(--sig-event);
   background: none;
   color: #5dcaa5;
   cursor: pointer;
