@@ -3788,6 +3788,45 @@ async function runTests() {
     }
   }
 
+  // ── 48. Tracker form and delete button write the shared trackers list (#423) ─
+  console.log('\n48. Tracker add form and delete button');
+  {
+    const page = await freshPage(ctx, { wl_cats_v1: CATS });
+    const trackerNames = () =>
+      page.evaluate(() => window.__wl.getTrackers().map((tracker) => tracker.name));
+    const storedNames = () =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem('wl_trackers_v1') || '[]').map((tracker) => tracker.name)
+      );
+
+    // Open the form, fill it in and save through the real controls.
+    await page.evaluate(() => {
+      document.getElementById('trackerAddBtn').click();
+      document.getElementById('trFormName').value = 'Form tracker';
+      document.querySelector('#trFormTags input[type=checkbox]').checked = true;
+      document.getElementById('trFormSave').click();
+    });
+    assert(
+      'Saving the tracker form adds the tracker to state',
+      JSON.stringify(await trackerNames()) === '["Form tracker"]',
+      JSON.stringify(await trackerNames())
+    );
+    assert(
+      'The new tracker is persisted',
+      JSON.stringify(await storedNames()) === '["Form tracker"]',
+      JSON.stringify(await storedNames())
+    );
+
+    await page.evaluate(() => document.querySelector('.tracker-delete').click());
+    assert(
+      'The tracker delete button removes the tracker from state',
+      (await trackerNames()).length === 0,
+      JSON.stringify(await trackerNames())
+    );
+    assert('The deleted tracker is gone from storage too', (await storedNames()).length === 0);
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
