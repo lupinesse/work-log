@@ -374,13 +374,12 @@ Shared between the pomodoro module and changelog weekly-clear logic.
 
 ---
 
-## Anthropic API key (retired)
+## Anthropic API key (removed)
 
 ### `wl_anthropic_key`
-No longer stored. The Anthropic key lives server-side in `config.local.ps1` and
-the `/api/ai` and `/api/notion-ai` proxies inject it; the browser never holds
-it. Any value left in localStorage by an older version is deleted when
-`src/js/15-notion.js` loads.
+No longer stored. The Anthropic key lives server-side in `config.local.ps1`
+and the `/api/ai` and `/api/notion-ai` proxies inject it. `src/js/15-notion.js`
+removes any leftover `wl_anthropic_key` from localStorage on load.
 
 ---
 

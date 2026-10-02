@@ -13,8 +13,11 @@ describe('wlLog', () => {
     const recorded = [];
     const orig = console[method];
     console[method] = (...args) => recorded.push(args);
-    fn();
-    console[method] = orig;
+    try {
+      fn();
+    } finally {
+      console[method] = orig;
+    }
     return recorded;
   }
 
@@ -74,48 +77,63 @@ describe('wlLog', () => {
   });
 
   describe('config()', () => {
+    /**
+     * Replaces several console methods for the duration of fn and always
+     * restores them, even when fn throws.
+     * @param {Record<string, Function>} stubs - Console method name to stub.
+     * @param {Function} fn - Code to run while stubbed.
+     */
+    function withConsoleStubs(stubs, fn) {
+      const originals = {};
+      for (const method of Object.keys(stubs)) originals[method] = console[method];
+      Object.assign(console, stubs);
+      try {
+        fn();
+      } finally {
+        Object.assign(console, originals);
+      }
+    }
+
+    const noop = () => {};
+
     it('opens a collapsed group labelled [WL:CONFIG] Startup', () => {
-      const groups = spy('groupCollapsed', () => {
-        const origLog = console.log;
-        const origEnd = console.groupEnd;
-        console.log = () => {};
-        console.groupEnd = () => {};
-        wlLog.config({ version: '1.0' });
-        console.log = origLog;
-        console.groupEnd = origEnd;
-      });
+      const groups = [];
+      withConsoleStubs(
+        { groupCollapsed: (...args) => groups.push(args), log: noop, groupEnd: noop },
+        () => wlLog.config({ version: '1.0' })
+      );
       assert.equal(groups.length, 1);
       assert.equal(groups[0][0], '[WL:CONFIG] Startup');
     });
 
     it('logs each key/value pair inside the group', () => {
       const logged = [];
-      const origGroup = console.groupCollapsed;
-      const origEnd = console.groupEnd;
-      console.groupCollapsed = () => {};
-      console.groupEnd = () => {};
-      const origLog = console.log;
-      console.log = (...args) => logged.push(args);
-      wlLog.config({ a: 1, b: 'two' });
-      console.groupCollapsed = origGroup;
-      console.groupEnd = origEnd;
-      console.log = origLog;
+      withConsoleStubs(
+        { groupCollapsed: noop, groupEnd: noop, log: (...args) => logged.push(args) },
+        () => wlLog.config({ a: 1, b: 'two' })
+      );
       assert.equal(logged.length, 2);
       assert.ok(logged[0][0].includes('a:'));
       assert.ok(logged[1][0].includes('b:'));
     });
 
     it('calls console.groupEnd once', () => {
-      const ends = spy('groupEnd', () => {
-        const orig = console.groupCollapsed;
-        const origLog = console.log;
-        console.groupCollapsed = () => {};
-        console.log = () => {};
-        wlLog.config({});
-        console.groupCollapsed = orig;
-        console.log = origLog;
-      });
+      const ends = [];
+      withConsoleStubs(
+        { groupCollapsed: noop, log: noop, groupEnd: (...args) => ends.push(args) },
+        () => wlLog.config({})
+      );
       assert.equal(ends.length, 1);
+    });
+
+    it('restores console methods even when the code under test throws', () => {
+      const original = console.log;
+      assert.throws(() =>
+        withConsoleStubs({ log: noop }, () => {
+          throw new Error('boom');
+        })
+      );
+      assert.equal(console.log, original);
     });
   });
 });

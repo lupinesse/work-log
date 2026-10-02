@@ -17,6 +17,7 @@
 export {
   safeCssColor,
   escHtml,
+  jiraKeyLinkHtml,
   dk,
   fmtTime,
   fmtElapsed,

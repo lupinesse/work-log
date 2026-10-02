@@ -44,7 +44,7 @@ export function ghHeaders(token) {
  *
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @returns {Promise<ThreadSummary[]>}
@@ -111,7 +111,7 @@ export async function fetchAllThreads({ token, owner, repo, prNumber }) {
  * Post a reply into an existing inline review thread.
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @param {number} params.commentId  REST integer id of the first comment in the thread.
@@ -177,7 +177,7 @@ export async function resolveThread({ token, threadId }) {
  *
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @returns {Promise<object[]>}
@@ -215,7 +215,7 @@ export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
  *
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @param {string} params.marker   Substring that uniquely identifies this phase's comment.
@@ -261,7 +261,7 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
  *
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @param {string} params.headSha   Required for posting a new review.
@@ -345,7 +345,7 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
  *
  * @param {object} params
  * @param {string} params.token      GitHub auth token.
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.commentId  REST integer id of the comment to react to.
  * @param {string} params.content    Reaction name — e.g. 'eyes', '+1', 'hooray'.
@@ -371,7 +371,7 @@ export async function addReactionToComment({ token, owner, repo, commentId, cont
  *
  * @param {object} params
  * @param {string} params.token
- * @param {string} params.owner - Repository owner (user or organisation).
+ * @param {string} params.owner - Repository owner (user or organisation login).
  * @param {string} params.repo - Repository name, without the owner prefix.
  * @param {number} params.prNumber
  * @param {string} params.headSha   Commit SHA to attach the comment to.

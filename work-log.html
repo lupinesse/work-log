@@ -489,11 +489,11 @@
       <input class="eod-timesheet__hours" id="eodTimesheetHours" type="number" min="0.01" max="24" step="0.01" />
       <label class="eod-timesheet__label" for="eodTimesheetDesc">Description</label>
       <textarea class="eod-timesheet__desc" id="eodTimesheetDesc" rows="3"></textarea>
-      <button class="eod-copy-btn" id="eodTimesheetCopy" type="button">📋 copy description</button>
-      <button class="eod-copy-btn" id="eodTimesheetSubmit" type="button">📤 submit to timesheet.gofore.com</button>
+      <button class="eod-copy-btn" id="eodTimesheetCopy" type="button"><span aria-hidden="true">📋</span> copy description</button>
+      <button class="eod-copy-btn" id="eodTimesheetSubmit" type="button"><span aria-hidden="true">📤</span> submit to timesheet.gofore.com</button>
       <div class="eod-timesheet__status" id="eodTimesheetStatus" role="status" aria-live="polite"></div>
     </div>
-    <button class="eod-copy-btn" id="eodCopyBtn">📋 copy to clipboard</button>
+    <button class="eod-copy-btn" id="eodCopyBtn"><span aria-hidden="true">📋</span> copy to clipboard</button>
     <div class="eod-footer">
       <button class="eod-close" id="eodClose">Done — close</button>
     </div>
@@ -519,7 +519,7 @@
     <div class="eod-subtitle" id="weeklyReportSubtitle"></div>
     <pre class="weekly-report-text" id="weeklyReportText" tabindex="0" aria-label="Weekly report draft text"></pre>
     <div class="weekly-report-copy-row">
-      <button type="button" class="weekly-report-copy-btn" id="weeklyReportCopyBtn">📋 Copy report</button>
+      <button type="button" class="weekly-report-copy-btn" id="weeklyReportCopyBtn"><span aria-hidden="true">📋</span> Copy report</button>
       <div class="weekly-report-copy-feedback" id="weeklyReportCopyFeedback" aria-live="polite"></div>
     </div>
     <div class="eod-footer">

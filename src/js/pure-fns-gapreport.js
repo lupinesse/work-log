@@ -13,7 +13,7 @@ import { isLongRunningTimer } from './pure-fns-format.js';
 /* ── Gap report ── */
 
 /**
- * Texts of the utility entries logged via logUtilEntry() in 03-timer.js. They
+ * Texts of utility entries logged via logUtilEntry() in 03-timer.js. They
  * never carry documentation, so they would just be noise in the gap report.
  * Exported so pure-fns-weeklyreport.js's buildWeeklyTicketSummary() can reuse
  * the same exclusion rather than declaring a second copy.
