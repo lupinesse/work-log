@@ -126,7 +126,7 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
  * consistent across screen readers, which otherwise announce emoji
  * differently or skip them (WCAG 4.1.2).
  * @param {string} emoji - The emoji character this button selects.
- * @param {() => void} onSelect - Called when the button is clicked.
+ * @param {Function} onSelect - Called when the button is clicked.
  * @returns {HTMLButtonElement} The button, not yet attached to the DOM.
  */
 function createEmojiOptionButton(emoji, onSelect) {

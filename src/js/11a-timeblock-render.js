@@ -25,7 +25,7 @@ let tbDragId = null; // block id when dragging from grid
  * the block's text because a glyph or "▶ start" alone is announced identically
  * on every block, so screen-reader users cannot tell which one they are on
  * (WCAG 4.1.2 / 2.4.6).
- * @param {{ id: string, text: string, type?: string, emoji?: string }} block - The planned block.
+ * @param {{ id: string, text: string, type: (string|undefined), emoji: (string|undefined) }} block - The planned block.
  * @returns {string} HTML for the buttons, ready to append inside the block element.
  */
 function buildBlockActionButtonsHtml(block) {
