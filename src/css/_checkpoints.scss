@@ -6,8 +6,8 @@
   font-size: 10px;
   font-weight: 500;
   padding: 1px 7px;
-  border-radius: 99px;
-  border: 0.5px solid var(--border2);
+  border-radius: var(--radius-pill);
+  border: var(--border-hairline) solid var(--border2);
   background: var(--bg2);
   color: var(--text3);
   cursor: pointer;
@@ -67,7 +67,7 @@
 .cp-area {
   margin-top: 7px;
   padding-top: 7px;
-  border-top: 0.5px solid var(--border);
+  border-top: var(--border-hairline) solid var(--border);
 }
 
 .cp-progress-row {
@@ -135,7 +135,7 @@
   width: 13px;
   height: 13px;
   border-radius: 3px;
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   flex-shrink: 0;
   cursor: pointer;
   display: flex;
@@ -197,7 +197,7 @@
   gap: 6px;
   margin-top: 5px;
   padding-top: 5px;
-  border-top: 0.5px dashed var(--border);
+  border-top: var(--border-hairline) dashed var(--border);
 }
 
 .cp-add-input {
@@ -228,7 +228,7 @@
   font-family: var(--font);
   background: none;
   border: none;
-  border-bottom: 0.5px solid var(--info-text);
+  border-bottom: var(--border-hairline) solid var(--info-text);
   outline: none;
   color: var(--text);
   padding: 0 2px;
@@ -252,7 +252,7 @@
   flex: 1;
   font-size: 13px;
   font-family: var(--font);
-  border: 0.5px solid var(--info-text);
+  border: var(--border-hairline) solid var(--info-text);
   border-radius: var(--radius);
   padding: 2px 8px;
   background: var(--bg);
@@ -287,7 +287,7 @@
 
 .completed-section {
   margin-bottom: 14px;
-  border: 0.5px solid rgba(29, 158, 117, 0.25);
+  border: var(--border-hairline) solid rgba(29, 158, 117, 0.25);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -348,7 +348,7 @@
   align-items: center;
   gap: 8px;
   padding: 5px 4px;
-  border-bottom: 0.5px solid var(--border);
+  border-bottom: var(--border-hairline) solid var(--border);
 }
 
 .completed-item:last-child {
