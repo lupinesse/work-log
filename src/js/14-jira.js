@@ -57,7 +57,10 @@
    * @returns {'todo'|'inprogress'|'pending'|'blocked'|'done'}
    */
   function jiraMapStatus(s) {
-    return JIRA_SMAP[(s || '').toLowerCase().trim()] || 'todo';
+    const statusName = (s || '').toLowerCase().trim();
+    // Own-property check: a status such as "constructor" must not resolve to an inherited member.
+    // eslint-disable-next-line security/detect-object-injection -- statusName is untrusted CSV text, but Object.hasOwn guarantees it is an own key of the fixed map
+    return Object.hasOwn(JIRA_SMAP, statusName) ? JIRA_SMAP[statusName] : 'todo';
   }
 
   /**
@@ -154,7 +157,7 @@
         if (!label) return;
         const existing = jiraMatchCat(task.parentKey, label);
         if (existing) {
-          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+          // eslint-disable-next-line security/detect-object-injection -- mapKey is `parentKey|parentSummary`, always containing '|', so it cannot equal an Object.prototype name
           jiraCatMap[mapKey] = { ...existing, isNew: false };
         } else {
           const color =
@@ -162,7 +165,7 @@
             AUTO_COLORS[ci % AUTO_COLORS.length];
           ci++;
           usedColors.add(color);
-          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+          // eslint-disable-next-line security/detect-object-injection -- mapKey is `parentKey|parentSummary`, always containing '|', so it cannot equal an Object.prototype name
           jiraCatMap[mapKey] = {
             id: 'epic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             label,
@@ -206,16 +209,16 @@
 
     // Group tasks by their category key, preserving first-seen order
     const groups = [];
-    const groupIndex = {};
+    const groupIndex = Object.create(null);
     jiraTasks.forEach((t, i) => {
       const cat = jiraGetCat(t);
       const key = cat ? cat.id : '__none__';
       if (!(key in groupIndex)) {
-        // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+        // eslint-disable-next-line security/detect-object-injection -- key is a category id (app data) or '__none__'; the map is prototype-less, so any id is just an own key
         groupIndex[key] = groups.length;
         groups.push({ cat, tasks: [] });
       }
-      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+      // eslint-disable-next-line security/detect-object-injection -- key was just stored in this local map by the guard above; the value is a numeric array index
       groups[groupIndex[key]].tasks.push({ t, i });
     });
 
@@ -240,7 +243,7 @@
             const mapped = jiraMapStatus(t.status);
             const isDone = mapped === 'done';
             const isDup = jiraIsDup(t);
-            // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+            // eslint-disable-next-line security/detect-object-injection -- mapped is one of the fixed status names returned by jiraMapStatus, never CSV text
             const slabel = JIRA_STATUS_LABEL[mapped] || t.status;
             const statusBadge = isDup
               ? `<span class="jira-badge jira-badge-dup">already added</span>`
@@ -278,7 +281,7 @@
       row = [],
       inQ = false;
     for (let i = 0; i < text.length; i++) {
-      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+      // eslint-disable-next-line security/detect-object-injection -- i is a numeric loop counter indexing a string, not a property name
       const ch = text[i],
         next = text[i + 1];
       if (inQ) {
@@ -317,9 +320,9 @@
       .slice(1)
       .filter((csvRow) => csvRow.some((cell) => cell.trim()))
       .map((csvRow) => {
-        const o = {};
+        const o = Object.create(null);
         headers.forEach((h, i) => {
-          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+          // eslint-disable-next-line security/detect-object-injection -- header text is untrusted CSV input, but o is a prototype-less object so any header is just an own key
           o[h.trim()] = (csvRow[i] || '').trim();
         });
         return o;
@@ -368,7 +371,7 @@
       jiraTasks
         .map((_, i) => i)
         .filter((index) => {
-          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+          // eslint-disable-next-line security/detect-object-injection -- index is a numeric array position from map()
           const t = jiraTasks[index];
           return jiraMapStatus(t.status) !== 'done' && !jiraIsDup(t);
         })
@@ -483,17 +486,17 @@
     const importedCats = [];
     // Import in category-group order (same order as displayed)
     const grouped = [];
-    const seen = {};
+    const seen = Object.create(null);
     jiraTasks.forEach((t, i) => {
       if (!jiraSelected.has(i)) return;
       const cat = jiraGetCat(t);
       const key = cat ? cat.id : '__none__';
       if (!(key in seen)) {
-        // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+        // eslint-disable-next-line security/detect-object-injection -- key is a category id (app data) or '__none__'; the map is prototype-less, so any id is just an own key
         seen[key] = grouped.length;
         grouped.push([]);
       }
-      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
+      // eslint-disable-next-line security/detect-object-injection -- key was just stored in this local map by the guard above; the value is a numeric array index
       grouped[seen[key]].push({ t, i });
     });
     grouped.forEach((group) =>
