@@ -157,11 +157,12 @@ function renderCalStrip(meetings) {
         getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
-      const exists = getPlanTasks().find(
+      const planTasks = getPlanTasks();
+      const exists = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (!exists) {
-        getPlanTasks().push({
+        planTasks.push({
           id: Date.now() + '',
           text: subject,
           status: 'todo',
@@ -179,7 +180,7 @@ function renderCalStrip(meetings) {
         date: todayKey,
       };
       getEntries().push(entry);
-      const task = getPlanTasks().find(
+      const task = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (task && task.status === 'todo') {
