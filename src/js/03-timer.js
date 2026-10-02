@@ -7,9 +7,10 @@
  * @returns {number} Elapsed time in milliseconds.
  */
 function getElapsedMs() {
-  if (!getActiveTimer()) return 0;
-  const acc = getActiveTimer().accumulatedMs || 0;
-  return getActiveTimer().paused ? acc : acc + (Date.now() - getActiveTimer().startTs);
+  const timer = getActiveTimer();
+  if (!timer) return 0;
+  const acc = timer.accumulatedMs || 0;
+  return timer.paused ? acc : acc + (Date.now() - timer.startTs);
 }
 /**
  * Starts (or restarts) the timer for the given entry.
@@ -34,11 +35,12 @@ function startTimer(entryId) {
  * No-ops if no timer is active or it is already paused.
  */
 function pauseTimer() {
-  if (!getActiveTimer() || getActiveTimer().paused) return;
+  const timer = getActiveTimer();
+  if (!timer || timer.paused) return;
   clearTimerInterval();
-  getActiveTimer().accumulatedMs = getElapsedMs();
-  getActiveTimer().paused = true;
-  getActiveTimer().startTs = null;
+  timer.accumulatedMs = getElapsedMs();
+  timer.paused = true;
+  timer.startTs = null;
   save();
   updateTimerBar();
   updateTabAndFavicon();
@@ -49,9 +51,10 @@ function pauseTimer() {
  * No-ops if no timer is active or it is not paused.
  */
 function resumeTimer() {
-  if (!getActiveTimer() || !getActiveTimer().paused) return;
-  getActiveTimer().paused = false;
-  getActiveTimer().startTs = Date.now();
+  const timer = getActiveTimer();
+  if (!timer || !timer.paused) return;
+  timer.paused = false;
+  timer.startTs = Date.now();
   save();
   setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
@@ -197,19 +200,20 @@ function setFavicon(state) {
  * non-meeting tasks.
  */
 function updateTabAndFavicon() {
-  if (!getActiveTimer()) {
+  const timer = getActiveTimer();
+  if (!timer) {
     document.title = 'Work Log';
     setFavicon('idle');
     return;
   }
-  const entry = getEntries().find((e) => e.id === getActiveTimer().entryId);
+  const entry = getEntries().find((e) => e.id === timer.entryId);
   const taskText = entry ? entry.text : '…';
   const elapsedMs = getElapsedMs();
   const elapsed = fmtElapsed(elapsedMs);
   const isMeeting = entry && entry.text.startsWith('📅');
   const isHyperfocus = !isMeeting && elapsedMs > HYPERFOCUS_MINS * 60 * 1000;
 
-  if (getActiveTimer().paused) {
+  if (timer.paused) {
     document.title = `⏸ ${elapsed} — ${taskText}`;
     setFavicon('paused');
   } else if (isHyperfocus) {
@@ -367,10 +371,12 @@ function updateTimerBtn(running) {
  * tracking no longer exists the timer is cleared. No-ops if no timer is active.
  */
 function resumeTimerIfActive() {
-  if (!getActiveTimer()) return;
-  if (!getEntries().find((e) => e.id === getActiveTimer().entryId)) {
+  const timer = getActiveTimer();
+  if (!timer) return;
+  const entries = getEntries();
+  if (!entries.find((e) => e.id === timer.entryId)) {
     if (
-      getEntries().length > 0 ||
+      entries.length > 0 ||
       !localStorage.getItem(STORE_ENTRIES) ||
       localStorage.getItem(STORE_ENTRIES) === '[]'
     ) {
@@ -379,7 +385,7 @@ function resumeTimerIfActive() {
     }
     return;
   }
-  if (!getActiveTimer().paused) setTimerInterval(setInterval(tickTimer, 1000));
+  if (!timer.paused) setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
