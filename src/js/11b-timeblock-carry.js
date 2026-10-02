@@ -86,10 +86,11 @@ function autoCarryTasks() {
   const todayKey = dk(new Date());
   const carryKey = 'wl_carried_' + todayKey;
   if (localStorage.getItem(carryKey)) return;
+  const planTasks = getPlanTasks();
   // 'upcoming' tasks are intentionally scheduled for a future date by the user
   // and should never be auto-carried — they will appear naturally on their target date.
   // 'done' tasks are complete and need no carry.
-  const unfinished = getPlanTasks().filter(
+  const unfinished = planTasks.filter(
     (task) => task.date < todayKey && task.status !== 'done' && task.status !== 'upcoming'
   );
   // Don't set the guard key when nothing needs carrying — if the user later
@@ -111,7 +112,7 @@ function autoCarryTasks() {
   const idMap = {};
   let carried = 0;
   toCarry.forEach((task) => {
-    const exists = getPlanTasks().some(
+    const exists = planTasks.some(
       (existingTask) =>
         existingTask.date === todayKey &&
         existingTask.text.toLowerCase() === task.text.toLowerCase()
@@ -119,7 +120,7 @@ function autoCarryTasks() {
     if (!exists) {
       const newId = 'c' + Date.now() + Math.random().toString(36).slice(2);
       idMap[task.id] = newId;
-      getPlanTasks().push({
+      planTasks.push({
         id: newId,
         text: task.text,
         tag: task.tag,

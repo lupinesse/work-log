@@ -266,7 +266,8 @@ function buildManageRowHtml(selCat) {
  * @returns {string} HTML to assign to #tagRow.
  */
 function buildTagRowHtml() {
-  const selCat = getCat(getSelectedTag());
+  const selectedTag = getSelectedTag();
+  const selCat = getCat(selectedTag);
   const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
@@ -278,11 +279,11 @@ function buildTagRowHtml() {
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect" aria-label="Select epic">
-        ${pickableCategories([...getCategories()], getSelectedTag())
+        ${pickableCategories([...getCategories()], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (category) =>
-              `<option value="${category.id}"${category.id === getSelectedTag() ? ' selected' : ''}>${escHtml(category.label)}</option>`
+              `<option value="${category.id}"${category.id === selectedTag ? ' selected' : ''}>${escHtml(category.label)}</option>`
           )
           .join('')}
         </select>
@@ -506,21 +507,8 @@ function renderTagRow() {
 // are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
 // isToday() and fmtLabel() are defined in date-labels.js (a leaf ES module
 // imported at the top of the built bundle), not here.
-
-/**
- * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.
- * Non-billable entries keep their exact timestamps for accurate reporting.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @param {object|null} entry - Work-log entry; if null, always rounds.
- * @returns {number} Timestamp, conditionally rounded.
- */
-function roundToNearest30IfBillable(ts, entry) {
-  // Assumption: non-billable entries keep exact timestamps for accurate time reporting.
-  // Billable entries are rounded because clients are invoiced in 30-minute increments.
-  // Changing this requires updating the export format in 05-entries.js and DATA.md.
-  if (entry && !isEntryBillable(entry)) return ts;
-  return roundToNearest30(ts);
-}
+// isEntryBillable() and roundToNearest30IfBillable() have been extracted to
+// src/js/entry-billable.js (leaf ES module, issue #336, extraction #19).
 
 // safeRoundedStart() and viewEntries() were extracted to entry-utils.js
 // (issue #336, extraction #18). They are injected into this concatenated scope

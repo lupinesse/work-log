@@ -3,24 +3,34 @@
  * Extracted from the former monolithic test/unit.mjs (issue #334).
  */
 
-import { describe, it } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom as createUncheckedDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
 
+// Every DOM a test creates is registered here and checked for handler errors
+// after the test, so no test in this file can skip the assertion.
+const createdDoms = [];
+
 /**
- * Builds the `YYYY-MM` month prefix for the given year and 0-based month.
- * @param {number} year - Full year.
- * @param {number} month - Month index, 0-based.
- * @returns {string}
+ * Creates a jsdom document and registers it for the post-test error check.
+ * @param {string} [html] - Markup for the document body.
+ * @returns {import('jsdom').JSDOM} The DOM from the shared helper.
  */
-function monthPrefix(year, month) {
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
+function createDom(html) {
+  const dom = createUncheckedDom(html);
+  createdDoms.push(dom);
+  return dom;
 }
+
+afterEach(() => {
+  const doms = createdDoms.splice(0);
+  doms.forEach(assertNoUncaughtErrors);
+});
 
 /**
  * Loads 19-monthlylog.js into a VM sandbox so its function declarations
@@ -169,11 +179,10 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
   // May 2026: 31 days, starts on a Friday (offset 4)
   const YEAR = 2026;
   const MONTH = 4; // May (0-indexed)
-  const PREFIX = monthPrefix(YEAR, MONTH);
 
   it('renders every day cell as a <button> element (WCAG 2.1.1 Keyboard)', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
-    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH);
     const { window } = createDom(`<div>${html}</div>`);
     const cells = [...window.document.querySelectorAll('.ml-cell')];
     assert.ok(cells.length > 0, 'at least one day cell rendered');
@@ -185,7 +194,7 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
 
   it('day cell buttons have type="button" to avoid accidental form submission', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
-    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH);
     const { window } = createDom(`<div>${html}</div>`);
     const cells = [...window.document.querySelectorAll('button.ml-cell')];
     assert.ok(
@@ -196,7 +205,7 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
 
   it('day cell aria-label includes the day number (WCAG 4.1.2)', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
-    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH);
     const { window } = createDom(`<div>${html}</div>`);
     const cell = window.document.querySelector('.ml-cell[data-date="2026-05-01"]');
     assert.ok(cell, 'day 1 cell present');
@@ -207,7 +216,7 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
 
   it('day cell aria-label includes logged hours (WCAG 4.1.2)', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
-    const html = buildMonthlyCalendarHtml(YEAR, MONTH, PREFIX);
+    const html = buildMonthlyCalendarHtml(YEAR, MONTH);
     const { window } = createDom(`<div>${html}</div>`);
     const cell = window.document.querySelector('.ml-cell[data-date="2026-05-15"]');
     assert.ok(cell, 'day 15 cell present');
@@ -245,7 +254,7 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
     ctx.renderMonthlyLog = () => {}; // prevent full re-render during tests
 
     const calEl = dom.window.document.getElementById('mlCalendar');
-    ctx.renderMonthlyCalendar(calEl, YEAR, MONTH, PREFIX);
+    ctx.renderMonthlyCalendar(calEl, YEAR, MONTH);
 
     const cell = dom.window.document.querySelector('.ml-cell[data-date="2026-05-10"]');
     assert.ok(cell, 'day 10 cell is in the DOM after render');
@@ -261,7 +270,7 @@ describe('buildMonthlyCalendarHtml — prev/next buttons have accessible names',
   it('mlPrev aria-label names the previous month (WCAG 4.1.2)', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
     // May 2026 → prev is April 2026
-    const html = buildMonthlyCalendarHtml(2026, 4, monthPrefix(2026, 4));
+    const html = buildMonthlyCalendarHtml(2026, 4);
     const { window } = createDom(`<div>${html}</div>`);
     const btn = window.document.getElementById('mlPrev');
     assert.ok(btn, 'mlPrev button rendered');
@@ -276,7 +285,7 @@ describe('buildMonthlyCalendarHtml — prev/next buttons have accessible names',
   it('mlNext aria-label names the next month (WCAG 4.1.2)', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
     // May 2026 → next is June 2026
-    const html = buildMonthlyCalendarHtml(2026, 4, monthPrefix(2026, 4));
+    const html = buildMonthlyCalendarHtml(2026, 4);
     const { window } = createDom(`<div>${html}</div>`);
     const btn = window.document.getElementById('mlNext');
     assert.ok(btn, 'mlNext button rendered');
@@ -291,7 +300,7 @@ describe('buildMonthlyCalendarHtml — prev/next buttons have accessible names',
   it('month wrap: prev label is correct at January year boundary', () => {
     const { buildMonthlyCalendarHtml } = loadMonthlyLogSandbox();
     // January 2027 → prev is December 2026
-    const html = buildMonthlyCalendarHtml(2027, 0, monthPrefix(2027, 0));
+    const html = buildMonthlyCalendarHtml(2027, 0);
     const { window } = createDom(`<div>${html}</div>`);
     const btn = window.document.getElementById('mlPrev');
     const label = btn?.getAttribute('aria-label') ?? '';

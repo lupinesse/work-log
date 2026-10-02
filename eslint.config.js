@@ -88,6 +88,7 @@ export default [
       'src/js/10b-signifiers.js',
       'src/js/cat-utils.js',
       'src/js/entry-utils.js',
+      'src/js/entry-billable.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -145,6 +146,7 @@ export default [
       'src/js/10b-signifiers.js',
       'src/js/cat-utils.js',
       'src/js/entry-utils.js',
+      'src/js/entry-billable.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {

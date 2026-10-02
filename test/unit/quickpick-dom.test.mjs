@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const quickPickSrc = readFileSync(join(__dirname, '../../src/js/04d-render-quickpick.js'), 'utf8');
 
@@ -48,7 +48,10 @@ describe('renderQuickPick BEM element names (jsdom)', () => {
     evaluate('renderQuickPick()');
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
 
   it('emits element classes with the BEM __ separator', () => {
     assert.equal(quickPick.querySelectorAll('.qp-item__text').length, 2);
@@ -57,6 +60,15 @@ describe('renderQuickPick BEM element names (jsdom)', () => {
 
   it('no longer emits the single-hyphen legacy names', () => {
     assert.equal(quickPick.querySelectorAll('.qp-item-text, .qp-remove, .qp-restore').length, 0);
+  });
+
+  it('emits the BEM label and list elements inside qp-wrap (regression, #590)', () => {
+    assert.ok(quickPick.querySelector('.qp-wrap__label'), 'qp-wrap__label rendered');
+    assert.ok(quickPick.querySelector('.qp-wrap__list'), 'qp-wrap__list rendered');
+  });
+
+  it('no longer emits the non-BEM qp-label or qp-list class names (regression, #590)', () => {
+    assert.equal(quickPick.querySelectorAll('.qp-label, .qp-list').length, 0);
   });
 
   it('fills the capture input and selects the tag when a pill is clicked', () => {

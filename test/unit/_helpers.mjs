@@ -107,6 +107,23 @@ export function withStateAccessors(sandbox) {
 }
 
 /**
+ * Strips ESM `import` declarations and `export` keyword prefixes from a source
+ * string so the module can be evaluated as a classic script in a VM context via
+ * `vm.runInContext`. Handles single-line import statements and the common
+ * `export const|function|let|class` prefix form.
+ * @param {string} source - The ESM source text to strip.
+ * @returns {string} The source with ESM syntax removed, safe for vm.runInContext.
+ */
+export function stripEsmSyntax(source) {
+  return (
+    source
+      .replace(/^import\s[^;]*;\s*$/gm, '')
+      // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own source files; trusted input, no nested quantifiers
+      .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1')
+  );
+}
+
+/**
  * Reads `cat-utils.js` as classic-script source for VM sandboxes.
  * Strips the ESM import lines and `export` declaration prefixes so the file
  * can be evaluated with `vm.runInContext`. Requires `safeCssColor` (from
@@ -115,7 +132,19 @@ export function withStateAccessors(sandbox) {
  * @returns {string} cat-utils.js source, safe for vm.runInContext.
  */
 export function loadCatUtilsScriptSource() {
-  return readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8')
+  return stripEsmSyntax(readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8'));
+}
+
+/**
+ * Reads `entry-billable.js` as classic-script source for VM sandboxes.
+ * Strips the ESM import lines and `export` declaration prefixes so the file
+ * can be evaluated with `vm.runInContext`. Requires `getPlanTasks` (from
+ * `withStateAccessors`) and `getCat` (from the sandbox) to already be in the
+ * sandbox context before calling the resulting functions.
+ * @returns {string} entry-billable.js source, safe for vm.runInContext.
+ */
+export function loadEntryBillableScriptSource() {
+  return readFileSync(join(__dirname, '../../src/js/entry-billable.js'), 'utf8')
     .replace(/^import\s[^;]*;\s*$/gm, '')
     .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
 }
@@ -164,25 +193,22 @@ export function extractFunctionSource(source, name) {
  * @returns {string} Concatenated pure-fns source, safe for vm.runInContext.
  */
 export function loadPureFnsScriptSource() {
-  return (
-    [
-      'pure-fns-format.js',
-      'pure-fns-validate.js',
-      'pure-fns-tasks.js',
-      'pure-fns-timesheet.js',
-      'pure-fns-export.js',
-      'pure-fns-gapreport.js',
-      'pure-fns-weeklyreport.js',
-      'pure-fns-rollingsummary.js',
-      'pure-fns-backup.js',
-      'pure-fns-epics.js',
-    ]
-      .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
-      .join('\n')
-      .replace(/^import\s[^;]*;\s*$/gm, '') // single-line imports only; all sub-module imports are single-line
-      // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own pure-fns source; trusted input, no nested quantifiers
-      .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1')
-  );
+  const source = [
+    'pure-fns-format.js',
+    'pure-fns-validate.js',
+    'pure-fns-tasks.js',
+    'pure-fns-timesheet.js',
+    'pure-fns-export.js',
+    'pure-fns-gapreport.js',
+    'pure-fns-weeklyreport.js',
+    'pure-fns-rollingsummary.js',
+    'pure-fns-backup.js',
+    'pure-fns-epics.js',
+  ]
+    .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
+    .join('\n');
+  // All sub-module imports are single-line; stripEsmSyntax handles them correctly.
+  return stripEsmSyntax(source);
 }
 
 /**

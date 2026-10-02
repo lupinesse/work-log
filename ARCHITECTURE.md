@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (569 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (557 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -127,10 +127,9 @@ wl_snapshot        → backup (auto-restore on failure)
 - `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
 - `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
 - `tidyStaleEpics()`, `refreshEpicPickers()`, `renderEpicsManager()`, `bindEpicsManager()` — the epics manager modal that owns archive and restore (#385); these moved out of the manage row, so `renderTagRow()` no longer renders tidy/restore controls
-- `roundToNearest30IfBillable(ts, entry)` — billing-aware timestamp rounding
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`; the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js`; and the entry timestamp/view helpers (`safeRoundedStart`, `viewEntries`) were extracted to `entry-utils.js` — see below.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`; the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js`; the entry timestamp/view helpers (`safeRoundedStart`, `viewEntries`) were extracted to `entry-utils.js` (issue #336, extraction #18); and the billable-rule helpers (`isEntryBillable`, `roundToNearest30IfBillable`) were extracted to `entry-billable.js` (issue #336, extraction #19) — see below.
 
 ---
 
@@ -154,6 +153,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Exports**: `getCat`, `getCatColor`, `getCatLabel`
 
 **Dependencies**: `getCategories` from `state.js`; `safeCssColor` from `pure-fns.js`.
+
+---
+
+#### **entry-billable.js** (60 lines) — Entry Billable Rule (LEAF MODULE)
+**Responsibility**: Implements the three-tier billable lookup that determines whether a log entry counts as billable time: (1) entry-level `billable` flag, (2) matching plan-task `billable` flag, (3) category default. Cancelled entries are always non-billable. Also exports `roundToNearest30IfBillable`, which rounds a timestamp to the nearest 30-minute mark only when the entry is billable, unblocking its use from other leaf modules. Extracted from `05-entries.js` (for `isEntryBillable`) and `02-utils.js` (for `roundToNearest30IfBillable`) as issue #336, extraction #19.
+
+**Exports**: `isEntryBillable`, `roundToNearest30IfBillable`
+
+**Dependencies**: `getPlanTasks` from `state.js`; `getCat` from `cat-utils.js`; `roundToNearest30` from `pure-fns.js`.
 
 ---
 
@@ -182,7 +190,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **03-timer.js** (548 lines) — Timer Logic
+#### **03-timer.js** (551 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -234,11 +242,11 @@ render() → {
 ### Feature Modules
 
 #### **05-entries.js** — Work Log Entry Management
-**Responsibility**: Create new log entries and apply the billable rule. Export/import and File System Access persistence were split to `05a-export.js` and `05b-filesystem.js`.
+**Responsibility**: Create new log entries and annotate entries with the billable status (delegating the rule itself to `entry-billable.js`). Export/import and File System Access persistence were split to `05a-export.js` and `05b-filesystem.js`.
 
 **Key Functions**:
 - `addEntry(withTimer)` — Create new entry from capture input
-- `isEntryBillable(entry)` — Check if entry is billable
+- `annotateBillableStatus(entries)` — Stamp each entry with `_billable` by calling `isEntryBillable()` from `entry-billable.js`
 
 **Data Validation**:
 - Each entry must have: id, text, ts (timestamp), date
@@ -520,12 +528,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (327 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (339 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (342 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (367 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11a-timeblock-render.js` (358 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11b-timeblock-carry.js` (368 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -542,7 +550,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (447 lines) — Miscellaneous Features
+#### **12-misc.js** (448 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -572,7 +580,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (359 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (374 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -648,7 +656,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (498 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (494 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -677,7 +685,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **19-monthlylog.js** (272 lines) — Monthly Log Heatmap
+#### **19-monthlylog.js** (280 lines) — Monthly Log Heatmap
 **Responsibility**: A monthly tab with a 28-cell heat map of hours-per-day (colour-coded by intensity) and a sidebar showing task inventory and monthly totals. Tapping a cell navigates `viewDate`.
 
 **Key functions**: `renderMonthlyLog()`, `mlHoursForDay(dateKey)`, `mlHeatColor(hours)`

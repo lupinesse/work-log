@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, withStateAccessors } from './_helpers.mjs';
+import { __dirname, withStateAccessors, loadEntryBillableScriptSource } from './_helpers.mjs';
 
 /**
  * Loads 05-entries.js into a VM sandbox. `captureInput` is exposed on the
@@ -42,6 +42,9 @@ function loadEntriesSandbox(overrides = {}) {
   };
   sandbox._captureInput = captureInput;
   vm.createContext(withStateAccessors(sandbox));
+  // isEntryBillable and roundToNearest30IfBillable live in the leaf module;
+  // load them into the sandbox before evaluating 05-entries.js.
+  vm.runInContext(loadEntryBillableScriptSource(), sandbox);
   vm.runInContext(entriesSrc, sandbox);
   return sandbox;
 }
