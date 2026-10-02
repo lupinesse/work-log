@@ -3878,6 +3878,91 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 49. Time-block and emoji-picker buttons are named after what they act on (#598) ─
+  console.log('\n49. Time-block buttons have accessible names');
+  {
+    const today = dk(new Date());
+    const page = await freshPage(ctx, {
+      wl_blocks_v1: [
+        { id: 'a11yb1', date: today, slot: 4, duration: 2, text: 'Write report', tag: 'work' },
+        {
+          id: 'a11yb2',
+          date: today,
+          slot: 8,
+          duration: 2,
+          text: 'Standup',
+          tag: 'work',
+          type: 'meeting',
+        },
+      ],
+      wl_tb_migrated_7: '1',
+      wl_cats_v1: CATS,
+    });
+    await page.waitForSelector('.tb-block-del[data-bid="a11yb1"]', {
+      state: 'attached',
+      timeout: 3000,
+    });
+    const nameOf = (selector) =>
+      page.evaluate(
+        (sel) => document.querySelector(sel)?.getAttribute('aria-label') ?? null,
+        selector
+      );
+    assert(
+      'The delete button names its block',
+      (await nameOf('.tb-block-del[data-bid="a11yb1"]')) === 'Delete block: Write report'
+    );
+    assert(
+      'The start button names its block',
+      (await nameOf('.tb-block-start[data-bid="a11yb1"]')) === 'Start tracking: Write report'
+    );
+    assert(
+      'The emoji button names its block',
+      (await nameOf('.tb-block-emoji[data-bid="a11yb1"]')) === 'Add emoji: Write report'
+    );
+    assert(
+      'Two blocks do not share a delete-button name',
+      (await nameOf('.tb-block-del[data-bid="a11yb1"]')) !==
+        (await nameOf('.tb-block-del[data-bid="a11yb2"]'))
+    );
+    const actionButtons = await page.evaluate(() =>
+      [...document.querySelectorAll('.tb-block[data-bid="a11yb1"] button')].map((button) => ({
+        cls: button.className.split(' ')[0],
+        bid: button.dataset.bid,
+        draggable: button.getAttribute('draggable'),
+      }))
+    );
+    assert(
+      'The three action buttons keep data-bid and draggable="false" for the drag handlers',
+      actionButtons.length === 3 &&
+        actionButtons.every((button) => button.bid === 'a11yb1' && button.draggable === 'false'),
+      JSON.stringify(actionButtons)
+    );
+    assert(
+      'A meeting block has no start button',
+      await page.evaluate(() => !document.querySelector('.tb-block-start[data-bid="a11yb2"]'))
+    );
+
+    await page.evaluate(() => document.querySelector('.tb-block-emoji[data-bid="a11yb1"]').click());
+    await page.waitForSelector('#__emojiPicker', { state: 'attached', timeout: 3000 });
+    const pickerNames = await page.evaluate(() =>
+      [...document.querySelectorAll('#__emojiPicker .emoji-picker-grid button')].map((button) => ({
+        text: button.textContent,
+        label: button.getAttribute('aria-label'),
+      }))
+    );
+    assert(
+      'Every emoji option is labelled "Select <emoji>"',
+      pickerNames.length > 0 &&
+        pickerNames.every((option) => option.label === 'Select ' + option.text),
+      JSON.stringify(pickerNames.find((option) => option.label !== 'Select ' + option.text))
+    );
+    assert(
+      'The remove-emoji button is labelled',
+      (await nameOf('#__emojiPicker .emoji-picker-clear')) === 'Remove emoji'
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
