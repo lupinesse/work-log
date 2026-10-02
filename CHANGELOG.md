@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **CI scripts: `github-threads.mjs` error messages are now uniform and include the function name (#588)** — all eleven throw sites in `.github/scripts/lib/github-threads.mjs` now use the pattern `<functionName> HTTP <status>: <body>` and `<functionName> GraphQL errors: <json>`, so every failure in a CI job log names the exact operation that failed without needing to consult the source file.
+
 ### Fixed
 - **Gap-report jsdom test now loads `trapFocusInOverlay` and fails when an event handler throws (#602)** — `gapreport-dom.test.mjs` evaluated `12c-gapreport.js` without `focus-utils.js` (extraction #17), so its Tab test logged `ReferenceError: trapFocusInOverlay is not defined` yet passed. The shipped app was never affected: `script.js` imports the helper from `focus-utils.js`. The test now loads it, gains a Tab-wrap regression test, and `createDom()` in `test/unit/_helpers.mjs` collects errors jsdom would only log, exposed via the new `assertNoUncaughtErrors()` and asserted in that file's `afterEach`. The new Tab test fails on the previous harness.
 - **Monthly calendar day cells are now keyboard-operable and nav buttons have accessible names (#587)** — day cells were `<div>` elements, so keyboard users could not reach or activate them (WCAG 2.1.1 Keyboard). The prev/next navigation buttons had no accessible name, giving screen-reader users no indication of where they would navigate (WCAG 4.1.2 Name, Role, Value). Day cells are now `<button type="button">` elements with `aria-label` attributes including the date and logged hours; empty grid-spacer divs gain `aria-hidden="true"`; nav buttons carry `aria-label="Previous/Next month: <name>"` naming the target month. CSS resets and `:focus-visible` outlines added for `.ml-cell` and `.ml-nav-btn`. 8 unit tests in `test/unit/monthlylog.test.mjs` cover button element type, `aria-label` content, click behaviour, and year-boundary month wrapping.
