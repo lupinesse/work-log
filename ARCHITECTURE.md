@@ -551,7 +551,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (279 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (294 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
@@ -564,7 +564,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (376 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (381 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -611,7 +611,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (508 lines) — Jira Import
+#### **14-jira.js** (511 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
