@@ -15,17 +15,10 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import vm from 'node:vm';
 
+import { escHtml } from '../../src/js/pure-fns-format.js';
 import { __dirname, createDom, extractFunctionSource } from './_helpers.mjs';
 
 const readSource = (file) => readFileSync(join(__dirname, '../../src/js', file), 'utf8');
-
-/** Same escaping contract as pure-fns.js escHtml, which is not loaded here. */
-const escHtml = (text) =>
-  String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 
 /**
  * Evaluates one function from a source file inside a jsdom window.
