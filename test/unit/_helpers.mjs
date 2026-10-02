@@ -134,7 +134,9 @@ export function extractFunctionSource(source, name) {
   if (start === -1) throw new Error(`function ${name} not found`);
   let depth = 0;
   for (let index = source.indexOf('{', start); index < source.length; index += 1) {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     if (source[index] === '{') depth += 1;
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     if (source[index] === '}') depth -= 1;
     if (depth === 0) return source.slice(start, index + 1);
   }

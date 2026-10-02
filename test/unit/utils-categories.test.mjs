@@ -45,6 +45,7 @@ function loadTagRowSandbox(overrides = {}) {
         focus: () => {},
         select: () => {},
         addEventListener: (type, handler) => {
+          // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
           el._listeners[type] = handler;
         },
       };
@@ -676,8 +677,11 @@ describe('markInputInvalid — rejected epic names (regression, #524)', () => {
       setAttribute: (name, value) => attributes.set(name, value),
       removeAttribute: (name) => attributes.delete(name),
       addEventListener(type, handler) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         this.addCounts[type] = (this.addCounts[type] || 0) + 1;
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         if (!listeners[type]) listeners[type] = [];
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         listeners[type].push(handler);
       },
       focus() {
@@ -685,7 +689,9 @@ describe('markInputInvalid — rejected epic names (regression, #524)', () => {
       },
       /** Fire all registered handlers for `type`, then clear the list (simulates `{ once: true }`). */
       fire(type) {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         (listeners[type] || []).forEach((h) => h());
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         delete listeners[type];
       },
     };

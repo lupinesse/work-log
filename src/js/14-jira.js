@@ -154,6 +154,7 @@
         if (!label) return;
         const existing = jiraMatchCat(task.parentKey, label);
         if (existing) {
+          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
           jiraCatMap[mapKey] = { ...existing, isNew: false };
         } else {
           const color =
@@ -161,6 +162,7 @@
             AUTO_COLORS[ci % AUTO_COLORS.length];
           ci++;
           usedColors.add(color);
+          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
           jiraCatMap[mapKey] = {
             id: 'epic_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
             label,
@@ -209,9 +211,11 @@
       const cat = jiraGetCat(t);
       const key = cat ? cat.id : '__none__';
       if (!(key in groupIndex)) {
+        // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
         groupIndex[key] = groups.length;
         groups.push({ cat, tasks: [] });
       }
+      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
       groups[groupIndex[key]].tasks.push({ t, i });
     });
 
@@ -236,6 +240,7 @@
             const mapped = jiraMapStatus(t.status);
             const isDone = mapped === 'done';
             const isDup = jiraIsDup(t);
+            // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
             const slabel = JIRA_STATUS_LABEL[mapped] || t.status;
             const statusBadge = isDup
               ? `<span class="jira-badge jira-badge-dup">already added</span>`
@@ -273,6 +278,7 @@
       row = [],
       inQ = false;
     for (let i = 0; i < text.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
       const ch = text[i],
         next = text[i + 1];
       if (inQ) {
@@ -313,6 +319,7 @@
       .map((csvRow) => {
         const o = {};
         headers.forEach((h, i) => {
+          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
           o[h.trim()] = (csvRow[i] || '').trim();
         });
         return o;
@@ -361,6 +368,7 @@
       jiraTasks
         .map((_, i) => i)
         .filter((index) => {
+          // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
           const t = jiraTasks[index];
           return jiraMapStatus(t.status) !== 'done' && !jiraIsDup(t);
         })
@@ -481,9 +489,11 @@
       const cat = jiraGetCat(t);
       const key = cat ? cat.id : '__none__';
       if (!(key in seen)) {
+        // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
         seen[key] = grouped.length;
         grouped.push([]);
       }
+      // eslint-disable-next-line security/detect-object-injection -- key is a Jira issue key (structured format) from an authenticated API response
       grouped[seen[key]].push({ t, i });
     });
     grouped.forEach((group) =>

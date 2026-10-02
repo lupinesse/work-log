@@ -83,6 +83,7 @@ function renderMigrationStep() {
     return;
   }
 
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const item = _migItems[_migIdx];
   const cat = getCat(item.tag);
   body.innerHTML = `
@@ -105,6 +106,7 @@ function renderMigrationStep() {
     </div>`;
 
   document.getElementById('migCarry').addEventListener('click', () => {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     carryMigTask(_migItems[_migIdx]);
     _migIdx++;
     renderMigrationStep();
@@ -116,11 +118,13 @@ function renderMigrationStep() {
   document.getElementById('migDateConfirm').addEventListener('click', () => {
     const d = document.getElementById('migDatePicker').value;
     if (!d) return;
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     scheduleMigTask(_migItems[_migIdx], d);
     _migIdx++;
     renderMigrationStep();
   });
   document.getElementById('migDrop').addEventListener('click', () => {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     dropMigTask(_migItems[_migIdx]);
     _migIdx++;
     renderMigrationStep();
@@ -186,6 +190,7 @@ function initMigration() {
   const rec = getMigrationRecord();
   const monthKey = dk(now).slice(0, 7); // YYYY-MM
 
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   if (isLastDay && !rec[monthKey]) {
     wlLog.info('initMigration: showing last-day banner', { monthKey });
     setTimeout(() => {
@@ -196,6 +201,7 @@ function initMigration() {
       document.body.prepend(banner);
       document.getElementById('migBannerBtn')?.addEventListener('click', () => {
         banner.remove();
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         rec[monthKey] = true;
         saveMigrationRecord(rec);
         openMigration();
@@ -204,6 +210,7 @@ function initMigration() {
   } else {
     wlLog.info('initMigration: no auto-prompt', {
       isLastDay,
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       alreadyDoneThisMonth: !!rec[monthKey],
     });
   }

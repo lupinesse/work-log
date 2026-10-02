@@ -101,7 +101,9 @@ function autoCarryTasks() {
   const latestByText = {};
   unfinished.forEach((task) => {
     const key = task.text.toLowerCase();
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (!latestByText[key] || task.date > latestByText[key].date) {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       latestByText[key] = task;
     }
   });

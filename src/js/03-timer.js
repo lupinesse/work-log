@@ -169,6 +169,7 @@ function setFavicon(state) {
   if (state === _faviconState) return;
   _faviconState = state;
   const colors = { active: '#1D9E75', paused: '#EF9F27', hyperfocus: '#E74C3C', idle: null };
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const color = colors[state];
   let link = document.querySelector("link[rel~='icon']");
   if (!link) {
@@ -455,7 +456,9 @@ function commitBannerNote() {
 function logUtilEntry(kind) {
   const labelMap = { break: '☕ Break', lunch: '🥪 Lunch', meeting: '📅 Meeting' };
   const tagMap = { break: 'other', lunch: 'other', meeting: 'meeting' };
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const text = labelMap[kind] || kind;
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const tag = tagMap[kind] || getCategories()[0]?.id || 'other';
 
   const entry = {

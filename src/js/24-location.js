@@ -76,6 +76,7 @@ export function renderLocation() {
   const btn = document.getElementById('dateNavLocation');
   if (!btn) return;
   const loc = getViewLocation();
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   const { emoji, label } = WORK_LOCATIONS[loc];
   btn.querySelector('.date-nav-location__emoji').textContent = emoji;
   btn.querySelector('.date-nav-location__label').textContent = label;

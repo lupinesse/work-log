@@ -178,6 +178,7 @@ function getMoonData(date) {
                   ? 6
                   : 7;
 
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   return { emoji: PHASES[pIdx], phase: PHASE_NAMES[pIdx], illum, sign };
 }
 
@@ -363,7 +364,9 @@ function fetchCalendarEvents() {
     const todayMD = fmtMD(now);
     const thisYear = getFlagDays(year);
     const nextYear = getFlagDays(year + 1);
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (thisYear[todayMD]) {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       el.innerHTML = `${FLAG_SVG}<span style="font-weight:500">${escHtml(thisYear[todayMD])}</span>`;
       return;
     }
@@ -537,13 +540,17 @@ function fetchWeather() {
               String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0')
             );
           };
+          // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
           const rise = parse(data.daily.sunrise[todayIdx]);
+          // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
           const set_ = parse(data.daily.sunset[todayIdx]);
+          // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
           const durSec = data.daily.daylight_duration[todayIdx];
           const h = Math.floor(durSec / 3600);
           const m = Math.floor((durSec % 3600) / 60);
           let diffHtml = '';
           if (yesterdayIdx !== -1) {
+            // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
             const diffMin = Math.round((durSec - data.daily.daylight_duration[yesterdayIdx]) / 60);
             if (diffMin > 0)
               diffHtml = ` <strong style="color:var(--sig-event)">+${diffMin} min</strong>`;

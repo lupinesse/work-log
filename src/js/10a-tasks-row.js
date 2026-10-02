@@ -19,6 +19,7 @@ function statusOpts(cur) {
         blocked: 'Blocked',
         done: 'Done',
       };
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       return `<option value="${s}"${cur === s ? ' selected' : ''}>${labels[s]}</option>`;
     })
     .join('');

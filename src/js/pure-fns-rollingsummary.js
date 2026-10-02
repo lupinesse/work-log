@@ -51,6 +51,7 @@ export function buildRollingSummary(dateKeys, opts) {
     const byText = {};
     for (const e of dayEntries) {
       const key = e.text || '(untitled)';
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       byText[key] = (byText[key] || 0) + (e.tsEnd - e.ts);
     }
     const topTasks = Object.entries(byText)

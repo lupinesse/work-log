@@ -146,6 +146,7 @@ export function validateBackupFile(backup) {
     };
   }
   for (const key of ['entries', 'categories', 'planTasks']) {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (!Array.isArray(backup[key])) {
       return { valid: false, error: `Invalid backup — missing required field "${key}".` };
     }

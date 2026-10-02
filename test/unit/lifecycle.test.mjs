@@ -48,8 +48,10 @@ function loadCollapseSandbox(preloaded = {}) {
   const store = { ...preloaded };
   const sandbox = {
     localStorage: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (key) => (key in store ? store[key] : null),
       setItem: (key, value) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         store[key] = value;
       },
     },
@@ -155,8 +157,10 @@ function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
     viewDate,
     isToday: (d) => pureFns.dk(d) === pureFns.dk(new Date()),
     localStorage: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (key) => (key in store ? store[key] : null),
       setItem: (key, value) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         store[key] = String(value);
       },
     },
@@ -203,6 +207,7 @@ describe('ensureDayStarted', () => {
     ensureDayStarted();
     const key = Object.keys(store).find((k) => k.startsWith('wl_sod_'));
     assert.ok(key, 'wl_sod_ key should be written');
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     const ts = parseInt(store[key]);
     assert.ok(ts >= before && ts <= Date.now(), 'stored timestamp should be approximately now');
   });
