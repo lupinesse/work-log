@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (554 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (542 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -127,11 +127,11 @@ wl_snapshot        → backup (auto-restore on failure)
 - `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
 - `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
 - `tidyStaleEpics()`, `refreshEpicPickers()`, `renderEpicsManager()`, `bindEpicsManager()` — the epics manager modal that owns archive and restore (#385); these moved out of the manage row, so `renderTagRow()` no longer renders tidy/restore controls
-- `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
+- `safeRoundedStart()` — billing-aware timestamp rounding (`roundToNearest30IfBillable` was extracted to `entry-billable.js`, issue #336, extraction #19)
 - `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`, and the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js` — see below.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module; `roundToNearest30IfBillable` and `isEntryBillable` were extracted to `entry-billable.js` (issue #336, extraction #19). The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`, and the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js` — see below.
 
 ---
 
@@ -155,6 +155,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Exports**: `getCat`, `getCatColor`, `getCatLabel`
 
 **Dependencies**: `getCategories` from `state.js`; `safeCssColor` from `pure-fns.js`.
+
+---
+
+#### **entry-billable.js** (60 lines) — Entry Billable Rule (LEAF MODULE)
+**Responsibility**: Implements the three-tier billable lookup that determines whether a log entry counts as billable time: (1) entry-level `billable` flag, (2) matching plan-task `billable` flag, (3) category default. Cancelled entries are always non-billable. Also exports `roundToNearest30IfBillable`, which rounds a timestamp to the nearest 30-minute mark only when the entry is billable, unblocking its use from other leaf modules. Extracted from `05-entries.js` (for `isEntryBillable`) and `02-utils.js` (for `roundToNearest30IfBillable`) as issue #336, extraction #19.
+
+**Exports**: `isEntryBillable`, `roundToNearest30IfBillable`
+
+**Dependencies**: `getPlanTasks` from `state.js`; `getCat` from `cat-utils.js`; `roundToNearest30` from `pure-fns.js`.
 
 ---
 
@@ -226,11 +235,11 @@ render() → {
 ### Feature Modules
 
 #### **05-entries.js** — Work Log Entry Management
-**Responsibility**: Create new log entries and apply the billable rule. Export/import and File System Access persistence were split to `05a-export.js` and `05b-filesystem.js`.
+**Responsibility**: Create new log entries and annotate entries with the billable status (delegating the rule itself to `entry-billable.js`). Export/import and File System Access persistence were split to `05a-export.js` and `05b-filesystem.js`.
 
 **Key Functions**:
 - `addEntry(withTimer)` — Create new entry from capture input
-- `isEntryBillable(entry)` — Check if entry is billable
+- `annotateBillableStatus(entries)` — Stamp each entry with `_billable` by calling `isEntryBillable()` from `entry-billable.js`
 
 **Data Validation**:
 - Each entry must have: id, text, ts (timestamp), date

@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Changed
+- **`isEntryBillable()` and `roundToNearest30IfBillable()` extracted to leaf ES module `entry-billable.js` (#593)** — both functions moved from the concatenated `05-entries.js` / `02-utils.js` into a new `src/js/entry-billable.js` leaf module (issue #336, extraction #19). `isEntryBillable` is now importable by unit tests and downstream leaf modules; `roundToNearest30IfBillable` follows since it is the only caller. No behaviour change. 22 unit tests in `test/unit/entry-billable.test.mjs`.
 - **`stripEsmSyntax` extracted to `test/unit/_helpers.mjs` (#594)** — the two-step `.replace()` chain that strips ESM `import` declarations and `export` keyword prefixes so a module can run in a VM classic-script context was duplicated inline in five test files (`10b-signifiers.test.mjs`, `focus-trap-dom.test.mjs`, `gofore-timesheet-client.test.mjs`, `save.test.mjs`, `trackers.test.mjs`) and inside two helpers in `_helpers.mjs` itself. A single `stripEsmSyntax(source)` function is now exported from `_helpers.mjs`; all six duplicates are replaced by a call to it. No test behaviour changes.
 - **CI scripts: `github-threads.mjs` error messages are now uniform and include the function name (#588)** — all eleven throw sites in `.github/scripts/lib/github-threads.mjs` now use the pattern `<functionName> HTTP <status>: <body>` and `<functionName> GraphQL errors: <json>`, so every failure in a CI job log names the exact operation that failed without needing to consult the source file.
 

@@ -507,21 +507,8 @@ function renderTagRow() {
 // are defined in 00-pure-fns.js (concatenated earlier) so they are in scope here.
 // isToday() and fmtLabel() are defined in date-labels.js (a leaf ES module
 // imported at the top of the built bundle), not here.
-
-/**
- * Rounds `ts` to the nearest 30-minute mark only when `entry` is billable.
- * Non-billable entries keep their exact timestamps for accurate reporting.
- * @param {number} ts - Unix timestamp in milliseconds.
- * @param {object|null} entry - Work-log entry; if null, always rounds.
- * @returns {number} Timestamp, conditionally rounded.
- */
-function roundToNearest30IfBillable(ts, entry) {
-  // Assumption: non-billable entries keep exact timestamps for accurate time reporting.
-  // Billable entries are rounded because clients are invoiced in 30-minute increments.
-  // Changing this requires updating the export format in 05-entries.js and DATA.md.
-  if (entry && !isEntryBillable(entry)) return ts;
-  return roundToNearest30(ts);
-}
+// isEntryBillable() and roundToNearest30IfBillable() have been extracted to
+// src/js/entry-billable.js (leaf ES module, issue #336, extraction #19).
 
 /**
  * Returns a rounded start timestamp that does not overlap any existing entry for today.
