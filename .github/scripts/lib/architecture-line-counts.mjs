@@ -53,7 +53,7 @@ export function extractDocumentedCounts(markdown) {
  * @returns {number} The non-blank line count.
  */
 export function countNonBlankLines(contents) {
-  return contents.split('\n').filter((line) => line !== '').length;
+  return contents.split('\n').filter((line) => line.trimEnd() !== '').length;
 }
 
 /**
