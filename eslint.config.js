@@ -73,6 +73,7 @@ export default [
       'src/js/05b-filesystem.js',
       'src/js/01b-migrate.js',
       'src/js/24-location.js',
+      'src/js/focus-utils.js',
       'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/04b-render-stats.js',
@@ -85,6 +86,7 @@ export default [
       'src/js/08a-pomo-dashboard.js',
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
+      'src/js/cat-utils.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -127,6 +129,7 @@ export default [
       'src/js/05b-filesystem.js',
       'src/js/01b-migrate.js',
       'src/js/24-location.js',
+      'src/js/focus-utils.js',
       'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/04b-render-stats.js',
@@ -139,6 +142,7 @@ export default [
       'src/js/08a-pomo-dashboard.js',
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
+      'src/js/cat-utils.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {

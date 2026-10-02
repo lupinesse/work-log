@@ -429,7 +429,7 @@ function commitBannerNote() {
   if (!note || !getActiveTimer()) return;
 
   const snTs = Date.now();
-  logNotes.push({
+  getLogNotes().push({
     id: snTs + '-sn',
     text: note,
     ts: snTs,

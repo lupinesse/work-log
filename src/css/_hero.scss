@@ -7,8 +7,8 @@
 
 .hero-card {
   background: var(--bg);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--line-strong); /* overridden by state modifiers */
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--border2); /* overridden by state modifiers */
   border-radius: var(--radius-lg);
   margin-bottom: 14px;
   transition:
@@ -21,7 +21,7 @@
 
 // State modifier: left-edge colour + optional background tint
 .hero-card--idle {
-  border-left-color: var(--line-strong);
+  border-left-color: var(--border2);
 
   // Black-with-alpha (project convention) — renders as a tint on both
   // light and dark backgrounds without needing a per-scheme override.
@@ -208,14 +208,14 @@
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  color: var(--text3);
   margin-bottom: 8px;
 }
 
 .hero-composer {
   width: 100%;
   background: var(--bg);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border2);
   border-radius: var(--radius);
   padding: 8px 12px;
   font-size: 13px;
@@ -248,8 +248,8 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  border-radius: 99px;
-  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border2);
   background: var(--bg);
   font-size: 12px;
   color: var(--text2);
@@ -318,7 +318,7 @@
 
 .hero-sub {
   font-size: 11.5px;
-  color: var(--ink-muted);
+  color: var(--text3);
   margin-top: 2px;
 }
 
@@ -327,7 +327,7 @@
 .hero-btn {
   padding: 6px 12px;
   border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border2);
   font-family: var(--font);
   font-size: 13px;
   cursor: pointer;
@@ -404,13 +404,13 @@
   align-items: center;
   gap: 6px;
   padding: 10px 20px;
-  border-top: 1px solid var(--line-strong);
+  border-top: 1px solid var(--border2);
   background: var(--bg);
 }
 
 .hero-note-label {
   font-size: 12px;
-  color: var(--ink-muted);
+  color: var(--text3);
   flex-shrink: 0;
   cursor: default;
 }
@@ -418,7 +418,7 @@
 .hero-note-input {
   flex: 1;
   background: var(--bg);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border2);
   border-radius: var(--radius);
   padding: 5px 10px;
   font-size: 12px;
@@ -447,18 +447,18 @@
 .hero-note-div {
   width: 1px;
   height: 14px;
-  background: var(--line-strong);
+  background: var(--border2);
   flex-shrink: 0;
 }
 
 .hero-util-pill {
   background: none;
-  border: 1px solid var(--line-strong);
-  border-radius: 99px;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-pill);
   padding: 3px 10px;
   font-size: 11px;
   font-family: var(--font);
-  color: var(--ink-muted);
+  color: var(--text3);
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
@@ -522,7 +522,7 @@
   left: 0;
   z-index: 200;
   background: var(--bg);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border2);
   border-radius: var(--radius);
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.1),
@@ -588,7 +588,7 @@
   .hero-middle {
     border-left: none;
     padding-left: 0;
-    border-top: 1px solid var(--line-strong);
+    border-top: 1px solid var(--border2);
     padding-top: 10px;
   }
 

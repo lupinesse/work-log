@@ -82,7 +82,7 @@ Your data is stored locally in your browser — nothing is sent anywhere.
 - **Gofore timesheet draft** — the End of Day modal shows a draft of the day's timesheet entry: total hours plus an `activity (ticket, ticket)` description built from your log. Edit it and press "copy description" to paste into timesheet.gofore.com. One-click submit (Claude in Chrome first, Playwright as fallback) is built but switched off: set `GOFORE_SUBMIT_ENABLED = true` in `src/js/00-config.local.js` to show the submit button, and `$GoforeSubmitEnabled = $true` in `config.local.ps1` to let the server accept it. It needs `start-server.ps1`, the Claude Code CLI with the Claude in Chrome extension, and/or a one-time `npm run timesheet:login` (Microsoft SSO) for the Playwright fallback, whose page selectors are unverified defaults — override them in `scripts/gofore-timesheet.selectors.json`.
 - **Auto-backup** — JSON backup saved automatically on end-of-day to a local `JSON backups/` folder
 - **Weekly report** — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing "what did I touch" by hand
-- **Gap report** — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one
+- **Gap report** — flags this week's finished, billable entries that are missing both a note and a proof link, with a one-click jump to fix each one
 
 ### Bullet Journal (BuJo) features
 - **Rapid logging** — `✏️` button opens a floating capture panel; `Enter` starts the timer immediately

@@ -30,7 +30,7 @@
 // matches the design spec's 14px 16px rhythm.
 .analytics-section .stat {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   padding: 14px 16px;
 }
 

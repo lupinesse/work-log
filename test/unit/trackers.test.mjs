@@ -193,6 +193,17 @@ describe('22-trackers — loadTrackers / saveTrackers', () => {
     assert.equal(getTrackerState().length, 0);
   });
 
+  it('replaces trackers already held with [] when the stored JSON is malformed', () => {
+    // The test above starts from an empty list, so it passes even if the
+    // reset is dropped; holding a tracker first makes the reset observable.
+    const { sandbox, getTrackerState } = loadSandbox({
+      trackers: [WORK_TRACKER],
+      storage: { [STORE_TRACKERS]: '{ broken' },
+    });
+    sandbox.loadTrackers();
+    assert.equal(getTrackerState().length, 0);
+  });
+
   it('saveTrackers round-trips through localStorage', () => {
     const initial = [WORK_TRACKER];
     const { sandbox, getStorage } = loadSandbox({ trackers: initial });

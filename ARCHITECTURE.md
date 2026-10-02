@@ -37,7 +37,7 @@ Work Log is a single-page ADHD-friendly time tracking application built as one H
 
 ---
 
-#### **01-state.js** (139 lines) — Data Store
+#### **01-state.js** (134 lines) — Data Store
 **Responsibility**: Single source of truth for all application state
 
 **Exports**:
@@ -103,13 +103,13 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (93 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (94 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
-- `pure-fns-format.js` (234 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
+- `pure-fns-format.js` (248 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
 - `pure-fns-export.js` (309 lines) — Billable-export grouping and merging: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `computeDayBounds`, `isWorkdayLikelyOver`, `buildTaskNoteMap`, `buildEntryNoteMap`, `buildEntryLinkMap`, `mergeNoteMaps`
-- `pure-fns-gapreport.js` (191 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
+- `pure-fns-gapreport.js` (194 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
 - `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
 - `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
 - `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
@@ -119,11 +119,10 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (558 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (538 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
-- `getCat(id)`, `getCatColor(id)`, `getCatLabel(id)` — category lookup by ID with fallback to `'other'`; colour always passes through `safeCssColor()`
 - `renderTagRow()` — orchestrates the epic row: assigns the markup from `buildTagRowHtml()`, then calls `bindTagRowEvents()`
 - `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
 - `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
@@ -132,7 +131,7 @@ wl_snapshot        → backup (auto-restore on failure)
 - `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js` — see below.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`, and the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js` — see below.
 
 ---
 
@@ -150,7 +149,25 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04b-render-stats.js** (148 lines) — Header Stat Tiles (LEAF MODULE)
+#### **cat-utils.js** (41 lines) — Category Lookup Helpers (LEAF MODULE)
+**Responsibility**: `getCat(id)`, `getCatColor(id)`, and `getCatLabel(id)` — stateless category accessors that route through a single fallback chain: id → `'other'` → hardcoded stub. The returned colour is always sanitised through `safeCssColor()`, which is the choke point every colour-rendering template in the app relies on (audited against XSS alert #2). Extracted from `02-utils.js` (issue #336, extraction #16) — sister to `date-labels.js`: both pull the stateless lookup out of a heavily-entangled file and leave the DOM-binding code behind. `26-gofore-timesheet.js` was the first caller; it had an inline copy of `getCatLabel` added in extraction #11 to avoid the then-non-leaf dependency on `02-utils.js`. That inline is replaced by a proper import here.
+
+**Exports**: `getCat`, `getCatColor`, `getCatLabel`
+
+**Dependencies**: `getCategories` from `state.js`; `safeCssColor` from `pure-fns.js`.
+
+---
+
+#### **focus-utils.js** (41 lines) — Keyboard Focus Trap Utility (LEAF MODULE)
+**Responsibility**: `trapFocusInOverlay(overlayEl, e)` — keeps Tab-key navigation inside an open overlay dialog (WCAG 2.1.2): wraps forward from the last focusable element to the first on Tab, and backward on Shift+Tab. Extracted from `02-utils.js` (issue #336, extraction #17); `12d-weeklyreport.js` previously kept a private copy because it is a leaf ES module and could not import from the concatenated `02-utils.js`. That duplication is now resolved: `12d-weeklyreport.js` imports from this module, and the concatenated bundle injects this module's scope before `02-utils.js`.
+
+**Exports**: `trapFocusInOverlay`
+
+**Dependencies**: none (reads `document.activeElement` from the browser global scope).
+
+---
+
+#### **04b-render-stats.js** (153 lines) — Header Stat Tiles (LEAF MODULE)
 **Responsibility**: Renders the three header stat tiles (distinct tasks today / distinct epics this week / current streak) and the three sub-stat tiles beneath them (top task today / top task this week / best streak day). Reads entries via `getEntries()` from `state.js`; pure rendering with no side-effects beyond DOM writes. Extracted from the render-family concat (issue #336) — the thirteenth ES-module extraction. The only former blocker was `calcStreak()`, which was itself extracted to `pure-fns-format.js` as a pure function in the same PR.
 
 **Exports**: `renderHeaderStatTiles`, `renderSubStatTiles`
@@ -192,8 +209,8 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (148 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
-- `04c-render-timeline.js` (435 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04b-render-stats.js` (153 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
+- `04c-render-timeline.js` (434 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -402,7 +419,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **10-tasks.js** (169 lines) — Task Management
+#### **10-tasks.js** (172 lines) — Task Management
 **Responsibility**: Plan tasks, status transitions, checkpoints, deadlines
 
 **Task Statuses**:
@@ -449,7 +466,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (334 lines) — Task Event Binding
+#### **10b-tasks-events.js** (333 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -517,7 +534,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (441 lines) — Miscellaneous Features
+#### **12-misc.js** (447 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -534,14 +551,14 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (261 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (275 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
 - `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (45 lines) — Top-level bootstrap: registers leaf-module callbacks (`setExportBackupCallback`, `setSignifierRenderCallback`), then calls `load`, `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (125 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
-- `12d-weeklyreport.js` (162 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
+- `12d-weeklyreport.js` (130 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button. Imports `trapFocusInOverlay` from `focus-utils.js`.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 
@@ -623,7 +640,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (509 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (497 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -643,7 +660,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **18-dailylog.js** (87 lines) — Daily-log feed builder + note input
+#### **18-dailylog.js** (93 lines) — Daily-log feed builder + note input
 **Responsibility**: Pure data helper for the unified Today's Flow Log view. Builds chronological feed items by merging time entries, log notes, and task status comments for the given day; persists user-typed notes.
 
 **Key functions**: `buildDailyLogItems(dateKey)`, `addLogNote()`
@@ -708,12 +725,12 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **26-gofore-timesheet.js** (132 lines) — Gofore Timesheet
+#### **26-gofore-timesheet.js** (123 lines) — Gofore Timesheet
 **Responsibility**: End-of-day Gofore timesheet form — renders a draft entry from the day's tracked time, supports clipboard copy, and posts to the local PowerShell server's `/api/gofore-timesheet` endpoint for submission via a saved browser session.
 
 **Key export**: `renderEodTimesheet(dateKey)`
 
-**Dependencies**: `buildTimesheetDayPayload()`, `findTimesheetEntryProblem()` from `pure-fns-timesheet.js`; `GOFORE_SUBMIT_ENABLED` from `00-config.js`; `getEntries()`, `getCategories()` from `state.js`; `wlLog` from `logger.js`.
+**Dependencies**: `buildTimesheetDayPayload()`, `findTimesheetEntryProblem()` from `pure-fns-timesheet.js`; `GOFORE_SUBMIT_ENABLED` from `00-config.js`; `getEntries()` from `state.js`; `wlLog` from `logger.js`; `getCatLabel` from `cat-utils.js`.
 
 ---
 

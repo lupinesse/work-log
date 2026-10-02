@@ -24,6 +24,7 @@
  */
 
 import { readFileSync } from 'node:fs';
+import { parseRepository } from './lib/parse-repository.mjs';
 import {
   fetchAllThreads,
   replyToThread,
@@ -72,7 +73,7 @@ console.log(
 );
 
 const GITHUB_TOKEN = must('GITHUB_TOKEN');
-const [OWNER, REPO] = must('GITHUB_REPOSITORY').split('/');
+const { owner: OWNER, repo: REPO } = parseRepository(must('GITHUB_REPOSITORY'));
 const PR_NUMBER = must('PR_NUMBER');
 const HEAD_SHA = must('HEAD_SHA');
 

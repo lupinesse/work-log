@@ -2,25 +2,8 @@
 // safeCssColor() and escHtml() are defined in 00-pure-fns.js.
 // EpicCategory is declared in pure-fns-epics.js (concatenated earlier).
 
-/**
- * Returns the category object for `id`, falling back to 'other' if not found.
- * The returned colour is always sanitised through safeCssColor.
- * @param {string} id - Category ID.
- * @returns {{ id: string, label: string, color: string }}
- */
-function getCat(id) {
-  const cat =
-    getCategories().find((category) => category.id === id) ||
-    getCategories().find((category) => category.id === 'other');
-  if (!cat) return { id: 'other', label: 'other', color: '#888780' };
-  return { ...cat, color: safeCssColor(cat.color) };
-}
-function getCatColor(id) {
-  return getCat(id).color;
-}
-function getCatLabel(id) {
-  return getCat(id).label;
-}
+// getCat(), getCatColor(), and getCatLabel() have been extracted to
+// src/js/cat-utils.js (leaf ES module, issue #336, extraction #16).
 
 let editingCatId = null;
 let addingNewCat = false;
@@ -75,9 +58,13 @@ function tidyStaleEpics() {
 
 /**
  * Deletes the currently selected epic after confirming with the user, unless
- * it is a built-in (PROTECTED_CAT_IDS) — those are never offered for
- * deletion at all, since 'work' is the hardcoded startup/reset fallback and
- * 'other' is getCat()'s own fallback for unknown tags.
+ * it is a built-in (PROTECTED_CAT_IDS: work, meeting, focus, break, other) —
+ * those are never offered for deletion at all, since 'work' is the hardcoded
+ * startup/reset fallback and 'other' is getCat()'s own fallback for unknown
+ * tags. A selectedTag that matches no stored epic (stale after an import or
+ * a delete elsewhere) is also refused, because getCat() would silently
+ * substitute 'other' and the function would save and log a deletion that
+ * never happened.
  *
  * Unlike tidyStaleEpics()/archiving, this is a hard delete: the category
  * record itself is removed, not flagged. Any log entry or board task still
@@ -86,8 +73,8 @@ function tidyStaleEpics() {
  * left to restore. The confirm text says so explicitly and names how many
  * entries/tasks would be affected, mirroring tidyStaleEpics()'s pattern of
  * showing the user what is about to happen before it happens.
- * @returns {boolean} True if the epic was deleted, false if blocked or the
- *   user declined the confirm.
+ * @returns {boolean} True if the epic was deleted, false if blocked, unknown
+ *   or the user declined the confirm.
  */
 function deleteSelectedEpic() {
   const selectedTag = getSelectedTag();
@@ -96,6 +83,12 @@ function deleteSelectedEpic() {
       selectedTag,
     });
     window.alert(`"${getCatLabel(selectedTag)}" is a built-in epic and can't be deleted.`);
+    return false;
+  }
+  if (!getCategories().some((category) => category.id === selectedTag)) {
+    wlLog.warn('deleteSelectedEpic: selected epic does not exist, nothing deleted', {
+      selectedTag,
+    });
     return false;
   }
   const cat = getCat(selectedTag);
@@ -371,8 +364,7 @@ function bindTagRowEvents() {
           (category) => category.id !== id && category.label.toLowerCase() === label.toLowerCase()
         )
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const cat = getCategories().find((category) => category.id === id);
@@ -458,8 +450,7 @@ function bindTagRowEvents() {
       if (
         getCategories().find((category) => category.label.toLowerCase() === label.toLowerCase())
       ) {
-        input.style.borderColor = '#C62828';
-        input.focus();
+        markInputInvalid(input);
         return;
       }
       const color = nextDistinctColor();
@@ -558,39 +549,29 @@ function viewEntries() {
     .slice()
     .sort((a, b) => b.ts - a.ts);
 }
-// calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
-
 /**
- * Keeps keyboard focus inside `overlayEl` while it is open (WCAG 2.1.2).
- * Wraps forward from the last focusable element back to the first (Tab) and
- * backward from the first to the last (Shift-Tab). Call from the overlay's
- * `keydown` handler whenever `e.key === 'Tab'`. Used by concatenated modules
- * (12c-gapreport.js); 12d-weeklyreport.js keeps a private copy because it is
- * a leaf ES module and cannot import from this concatenated file — consolidate
- * both into a shared leaf module when 12c-gapreport.js is extracted (#336).
- * @param {HTMLElement} overlayEl - The open overlay container.
- * @param {KeyboardEvent} e - The Tab keydown event.
+ * Flags a text input as rejected: red border via `.input--invalid`, exposed to
+ * assistive tech through `aria-invalid`, and focused. The mark clears itself
+ * on the next edit so a corrected value is not left looking wrong.
+ * @param {HTMLInputElement} input - The input whose value was rejected.
  * @returns {void}
  */
-function trapFocusInOverlay(overlayEl, e) {
-  const focusable = Array.from(
-    overlayEl.querySelectorAll(
-      'a[href], area[href], input:not([disabled]), select:not([disabled]), ' +
-        'textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    )
-  ).filter((el) => el.offsetParent !== null && el.tabIndex >= 0); // tabindex="-1" is not in Tab order (#556)
-  if (focusable.length === 0) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (e.shiftKey) {
-    if (document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    }
-  } else {
-    if (document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  }
+function markInputInvalid(input) {
+  input.classList.add('input--invalid');
+  input.setAttribute('aria-invalid', 'true');
+  input.addEventListener(
+    'input',
+    () => {
+      input.classList.remove('input--invalid');
+      input.removeAttribute('aria-invalid');
+    },
+    { once: true }
+  );
+  input.focus();
 }
+
+// calcStreak() is a pure function (testable without DOM) — lives in pure-fns-format.js.
+
+// trapFocusInOverlay() was extracted to focus-utils.js (issue #336, extraction #17).
+// It is injected into this concatenated scope by build.js because focus-utils.js
+// is a LEAF_MODULE that precedes this file in the bundle order.

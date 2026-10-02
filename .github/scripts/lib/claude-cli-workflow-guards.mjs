@@ -40,8 +40,13 @@ const CLAUDE_INVOCATION = /^[ \t]*claude[ \t]+-p\b/m;
 /** `unset CLAUDE_CODE_OAUTH_TOKEN` — the credential-selection bug itself. */
 const DISCARDS_OAUTH = /\bunset[ \t]+CLAUDE_CODE_OAUTH_TOKEN\b/;
 
-/** `--allowedTools` restricts the CLI to an explicit tool allowlist. */
-const HAS_ALLOWED_TOOLS = /--allowedTools\b/;
+/**
+ * `--allowedTools` restricts the CLI to an explicit tool allowlist. The flag
+ * only counts when a tool name follows it (after a space, `=`, or a line
+ * continuation): `--allowedTools --max-turns 5` passes an empty list, which
+ * restricts nothing.
+ */
+const HAS_ALLOWED_TOOLS = /--allowedTools(?:=|(?:[ \t]|\\\r?\n)+)["']?[^\s"'\\-]/;
 
 /** `x=$?` or `x=${PIPESTATUS[0]}` — an explicit exit-status capture. */
 const STATUS_CAPTURE = /^[ \t]*[A-Za-z_][A-Za-z0-9_]*=\$(?:\?|\{PIPESTATUS\[\d+\]\})/m;

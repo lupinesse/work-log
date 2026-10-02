@@ -517,7 +517,7 @@ function _heroCatSelect(newTag) {
  * @returns {string}
  */
 function _heroLastNoteText(entryId) {
-  const latest = logNotes
+  const latest = getLogNotes()
     .filter((note) => note.type === 'session-note' && note.entryId === entryId)
     .sort((a, b) => b.ts - a.ts)[0];
   if (!latest) return '';

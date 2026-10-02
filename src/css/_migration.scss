@@ -12,7 +12,7 @@
 
 .migration-card {
   background: var(--bg);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   border-radius: var(--radius-lg);
   padding: 20px;
   width: min(480px, 90vw);
@@ -93,7 +93,7 @@
   font-size: 12px;
   padding: 8px 0;
   border-radius: var(--radius);
-  border: 0.5px solid var(--border2);
+  border: var(--border-hairline) solid var(--border2);
   background: var(--bg);
   color: var(--text2);
   cursor: pointer;
