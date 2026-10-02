@@ -89,8 +89,8 @@ function ensureDayStarted() {
 }
 
 document.getElementById('sodBtn').addEventListener('click', () => {
-  const existing = getDayStart();
   const viewDate = getViewDate();
+  const existing = getDayStart();
   if (existing || !isToday(viewDate)) {
     // Set or correct the start time for the day in view. Also the path for
     // back-filling a past day that has no recorded start (no "restore" prompt —

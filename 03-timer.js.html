@@ -228,19 +228,20 @@ function setFavicon(state) {
  * non-meeting tasks.
  */
 function updateTabAndFavicon() {
-  if (!getActiveTimer()) {
+  const timer = getActiveTimer();
+  if (!timer) {
     document.title = 'Work Log';
     setFavicon('idle');
     return;
   }
-  const entry = getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId);
+  const entry = getEntries().find((logEntry) => logEntry.id === timer.entryId);
   const taskText = entry ? entry.text : '…';
   const elapsedMs = getElapsedMs();
   const elapsed = fmtElapsed(elapsedMs);
   const isMeeting = entry &amp;&amp; entry.text.startsWith('📅');
   const isHyperfocus = !isMeeting &amp;&amp; elapsedMs > HYPERFOCUS_MINS * 60 * 1000;
 
-  if (getActiveTimer().paused) {
+  if (timer.paused) {
     document.title = `⏸ ${elapsed} — ${taskText}`;
     setFavicon('paused');
   } else if (isHyperfocus) {
@@ -400,10 +401,12 @@ function updateTimerBtn(running) {
  * tracking no longer exists the timer is cleared. No-ops if no timer is active.
  */
 function resumeTimerIfActive() {
-  if (!getActiveTimer()) return;
-  if (!getEntries().find((logEntry) => logEntry.id === getActiveTimer().entryId)) {
+  const timer = getActiveTimer();
+  if (!timer) return;
+  const entries = getEntries();
+  if (!entries.find((logEntry) => logEntry.id === timer.entryId)) {
     if (
-      getEntries().length > 0 ||
+      entries.length > 0 ||
       !localStorage.getItem(STORE_ENTRIES) ||
       localStorage.getItem(STORE_ENTRIES) === '[]'
     ) {
@@ -412,7 +415,7 @@ function resumeTimerIfActive() {
     }
     return;
   }
-  if (!getActiveTimer().paused) setTimerInterval(setInterval(tickTimer, 1000));
+  if (!timer.paused) setTimerInterval(setInterval(tickTimer, 1000));
   tickTimer();
   updateTimerBar();
   updateTimerBtn(true);
