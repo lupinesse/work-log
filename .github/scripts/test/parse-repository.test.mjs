@@ -29,3 +29,9 @@ describe('parseRepository', () => {
     });
   }
 });
+
+describe('parseRepository error message', () => {
+  it('includes a concrete example of the expected format', () => {
+    assert.throws(() => parseRepository('work-log'), /for example "lupinesse\/work-log"/);
+  });
+});
