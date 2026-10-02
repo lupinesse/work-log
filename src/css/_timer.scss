@@ -27,7 +27,7 @@
   transition: border-color 0.15s;
 }
 
-.tl-adhoc-input:focus {
+.tl-adhoc-input:focus-visible {
   border-color: var(--info-text);
   box-shadow: 0 0 0 2px var(--info-bg);
 }
@@ -157,7 +157,7 @@
   transition: border-color 0.15s;
 }
 
-.capture-input:focus {
+.capture-input:focus-visible {
   border-color: var(--info-text);
   box-shadow: 0 0 0 2px var(--info-bg);
 }
