@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (541 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (510 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -155,6 +155,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Exports**: `getCat`, `getCatColor`, `getCatLabel`
 
 **Dependencies**: `getCategories` from `state.js`; `safeCssColor` from `pure-fns.js`.
+
+---
+
+#### **focus-utils.js** (41 lines) — Keyboard Focus Trap Utility (LEAF MODULE)
+**Responsibility**: `trapFocusInOverlay(overlayEl, e)` — keeps Tab-key navigation inside an open overlay dialog (WCAG 2.1.2): wraps forward from the last focusable element to the first on Tab, and backward on Shift+Tab. Extracted from `02-utils.js` (issue #336, extraction #17); `12d-weeklyreport.js` previously kept a private copy because it is a leaf ES module and could not import from the concatenated `02-utils.js`. That duplication is now resolved: `12d-weeklyreport.js` imports from this module, and the concatenated bundle injects this module's scope before `02-utils.js`.
+
+**Exports**: `trapFocusInOverlay`
+
+**Dependencies**: none (reads `document.activeElement` from the browser global scope).
 
 ---
 
@@ -549,7 +558,7 @@ upcoming    → Scheduled for future date
 - `12b-changelog-data.js` (635 lines, LEAF MODULE) — `STORE_DEV_LOG`, `TEST_AREA_NAMES`, and the `DEV_CHANGES` dataset (the full version-history entries rendered in the changelog modal). Pure literal data with no dependencies — imported as an ES module at the top of `script.js`. Extracted (issue #336) as the third ES-module extraction; unlike `02-utils.js`, the whole file qualified since it was already nothing but top-level consts.
 - `12c-startup.js` (45 lines) — Top-level bootstrap: registers leaf-module callbacks (`setExportBackupCallback`, `setSignifierRenderCallback`), then calls `load`, `loadExpiryDates`, `autoCarryTasks`, `patchCarriedTasks`, `renderCompleted`, and `renderTimeblock` on page load.
 - `12c-gapreport.js` (125 lines) — End-of-week gap report: lists this week's finished, non-cancelled, billable entries missing a proof link or note, via `findGapReportEntries()`; "+ fix" jumps to the entry's editor in the Log view.
-- `12d-weeklyreport.js` (162 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button.
+- `12d-weeklyreport.js` (130 lines) — Weekly report draft: groups this calendar week's finished, non-cancelled, non-utility entries by Jira ticket key via `buildWeeklyTicketSummary()`/`formatWeeklyTicketSummaryText()`, and opens a modal with the rendered text and a copy-to-clipboard button. Imports `trapFocusInOverlay` from `focus-utils.js`.
 
 **Key Functions**: `mergeDevLog()`, `openEodModal()`, `saveEodHandoffNotes()`, `triggerPortableDeploy()`
 

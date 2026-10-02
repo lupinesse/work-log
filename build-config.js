@@ -113,6 +113,7 @@ export const LEAF_MODULES = [
   'pure-fns.js',
   '01b-migrate.js',
   '24-location.js',
+  'focus-utils.js',
   '12d-weeklyreport.js',
   'date-labels.js',
   'cat-utils.js',
