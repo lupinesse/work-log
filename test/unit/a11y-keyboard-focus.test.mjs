@@ -51,6 +51,11 @@ function ruleBody(selector) {
 }
 
 describe('section headers with role="button" respond to the keyboard', () => {
+  it('finds the id of every div[role="button"] (guards the id-before-role regex)', () => {
+    const roleButtonDivCount = (markup.match(/<div[^>]*\brole="button"/g) ?? []).length;
+    assert.equal(buttonRoleDivIds().length, roleButtonDivCount);
+  });
+
   it('wires every div[role="button"] header in work-log.html (regression)', () => {
     const missing = buttonRoleDivIds().filter((id) => !wiredHeaderIds().includes(id));
     assert.deepEqual(missing, [], `no Enter/Space handler for: ${missing.join(', ')}`);
