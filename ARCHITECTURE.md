@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (552 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -167,14 +167,14 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04b-render-stats.js** (153 lines) — Header Stat Tiles (LEAF MODULE)
+#### **04b-render-stats.js** (154 lines) — Header Stat Tiles (LEAF MODULE)
 **Responsibility**: Renders the three header stat tiles (distinct tasks today / distinct epics this week / current streak) and the three sub-stat tiles beneath them (top task today / top task this week / best streak day). Reads entries via `getEntries()` from `state.js`; pure rendering with no side-effects beyond DOM writes. Extracted from the render-family concat (issue #336) — the thirteenth ES-module extraction. The only former blocker was `calcStreak()`, which was itself extracted to `pure-fns-format.js` as a pure function in the same PR.
 
 **Exports**: `renderHeaderStatTiles`, `renderSubStatTiles`
 
 ---
 
-#### **03-timer.js** (545 lines) — Timer Logic
+#### **03-timer.js** (548 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -209,8 +209,8 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (153 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
-- `04c-render-timeline.js` (432 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
+- `04b-render-stats.js` (154 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
+- `04c-render-timeline.js` (434 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
 **Rendering Pattern**:
@@ -328,7 +328,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (395 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (396 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -452,7 +452,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (268 lines) — Task Rendering
+#### **10a-tasks-render.js** (269 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
@@ -466,7 +466,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10b-tasks-events.js** (333 lines) — Task Event Binding
+#### **10b-tasks-events.js** (334 lines) — Task Event Binding
 **Responsibility**: Attaches event listeners to the rendered plan board — status changes, inline editing, drag-to-reorder, checkpoint toggling, deadline, billable flag, and handoff notes. Per-card editor bindings (comments, notes, checkpoints) were split to `10d-tasks-editors.js`.
 
 **Key Functions**: `bindPlanEvents(lists)`, `bindPlanCommentEvents()`, `bindPlanNoteEvents()`, `bindPlanCheckpointEvents()`
@@ -512,12 +512,12 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (326 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (327 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
 - `11a-timeblock-render.js` (342 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (366 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11b-timeblock-carry.js` (367 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -564,7 +564,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (357 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (359 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -640,7 +640,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ### BuJo Modules (v1.8.x)
 
-#### **16-rapid.js** (497 lines) — Rapid Logging Overlay
+#### **16-rapid.js** (498 lines) — Rapid Logging Overlay
 **Responsibility**: `Space` key anywhere (when no input is focused) opens a floating capture panel; `Enter` logs the task and optionally starts the timer immediately.
 
 **Key functions**: `openRapid()`, `closeRapid()`, `rapidCommit(withTimer)`, `initRapid()`, `_qcBuildTaskGroups()`, `_qcTaskListHtml()`, `_qcBindTaskListEvents()`
@@ -649,7 +649,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (540 lines) — Today's Flow Unified Section
+#### **11-timeflow.js** (541 lines) — Today's Flow Unified Section
 **Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
 **Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).

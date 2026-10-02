@@ -21,14 +21,15 @@
  */
 function patchCarriedTasks() {
   const todayKey = dk(new Date());
-  const todayTasks = getPlanTasks().filter((task) => task.date === todayKey);
-  const pastTasks = getPlanTasks().filter((task) => task.date < todayKey);
+  const planTasks = getPlanTasks();
+  const todayTasks = planTasks.filter((task) => task.date === todayKey);
+  const pastTasks = planTasks.filter((task) => task.date < todayKey);
 
   // Migration: stamp billable on tasks and categories that predate the feature.
   // Assumption: the app was originally developed for billable contract work, so
   // any task or category without an explicit flag is assumed billable to avoid
   // retroactively understating tracked hours.
-  getPlanTasks().forEach((task) => {
+  planTasks.forEach((task) => {
     if (task.billable === undefined) task.billable = true;
   });
   getCategories().forEach((cat) => {
@@ -37,7 +38,7 @@ function patchCarriedTasks() {
 
   // Migration: stamp completedAt on any done task missing it
   let changed = false;
-  getPlanTasks().forEach((task) => {
+  planTasks.forEach((task) => {
     if (task.status === 'done' && !task.completedAt) {
       task.completedAt = new Date((task.date || todayKey) + 'T00:00:00').getTime();
       changed = true;

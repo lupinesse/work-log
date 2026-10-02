@@ -101,9 +101,10 @@ function fmtHm(ts) {
  * @returns {number} 0 if no timer is active for this entry.
  */
 function activeTimerDurationMs(entry) {
-  if (!getActiveTimer() || getActiveTimer().entryId !== entry.id) return 0;
-  if (getActiveTimer().paused) return getActiveTimer().accumulatedMs || 0;
-  return Math.max(0, Date.now() - (getActiveTimer().startTs || entry.ts));
+  const timer = getActiveTimer();
+  if (!timer || timer.entryId !== entry.id) return 0;
+  if (timer.paused) return timer.accumulatedMs || 0;
+  return Math.max(0, Date.now() - (timer.startTs || entry.ts));
 }
 
 /**
