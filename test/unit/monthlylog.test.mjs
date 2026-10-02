@@ -3,14 +3,34 @@
  * Extracted from the former monolithic test/unit.mjs (issue #334).
  */
 
-import { describe, it } from 'node:test';
+import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom as createUncheckedDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
+
+// Every DOM a test creates is registered here and checked for handler errors
+// after the test, so no test in this file can skip the assertion.
+const createdDoms = [];
+
+/**
+ * Creates a jsdom document and registers it for the post-test error check.
+ * @param {string} [html] - Markup for the document body.
+ * @returns {import('jsdom').JSDOM} The DOM from the shared helper.
+ */
+function createDom(html) {
+  const dom = createUncheckedDom(html);
+  createdDoms.push(dom);
+  return dom;
+}
+
+afterEach(() => {
+  const doms = createdDoms.splice(0);
+  doms.forEach(assertNoUncaughtErrors);
+});
 
 /**
  * Loads 19-monthlylog.js into a VM sandbox so its function declarations

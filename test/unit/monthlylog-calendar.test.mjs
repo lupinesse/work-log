@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
 
@@ -49,7 +49,10 @@ describe('monthly calendar split (jsdom)', () => {
     calEl = dom.window.document.getElementById('mlCalendar');
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
 
   describe('buildMonthlyCalendarHtml', () => {
     it('renders one cell per day, offset to a Monday start (May 2026 starts on a Friday)', () => {
