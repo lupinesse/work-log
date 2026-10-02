@@ -76,7 +76,7 @@ export function renderLocation() {
   const btn = document.getElementById('dateNavLocation');
   if (!btn) return;
   const loc = getViewLocation();
-  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+  // eslint-disable-next-line security/detect-object-injection -- loc is validated by locationFor() against WORK_LOCATIONS' own keys, even though the stored map comes from localStorage
   const { emoji, label } = WORK_LOCATIONS[loc];
   btn.querySelector('.date-nav-location__emoji').textContent = emoji;
   btn.querySelector('.date-nav-location__label').textContent = label;

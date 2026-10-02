@@ -116,6 +116,9 @@ export default [
   // top-level symbols are found with the dead-code skill, not this rule.
   // detect-object-injection: warn (not off) so new bracket-notation sites with
   // untrusted keys are caught; existing sites carry per-line disable comments.
+  // The ignores below are the ES-module files configured in the block above
+  // (sourceType 'module'); this block is for the concatenated classic-script files.
+  // Keep the two lists in sync so a file is linted by exactly one block.
   {
     files: ['src/js/*.js'],
     ignores: [

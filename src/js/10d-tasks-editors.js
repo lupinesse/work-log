@@ -239,9 +239,9 @@ function bindPlanCheckpointEvents(qa) {
       const task = getPlanTasks().find((task) => task.id === el.dataset.pid);
       if (!task || !task.checkpoints) return;
       const idx = parseInt(el.dataset.cpidx);
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- idx is parseInt() of a DOM data attribute, so it is a number (or NaN), never a property name
       const cur = task.checkpoints[idx].done;
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- idx is parseInt() of a DOM data attribute, so it is a number (or NaN), never a property name
       task.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
       savePlan();
       renderPlan();
@@ -255,9 +255,9 @@ function bindPlanCheckpointEvents(qa) {
       const task = getPlanTasks().find((task) => task.id === lbl.dataset.pid);
       if (!task || !task.checkpoints) return;
       const idx = parseInt(lbl.dataset.cpidx);
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- idx is parseInt() of a DOM data attribute, so it is a number (or NaN), never a property name
       const cur = task.checkpoints[idx].done;
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- idx is parseInt() of a DOM data attribute, so it is a number (or NaN), never a property name
       task.checkpoints[idx].done = cur === false ? 'partial' : cur === 'partial' ? true : false;
       savePlan();
       renderPlan();
