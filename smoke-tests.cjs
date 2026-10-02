@@ -2841,9 +2841,15 @@ async function runTests() {
       requestedUrls.filter(isServerEndpoint('/api/notion-ai')).length === 1,
       `requests: ${JSON.stringify(requestedUrls)}`
     );
+    // Exact host or a true subdomain: a bare endsWith('notion.com') would also
+    // match a look-alike such as evilnotion.com.
+    const isHostOrSubdomain = (hostname, domain) =>
+      hostname === domain || hostname.endsWith('.' + domain);
     const directCalls = requestedUrls.filter((url) => {
       const { hostname } = new URL(url);
-      return hostname.endsWith('notion.com') || hostname.endsWith('anthropic.com');
+      return (
+        isHostOrSubdomain(hostname, 'notion.com') || isHostOrSubdomain(hostname, 'anthropic.com')
+      );
     });
     assert(
       'No direct request to a Notion or Anthropic host from the browser',
