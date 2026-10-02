@@ -3850,7 +3850,7 @@ async function runTests() {
     await page.evaluate(() => {
       document.getElementById('trackerAddBtn').click();
       document.getElementById('trFormName').value = 'Form tracker';
-      document.querySelector('#trFormTags input[type=checkbox]').checked = true;
+      document.querySelector('#trFormTags input[type=checkbox]').click();
       document.getElementById('trFormSave').click();
     });
     assert(
@@ -3870,7 +3870,11 @@ async function runTests() {
       (await trackerNames()).length === 0,
       JSON.stringify(await trackerNames())
     );
-    assert('The deleted tracker is gone from storage too', (await storedNames()).length === 0);
+    assert(
+      'The deleted tracker is gone from storage too',
+      (await storedNames()).length === 0,
+      JSON.stringify(await storedNames())
+    );
     await page.close();
   }
 

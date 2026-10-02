@@ -93,6 +93,16 @@ describe('localStorage cleanup on load', () => {
   });
 });
 
+it('exposes purgeLegacyAnthropicKey and removes only the legacy key (#490)', () => {
+  const removed = [];
+  const sandbox = loadNotionSandbox({
+    localStorage: { removeItem: (k) => removed.push(k), getItem: () => null, setItem: () => {} },
+  });
+  removed.length = 0;
+  sandbox.purgeLegacyAnthropicKey();
+  assert.deepEqual(Array.from(removed), ['wl_anthropic_key']);
+});
+
 describe('addTaskToNotion', () => {
   it('returns the Notion page URL on success', async () => {
     const sandbox = loadNotionSandbox({

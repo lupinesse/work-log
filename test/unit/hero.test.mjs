@@ -94,3 +94,78 @@ describe('_heroStartFromChip', () => {
     assert.deepEqual(calls, ['New task']);
   });
 });
+
+describe('renderHeroCard fill dispatch', () => {
+  /**
+   * Builds a hero sandbox whose DOM lookups return throwaway elements and whose
+   * four state fillers are spies, then renders the card.
+   * @param {{ activeTimer: (Object|null), stopped: boolean }} setup - Timer/stopped state.
+   * @returns {string[]} Names of the fillers that ran.
+   */
+  function fillersCalledFor({ activeTimer, stopped }) {
+    const called = [];
+    const makeEl = () => ({ style: {}, classList: { toggle() {} }, className: '' });
+    const sandbox = loadHeroSandbox({
+      activeTimer,
+      document: { getElementById: makeEl, addEventListener: () => {} },
+    });
+    for (const name of ['Idle', 'Running', 'Paused', 'Stopped']) {
+      sandbox[`_heroFill${name}`] = () => called.push(name);
+    }
+    vm.runInContext(`_heroStopped = ${stopped}`, sandbox);
+    sandbox.renderHeroCard();
+    return called;
+  }
+
+  const CASES = [
+    ['idle', { activeTimer: null, stopped: false }, ['Idle']],
+    ['running', { activeTimer: { paused: false }, stopped: false }, ['Running']],
+    ['paused', { activeTimer: { paused: true }, stopped: false }, ['Paused']],
+    ['stopped', { activeTimer: null, stopped: true }, ['Stopped']],
+  ];
+
+  for (const [state, setup, expected] of CASES) {
+    it(`runs only the ${state} filler`, () => {
+      assert.deepEqual(Array.from(fillersCalledFor(setup)), expected);
+    });
+  }
+});
+
+describe('_heroFillStopped elapsed display (#488)', () => {
+  it('formats a zero-duration session with fmtElapsed, like the other hero clocks', () => {
+    const elapsedEl = { textContent: '' };
+    const elements = { heroStoppedElapsed: elapsedEl };
+    const sandbox = loadHeroSandbox({
+      document: {
+        getElementById: (id) => elements[id] || null,
+        addEventListener: () => {},
+      },
+    });
+    vm.runInContext(
+      "_heroStoppedEntry = { id: 'e1', text: 'x', tag: 'other', ts: 5000, tsEnd: 5000 }",
+      sandbox
+    );
+    sandbox._heroFillStopped();
+    assert.equal(elapsedEl.textContent, '00:00');
+  });
+});
+
+describe('heroEnterStopped (#487)', () => {
+  it('switches to the stopped state without rendering the card itself', () => {
+    const sandbox = loadHeroSandbox({ setTimeout: () => 1, clearTimeout: () => {} });
+    let renders = 0;
+    sandbox.renderHeroCard = () => (renders += 1);
+    sandbox.heroEnterStopped({ id: 'e1', text: 'x', tag: 'other', ts: 0, tsEnd: 1000 });
+
+    assert.equal(renders, 0, 'stopTimer() renders once via render()');
+    assert.equal(sandbox.heroGetState(), 'stopped');
+    sandbox._heroCancelStoppedTimer();
+  });
+
+  it('still returns to idle through the auto-dismiss timer path', () => {
+    const sandbox = loadHeroSandbox({ setTimeout: () => 1, clearTimeout: () => {} });
+    sandbox.heroEnterStopped({ id: 'e1', text: 'x', tag: 'other', ts: 0, tsEnd: 1000 });
+    sandbox._heroCancelStoppedTimer();
+    assert.equal(sandbox.heroGetState(), 'idle');
+  });
+});

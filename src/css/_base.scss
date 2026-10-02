@@ -64,6 +64,9 @@
   --status-blocked: #dc2626; /* blocked — red-600 */
   --status-upcoming: #1d9e75; /* upcoming — green (= --sig-event) */
 
+  /* ── Semantic state colours ── */
+  --color-success: #16a34a; /* positive confirmation, e.g. the pomodoro completion tick */
+
   /* ── Danger / validation ── */
   --color-error: #c62828; /* error text and invalid-input border */
   --danger-ink: #991b1b; /* text/icons on a pale danger background */
@@ -104,6 +107,7 @@
     --live-deep: #7dd3fc;
     --live-soft: #0c2d4a;
     --live-softer: #082030;
+    --color-success: #4ade80;
     --color-error: #f17070;
     --danger-ink: #fca5a5; /* pale red text on dark bg */
     --danger-border: #f87171;
