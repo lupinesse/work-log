@@ -2823,12 +2823,13 @@ async function runTests() {
     // injects the key server-side), never straight to Anthropic or with a key.
     const proxiedRequests = [];
     const directAnthropicRequests = [];
-    page.on('request', (request) => {
+    const onRequest = (request) => {
       // Compare the parsed host, not a substring: a proxy URL may merely mention the name.
       if (new URL(request.url()).hostname === 'api.anthropic.com') {
         directAnthropicRequests.push(request.url());
       }
-    });
+    };
+    page.on('request', onRequest);
     await page.route('**/api/ai', async (route) => {
       proxiedRequests.push({ headers: route.request().headers() });
       await route.fulfill({
@@ -2865,6 +2866,9 @@ async function runTests() {
       'Notion fetch-title fills the name from the proxy response',
       nameFilled && (await page.inputValue('#notionName')) === 'Stub Page Title'
     );
+    // Detach what this block registered so nothing outlives it.
+    page.off('request', onRequest);
+    await page.unroute('**/api/ai');
     await page.close();
   }
 

@@ -8,7 +8,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { closeSync, openSync, readSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { __dirname } from './_helpers.mjs';
 
@@ -36,13 +36,21 @@ function listSourceFiles({ directory, extension }) {
  * @returns {boolean} True when the first three bytes are EF BB BF.
  */
 function startsWithByteOrderMark(filePath) {
-  return readFileSync(filePath).subarray(0, 3).equals(BYTE_ORDER_MARK);
+  // Read only the three bytes that matter instead of the whole file.
+  const header = Buffer.alloc(BYTE_ORDER_MARK.length);
+  const descriptor = openSync(filePath, 'r');
+  try {
+    const bytesRead = readSync(descriptor, header, 0, header.length, 0);
+    return bytesRead === header.length && header.equals(BYTE_ORDER_MARK);
+  } finally {
+    closeSync(descriptor);
+  }
 }
 
 describe('source files contain no byte-order mark (#506)', () => {
   const sourceFiles = SOURCE_DIRECTORIES.flatMap(listSourceFiles);
 
-  it('scans a realistic number of SCSS and JS files', () => {
+  it('finds more than 40 SCSS and JS files, so a wrong directory cannot pass vacuously', () => {
     assert.ok(sourceFiles.length > 40, `only found ${sourceFiles.length} files`);
   });
 
