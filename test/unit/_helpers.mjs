@@ -106,6 +106,23 @@ export function withStateAccessors(sandbox) {
 }
 
 /**
+ * Strips ESM syntax so a module can be evaluated as a classic script in a VM
+ * context: removes single-line `import` statements and the `export` keyword
+ * from top-level declarations. Multi-line imports are not handled; all
+ * project sub-module imports are single-line.
+ * @param {string} source - ES module source text.
+ * @returns {string} Source with imports removed and `export` prefixes dropped.
+ */
+export function stripEsmSyntax(source) {
+  return (
+    source
+      .replace(/^import\s[^;]*;\s*$/gm, '')
+      // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own trusted source; no nested quantifiers
+      .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1')
+  );
+}
+
+/**
  * Reads `cat-utils.js` as classic-script source for VM sandboxes.
  * Strips the ESM import lines and `export` declaration prefixes so the file
  * can be evaluated with `vm.runInContext`. Requires `safeCssColor` (from
@@ -114,9 +131,7 @@ export function withStateAccessors(sandbox) {
  * @returns {string} cat-utils.js source, safe for vm.runInContext.
  */
 export function loadCatUtilsScriptSource() {
-  return readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8')
-    .replace(/^import\s[^;]*;\s*$/gm, '')
-    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+  return stripEsmSyntax(readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8'));
 }
 
 /**
@@ -148,7 +163,7 @@ export function extractFunctionSource(source, name) {
  * @returns {string} Concatenated pure-fns source, safe for vm.runInContext.
  */
 export function loadPureFnsScriptSource() {
-  return (
+  return stripEsmSyntax(
     [
       'pure-fns-format.js',
       'pure-fns-validate.js',
@@ -163,9 +178,6 @@ export function loadPureFnsScriptSource() {
     ]
       .map((f) => readFileSync(join(__dirname, '../../src/js/' + f), 'utf8'))
       .join('\n')
-      .replace(/^import\s[^;]*;\s*$/gm, '') // single-line imports only; all sub-module imports are single-line
-      // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own pure-fns source; trusted input, no nested quantifiers
-      .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1')
   );
 }
 
