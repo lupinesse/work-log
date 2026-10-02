@@ -70,9 +70,10 @@ function buildStatSubHtml(label, ms) {
  */
 export function renderSubStatTiles() {
   const todayKey = dk(new Date());
+  const entries = getEntries();
 
   // Today: task with most tracked time
-  const todayTimed = getEntries().filter(
+  const todayTimed = entries.filter(
     (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const todayByTask = {};
@@ -94,7 +95,7 @@ export function renderSubStatTiles() {
   const thisWeekStart = new Date();
   thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
   thisWeekStart.setHours(0, 0, 0, 0);
-  const weekTimed = getEntries().filter(
+  const weekTimed = entries.filter(
     (entry) => new Date(entry.ts) >= thisWeekStart && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const weekByTask = {};
@@ -117,7 +118,7 @@ export function renderSubStatTiles() {
   {
     const streakCursor = new Date();
     streakCursor.setDate(streakCursor.getDate() - 1);
-    const daysWithEntries = new Set(getEntries().map((entry) => entry.date));
+    const daysWithEntries = new Set(entries.map((entry) => entry.date));
     while (daysWithEntries.has(dk(streakCursor))) {
       streakDays.push(dk(streakCursor));
       streakCursor.setDate(streakCursor.getDate() - 1);
