@@ -2822,6 +2822,44 @@ async function runTests() {
     await page.close();
   }
 
+  // ── Section 41b. Notion calls go through the local server proxy (#491) ───
+  console.log('\n41b. Notion requests use the server proxy');
+  {
+    const page = await freshPage(ctx);
+    const requestedUrls = [];
+    page.on('request', (request) => requestedUrls.push(request.url()));
+    await page.route('**/api/notion-ai', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ content: [{ type: 'text', text: 'ok' }] }),
+      })
+    );
+    await page.evaluate(() => window._wlNotion.callClaudeWithNotion('ping'));
+    const isServerEndpoint = (suffix) => (url) => new URL(url).pathname === suffix;
+    assert(
+      'Notion AI call hits the server /api/notion-ai endpoint',
+      requestedUrls.filter(isServerEndpoint('/api/notion-ai')).length === 1,
+      `requests: ${JSON.stringify(requestedUrls)}`
+    );
+    // Exact host or a true subdomain: a bare endsWith('notion.com') would also
+    // match a look-alike such as evilnotion.com.
+    const isHostOrSubdomain = (hostname, domain) =>
+      hostname === domain || hostname.endsWith('.' + domain);
+    const directCalls = requestedUrls.filter((url) => {
+      const { hostname } = new URL(url);
+      return (
+        isHostOrSubdomain(hostname, 'notion.com') || isHostOrSubdomain(hostname, 'anthropic.com')
+      );
+    });
+    assert(
+      'No direct request to a Notion or Anthropic host from the browser',
+      directCalls.length === 0,
+      `direct requests: ${JSON.stringify(directCalls)}`
+    );
+    await page.close();
+  }
+
   // ── Today's Flow ──────────────────────────────────────────────────────────
   console.log("\nToday's Flow");
   {
@@ -3104,17 +3142,24 @@ async function runTests() {
     // variant must reset it to `stretch`, otherwise the tab bar and the active
     // lane collapse to content width and left-align instead of filling the panel.
     const boardFill = await page.evaluate(() => {
-      const widthOf = (el) => (el ? Math.round(el.getBoundingClientRect().width) : 0);
-      const colW = widthOf(document.getElementById('boardCols'));
+      const widthOf = (el) => (el ? el.getBoundingClientRect().width : 0);
       return {
-        colW,
-        tabsFill: colW > 0 && widthOf(document.getElementById('boardTabs')) >= colW - 1,
-        laneFill: colW > 0 && widthOf(document.querySelector('.kb-col.kb-col--active')) >= colW - 1,
+        colW: widthOf(document.getElementById('boardCols')),
+        tabsW: widthOf(document.getElementById('boardTabs')),
+        laneW: widthOf(document.querySelector('.kb-col.kb-col--active')),
       };
     });
-    assert('Board panel has non-zero width', boardFill.colW > 0);
-    assert('Tab bar stretches to full board width', boardFill.tabsFill);
-    assert('Active lane stretches to full board width', boardFill.laneFill);
+    // getBoundingClientRect() returns fractional widths, and the tab bar / lane
+    // can legitimately sit up to 1px under the container after sub-pixel
+    // layout rounding. Allow that 1px so the check catches the real regression
+    // (content-width collapse, hundreds of px short) without flaking.
+    const SUBPIXEL_TOLERANCE_PX = 1;
+    const fillsBoard = (width) =>
+      boardFill.colW > 0 && width >= boardFill.colW - SUBPIXEL_TOLERANCE_PX;
+    const widthDetail = `raw widths: ${JSON.stringify(boardFill)}`;
+    assert('Board panel has non-zero width', boardFill.colW > 0, widthDetail);
+    assert('Tab bar stretches to full board width', fillsBoard(boardFill.tabsW), widthDetail);
+    assert('Active lane stretches to full board width', fillsBoard(boardFill.laneW), widthDetail);
 
     await page.close();
   }
