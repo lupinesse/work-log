@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compile } from 'sass';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const readSource = (relativePath) => readFileSync(join(__dirname, '../..', relativePath), 'utf8');
 const miscSource = readSource('src/js/12-misc.js');
@@ -85,6 +85,7 @@ describe('section headers with role="button" respond to the keyboard', () => {
       );
       header.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key, bubbles: true }));
       assert.equal(clicks, shouldToggle ? 1 : 0);
+      assertNoUncaughtErrors(dom);
       dom.window.close();
     });
   }

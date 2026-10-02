@@ -664,21 +664,30 @@ describe('markInputInvalid — rejected epic names (regression, #524)', () => {
   function makeInput() {
     const classes = new Set();
     const attributes = new Map();
+    /** @type {Record<string, Array<Function>>} */
     const listeners = {};
     return {
       focused: false,
       classes,
       attributes,
+      /** Count of addEventListener calls per type, for stacking assertions. */
+      addCounts: {},
       classList: { add: (cls) => classes.add(cls), remove: (cls) => classes.delete(cls) },
       setAttribute: (name, value) => attributes.set(name, value),
       removeAttribute: (name) => attributes.delete(name),
-      addEventListener: (type, handler) => {
-        listeners[type] = handler;
+      addEventListener(type, handler) {
+        this.addCounts[type] = (this.addCounts[type] || 0) + 1;
+        if (!listeners[type]) listeners[type] = [];
+        listeners[type].push(handler);
       },
       focus() {
         this.focused = true;
       },
-      fire: (type) => listeners[type](),
+      /** Fire all registered handlers for `type`, then clear the list (simulates `{ once: true }`). */
+      fire(type) {
+        (listeners[type] || []).forEach((h) => h());
+        delete listeners[type];
+      },
     };
   }
 
@@ -700,5 +709,37 @@ describe('markInputInvalid — rejected epic names (regression, #524)', () => {
 
     assert.equal(input.classes.has('input--invalid'), false);
     assert.equal(input.attributes.has('aria-invalid'), false);
+  });
+
+  it('does not stack a second listener when called again before the user edits', () => {
+    // Repeated rejections without an intervening edit must not accumulate
+    // listeners — each call should detect that one is already pending.
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input);
+    sandbox.markInputInvalid(input);
+    sandbox.markInputInvalid(input);
+
+    assert.equal(
+      input.addCounts['input'],
+      1,
+      `addEventListener('input') called ${input.addCounts['input']} times; expected 1`
+    );
+  });
+
+  it('re-registers the listener once the user edits after a previous rejection', () => {
+    // After the once-listener fires (user edited), a subsequent rejection
+    // must be able to add a fresh listener.
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input); // first rejection — adds listener
+    input.fire('input'); // user edits — listener fires and is consumed
+    sandbox.markInputInvalid(input); // second rejection — must add a new listener
+
+    assert.equal(
+      input.addCounts['input'],
+      2,
+      `expected 2 total addEventListener calls (one per rejection cycle), got ${input.addCounts['input']}`
+    );
   });
 });

@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const calendarSrc = readFileSync(join(__dirname, '../../src/js/13-calendar.js'), 'utf8');
 
@@ -53,7 +53,10 @@ describe('renderCalStrip collapse and header binding (jsdom)', () => {
     vm.runInContext(calendarSrc, context);
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
 
   it('restores the stored collapse state on first render only', () => {
     render();

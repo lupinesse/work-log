@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, withStateAccessors } from './_helpers.mjs';
+import { __dirname, withStateAccessors, stripEsmSyntax } from './_helpers.mjs';
 import { SIG_SYMBOL, SIG_TITLE, sigSymbol, sigTitle } from '../../src/js/signifiers.js';
 import { escHtml } from '../../src/js/pure-fns.js';
 
@@ -22,10 +22,7 @@ import { escHtml } from '../../src/js/pure-fns.js';
  */
 function loadSignifiersSandbox(overrides = {}) {
   const raw = readFileSync(join(__dirname, '../../src/js/10b-signifiers.js'), 'utf8');
-  const src = raw
-    .replace(/^import\s[^;]*;\s*$/gm, '')
-    // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own source; trusted input
-    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+  const src = stripEsmSyntax(raw);
 
   const saveCalls = [];
   const sandbox = {
