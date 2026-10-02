@@ -60,17 +60,19 @@ function renderHeroCard() {
   _heroShowPanel('heroPanelStopped', state === 'stopped');
 
   // Fill dynamic content for the visible state
-  if (state === 'idle') {
-    _heroFillIdle();
-  }
-  if (state === 'running') {
-    _heroFillRunning();
-  }
-  if (state === 'paused') {
-    _heroFillPaused();
-  }
-  if (state === 'stopped') {
-    _heroFillStopped();
+  switch (state) {
+    case 'idle':
+      _heroFillIdle();
+      break;
+    case 'running':
+      _heroFillRunning();
+      break;
+    case 'paused':
+      _heroFillPaused();
+      break;
+    case 'stopped':
+      _heroFillStopped();
+      break;
   }
 
   // Keep the legacy timerBtn disabled state in sync so any stray references work
@@ -228,7 +230,7 @@ function _heroFillStopped() {
 
   const elapsed = entry.tsEnd && entry.tsEnd > entry.ts ? entry.tsEnd - entry.ts : 0;
   const elapsedEl = document.getElementById('heroStoppedElapsed');
-  if (elapsedEl) elapsedEl.textContent = elapsed > 0 ? fmtElapsed(elapsed) : '0:00';
+  if (elapsedEl) elapsedEl.textContent = fmtElapsed(elapsed);
 
   const rangeEl = document.getElementById('heroStoppedRange');
   if (rangeEl && entry.tsEnd) {
@@ -266,15 +268,15 @@ function heroUpdateClock() {
 
 /**
  * Called by stopTimer() just before activeTimer is cleared.
- * Shows the stopped confirmation panel and arms the 6s auto-dismiss.
+ * Switches the hero to the stopped state and arms the 6s auto-dismiss. It does
+ * not render: stopTimer() calls render() right afterwards, which re-renders the
+ * hero card, so rendering here as well would draw the same state twice.
  *
  * @param {Object} entry - The log entry that was just stopped.
  */
 function heroEnterStopped(entry) {
   _heroStoppedEntry = entry;
   _heroStopped = true;
-
-  renderHeroCard();
 
   // Auto-dismiss to idle after 6 seconds
   _heroStoppedTimer = setTimeout(() => {
