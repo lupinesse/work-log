@@ -81,9 +81,11 @@ export async function fetchAllThreads({ token, owner, repo, prNumber }) {
       variables: { owner, name: repo, number: prNumber },
     }),
   });
-  if (!response.ok) throw new Error(`GitHub GraphQL ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`fetchAllThreads HTTP ${response.status}: ${await response.text()}`);
   const data = await response.json();
-  if (data.errors) throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+  if (data.errors)
+    throw new Error(`fetchAllThreads GraphQL errors: ${JSON.stringify(data.errors)}`);
 
   const threads = [];
   for (const t of data.data.repository.pullRequest.reviewThreads.nodes) {
@@ -123,7 +125,8 @@ export async function replyToThread({ token, owner, repo, prNumber, commentId, b
     `https://api.github.com/repos/${owner}/${repo}/pulls/${prNumber}/comments/${commentId}/replies`,
     { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ body }) }
   );
-  if (!response.ok) throw new Error(`Reply API ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`replyToThread HTTP ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
@@ -143,9 +146,11 @@ export async function unresolveThread({ token, threadId }) {
     headers: ghHeaders(token),
     body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
   });
-  if (!response.ok) throw new Error(`Unresolve API ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`unresolveThread HTTP ${response.status}: ${await response.text()}`);
   const data = await response.json();
-  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
+  if (data.errors)
+    throw new Error(`unresolveThread GraphQL errors: ${JSON.stringify(data.errors)}`);
 }
 
 /**
@@ -165,9 +170,10 @@ export async function resolveThread({ token, threadId }) {
     headers: ghHeaders(token),
     body: JSON.stringify({ query: mutation, variables: { id: threadId } }),
   });
-  if (!response.ok) throw new Error(`Resolve API ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`resolveThread HTTP ${response.status}: ${await response.text()}`);
   const data = await response.json();
-  if (data.errors) throw new Error(`GraphQL: ${JSON.stringify(data.errors)}`);
+  if (data.errors) throw new Error(`resolveThread GraphQL errors: ${JSON.stringify(data.errors)}`);
 }
 
 /**
@@ -192,7 +198,7 @@ export async function fetchAllIssueComments({ token, owner, repo, prNumber }) {
       { headers: ghHeaders(token) }
     );
     if (!response.ok)
-      throw new Error(`List comments API ${response.status}: ${await response.text()}`);
+      throw new Error(`fetchAllIssueComments HTTP ${response.status}: ${await response.text()}`);
     const batch = await response.json();
     all.push(...batch);
     if (batch.length < 100) break;
@@ -240,7 +246,9 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
       { method: 'PATCH', headers: ghHeaders(token), body: JSON.stringify({ body }) }
     );
     if (!patchResp.ok)
-      throw new Error(`PATCH comment API ${patchResp.status}: ${await patchResp.text()}`);
+      throw new Error(
+        `upsertIssueComment PATCH HTTP ${patchResp.status}: ${await patchResp.text()}`
+      );
     return { comment: await patchResp.json(), updated: true };
   }
 
@@ -249,7 +257,7 @@ export async function upsertIssueComment({ token, owner, repo, prNumber, marker,
     { method: 'POST', headers: ghHeaders(token), body: JSON.stringify({ body }) }
   );
   if (!postResp.ok)
-    throw new Error(`POST comment API ${postResp.status}: ${await postResp.text()}`);
+    throw new Error(`upsertIssueComment POST HTTP ${postResp.status}: ${await postResp.text()}`);
   return { comment: await postResp.json(), updated: false };
 }
 
@@ -280,7 +288,7 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
       { headers: ghHeaders(token) }
     );
     if (!listResp.ok)
-      throw new Error(`List reviews API ${listResp.status}: ${await listResp.text()}`);
+      throw new Error(`upsertReview list HTTP ${listResp.status}: ${await listResp.text()}`);
     const batch = await listResp.json();
     reviews.push(...batch);
     if (batch.length < 100) break;
@@ -331,7 +339,8 @@ export async function upsertReview({ token, owner, repo, prNumber, headSha, mark
       body: JSON.stringify({ commit_id: headSha, body, event: 'COMMENT' }),
     }
   );
-  if (!postResp.ok) throw new Error(`POST review API ${postResp.status}: ${await postResp.text()}`);
+  if (!postResp.ok)
+    throw new Error(`upsertReview POST HTTP ${postResp.status}: ${await postResp.text()}`);
   return { review: await postResp.json(), replaced };
 }
 
@@ -360,7 +369,8 @@ export async function addReactionToComment({ token, owner, repo, commentId, cont
       body: JSON.stringify({ content }),
     }
   );
-  if (!response.ok) throw new Error(`Reaction API ${response.status}: ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(`addReactionToComment HTTP ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
@@ -400,7 +410,7 @@ export async function postInlineComment({
     }
   );
   if (!response.ok)
-    throw new Error(`GitHub comments API ${response.status}: ${await response.text()}`);
+    throw new Error(`postInlineComment HTTP ${response.status}: ${await response.text()}`);
   return response.json();
 }
 
