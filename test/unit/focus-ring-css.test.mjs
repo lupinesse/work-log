@@ -19,9 +19,13 @@ const compiledCss = compile(join(__dirname, '../../src/css/styles.scss')).css;
  * @returns {string|null} Text between the braces, or null when there is no such rule.
  */
 function ruleBody(selector) {
-  const escaped = selector.replace(/[.:]/g, '\\$&');
-  const match = compiledCss.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`));
-  return match ? match[1] : null;
+  // Plain string search, not a RegExp built from the selector: no escaping to get wrong.
+  const text = `\n${compiledCss}`;
+  const marker = `\n${selector} {`;
+  const markerIndex = text.indexOf(marker);
+  if (markerIndex === -1) return null;
+  const bodyStart = markerIndex + marker.length;
+  return text.slice(bodyStart, text.indexOf('}', bodyStart));
 }
 
 describe('inline text inputs keep a visible focus indicator (regression, #513)', () => {
