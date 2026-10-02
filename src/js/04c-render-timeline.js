@@ -91,8 +91,9 @@ function renderTimelineSection(list) {
   timelineEl.innerHTML =
     list
       .map((entry) => {
-        const isTiming = getActiveTimer() && getActiveTimer().entryId === entry.id;
-        const isPaused = isTiming && getActiveTimer().paused;
+        const activeTimer = getActiveTimer();
+        const isTiming = activeTimer && activeTimer.entryId === entry.id;
+        const isPaused = isTiming && activeTimer.paused;
         const color = getCatColor(entry.tag);
 
         const endLine = isTiming
@@ -210,10 +211,11 @@ function bindTimelineEntryEvents(timelineEl) {
       if (newEndTime) entry.tsEnd = roundToNearest30(applyTime(entry.ts, newEndTime));
       else delete entry.tsEnd;
       // If this entry's timer is running, reset startTs to the new entry.ts
-      if (getActiveTimer() && getActiveTimer().entryId === id && newStartTime) {
-        getActiveTimer().startTs = entry.ts;
-        getActiveTimer().accumulatedMs = 0;
-        getActiveTimer().paused = false;
+      const runningTimer = getActiveTimer();
+      if (runningTimer && runningTimer.entryId === id && newStartTime) {
+        runningTimer.startTs = entry.ts;
+        runningTimer.accumulatedMs = 0;
+        runningTimer.paused = false;
       }
       save();
       render();
