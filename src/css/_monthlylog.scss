@@ -44,6 +44,10 @@
   background: var(--bg2);
 }
 
+.ml-nav-btn:focus-visible {
+  outline: 2px solid var(--live);
+}
+
 .ml-month-title {
   font-size: 14px;
   font-weight: 600;
@@ -70,10 +74,20 @@
   border-radius: 2px;
   cursor: pointer;
   transition: transform 0.1s;
+
+  // Reset native <button> appearance; cell colour is set entirely via inline style.
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 .ml-cell:hover {
   transform: scale(1.15);
+}
+
+.ml-cell:focus-visible {
+  outline: 2px solid var(--live);
+  outline-offset: 1px;
 }
 
 .ml-legend {
