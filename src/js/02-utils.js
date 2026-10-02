@@ -22,8 +22,9 @@ let catManageOpen = false;
  * @returns {number} How many epics were archived (0 when none were stale or the user cancelled).
  */
 function tidyStaleEpics() {
+  const categories = getCategories();
   const { staleIds, cutoffIso } = findStaleCategories({
-    categories: getCategories(),
+    categories,
     entries: getEntries(),
     planTasks: getPlanTasks(),
     todayIso: dk(new Date()),
@@ -31,7 +32,7 @@ function tidyStaleEpics() {
     selectedTag: getSelectedTag(),
   });
   wlLog.info('tidyStaleEpics: scanned epics for inactivity', {
-    total: getCategories().length,
+    total: categories.length,
     stale: staleIds.length,
     cutoffIso,
     windowDays: EPIC_STALE_DAYS,
@@ -50,7 +51,7 @@ function tidyStaleEpics() {
     wlLog.info('tidyStaleEpics: user cancelled', { stale: staleIds.length });
     return 0;
   }
-  setCategories(applyEpicArchive(getCategories(), staleIds));
+  setCategories(applyEpicArchive(categories, staleIds));
   save();
   wlLog.info('tidyStaleEpics: archived stale epics', { archived: staleIds.length, cutoffIso });
   return staleIds.length;
@@ -255,7 +256,8 @@ function buildManageRowHtml(selCat) {
  * @returns {string} HTML to assign to #tagRow.
  */
 function buildTagRowHtml() {
-  const selCat = getCat(getSelectedTag());
+  const selectedTag = getSelectedTag();
+  const selCat = getCat(selectedTag);
   const manageHtml = buildManageRowHtml(selCat);
 
   // The manage row is open when explicitly toggled, or when an inline edit is active.
@@ -267,11 +269,11 @@ function buildTagRowHtml() {
           <input type="color" id="catQuickColorPick" value="${safeCssColor(selCat.color)}" style="opacity:0;position:absolute;width:0;height:0;pointer-events:none" />
         </label>
         <select class="cat-select" id="catSelect" aria-label="Select epic">
-        ${pickableCategories([...getCategories()], getSelectedTag())
+        ${pickableCategories([...getCategories()], selectedTag)
           .sort((a, b) => a.label.localeCompare(b.label))
           .map(
             (category) =>
-              `<option value="${category.id}"${category.id === getSelectedTag() ? ' selected' : ''}>${escHtml(category.label)}</option>`
+              `<option value="${category.id}"${category.id === selectedTag ? ' selected' : ''}>${escHtml(category.label)}</option>`
           )
           .join('')}
         </select>
