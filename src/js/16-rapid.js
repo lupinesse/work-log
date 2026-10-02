@@ -91,7 +91,7 @@ function _qcLogOnly() {
     'other';
   const entryDate = parsed.date || dk(new Date());
 
-  /** @type {Object} */
+  // Shape matches QuickCaptureEntry (see typedef above _qcBuildTaskGroups).
   const entry = {
     id: Date.now() + '',
     text: parsed.text,
@@ -248,12 +248,31 @@ function _qcTaskRowHtml(rowId, text, cat, isActive) {
 }
 
 /**
+ * A time-log entry as read by the quick-capture task list.
+ * @typedef {Object} QuickCaptureEntry
+ * @property {string} id - Unique entry id.
+ * @property {string} text - Entry description.
+ * @property {string} tag - Category id.
+ * @property {string} date - Entry date as YYYY-MM-DD.
+ */
+
+/**
+ * A plan (kanban) task as read by the quick-capture task list.
+ * @typedef {Object} QuickCaptureTask
+ * @property {string} text - Task description.
+ * @property {string} tag - Category id.
+ * @property {string} date - Task date as YYYY-MM-DD.
+ * @property {string} status - Board status, e.g. 'todo', 'inprogress', 'done'.
+ * @property {boolean} [_migrated] - True when the task was carried to a later day.
+ */
+
+/**
  * Collects and deduplicates the three task groups for the current filter state.
  * Pure data function — performs no DOM operations.
  *
  * @param {string} searchLower - Lower-cased search string; empty string means no filter.
  * @param {string} todayKey - Date key for today in YYYY-MM-DD format.
- * @returns {{ inProgress: Object[], todo: Object[], recent: Object[] }}
+ * @returns {{ inProgress: QuickCaptureEntry[], todo: QuickCaptureTask[], recent: QuickCaptureEntry[] }}
  */
 function _qcBuildTaskGroups(searchLower, todayKey) {
   /** @param {string} text @returns {boolean} */
@@ -266,7 +285,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
     ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
     : null;
 
-  /** @type {Object[]} */
+  /** @type {QuickCaptureEntry[]} */
   const inProgress = [];
   if (activeEntry && matchSearch(activeEntry.text) && matchCat(activeEntry.tag)) {
     inProgress.push(activeEntry);
@@ -286,7 +305,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   todo.forEach((task) => seen.add(task.text.toLowerCase()));
 
   // ── Recent: unique entries from today, excluding the active one ───────
-  /** @type {Object[]} */
+  /** @type {QuickCaptureEntry[]} */
   const recent = [];
   [...getEntries()]
     .filter(
@@ -309,7 +328,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
  * Renders the task list HTML string from pre-built group data.
  * Receives all inputs as parameters — performs no DOM or module-state reads.
  *
- * @param {{ inProgress: Object[], todo: Object[], recent: Object[] }} groups
+ * @param {{ inProgress: QuickCaptureEntry[], todo: QuickCaptureTask[], recent: QuickCaptureEntry[] }} groups
  * @param {string} search - Original (un-lowercased) search string for the empty-state message.
  * @returns {string} HTML string ready for assignment to `el.innerHTML`.
  */
