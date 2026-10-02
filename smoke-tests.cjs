@@ -3924,6 +3924,19 @@ async function runTests() {
       (await nameOf('.tb-block-del[data-bid="a11yb1"]')) !==
         (await nameOf('.tb-block-del[data-bid="a11yb2"]'))
     );
+    const actionButtons = await page.evaluate(() =>
+      [...document.querySelectorAll('.tb-block[data-bid="a11yb1"] button')].map((button) => ({
+        cls: button.className.split(' ')[0],
+        bid: button.dataset.bid,
+        draggable: button.getAttribute('draggable'),
+      }))
+    );
+    assert(
+      'The three action buttons keep data-bid and draggable="false" for the drag handlers',
+      actionButtons.length === 3 &&
+        actionButtons.every((button) => button.bid === 'a11yb1' && button.draggable === 'false'),
+      JSON.stringify(actionButtons)
+    );
     assert(
       'A meeting block has no start button',
       await page.evaluate(() => !document.querySelector('.tb-block-start[data-bid="a11yb2"]'))
