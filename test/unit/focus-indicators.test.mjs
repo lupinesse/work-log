@@ -102,7 +102,7 @@ describe('findOutlineRemovals() classifies a rule correctly', () => {
   });
 });
 
-describe('every rule that removes a focus outline shows a replacement (#598 group C)', () => {
+describe('every rule that removes a focus outline shows a replacement or keeps the keyboard ring (#598 group C)', () => {
   it('scans a realistic number of rules (guards against a parser that finds nothing)', () => {
     assert.ok(removals.length >= 20, `only ${removals.length} outline removals found`);
   });
