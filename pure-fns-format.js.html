@@ -84,7 +84,7 @@ export function escHtml(s) {
  * // → '&lt;a class="jira-key-link" href="https://x.atlassian.net/browse/AB-1" …>AB-1&lt;span class="sr-only"> (opens in new tab)&lt;/span>&lt;/a>'
  */
 export function jiraKeyLinkHtml(baseUrl, key) {
-  return `&lt;a class="jira-key-link" href="${baseUrl}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}&lt;span class="sr-only"> (opens in new tab)&lt;/span>&lt;/a>`;
+  return `&lt;a class="jira-key-link" href="${escHtml(baseUrl)}/${escHtml(key)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}&lt;span class="sr-only"> (opens in new tab)&lt;/span>&lt;/a>`;
 }
 
 /* ── Date / time formatting ── */

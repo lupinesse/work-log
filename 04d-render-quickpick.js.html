@@ -82,7 +82,7 @@ function renderQuickPick() {
     ? `&lt;button class="qp-wrap__restore" id="qpRestore" title="show all hidden tasks again">restore ${hiddenInUse} hidden&lt;/button>`
     : '';
 
-  qp.innerHTML = `&lt;div class="qp-wrap">&lt;div class="qp-label">recent tasks&lt;/div>&lt;div class="qp-list">${itemsHtml}${restoreHtml}&lt;/div>&lt;/div>`;
+  qp.innerHTML = `&lt;div class="qp-wrap">&lt;div class="qp-wrap__label">recent tasks&lt;/div>&lt;div class="qp-wrap__list">${itemsHtml}${restoreHtml}&lt;/div>&lt;/div>`;
 
   // Click pill body — fill capture input (only if click wasn't on the ✕)
   qp.querySelectorAll('.qp-item').forEach((btn) => {
