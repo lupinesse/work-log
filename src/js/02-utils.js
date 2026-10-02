@@ -550,23 +550,38 @@ function viewEntries() {
     .sort((a, b) => b.ts - a.ts);
 }
 /**
+ * Tracks inputs that already have a pending clear-on-edit listener, so that
+ * calling markInputInvalid() repeatedly before the user edits does not stack
+ * multiple listeners on the same element.
+ * @type {WeakSet<HTMLInputElement>}
+ */
+const _invalidListenerPending = new WeakSet();
+
+/**
  * Flags a text input as rejected: red border via `.input--invalid`, exposed to
  * assistive tech through `aria-invalid`, and focused. The mark clears itself
  * on the next edit so a corrected value is not left looking wrong.
+ *
+ * Safe to call multiple times without an intervening edit: the clear-on-edit
+ * listener is added only once per input.
  * @param {HTMLInputElement} input - The input whose value was rejected.
  * @returns {void}
  */
 function markInputInvalid(input) {
   input.classList.add('input--invalid');
   input.setAttribute('aria-invalid', 'true');
-  input.addEventListener(
-    'input',
-    () => {
-      input.classList.remove('input--invalid');
-      input.removeAttribute('aria-invalid');
-    },
-    { once: true }
-  );
+  if (!_invalidListenerPending.has(input)) {
+    _invalidListenerPending.add(input);
+    input.addEventListener(
+      'input',
+      () => {
+        input.classList.remove('input--invalid');
+        input.removeAttribute('aria-invalid');
+        _invalidListenerPending.delete(input);
+      },
+      { once: true }
+    );
+  }
   input.focus();
 }
 
