@@ -753,7 +753,7 @@ function Add-RecurringOccurrence {
         System.Int32 — how many occurrences were added.
 
     .EXAMPLE
-        Add-RecurringOccurrence $master 'me@example.com' ([DateTime]::Today) $seen $results $dbg
+        Add-RecurringOccurrence $master 'me@example.com' ([DateTime]::Today) $seen $results $debugInfo
     #>
     [OutputType([int])]
     param(
@@ -777,7 +777,7 @@ function Add-RecurringOccurrence {
     $pattern = $null
     try { $pattern = & $Track $Master.GetRecurrencePattern() }
     catch {
-        $Diagnostics.pass2Error += "GetRecurrencePattern($subject): $($_.Exception.Message); "
+        $Diagnostics.pass2Error += "GetRecurrencePattern($subject): $($_.Exception.Message)"
         return $added
     }
     if ($null -eq $pattern) { return $added }
@@ -810,7 +810,7 @@ function Add-RecurringOccurrence {
                 }
             } catch { continue }
         }
-    } catch { $Diagnostics.pass2Error += "Exceptions($subject): $($_.Exception.Message); " }
+    } catch { $Diagnostics.pass2Error += "Exceptions($subject): $($_.Exception.Message)" }
 
     return $added
 }
