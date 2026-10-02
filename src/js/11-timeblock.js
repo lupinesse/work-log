@@ -229,6 +229,8 @@ function checkBlockNotifications() {
   const now = new Date();
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
+  const entries = getEntries();
+  const timer = getActiveTimer();
 
   const pending = getBlocks().filter(
     (block) => block.date === todayKey && !notifiedBlocks.has(block.id)
@@ -243,15 +245,13 @@ function checkBlockNotifications() {
       if (nowMins >= startMins && nowMins < endMins) {
         notifiedBlocks.add(b.id);
         // Skip if already logged or timer already running for this meeting
-        const alreadyLogged = getEntries().some(
+        const alreadyLogged = entries.some(
           (entry) =>
             entry.date === todayKey &&
             entry.text.toLowerCase() === b.text.toLowerCase() &&
             !entry.tsEnd // only count open entries — not pre-created completed ones
         );
-        const curEntry = getActiveTimer()
-          ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
-          : null;
+        const curEntry = timer ? entries.find((entry) => entry.id === timer.entryId) : null;
         const alreadyActive = curEntry && curEntry.text.toLowerCase() === b.text.toLowerCase();
         if (!alreadyLogged && !alreadyActive) {
           // Use the meeting's scheduled start time, not now
@@ -271,8 +271,8 @@ function checkBlockNotifications() {
       // Task blocks — prompt within 3-minute window after start
       if (nowMins < startMins || nowMins >= startMins + 3) continue;
       notifiedBlocks.add(b.id);
-      if (getActiveTimer()) {
-        const cur = getEntries().find((entry) => entry.id === getActiveTimer().entryId);
+      if (timer) {
+        const cur = entries.find((entry) => entry.id === timer.entryId);
         const curName = cur ? cur.text : 'current task';
         const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
         if (sw) {
