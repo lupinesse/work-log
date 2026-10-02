@@ -279,11 +279,10 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   const matchSearch = (text) => !searchLower || text.toLowerCase().includes(searchLower);
   /** @param {string} tag @returns {boolean} */
   const matchCat = (tag) => !_qcFilterCat || tag === _qcFilterCat;
+  const timer = getActiveTimer();
 
   // ── In progress: the currently-running entry (if any) ─────────────────
-  const activeEntry = getActiveTimer()
-    ? getEntries().find((entry) => entry.id === getActiveTimer().entryId)
-    : null;
+  const activeEntry = timer ? getEntries().find((entry) => entry.id === timer.entryId) : null;
 
   /** @type {QuickCaptureEntry[]} */
   const inProgress = [];
@@ -308,10 +307,7 @@ function _qcBuildTaskGroups(searchLower, todayKey) {
   /** @type {QuickCaptureEntry[]} */
   const recent = [];
   [...getEntries()]
-    .filter(
-      (entry) =>
-        entry.date === todayKey && entry.id !== (getActiveTimer() ? getActiveTimer().entryId : '')
-    )
+    .filter((entry) => entry.date === todayKey && entry.id !== (timer ? timer.entryId : ''))
     .reverse()
     .forEach((entry) => {
       const key = entry.text.toLowerCase();
