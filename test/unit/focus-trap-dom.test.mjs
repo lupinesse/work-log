@@ -13,7 +13,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom, stubOffsetParent, assertNoUncaughtErrors } from './_helpers.mjs';
+import {
+  __dirname,
+  createDom,
+  stubOffsetParent,
+  stripEsmSyntax,
+  assertNoUncaughtErrors,
+} from './_helpers.mjs';
 
 // 12d-weeklyreport.js reads `document` / `localStorage` as globals; restore them
 // afterwards so this file leaves the process as it found it.
@@ -26,13 +32,6 @@ after(() => {
 });
 
 const readSrc = (file) => readFileSync(join(__dirname, '../../src/js/', file), 'utf8');
-
-/** Strips ESM syntax so a leaf module can run in a VM classic-script context. */
-function stripEsm(source) {
-  return source
-    .replace(/^import\s[^;]*;\s*$/gm, '')
-    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
-}
 
 const FOCUSABLES = `
   <button id="first">First</button>
@@ -52,7 +51,7 @@ const IMPLEMENTATIONS = [
       );
       stubOffsetParent(dom.window);
       const context = dom.getInternalVMContext();
-      vm.runInContext(stripEsm(readSrc('focus-utils.js')), context);
+      vm.runInContext(stripEsmSyntax(readSrc('focus-utils.js')), context);
       vm.runInContext(readSrc('12c-gapreport.js'), context);
       return dom;
     },

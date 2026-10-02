@@ -10,11 +10,11 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource } from './_helpers.mjs';
+import { __dirname, loadPureFnsScriptSource, stripEsmSyntax } from './_helpers.mjs';
 
-const trackersSrc = readFileSync(join(__dirname, '../../src/js/22-trackers.js'), 'utf8')
-  .replace(/^import\s[^;]*;\s*$/gm, '')
-  .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+const trackersSrc = stripEsmSyntax(
+  readFileSync(join(__dirname, '../../src/js/22-trackers.js'), 'utf8')
+);
 
 const STORE_TRACKERS = 'wl_trackers_v1';
 const HOUR = 3600000;
