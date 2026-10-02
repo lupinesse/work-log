@@ -68,16 +68,27 @@ describe('monthly calendar split (jsdom)', () => {
       assert.ok(html.includes('data-date="2026-05-31"'));
     });
 
-    it('pads single-digit months and rolls the year for January', () => {
+    it('pads the month of a January calendar', () => {
       const html = evaluate('buildMonthlyCalendarHtml(2027, 0)');
       assert.ok(html.includes('data-date="2027-01-01"'));
-      assert.equal(evaluate('mlMonthPrefix(2026, 11)'), '2026-12');
     });
 
     it('does not touch the DOM', () => {
       evaluate('buildMonthlyCalendarHtml(2026, 4)');
       assert.equal(calEl.innerHTML, '');
     });
+  });
+
+  describe('mlMonthPrefix', () => {
+    for (const [year, month, expected] of [
+      [2026, 0, '2026-01'],
+      [2026, 8, '2026-09'],
+      [2026, 11, '2026-12'],
+    ]) {
+      it(`maps (${year}, ${month}) to ${expected}`, () => {
+        assert.equal(evaluate(`mlMonthPrefix(${year}, ${month})`), expected);
+      });
+    }
   });
 
   describe('renderMonthlyCalendar + bindMonthlyCalendarEvents', () => {
