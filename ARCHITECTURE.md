@@ -119,7 +119,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **02-utils.js** (553 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
+#### **02-utils.js** (569 lines) — Category Lookup, Epic Manager UI, and Date/Billing Helpers
 **Responsibility**: Category (epic) lookup/sanitisation, the epic picker/manager UI, and a handful of billing/entry helpers that don't fit elsewhere.
 
 **Key Functions**:
@@ -127,11 +127,10 @@ wl_snapshot        → backup (auto-restore on failure)
 - `buildTagRowHtml()` / `buildManageRowHtml(selCat)` — return the epic dropdown and manage-row markup as strings, touching no DOM; the manage row covers three mutually exclusive inline modes (idle, rename, add)
 - `bindTagRowEvents()` — wires every listener for the markup just rendered; each lookup past the always-present dropdown controls is null-guarded, since only one inline mode is in the DOM at a time
 - `tidyStaleEpics()`, `refreshEpicPickers()`, `renderEpicsManager()`, `bindEpicsManager()` — the epics manager modal that owns archive and restore (#385); these moved out of the manage row, so `renderTagRow()` no longer renders tidy/restore controls
-- `roundToNearest30IfBillable(ts, entry)`, `safeRoundedStart()` — billing-aware timestamp rounding
-- `viewEntries()` — entries for the currently viewed date, sorted newest-first by start time
+- `roundToNearest30IfBillable(ts, entry)` — billing-aware timestamp rounding
 - `calcStreak()` — consecutive logged-work-day streak, looking backwards from yesterday
 
-**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`, and the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js` — see below.
+**Dependencies**: not a leaf-module candidate — checked during issue #336's ES-module extraction and found too entangled to extract as one file. Reads/writes module state declared elsewhere (`categories`, `selectedTag`, `entries`, `viewDate`, `planTasks`) and calls functions defined in later-loaded files (`save()`, `render()`, `renderTimeblock()`, `renderCompleted()`, `renderPlan()`, `nextDistinctColor()` in `01-state.js`/`04-render.js`/`10a-tasks-render.js`/`11-timeblock.js`, `isEntryBillable()` in `05-entries.js`). Only `dk`, `escHtml`, `safeCssColor`, `roundToNearest30` come from the `pure-fns.js` leaf module. The genuinely stateless date helpers that used to live here (`isToday`, `fmtLabel`) were extracted to `date-labels.js`; the category lookup helpers (`getCat`, `getCatColor`, `getCatLabel`) were extracted to `cat-utils.js`; and the entry timestamp/view helpers (`safeRoundedStart`, `viewEntries`) were extracted to `entry-utils.js` — see below.
 
 ---
 
@@ -164,6 +163,15 @@ wl_snapshot        → backup (auto-restore on failure)
 **Exports**: `trapFocusInOverlay`
 
 **Dependencies**: none (reads `document.activeElement` from the browser global scope).
+
+---
+
+#### **entry-utils.js** (42 lines) — Entry Timestamp and View Helpers (LEAF MODULE)
+**Responsibility**: `safeRoundedStart()` and `viewEntries()` — stateless entry helpers extracted from `02-utils.js` (issue #336, extraction #18). `safeRoundedStart()` rounds `Date.now()` to the nearest 30-minute boundary then takes the maximum of that and the latest `tsEnd` among today's completed entries, preventing new entries from appearing to start before a prior entry's end time. `viewEntries()` returns entries for the currently viewed date, sorted newest-first by start time (`ts`), keeping retroactively added entries at the correct position. Both are the most-called utilities in the codebase that were previously untestable without a full DOM environment.
+
+**Exports**: `safeRoundedStart`, `viewEntries`
+
+**Dependencies**: `getEntries()`, `getViewDate()` from `state.js`; `dk()`, `roundToNearest30()` from `pure-fns.js`.
 
 ---
 

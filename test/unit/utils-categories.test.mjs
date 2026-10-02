@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import {
   __dirname,
   loadCatUtilsScriptSource,
+  loadEntryUtilsScriptSource,
   loadPureFnsScriptSource,
   withStateAccessors,
 } from './_helpers.mjs';
@@ -76,6 +77,7 @@ function loadTagRowSandbox(overrides = {}) {
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
   vm.runInContext(loadCatUtilsScriptSource(), sandbox);
+  vm.runInContext(loadEntryUtilsScriptSource(), sandbox);
   vm.runInContext(utilsSrc, sandbox);
   sandbox._elements = elements;
   return sandbox;
