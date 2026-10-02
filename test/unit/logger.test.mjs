@@ -8,45 +8,18 @@ import assert from 'node:assert/strict';
 import { wlLog } from '../../src/js/logger.js';
 
 describe('wlLog', () => {
-  /**
-   * Replaces console methods with the given stubs for the duration of `fn`,
-   * restoring the originals in a finally block so a throwing callback cannot
-   * leave the console patched for later tests.
-   * @param {Object<string, Function>} stubs - Console method name → replacement.
-   * @param {Function} fn - Callback to run while the stubs are installed.
-   * @returns {void}
-   */
-  function withConsoleStubs(stubs, fn) {
-    const originals = {};
-    for (const method of Object.keys(stubs)) originals[method] = console[method];
-    Object.assign(console, stubs);
-    try {
-      fn();
-    } finally {
-      Object.assign(console, originals);
-    }
-  }
-
   /** Temporarily replace a console method, run fn, restore, return recorded calls. */
   function spy(method, fn) {
     const recorded = [];
-    withConsoleStubs({ [method]: (...args) => recorded.push(args) }, fn);
+    const orig = console[method];
+    console[method] = (...args) => recorded.push(args);
+    try {
+      fn();
+    } finally {
+      console[method] = orig;
+    }
     return recorded;
   }
-
-  describe('console restoration (regression, #519)', () => {
-    it('restores the console method even when the callback throws', () => {
-      const original = console.debug;
-      assert.throws(
-        () =>
-          spy('debug', () => {
-            throw new Error('boom');
-          }),
-        /boom/
-      );
-      assert.equal(console.debug, original);
-    });
-  });
 
   describe('debug()', () => {
     it('calls console.debug with [WL:DEBUG] prefix', () => {
@@ -104,12 +77,31 @@ describe('wlLog', () => {
   });
 
   describe('config()', () => {
-    const silent = () => {};
+    /**
+     * Replaces several console methods for the duration of fn and always
+     * restores them, even when fn throws.
+     * @param {Record<string, Function>} stubs - Console method name to stub.
+     * @param {Function} fn - Code to run while stubbed.
+     */
+    function withConsoleStubs(stubs, fn) {
+      const originals = {};
+      for (const method of Object.keys(stubs)) originals[method] = console[method];
+      Object.assign(console, stubs);
+      try {
+        fn();
+      } finally {
+        Object.assign(console, originals);
+      }
+    }
+
+    const noop = () => {};
 
     it('opens a collapsed group labelled [WL:CONFIG] Startup', () => {
-      const groups = spy('groupCollapsed', () => {
-        withConsoleStubs({ log: silent, groupEnd: silent }, () => wlLog.config({ version: '1.0' }));
-      });
+      const groups = [];
+      withConsoleStubs(
+        { groupCollapsed: (...args) => groups.push(args), log: noop, groupEnd: noop },
+        () => wlLog.config({ version: '1.0' })
+      );
       assert.equal(groups.length, 1);
       assert.equal(groups[0][0], '[WL:CONFIG] Startup');
     });
@@ -117,7 +109,7 @@ describe('wlLog', () => {
     it('logs each key/value pair inside the group', () => {
       const logged = [];
       withConsoleStubs(
-        { groupCollapsed: silent, groupEnd: silent, log: (...args) => logged.push(args) },
+        { groupCollapsed: noop, groupEnd: noop, log: (...args) => logged.push(args) },
         () => wlLog.config({ a: 1, b: 'two' })
       );
       assert.equal(logged.length, 2);
@@ -126,10 +118,22 @@ describe('wlLog', () => {
     });
 
     it('calls console.groupEnd once', () => {
-      const ends = spy('groupEnd', () => {
-        withConsoleStubs({ groupCollapsed: silent, log: silent }, () => wlLog.config({}));
-      });
+      const ends = [];
+      withConsoleStubs(
+        { groupCollapsed: noop, log: noop, groupEnd: (...args) => ends.push(args) },
+        () => wlLog.config({})
+      );
       assert.equal(ends.length, 1);
+    });
+
+    it('restores console methods even when the code under test throws', () => {
+      const original = console.log;
+      assert.throws(() =>
+        withConsoleStubs({ log: noop }, () => {
+          throw new Error('boom');
+        })
+      );
+      assert.equal(console.log, original);
     });
   });
 });

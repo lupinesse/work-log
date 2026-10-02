@@ -1,10 +1,11 @@
 /**
  * @file focus-trap-dom.test.mjs
  * jsdom tests for the Tab / Shift+Tab focus trap (WCAG 2.1.2), issue #553.
- * `trapFocusInOverlay` has two copies — 02-utils.js (classic script, used by
- * 12c-gapreport.js) and a private one in 12d-weeklyreport.js (ES module) —
- * so the same table of behaviours runs against both through their real
- * overlay keydown handlers.
+ * `trapFocusInOverlay` lives in the leaf module `focus-utils.js` (extracted
+ * from 02-utils.js in issue #336, extraction #17). The same table of
+ * behaviours runs against two consumers through their real overlay keydown
+ * handlers: `12c-gapreport.js` (concatenated, receives the function from the
+ * bundle) and `12d-weeklyreport.js` (ES module, imports it directly).
  */
 
 import { describe, it, beforeEach, after } from 'node:test';
@@ -26,12 +27,11 @@ after(() => {
 
 const readSrc = (file) => readFileSync(join(__dirname, '../../src/js/', file), 'utf8');
 
-/** Extracts one top-level function declaration so 02-utils.js need not run whole. */
-function extractFunction(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notEqual(start, -1, `${name} not found`);
-  const end = source.indexOf('\n}', start); // no trailing \n: checkouts may be CRLF
-  return source.slice(start, end + 2);
+/** Strips ESM syntax so a leaf module can run in a VM classic-script context. */
+function stripEsm(source) {
+  return source
+    .replace(/^import\s[^;]*;\s*$/gm, '')
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
 }
 
 const FOCUSABLES = `
@@ -43,7 +43,7 @@ const FOCUSABLES = `
 /** Each adapter mounts an open overlay wired to the implementation under test. */
 const IMPLEMENTATIONS = [
   {
-    name: '02-utils.js via 12c-gapreport.js',
+    name: 'focus-utils.js via 12c-gapreport.js',
     overlayId: 'gapReportOverlay',
     async mount(inner) {
       const dom = createDom(
@@ -52,7 +52,7 @@ const IMPLEMENTATIONS = [
       );
       stubOffsetParent(dom.window);
       const context = dom.getInternalVMContext();
-      vm.runInContext(extractFunction(readSrc('02-utils.js'), 'trapFocusInOverlay'), context);
+      vm.runInContext(stripEsm(readSrc('focus-utils.js')), context);
       vm.runInContext(readSrc('12c-gapreport.js'), context);
       return dom;
     },

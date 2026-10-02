@@ -177,6 +177,31 @@ describe('hasAllowedTools', () => {
   test('flags a step where the flag is missing, even with quoted strings that look like a tool list', () => {
     assert.equal(hasAllowedTools(MISSING_ALLOWED_TOOLS_STEP), false);
   });
+
+  const ARGUMENT_CASES = [
+    ['a quoted tool', 'claude -p "/x" --allowedTools "Read" "Grep"', true],
+    ['an unquoted tool', 'claude -p "/x" --allowedTools Read', true],
+    ['an =-joined tool', 'claude -p "/x" --allowedTools=Read', true],
+    [
+      'a tool on the next line after a continuation',
+      'claude -p "/x" --allowedTools \\\n  "Read"',
+      true,
+    ],
+    [
+      'another flag instead of a tool (regression, #538)',
+      'claude -p "/x" --allowedTools --max-turns 5',
+      false,
+    ],
+    ['an empty quoted argument', 'claude -p "/x" --allowedTools "" --max-turns 5', false],
+    ['nothing after the flag', 'claude -p "/x" --allowedTools', false],
+    ['nothing but a trailing continuation', 'claude -p "/x" --allowedTools \\\n', false],
+  ];
+
+  for (const [label, step, expected] of ARGUMENT_CASES) {
+    test(`${expected ? 'accepts' : 'flags'} ${label}`, () => {
+      assert.equal(hasAllowedTools(step), expected);
+    });
+  }
 });
 
 describe('captureFiles', () => {

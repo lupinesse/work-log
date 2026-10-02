@@ -73,6 +73,7 @@ export default [
       'src/js/05b-filesystem.js',
       'src/js/01b-migrate.js',
       'src/js/24-location.js',
+      'src/js/focus-utils.js',
       'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/04b-render-stats.js',
@@ -85,6 +86,7 @@ export default [
       'src/js/08a-pomo-dashboard.js',
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
+      'src/js/cat-utils.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -112,9 +114,11 @@ export default [
   // still reported. caughtErrors:'none' allows `catch (err)` fallbacks that do not
   // inspect the error (paired with the allowEmptyCatch policy below). Cross-file dead
   // top-level symbols are found with the dead-code skill, not this rule.
-  // detect-object-injection is disabled: bracket-notation on internal state arrays
-  // (entries, categories, planTasks) is intentional and the data is never from
-  // untrusted external input at that point.
+  // detect-object-injection stays 'off' for src/js (#484 follow-up): ~120 existing
+  // bracket lookups, concentrated in pure-fns-export.js and pure-fns-weeklyreport.js,
+  // would need triage one by one, and as plain warnings they would bury new ones in
+  // the existing lint output. Enabling it here needs a ratchet like the
+  // arrow-param one, not a blanket 'warn'.
   {
     files: ['src/js/*.js'],
     ignores: [
@@ -125,6 +129,7 @@ export default [
       'src/js/05b-filesystem.js',
       'src/js/01b-migrate.js',
       'src/js/24-location.js',
+      'src/js/focus-utils.js',
       'src/js/12d-weeklyreport.js',
       'src/js/date-labels.js',
       'src/js/04b-render-stats.js',
@@ -137,6 +142,7 @@ export default [
       'src/js/08a-pomo-dashboard.js',
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
+      'src/js/cat-utils.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -163,8 +169,9 @@ export default [
   // sharing this checkout (#268). They use Node globals (process, console).
   // detect-non-literal-fs-filename: lock paths are built from the git common
   // directory and a sanitised session id, never from untrusted input.
-  // detect-object-injection: the only bracket lookup is a static escape table
-  // keyed by a single character matched against that table first.
+  // detect-object-injection is 'warn' here (#484): every existing bracket lookup
+  // carries an inline disable naming why its key is safe, so a new one with an
+  // untrusted key shows up instead of being silenced wholesale.
   {
     files: ['scripts/**/*.mjs'],
     languageOptions: {
@@ -176,7 +183,7 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
@@ -184,8 +191,9 @@ export default [
   // These power the chatgpt/claude PR-review pipeline. They use Node globals
   // (process, console, fetch). detect-non-literal-fs-filename: any file paths
   // here are derived from internal config or trusted CI output, not external
-  // input. detect-object-injection: bracket lookups key off internal source
-  // labels and parsed CI data, never untrusted user input at that point.
+  // input. detect-object-injection is 'warn' (#484): these scripts parse PR and
+  // API data, so each existing bracket lookup carries an inline disable naming
+  // why its key is safe, and a new one with an untrusted key will show up.
   {
     files: ['.github/scripts/**/*.mjs'],
     languageOptions: {
@@ -197,14 +205,15 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
   // CommonJS Node files: Playwright smoke tests (root *.cjs) and unit tests (test/**/*.cjs).
   // Browser globals are included because smoke tests pass browser-side code to page.evaluate().
   // detect-non-literal-fs-filename: paths come from internal config, not external input.
-  // detect-object-injection: MIME[ext] is a static lookup keyed by path.extname(), not user data.
+  // detect-object-injection is 'warn' (#484); the one MIME[ext] lookup carries an inline
+  // disable explaining that path.extname() always starts with a dot.
   {
     files: ['*.cjs', 'test/**/*.cjs', 'scripts/**/*.cjs'],
     languageOptions: {
@@ -215,13 +224,15 @@ export default [
     rules: {
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 
   // ESM unit tests — run with Node's built-in test runner.
   // Includes browser globals because tests use vm.runInContext with browser-side code.
-  // detect-object-injection suppressed for the same reason as the cjs block above.
+  // detect-object-injection stays 'off': tests index fixtures and sandboxes by keys
+  // they wrote themselves, and enabling it would add ~100 warnings with no
+  // untrusted input to find.
   {
     files: ['test/**/*.mjs'],
     languageOptions: {

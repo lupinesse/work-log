@@ -51,14 +51,9 @@ function createCategory(rawLabel) {
   return category;
 }
 
-// viewDate lives in state.js (#423) — getViewDate()/setViewDate().
-// selectedTag lives in state.js (#423) — getSelectedTag()/setSelectedTag().
-let logNotes = [];
-// entries lives in state.js (#423) — getEntries()/setEntries().
-// activeTimer lives in state.js (#423) — getActiveTimer()/setActiveTimer().
-// timerInterval lives in state.js (#423) — getTimerInterval()/setTimerInterval().
-// categories lives in state.js (#423) — getCategories()/setCategories().
-// blocks lives in state.js (#423) — getBlocks()/setBlocks().
+// The shared mutable variables (entries, activeTimer, timerInterval, categories,
+// selectedTag, viewDate, blocks, logNotes) live in state.js (#423); read and
+// write them through its getX()/setX() accessors, never as bare globals.
 
 /* ── Load / Save ── */
 // Schema validators (validEntry, validCategory, validPlanTask, validBlock, validTimer,
@@ -134,15 +129,15 @@ function load() {
 function loadLogNotes() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORE_LOGNOTES) || '[]');
-    logNotes = Array.isArray(raw) ? raw : [];
+    setLogNotes(Array.isArray(raw) ? raw : []);
   } catch (err) {
-    logNotes = [];
+    setLogNotes([]);
     wlLog.warn('loadLogNotes: failed to parse log notes from localStorage', err);
   }
 }
 
 function saveLogNotes() {
-  localStorage.setItem(STORE_LOGNOTES, JSON.stringify(logNotes));
+  localStorage.setItem(STORE_LOGNOTES, JSON.stringify(getLogNotes()));
 }
 
 // save(), showSaveFailureBanner(), and hideSaveFailureBanner() have been

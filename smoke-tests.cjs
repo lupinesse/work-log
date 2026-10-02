@@ -29,6 +29,7 @@ function startServer() {
           return;
         }
         const ext = path.extname(file);
+        // eslint-disable-next-line security/detect-object-injection -- path.extname() always starts with '.', so ext can never be '__proto__'
         res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
         res.end(data);
       });
@@ -348,7 +349,8 @@ async function runTests() {
     const probe = await page.evaluate(() => {
       const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
       if (items.length === 0) return { itemCount: 0 };
-      // NodeList does not include .at() — use bracket-index access.
+      // Bracket indexing is deliberate: this runs in the page (browser) context,
+      // where a NodeList has no .at() method (only Array does).
       const last = items[items.length - 1];
       const rect = last.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
@@ -2818,57 +2820,44 @@ async function runTests() {
     assert('getAnthropicKey not on window._wlNotion', exposed.hasGetKey === false);
     assert('setAnthropicKey not on window._wlNotion', exposed.hasSetKey === false);
     assert('wl_anthropic_key cleared from localStorage', exposed.lsKey === null);
+    await page.close();
+  }
 
-    // The fetch-title button must go through the local /api/ai proxy (which
-    // injects the key server-side), never straight to Anthropic or with a key.
-    const proxiedRequests = [];
-    const directAnthropicRequests = [];
-    const onRequest = (request) => {
-      // Compare the parsed host, not a substring: a proxy URL may merely mention the name.
-      if (new URL(request.url()).hostname === 'api.anthropic.com') {
-        directAnthropicRequests.push(request.url());
-      }
-    };
-    page.on('request', onRequest);
-    await page.route('**/api/ai', async (route) => {
-      proxiedRequests.push({ headers: route.request().headers() });
-      await route.fulfill({
+  // ── Section 41b. Notion calls go through the local server proxy (#491) ───
+  console.log('\n41b. Notion requests use the server proxy');
+  {
+    const page = await freshPage(ctx);
+    const requestedUrls = [];
+    page.on('request', (request) => requestedUrls.push(request.url()));
+    await page.route('**/api/notion-ai', (route) =>
+      route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ content: [{ type: 'text', text: 'Stub Page Title' }] }),
-      });
-    });
-    await page.evaluate(() => {
-      document.getElementById('notionUrl').value = 'https://example.com/page';
-      document.getElementById('notionName').value = '';
-      document.getElementById('notionFetchBtn').click();
-    });
-    // A boolean (not a thrown timeout) so a regression shows up as a failed
-    // assertion below instead of aborting the whole smoke run.
-    const nameFilled = await page
-      .waitForFunction(() => document.getElementById('notionName').value !== '', null, {
-        timeout: 3000,
+        body: JSON.stringify({ content: [{ type: 'text', text: 'ok' }] }),
       })
-      .then(
-        () => true,
-        () => false
+    );
+    await page.evaluate(() => window._wlNotion.callClaudeWithNotion('ping'));
+    const isServerEndpoint = (suffix) => (url) => new URL(url).pathname === suffix;
+    assert(
+      'Notion AI call hits the server /api/notion-ai endpoint',
+      requestedUrls.filter(isServerEndpoint('/api/notion-ai')).length === 1,
+      `requests: ${JSON.stringify(requestedUrls)}`
+    );
+    // Exact host or a true subdomain: a bare endsWith('notion.com') would also
+    // match a look-alike such as evilnotion.com.
+    const isHostOrSubdomain = (hostname, domain) =>
+      hostname === domain || hostname.endsWith('.' + domain);
+    const directCalls = requestedUrls.filter((url) => {
+      const { hostname } = new URL(url);
+      return (
+        isHostOrSubdomain(hostname, 'notion.com') || isHostOrSubdomain(hostname, 'anthropic.com')
       );
-    assert('Notion fetch-title posts once to /api/ai', proxiedRequests.length === 1);
+    });
     assert(
-      'Notion fetch-title request carries no API key header',
-      proxiedRequests[0] && proxiedRequests[0].headers['x-api-key'] === undefined
+      'No direct request to a Notion or Anthropic host from the browser',
+      directCalls.length === 0,
+      `direct requests: ${JSON.stringify(directCalls)}`
     );
-    assert(
-      'Notion fetch-title never calls api.anthropic.com directly',
-      directAnthropicRequests.length === 0
-    );
-    assert(
-      'Notion fetch-title fills the name from the proxy response',
-      nameFilled && (await page.inputValue('#notionName')) === 'Stub Page Title'
-    );
-    // Detach what this block registered so nothing outlives it.
-    page.off('request', onRequest);
-    await page.unroute('**/api/ai');
     await page.close();
   }
 
@@ -3154,29 +3143,24 @@ async function runTests() {
     // variant must reset it to `stretch`, otherwise the tab bar and the active
     // lane collapse to content width and left-align instead of filling the panel.
     const boardFill = await page.evaluate(() => {
-      const widthOf = (el) => (el ? Math.round(el.getBoundingClientRect().width) : 0);
+      const widthOf = (el) => (el ? el.getBoundingClientRect().width : 0);
       return {
         colW: widthOf(document.getElementById('boardCols')),
         tabsW: widthOf(document.getElementById('boardTabs')),
         laneW: widthOf(document.querySelector('.kb-col.kb-col--active')),
       };
     });
-    // Widths are rounded to whole pixels, so two boxes that fill the same
-    // fractional width can differ by 1px; allow that and nothing more. Raw widths
-    // go into the failure message (0 means the element was not found).
-    const ROUNDING_TOLERANCE_PX = 1;
-    const widthDetail = `board ${boardFill.colW}px, tabs ${boardFill.tabsW}px, lane ${boardFill.laneW}px`;
+    // getBoundingClientRect() returns fractional widths, and the tab bar / lane
+    // can legitimately sit up to 1px under the container after sub-pixel
+    // layout rounding. Allow that 1px so the check catches the real regression
+    // (content-width collapse, hundreds of px short) without flaking.
+    const SUBPIXEL_TOLERANCE_PX = 1;
+    const fillsBoard = (width) =>
+      boardFill.colW > 0 && width >= boardFill.colW - SUBPIXEL_TOLERANCE_PX;
+    const widthDetail = `raw widths: ${JSON.stringify(boardFill)}`;
     assert('Board panel has non-zero width', boardFill.colW > 0, widthDetail);
-    assert(
-      'Tab bar stretches to full board width',
-      boardFill.colW > 0 && boardFill.tabsW >= boardFill.colW - ROUNDING_TOLERANCE_PX,
-      widthDetail
-    );
-    assert(
-      'Active lane stretches to full board width',
-      boardFill.colW > 0 && boardFill.laneW >= boardFill.colW - ROUNDING_TOLERANCE_PX,
-      widthDetail
-    );
+    assert('Tab bar stretches to full board width', fillsBoard(boardFill.tabsW), widthDetail);
+    assert('Active lane stretches to full board width', fillsBoard(boardFill.laneW), widthDetail);
 
     await page.close();
   }
@@ -3603,7 +3587,7 @@ async function runTests() {
     assert('Choosing an epic in the dropdown selects it', (await selectedTag()) === 'work');
 
     await page.waitForSelector('.qp-item', { state: 'attached', timeout: 3000 });
-    await page.evaluate(() => document.querySelector('.qp-item .qp-item-text').click());
+    await page.evaluate(() => document.querySelector('.qp-item .qp-item__text').click());
     assert(
       "Clicking a recent-task pill selects that task's epic",
       (await selectedTag()) === 'other',
@@ -3849,6 +3833,49 @@ async function runTests() {
       );
       await page.close();
     }
+  }
+
+  // ── 48. Tracker form and delete button write the shared trackers list (#423) ─
+  console.log('\n48. Tracker add form and delete button');
+  {
+    const page = await freshPage(ctx, { wl_cats_v1: CATS });
+    const trackerNames = () =>
+      page.evaluate(() => window.__wl.getTrackers().map((tracker) => tracker.name));
+    const storedNames = () =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem('wl_trackers_v1') || '[]').map((tracker) => tracker.name)
+      );
+
+    // Open the form, fill it in and save through the real controls.
+    await page.evaluate(() => {
+      document.getElementById('trackerAddBtn').click();
+      document.getElementById('trFormName').value = 'Form tracker';
+      document.querySelector('#trFormTags input[type=checkbox]').click();
+      document.getElementById('trFormSave').click();
+    });
+    assert(
+      'Saving the tracker form adds the tracker to state',
+      JSON.stringify(await trackerNames()) === '["Form tracker"]',
+      JSON.stringify(await trackerNames())
+    );
+    assert(
+      'The new tracker is persisted',
+      JSON.stringify(await storedNames()) === '["Form tracker"]',
+      JSON.stringify(await storedNames())
+    );
+
+    await page.evaluate(() => document.querySelector('.tracker-delete').click());
+    assert(
+      'The tracker delete button removes the tracker from state',
+      (await trackerNames()).length === 0,
+      JSON.stringify(await trackerNames())
+    );
+    assert(
+      'The deleted tracker is gone from storage too',
+      (await storedNames()).length === 0,
+      JSON.stringify(await storedNames())
+    );
+    await page.close();
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────

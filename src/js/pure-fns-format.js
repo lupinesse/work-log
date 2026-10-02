@@ -44,6 +44,21 @@ export function escHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Builds the anchor HTML for a Jira ticket key. The link opens in a new tab,
+ * so a visually hidden suffix tells screen-reader users that before they
+ * activate it (WCAG 3.2.2 / 2.4.4); sighted users see no change.
+ * @param {string} baseUrl - Jira browse URL, without a trailing slash.
+ * @param {string} key - Ticket key, e.g. `AITO-1234`.
+ * @returns {string} HTML string for the `<a>` element.
+ * @example
+ * jiraKeyLinkHtml('https://x.atlassian.net/browse', 'AB-1')
+ * // → '<a class="jira-key-link" href="https://x.atlassian.net/browse/AB-1" …>AB-1<span class="sr-only"> (opens in new tab)</span></a>'
+ */
+export function jiraKeyLinkHtml(baseUrl, key) {
+  return `<a class="jira-key-link" href="${baseUrl}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}<span class="sr-only"> (opens in new tab)</span></a>`;
+}
+
 /* ── Date / time formatting ── */
 
 /**

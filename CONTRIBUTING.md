@@ -61,8 +61,8 @@ worklog/
 │       ├── _tasks.scss
 │       └── ...
 ├── work-log.html     # Single-file HTML entry point
-├── script.js         # Built JavaScript (generated)
-├── styles.css        # Built CSS (generated)
+├── script.js         # Built JavaScript (generated, gitignored; run npm run build)
+├── styles.css        # Built CSS (generated, gitignored; run npm run build)
 ├── smoke-tests.cjs   # Test suite
 ├── build.js          # Build script
 └── package.json      # Dependencies

@@ -19,6 +19,24 @@ function mergeDevLog() {
   }
 }
 
+/** Label markup each copy button had before its first "Copied!" flash. */
+const copyButtonOriginalLabels = new WeakMap();
+
+/**
+ * Briefly replaces a copy button's label with "Copied!", then restores the
+ * original markup (emoji span included). The original is remembered on first
+ * use, not read at each click: a second click inside the flash would otherwise
+ * capture "Copied!" as the label to restore, leaving the button stuck.
+ * @param {HTMLElement} button - The copy button to flash.
+ * @param {number} [durationMs] - How long "Copied!" stays visible.
+ * @returns {void}
+ */
+function flashCopiedLabel(button, durationMs = 2000) {
+  if (!copyButtonOriginalLabels.has(button)) copyButtonOriginalLabels.set(button, button.innerHTML);
+  button.textContent = 'Copied!';
+  setTimeout(() => (button.innerHTML = copyButtonOriginalLabels.get(button)), durationMs);
+}
+
 /**
  * Opens the end-of-day modal: auto-exports the time log and JSON backup, saves
  * the EOD timestamp, populates handoff notes for unfinished tasks, renders today's
@@ -146,9 +164,7 @@ function openEodModal() {
       ...affectedAreas.map((area) => `  - Test ${area}: ${TEST_AREA_NAMES[area]}`),
     ];
     navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      const btn = document.getElementById('eodCopyBtn');
-      btn.textContent = '✅ Copied!';
-      setTimeout(() => (btn.textContent = '📋 copy to clipboard'), 2000);
+      flashCopiedLabel(document.getElementById('eodCopyBtn'));
     });
   };
 

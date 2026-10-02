@@ -261,8 +261,8 @@ function updatePomoDisplay() {
   if (pomoRunning) {
     setPomoFavicon();
   } else {
-    const _pomoFaviconEl = document.querySelector("link[rel~='icon'][data-pomo]");
-    if (_pomoFaviconEl) _pomoFaviconEl.remove();
+    const pomoFaviconEl = document.querySelector("link[rel~='icon'][data-pomo]");
+    if (pomoFaviconEl) pomoFaviconEl.remove();
   }
 
   updatePomoTaskLabel();
@@ -289,10 +289,10 @@ function setPomoFavicon() {
       cy = 16,
       r = 14;
 
-    const cs = getComputedStyle(document.documentElement);
-    const colEmpty = cs.getPropertyValue('--pomo-spark-empty').trim() || '#e8edf4';
-    const colFill = cs.getPropertyValue('--pomo-spark-fill').trim() || '#c62828';
-    const colBg = cs.getPropertyValue('--bg').trim() || '#ffffff';
+    const rootStyle = getComputedStyle(document.documentElement);
+    const colEmpty = rootStyle.getPropertyValue('--pomo-spark-empty').trim() || '#e8edf4';
+    const colFill = rootStyle.getPropertyValue('--pomo-spark-fill').trim() || '#c62828';
+    const colBg = rootStyle.getPropertyValue('--bg').trim() || '#ffffff';
 
     // Background ring
     ctx.beginPath();

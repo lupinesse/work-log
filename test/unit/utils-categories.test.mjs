@@ -8,7 +8,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
+import {
+  __dirname,
+  loadCatUtilsScriptSource,
+  loadPureFnsScriptSource,
+  withStateAccessors,
+} from './_helpers.mjs';
 
 /**
  * Loads 02-utils.js into a VM sandbox with a minimal fake DOM. Every
@@ -70,6 +75,7 @@ function loadTagRowSandbox(overrides = {}) {
   };
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(loadCatUtilsScriptSource(), sandbox);
   vm.runInContext(utilsSrc, sandbox);
   sandbox._elements = elements;
   return sandbox;
@@ -286,6 +292,21 @@ describe('deleteSelectedEpic — confirm before hard delete (regression)', () =>
     sandbox._elements.get('catDelBtn')._listeners.click();
 
     assert.ok(confirmText.includes('no log entries or tasks'));
+  });
+
+  it('does not save or log a deletion when selectedTag matches no epic (stale tag)', () => {
+    const saves = [];
+    const sandbox = loadTagRowSandbox({
+      categories: [{ id: 'work', label: 'Work', color: '#378ADD' }],
+      selectedTag: 'cat_gone',
+      save: () => saves.push(true),
+      window: { confirm: () => true, alert: () => {} },
+    });
+    const deleted = sandbox.deleteSelectedEpic();
+
+    assert.equal(deleted, false);
+    assert.equal(saves.length, 0, 'nothing to delete, so nothing is saved');
+    assert.equal(sandbox.selectedTag, 'cat_gone', 'selection is untouched');
   });
 
   it('refuses to delete a built-in epic, even if somehow selected', () => {
@@ -629,5 +650,55 @@ describe('buildTagRowHtml / bindTagRowEvents — markup and wiring are separable
 
     assert.ok(sandbox._elements.get('catSelect')._listeners.change, 'select change is wired');
     assert.ok(sandbox._elements.get('catSettingsBtn')._listeners.click, 'settings click is wired');
+  });
+});
+
+describe('markInputInvalid — rejected epic names (regression, #524)', () => {
+  // The inline #C62828 border used to be set with element.style and never
+  // removed, so the input stayed red after the user fixed the name.
+
+  /**
+   * Builds a minimal input stand-in recording classes, attributes and focus.
+   * @returns {Object} Fake input with a `fire(type)` helper to dispatch listeners.
+   */
+  function makeInput() {
+    const classes = new Set();
+    const attributes = new Map();
+    const listeners = {};
+    return {
+      focused: false,
+      classes,
+      attributes,
+      classList: { add: (cls) => classes.add(cls), remove: (cls) => classes.delete(cls) },
+      setAttribute: (name, value) => attributes.set(name, value),
+      removeAttribute: (name) => attributes.delete(name),
+      addEventListener: (type, handler) => {
+        listeners[type] = handler;
+      },
+      focus() {
+        this.focused = true;
+      },
+      fire: (type) => listeners[type](),
+    };
+  }
+
+  it('marks the input invalid, exposes aria-invalid and focuses it', () => {
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input);
+
+    assert.ok(input.classes.has('input--invalid'));
+    assert.equal(input.attributes.get('aria-invalid'), 'true');
+    assert.equal(input.focused, true);
+  });
+
+  it('clears the invalid state as soon as the user edits the value', () => {
+    const sandbox = loadTagRowSandbox();
+    const input = makeInput();
+    sandbox.markInputInvalid(input);
+    input.fire('input');
+
+    assert.equal(input.classes.has('input--invalid'), false);
+    assert.equal(input.attributes.has('aria-invalid'), false);
   });
 });

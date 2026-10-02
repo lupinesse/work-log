@@ -13,10 +13,34 @@ import { __dirname, withStateAccessors } from './_helpers.mjs';
 
 const lifecycleSrc = readFileSync(join(__dirname, '../../src/js/07-lifecycle.js'), 'utf8');
 
+// 07-lifecycle.js is a classic script with top-level DOM side effects, so it
+// cannot be imported as a module without changing runtime behaviour. The
+// tests slice it by these comment headings instead.
+const COLLAPSE_STATE_HEADING = '/* ── Section collapse state persistence ── */';
+const COLLAPSE_HANDLERS_HEADING = '/* ── Section collapse handlers ── */';
+
+/**
+ * Returns the position of a section heading in 07-lifecycle.js, failing with
+ * an actionable message when the heading was renamed or removed.
+ * @param {string} heading - Exact heading comment to locate.
+ * @returns {number} Index of the heading in the source.
+ */
+function findHeadingIndex(heading) {
+  const index = lifecycleSrc.indexOf(heading);
+  if (index === -1) {
+    throw new Error(
+      `Heading ${heading} not found in src/js/07-lifecycle.js. ` +
+        'These tests slice the file by comment heading; if the heading was ' +
+        'renamed, update the constants at the top of test/unit/lifecycle.test.mjs.'
+    );
+  }
+  return index;
+}
+
 /**
  * Evaluates the collapse-state helper block from 07-lifecycle.js in a minimal
- * VM sandbox. The block is extracted by matching between comment headings so
- * it stays in sync with the source automatically.
+ * VM sandbox. The block is sliced between comment headings so it stays in
+ * sync with the source automatically.
  * @param {Record<string,string>} [preloaded] - Initial localStorage contents.
  * @returns {{ readCollapseState: Function, writeCollapseState: Function, store: Record<string,string> }}
  */
@@ -30,21 +54,12 @@ function loadCollapseSandbox(preloaded = {}) {
       },
     },
   };
-  // Anchored on the code itself (the prefix constant through the end of
-  // writeCollapseState), not on the section's comment headings, so reworded
-  // comments cannot break this test.
-  const match = lifecycleSrc.match(
-    /const COLLAPSE_PREFIX\b[\s\S]*?function writeCollapseState\([^)]*\) \{[\s\S]*?\n\}/
+  const collapseBlock = lifecycleSrc.slice(
+    findHeadingIndex(COLLAPSE_STATE_HEADING),
+    findHeadingIndex(COLLAPSE_HANDLERS_HEADING)
   );
-  if (!match) {
-    throw new Error(
-      'Could not extract the collapse-state helpers from 07-lifecycle.js: expected ' +
-        '`const COLLAPSE_PREFIX` followed by `function writeCollapseState(...) { ... }`. ' +
-        'If they were renamed or moved, update loadCollapseSandbox() in this test.'
-    );
-  }
   vm.createContext(sandbox);
-  vm.runInContext(match[0], sandbox);
+  vm.runInContext(collapseBlock, sandbox);
   return {
     readCollapseState: sandbox.readCollapseState,
     writeCollapseState: sandbox.writeCollapseState,
@@ -155,18 +170,12 @@ function loadSodSandbox({ preloaded = {}, viewDate = new Date() } = {}) {
       calls.renderTimeblock++;
     },
   };
-  // Evaluate from the start of the file up to (not including)
-  // `const COLLAPSE_PREFIX`; everything after it runs top-level DOM code. This
-  // range includes the SOD and EOD helper declarations; the only top-level
-  // executable in it is the sodBtn listener, whose bind is a no-op because
-  // fakeEl.addEventListener is stubbed. Cut on a code identifier rather than a
-  // comment heading so rewording comments cannot break the test.
-  const cutIdx = lifecycleSrc.indexOf('const COLLAPSE_PREFIX');
-  if (cutIdx === -1)
-    throw new Error(
-      'Could not find `const COLLAPSE_PREFIX` in 07-lifecycle.js; if it was renamed or moved, ' +
-        'update the cut point in loadSodSandbox() in this test.'
-    );
+  // Evaluate from the start of the file up to (not including) the section
+  // collapse handlers, which run top-level DOM code. This range includes the SOD
+  // and EOD helper declarations; the only top-level executable in it is the
+  // sodBtn listener, whose bind is a no-op because fakeEl.addEventListener is
+  // stubbed.
+  const cutIdx = findHeadingIndex(COLLAPSE_HANDLERS_HEADING);
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(lifecycleSrc.slice(0, cutIdx), sandbox);
   // renderSodBtn was defined by the vm script (function declaration). Replace
