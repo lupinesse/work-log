@@ -77,6 +77,11 @@ function mlHeatColor(hours) {
  * and the colour legend. Pure string building (reads hours per day through
  * `mlHoursForDay`); touches no DOM.
  *
+ * Day cells are rendered as `&lt;button>` elements so keyboard users can reach
+ * them with Tab and activate them with Enter or Space (WCAG 2.1.1 Keyboard).
+ * The prev/next buttons carry `aria-label` values that include the target
+ * month name, satisfying WCAG 4.1.2 Name, Role, Value.
+ *
  * @param {number} year - Full year to render.
  * @param {number} month - Month index, 0-based.
  * @param {string} monthPrefix - `YYYY-MM` prefix for the month, used to build each cell's date key.
@@ -91,23 +96,36 @@ function buildMonthlyCalendarHtml(year, month, monthPrefix) {
     month: 'long',
     year: 'numeric',
   });
+  const prevMonthName = new Date(year, month - 1, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
+  const nextMonthName = new Date(year, month + 1, 1).toLocaleString('default', {
+    month: 'long',
+    year: 'numeric',
+  });
 
   const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  const emptyCells = Array(offset).fill('&lt;div>&lt;/div>').join('');
+  const emptyCells = Array(offset).fill('&lt;div aria-hidden="true">&lt;/div>').join('');
   const dayCells = Array.from({ length: days }, (_, i) => {
     const d = i + 1;
     const dateKey = `${monthPrefix}-${String(d).padStart(2, '0')}`;
     const hrs = mlHoursForDay(dateKey);
-    return `&lt;div class="ml-cell" data-date="${dateKey}"
-                  title="${d} — ${hrs.toFixed(1)}h"
-                  style="background:${mlHeatColor(hrs)}">&lt;/div>`;
+    const dayName = new Date(year, month, d).toLocaleString('default', {
+      day: 'numeric',
+      month: 'long',
+    });
+    return `&lt;button type="button" class="ml-cell" data-date="${dateKey}"
+                    aria-label="${dayName} — ${hrs.toFixed(1)}h logged"
+                    title="${d} — ${hrs.toFixed(1)}h"
+                    style="background:${mlHeatColor(hrs)}">&lt;/button>`;
   }).join('');
 
   return `
     &lt;div class="ml-nav">
-      &lt;button class="ml-nav-btn" id="mlPrev">←&lt;/button>
+      &lt;button class="ml-nav-btn" id="mlPrev" aria-label="Previous month: ${prevMonthName}">←&lt;/button>
       &lt;span class="ml-month-title">${monthName}&lt;/span>
-      &lt;button class="ml-nav-btn" id="mlNext">→&lt;/button>
+      &lt;button class="ml-nav-btn" id="mlNext" aria-label="Next month: ${nextMonthName}">→&lt;/button>
     &lt;/div>
     &lt;div class="ml-grid">
       ${dayLabels.map((d) => `&lt;div class="ml-day-lbl">${d}&lt;/div>`).join('')}

@@ -10314,7 +10314,7 @@ Both globals must therefore be in scope when this function is called.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line120">line 120</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line138">line 138</a>
     </li></ul></dd>
     
 
@@ -13263,6 +13263,10 @@ into the epics manager modal (renderEpicsManager/bindEpicsManager above).</p>
     <p>Builds the heatmap calendar markup: navigation header, day labels, day cells
 and the colour legend. Pure string building (reads hours per day through
 <code>mlHoursForDay</code>); touches no DOM.</p>
+<p>Day cells are rendered as <code>&lt;button&gt;</code> elements so keyboard users can reach
+them with Tab and activate them with Enter or Space (WCAG 2.1.1 Keyboard).
+The prev/next buttons carry <code>aria-label</code> values that include the target
+month name, satisfying WCAG 4.1.2 Name, Role, Value.</p>
 </div>
 
 
@@ -13401,7 +13405,7 @@ and the colour legend. Pure string building (reads hours per day through
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line57">line 57</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line62">line 62</a>
     </li></ul></dd>
     
 
@@ -15958,7 +15962,7 @@ billable entries; the caller supplies the project's <code>isEntryBillable</code>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line176">line 176</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line194">line 194</a>
     </li></ul></dd>
     
 
@@ -16138,7 +16142,7 @@ both count toward the migrated total.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line204">line 204</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line222">line 222</a>
     </li></ul></dd>
     
 
@@ -47044,7 +47048,7 @@ events. Kept as the single entry point so callers never render without binding.<
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line161">line 161</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line179">line 179</a>
     </li></ul></dd>
     
 
@@ -47151,7 +47155,7 @@ each panel to a single-purpose renderer.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line266">line 266</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line284">line 284</a>
     </li></ul></dd>
     
 
@@ -47331,7 +47335,7 @@ is absent so a partial DOM doesn't throw on innerHTML assignment.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line221">line 221</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line239">line 239</a>
     </li></ul></dd>
     
 
@@ -47512,7 +47516,7 @@ if <code>taskEl</code> is absent so a partial DOM doesn't throw on innerHTML.</p
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line245">line 245</a>
+        <a href="19-monthlylog.js.html">19-monthlylog.js</a>, <a href="19-monthlylog.js.html#line263">line 263</a>
     </li></ul></dd>
     
 
