@@ -56,7 +56,7 @@ export function escHtml(s) {
  * // → '<a class="jira-key-link" href="https://x.atlassian.net/browse/AB-1" …>AB-1<span class="sr-only"> (opens in new tab)</span></a>'
  */
 export function jiraKeyLinkHtml(baseUrl, key) {
-  return `<a class="jira-key-link" href="${baseUrl}/${key}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}<span class="sr-only"> (opens in new tab)</span></a>`;
+  return `<a class="jira-key-link" href="${escHtml(baseUrl)}/${escHtml(key)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escHtml(key)}<span class="sr-only"> (opens in new tab)</span></a>`;
 }
 
 /* ── Date / time formatting ── */
