@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Refactored
+- **PR size-gate constants extracted into one shared module (#589)** — `LINES_THRESHOLD`, `FILES_THRESHOLD`, `LABEL`, `GENERATED`, and `DOCS_ONLY` were duplicated inline in `auto-label-pr.yml`, `pr-review.yml`, and `chatgpt-pr-review.yml`. They now live in a single `.github/scripts/lib/pr-size-gate.mjs` module that also exports `classifyPR(files)` — a pure function mapping the GitHub list-files API response to `{ sourceFiles, totalLines, fileCount, meetsThreshold, isDocsOnly }`. Each workflow adds a sparse checkout of `.github/scripts/` before its gate step and uses `await import()` to load the module. 46 table-driven tests in `.github/scripts/test/pr-size-gate.test.mjs` cover boundary conditions at each threshold, generated-file exclusion, docs-only classification, and edge cases.
+
 ### Changed
 - **`isEntryBillable()` and `roundToNearest30IfBillable()` extracted to leaf ES module `entry-billable.js` (#593)** — both functions moved from the concatenated `05-entries.js` / `02-utils.js` into a new `src/js/entry-billable.js` leaf module (issue #336, extraction #19). `isEntryBillable` is now importable by unit tests and downstream leaf modules; `roundToNearest30IfBillable` follows since it is the only caller. No behaviour change. 22 unit tests in `test/unit/entry-billable.test.mjs`.
 - **`stripEsmSyntax` extracted to `test/unit/_helpers.mjs` (#594)** — the two-step `.replace()` chain that strips ESM `import` declarations and `export` keyword prefixes so a module can run in a VM classic-script context was duplicated inline in five test files (`10b-signifiers.test.mjs`, `focus-trap-dom.test.mjs`, `gofore-timesheet-client.test.mjs`, `save.test.mjs`, `trackers.test.mjs`) and inside two helpers in `_helpers.mjs` itself. A single `stripEsmSyntax(source)` function is now exported from `_helpers.mjs`; all six duplicates are replaced by a call to it. No test behaviour changes.
