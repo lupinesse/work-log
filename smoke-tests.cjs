@@ -348,7 +348,8 @@ async function runTests() {
     const probe = await page.evaluate(() => {
       const items = document.querySelectorAll('#tbMoodPanel .tb-mood-item');
       if (items.length === 0) return { itemCount: 0 };
-      // NodeList does not include .at() — use bracket-index access.
+      // Bracket indexing is deliberate: this runs in the page (browser) context,
+      // where a NodeList has no .at() method (only Array does).
       const last = items[items.length - 1];
       const rect = last.getBoundingClientRect();
       const x = rect.left + rect.width / 2;
