@@ -87,6 +87,23 @@ function calAccountLabel(account) {
 }
 
 /**
+ * Builds the two per-meeting buttons ("▶ start" and "✕ hide"). Both carry an
+ * aria-label naming the meeting: the visible glyph text is identical on every
+ * row, so without it a screen-reader user cannot tell which meeting a button
+ * acts on (WCAG 4.1.2 / 2.4.6).
+ * @param {{ subject: string }} meeting - The meeting the buttons act on.
+ * @param {number} index - Position of the meeting in the rendered list; the hide handler reads it back.
+ * @returns {{ taskBtn: string, deleteBtn: string }} HTML for each button.
+ */
+function buildMeetingButtonsHtml(meeting, index) {
+  const subject = escHtml(meeting.subject);
+  return {
+    taskBtn: `<button class="cal-task-btn" data-subject="${subject}" aria-label="Start tracking: ${subject}">▶ start</button>`,
+    deleteBtn: `<button class="cal-delete-btn" data-meeting-idx="${index}" aria-label="Hide meeting: ${subject}" title="Hide this meeting">✕</button>`,
+  };
+}
+
+/**
  * Renders the calendar meetings strip for today.
  * Sorts meetings by start time, marks past meetings grey/italic, pulses
  * ongoing meetings, and provides ▶ start and ✕ hide buttons per meeting.
@@ -143,8 +160,7 @@ function renderCalStrip(meetings) {
         : '';
       const label = calAccountLabel(ev.account);
       const acct = label ? `<span class="cal-account-label">[${escHtml(label)}]</span>` : '';
-      const taskBtn = `<button class="cal-task-btn" data-subject="${escHtml(ev.subject)}">▶ start</button>`;
-      const deleteBtn = `<button class="cal-delete-btn" data-meeting-idx="${idx}" title="Hide this meeting">✕</button>`;
+      const { taskBtn, deleteBtn } = buildMeetingButtonsHtml(ev, idx);
       return `<div class="cal-meeting ${cls}">
         <span class="cal-meeting-time">${fmtTime(start)}</span>
         <span class="cal-meeting-title">${escHtml(ev.subject)}</span>

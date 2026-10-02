@@ -15,11 +15,12 @@ import {
   loadCatUtilsScriptSource,
   loadPureFnsScriptSource,
   withStateAccessors,
+  stripEsmSyntax,
 } from './_helpers.mjs';
 
-const clientSrc = readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8')
-  .replace(/^import\s[^;]*;\s*$/gm, '')
-  .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+const clientSrc = stripEsmSyntax(
+  readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8')
+);
 const HOUR = 3600000;
 
 /**
