@@ -121,9 +121,26 @@ function tbOverlaps(newStartMins, newEndMins, dateKey, excludeId) {
 }
 
 /**
+ * Creates one selectable emoji button for the picker grid. The emoji is the
+ * visible label, but an explicit aria-label ("Select 😀") keeps the name
+ * consistent across screen readers, which otherwise announce emoji
+ * differently or skip them (WCAG 4.1.2).
+ * @param {string} emoji - The emoji character this button selects.
+ * @param {Function} onSelect - Called when the button is clicked.
+ * @returns {HTMLButtonElement} The button, not yet attached to the DOM.
+ */
+function createEmojiOptionButton(emoji, onSelect) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = emoji;
+  button.setAttribute('aria-label', 'Select ' + emoji);
+  button.addEventListener('click', onSelect);
+  return button;
+}
+
+/**
  * Opens a floating emoji picker anchored below `anchor` for a time block.
- * Identical behaviour to `openEmojiPicker` but operates on `blocks` instead
- * of `planTasks`. Calling again for the same block ID closes the picker.
+ * Calling again for the same block ID closes the picker.
  * @param {string}      bid    - Block ID.
  * @param {HTMLElement} anchor - Element to position the picker below.
  */
@@ -154,17 +171,14 @@ function openBlockEmojiPicker(bid, anchor) {
   const grid = document.createElement('div');
   grid.className = 'emoji-picker-grid';
   EMOJI_COMMON.forEach((em) => {
-    const b = document.createElement('button');
-    b.textContent = em;
-    b.type = 'button';
-    b.addEventListener('click', () => setBlockEmoji(bid, em));
-    grid.appendChild(b);
+    grid.appendChild(createEmojiOptionButton(em, () => setBlockEmoji(bid, em)));
   });
   picker.appendChild(grid);
 
   const clear = document.createElement('button');
   clear.className = 'emoji-picker-clear';
   clear.textContent = '✕ remove emoji';
+  clear.setAttribute('aria-label', 'Remove emoji');
   clear.addEventListener('click', () => setBlockEmoji(bid, null));
   picker.appendChild(clear);
 
@@ -230,6 +244,7 @@ function checkBlockNotifications() {
   const nowMins = now.getHours() * 60 + now.getMinutes();
   const todayKey = dk(new Date());
   const entries = getEntries();
+  const timer = getActiveTimer();
 
   const pending = getBlocks().filter(
     (block) => block.date === todayKey && !notifiedBlocks.has(block.id)
@@ -250,9 +265,7 @@ function checkBlockNotifications() {
             entry.text.toLowerCase() === b.text.toLowerCase() &&
             !entry.tsEnd // only count open entries — not pre-created completed ones
         );
-        const curEntry = getActiveTimer()
-          ? entries.find((entry) => entry.id === getActiveTimer().entryId)
-          : null;
+        const curEntry = timer ? entries.find((entry) => entry.id === timer.entryId) : null;
         const alreadyActive = curEntry && curEntry.text.toLowerCase() === b.text.toLowerCase();
         if (!alreadyLogged && !alreadyActive) {
           // Use the meeting's scheduled start time, not now
@@ -272,8 +285,8 @@ function checkBlockNotifications() {
       // Task blocks — prompt within 3-minute window after start
       if (nowMins < startMins || nowMins >= startMins + 3) continue;
       notifiedBlocks.add(b.id);
-      if (getActiveTimer()) {
-        const cur = entries.find((entry) => entry.id === getActiveTimer().entryId);
+      if (timer) {
+        const cur = entries.find((entry) => entry.id === timer.entryId);
         const curName = cur ? cur.text : 'current task';
         const sw = confirm(`⏰ Time for: "${b.text}"\n\nSwitch from "${curName}"?`);
         if (sw) {

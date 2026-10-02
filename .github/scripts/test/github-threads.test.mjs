@@ -12,11 +12,16 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addReactionToComment,
-  postInlineComment,
-  resolveThread,
-  fetchAllIssueComments,
+  fetchAllThreads,
   formatThreadsForPrompt,
+  fetchAllIssueComments,
+  ghHeaders,
+  postInlineComment,
+  replyToThread,
+  resolveThread,
+  unresolveThread,
   upsertIssueComment,
+  upsertReview,
 } from '../lib/github-threads.mjs';
 
 // ─────────────────────────── helpers ───────────────────────────
@@ -342,5 +347,394 @@ describe('upsertIssueComment', () => {
 
     assert.strictEqual(result.updated, false);
     assert.deepStrictEqual(result.comment, created);
+  });
+
+  test('throws when the PATCH request returns a non-ok status', async (t) => {
+    const existing = [{ id: 42, body: `${MARKER}\nOld content` }];
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'PATCH') return makeResponse('Forbidden', 403);
+      return makeResponse(existing);
+    });
+
+    await assert.rejects(
+      upsertIssueComment({ ...ctx, marker: MARKER, body: `${MARKER}\nNew` }),
+      (err) => {
+        assert.ok(err.message.includes('403'), `expected 403 in: ${err.message}`);
+        assert.ok(
+          err.message.includes('upsertIssueComment'),
+          `expected function name in: ${err.message}`
+        );
+        return true;
+      }
+    );
+  });
+
+  test('throws when the POST request returns a non-ok status', async (t) => {
+    const existing = [{ id: 1, body: 'unrelated' }];
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'POST') return makeResponse('Unprocessable Entity', 422);
+      return makeResponse(existing);
+    });
+
+    await assert.rejects(
+      upsertIssueComment({ ...ctx, marker: MARKER, body: `${MARKER}\nNew` }),
+      (err) => {
+        assert.ok(err.message.includes('422'), `expected 422 in: ${err.message}`);
+        assert.ok(
+          err.message.includes('upsertIssueComment'),
+          `expected function name in: ${err.message}`
+        );
+        return true;
+      }
+    );
+  });
+});
+
+// ─────────────────────────── ghHeaders ───────────────────────────
+
+describe('ghHeaders', () => {
+  test('returns the four required GitHub API headers', () => {
+    const headers = ghHeaders('my-token-abc');
+    assert.strictEqual(headers.Authorization, 'token my-token-abc');
+    assert.strictEqual(headers.Accept, 'application/vnd.github+json');
+    assert.strictEqual(headers['X-GitHub-Api-Version'], '2022-11-28');
+    assert.strictEqual(headers['Content-Type'], 'application/json');
+  });
+
+  test('embeds the supplied token verbatim in the Authorization header', () => {
+    const token = 'ghp_Super5ecretT0ken';
+    const { Authorization } = ghHeaders(token);
+    assert.ok(Authorization.includes(token), `token not found in: ${Authorization}`);
+  });
+});
+
+// ─────────────────────────── fetchAllThreads ───────────────────────────
+
+describe('fetchAllThreads', () => {
+  const ctx = { token: 'tok', owner: 'acme', repo: 'app', prNumber: 42 };
+
+  /** Build the minimal GraphQL response shape fetchAllThreads expects. */
+  function makeThreadsPayload(threads) {
+    return {
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { nodes: threads },
+          },
+        },
+      },
+    };
+  }
+
+  test('returns an array of ThreadSummary objects on success', async (t) => {
+    const raw = [
+      {
+        id: 'T_abc',
+        isResolved: false,
+        comments: {
+          nodes: [
+            {
+              databaseId: 1,
+              author: { login: 'alice' },
+              body: 'A finding',
+              path: 'src/a.js',
+              originalLine: 10,
+            },
+            {
+              databaseId: 2,
+              author: { login: 'bob' },
+              body: 'A reply',
+              path: 'src/a.js',
+              originalLine: 10,
+            },
+          ],
+        },
+      },
+    ];
+    t.mock.method(globalThis, 'fetch', async () => makeResponse(makeThreadsPayload(raw)));
+
+    const result = await fetchAllThreads(ctx);
+
+    assert.strictEqual(result.length, 1);
+    const thread = result[0];
+    assert.strictEqual(thread.id, 'T_abc');
+    assert.strictEqual(thread.isResolved, false);
+    assert.strictEqual(thread.firstCommentId, 1);
+    assert.strictEqual(thread.author, 'alice');
+    assert.strictEqual(thread.path, 'src/a.js');
+    assert.strictEqual(thread.line, 10);
+    assert.strictEqual(thread.body, 'A finding');
+    assert.deepStrictEqual(thread.replies, [{ author: 'bob', body: 'A reply' }]);
+  });
+
+  test('returns an empty array when there are no threads', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse(makeThreadsPayload([])));
+
+    const result = await fetchAllThreads(ctx);
+    assert.deepStrictEqual(result, []);
+  });
+
+  test('skips threads whose comments array is empty', async (t) => {
+    const raw = [
+      { id: 'T_empty', isResolved: false, comments: { nodes: [] } },
+      {
+        id: 'T_has',
+        isResolved: true,
+        comments: {
+          nodes: [
+            {
+              databaseId: 7,
+              author: { login: 'carol' },
+              body: 'Found it',
+              path: 'x.js',
+              originalLine: 5,
+            },
+          ],
+        },
+      },
+    ];
+    t.mock.method(globalThis, 'fetch', async () => makeResponse(makeThreadsPayload(raw)));
+
+    const result = await fetchAllThreads(ctx);
+    assert.strictEqual(result.length, 1);
+    assert.strictEqual(result[0].id, 'T_has');
+  });
+
+  test('throws when the HTTP response is not ok', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Service Unavailable', 503));
+
+    await assert.rejects(fetchAllThreads(ctx), (err) => {
+      assert.ok(err.message.includes('503'), `expected 503 in: ${err.message}`);
+      assert.ok(
+        err.message.includes('fetchAllThreads'),
+        `expected function name in: ${err.message}`
+      );
+      return true;
+    });
+  });
+
+  test('throws when the GraphQL response body contains an errors array', async (t) => {
+    const payload = { errors: [{ message: 'Not authorised' }] };
+    t.mock.method(globalThis, 'fetch', async () => makeResponse(payload));
+
+    await assert.rejects(fetchAllThreads(ctx), (err) => {
+      assert.ok(
+        err.message.includes('fetchAllThreads'),
+        `expected function name in: ${err.message}`
+      );
+      assert.ok(
+        err.message.includes('GraphQL errors'),
+        `expected "GraphQL errors" in: ${err.message}`
+      );
+      return true;
+    });
+  });
+});
+
+// ─────────────────────────── replyToThread ───────────────────────────
+
+describe('replyToThread', () => {
+  const params = {
+    token: 'tok-123',
+    owner: 'acme',
+    repo: 'app',
+    prNumber: 42,
+    commentId: 99,
+    body: 'Acknowledged.',
+  };
+
+  test('POSTs to the correct replies URL and returns the created comment', async (t) => {
+    const payload = { id: 200, body: 'Acknowledged.' };
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(payload, 201));
+
+    const result = await replyToThread(params);
+
+    assert.strictEqual(fetchMock.mock.calls.length, 1);
+    const [url, opts] = fetchMock.mock.calls[0].arguments;
+    assert.strictEqual(url, 'https://api.github.com/repos/acme/app/pulls/42/comments/99/replies');
+    assert.strictEqual(opts.method, 'POST');
+    assert.deepStrictEqual(JSON.parse(opts.body), { body: 'Acknowledged.' });
+    assert.deepStrictEqual(result, payload);
+  });
+
+  test('throws when the API returns a non-ok status', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Not Found', 404));
+
+    await assert.rejects(replyToThread(params), (err) => {
+      assert.ok(err.message.includes('404'), `expected 404 in: ${err.message}`);
+      assert.ok(err.message.includes('replyToThread'), `expected function name in: ${err.message}`);
+      return true;
+    });
+  });
+});
+
+// ─────────────────────────── unresolveThread ───────────────────────────
+
+describe('unresolveThread', () => {
+  test('posts the unresolveReviewThread GraphQL mutation on success', async (t) => {
+    const payload = {
+      data: { unresolveReviewThread: { thread: { id: 'T_XYZ', isResolved: false } } },
+    };
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(payload));
+
+    await assert.doesNotReject(unresolveThread({ token: 'tok-123', threadId: 'T_XYZ' }));
+
+    assert.strictEqual(fetchMock.mock.calls.length, 1);
+    const [url, opts] = fetchMock.mock.calls[0].arguments;
+    assert.strictEqual(url, 'https://api.github.com/graphql');
+    assert.strictEqual(opts.method, 'POST');
+
+    const sent = JSON.parse(opts.body);
+    assert.ok(sent.query.includes('unresolveReviewThread'), 'mutation name should appear in query');
+    assert.deepStrictEqual(sent.variables, { id: 'T_XYZ' });
+  });
+
+  test('throws when the HTTP response is not ok', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Internal Server Error', 500));
+
+    await assert.rejects(unresolveThread({ token: 'tok', threadId: 'T_ERR' }), (err) => {
+      assert.ok(err.message.includes('500'), `expected 500 in: ${err.message}`);
+      assert.ok(
+        err.message.includes('unresolveThread'),
+        `expected function name in: ${err.message}`
+      );
+      return true;
+    });
+  });
+
+  test('throws when the GraphQL response body contains an errors array', async (t) => {
+    const payload = { errors: [{ message: 'Thread not found' }] };
+    t.mock.method(globalThis, 'fetch', async () => makeResponse(payload));
+
+    await assert.rejects(unresolveThread({ token: 'tok', threadId: 'T_404' }), (err) => {
+      assert.ok(
+        err.message.includes('unresolveThread'),
+        `expected function name in: ${err.message}`
+      );
+      assert.ok(
+        err.message.includes('GraphQL errors'),
+        `expected "GraphQL errors" in: ${err.message}`
+      );
+      return true;
+    });
+  });
+});
+
+// ─────────────────────────── upsertReview ───────────────────────────
+
+describe('upsertReview', () => {
+  const ctx = {
+    token: 'tok',
+    owner: 'acme',
+    repo: 'app',
+    prNumber: 7,
+    headSha: 'sha-abc',
+    marker: '<!-- review-marker -->',
+    body: '<!-- review-marker -->\nReview body.',
+  };
+
+  test('POSTs a new review and returns replaced=false when no previous review matches', async (t) => {
+    const reviews = [{ id: 1, state: 'SUBMITTED', body: 'unrelated' }];
+    const newReview = { id: 99, body: ctx.body, state: 'COMMENTED' };
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'POST') return makeResponse(newReview, 201);
+      return makeResponse(reviews);
+    });
+
+    const result = await upsertReview(ctx);
+
+    assert.strictEqual(result.replaced, false);
+    assert.deepStrictEqual(result.review, newReview);
+  });
+
+  test('dismisses the previous review and POSTs a new one, returning replaced=true', async (t) => {
+    const previous = { id: 55, state: 'COMMENTED', body: `${ctx.marker}\nOld body` };
+    const newReview = { id: 66, body: ctx.body, state: 'COMMENTED' };
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'PUT') return makeResponse({ state: 'DISMISSED' }); // dismiss
+      if (opts?.method === 'POST') return makeResponse(newReview, 201); // post
+      return makeResponse([previous]); // list
+    });
+
+    const result = await upsertReview(ctx);
+
+    assert.strictEqual(result.replaced, true);
+    assert.deepStrictEqual(result.review, newReview);
+  });
+
+  test('falls through and POSTs a new review when dismiss returns non-ok, replaced stays false', async (t) => {
+    const previous = { id: 55, state: 'COMMENTED', body: `${ctx.marker}\nOld body` };
+    const newReview = { id: 77, body: ctx.body, state: 'COMMENTED' };
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'PUT') return makeResponse('Forbidden', 403); // dismiss fails
+      if (opts?.method === 'POST') return makeResponse(newReview, 201); // post succeeds
+      return makeResponse([previous]); // list
+    });
+
+    const result = await upsertReview(ctx);
+
+    assert.strictEqual(result.replaced, false, 'replaced must be false when dismiss fails');
+    assert.deepStrictEqual(result.review, newReview);
+  });
+
+  test('skips previously-dismissed reviews when searching for the marker', async (t) => {
+    const dismissed = { id: 10, state: 'DISMISSED', body: `${ctx.marker}\nOld` };
+    const newReview = { id: 20, body: ctx.body, state: 'COMMENTED' };
+
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'POST') return makeResponse(newReview, 201);
+      return makeResponse([dismissed]);
+    });
+
+    const result = await upsertReview(ctx);
+
+    assert.strictEqual(result.replaced, false, 'dismissed reviews must not be treated as previous');
+    assert.deepStrictEqual(result.review, newReview);
+  });
+
+  test('throws when the list-reviews request returns a non-ok status', async (t) => {
+    t.mock.method(globalThis, 'fetch', async () => makeResponse('Unauthorized', 401));
+
+    await assert.rejects(upsertReview(ctx), (err) => {
+      assert.ok(err.message.includes('401'), `expected 401 in: ${err.message}`);
+      assert.ok(err.message.includes('upsertReview'), `expected function name in: ${err.message}`);
+      return true;
+    });
+  });
+
+  test('throws when the POST-review request returns a non-ok status', async (t) => {
+    const reviews = [];
+    t.mock.method(globalThis, 'fetch', async (url, opts) => {
+      if (opts?.method === 'POST') return makeResponse('Unprocessable Entity', 422);
+      return makeResponse(reviews);
+    });
+
+    await assert.rejects(upsertReview(ctx), (err) => {
+      assert.ok(err.message.includes('422'), `expected 422 in: ${err.message}`);
+      assert.ok(err.message.includes('upsertReview'), `expected function name in: ${err.message}`);
+      return true;
+    });
+  });
+
+  test('throws after MAX_PAGES (50) consecutive full pages to prevent runaway pagination', async (t) => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+      id: i,
+      state: 'SUBMITTED',
+      body: '',
+    }));
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => makeResponse(fullPage));
+
+    await assert.rejects(upsertReview(ctx), (err) => {
+      assert.ok(err.message.includes('page limit'), `expected "page limit" in: ${err.message}`);
+      assert.ok(err.message.includes('50'), `expected page count in: ${err.message}`);
+      return true;
+    });
+
+    assert.strictEqual(fetchMock.mock.calls.length, 50, 'should stop exactly at the page limit');
   });
 });
