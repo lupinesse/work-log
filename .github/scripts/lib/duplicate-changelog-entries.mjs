@@ -219,7 +219,9 @@ function collectSimilarPairs(entries, activeSections, threshold) {
 
   for (let i = 0; i < entries.length; i += 1) {
     for (let j = i + 1; j < entries.length; j += 1) {
+      // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
       const first = entries[i];
+      // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
       const second = entries[j];
 
       const touchesActiveSection =

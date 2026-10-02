@@ -164,7 +164,9 @@ export function unquotePath(raw) {
   const simpleEscapes = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
 
   for (let index = 0; index < body.length; index += 1) {
+    // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
     if (body[index] !== '\\') {
+      // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
       bytes.push(...encoder.encode(body[index]));
       continue;
     }
@@ -174,6 +176,7 @@ export function unquotePath(raw) {
       bytes.push(parseInt(octal, 8));
       index += 3;
     } else if (escape !== undefined && Object.hasOwn(simpleEscapes, escape)) {
+      // eslint-disable-next-line security/detect-object-injection -- guarded by Object.hasOwn(simpleEscapes, escape) on the line above
       bytes.push(simpleEscapes[escape]);
       index += 1;
     } else if (escape !== undefined) {

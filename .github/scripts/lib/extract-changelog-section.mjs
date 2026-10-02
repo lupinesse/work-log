@@ -49,6 +49,7 @@ export function extractChangelogSection(changelog, version) {
 
   let start = 0;
   let end = collected.length;
+  // eslint-disable-next-line security/detect-object-injection -- numeric loop index, not a property name
   while (start < end && collected[start].trim() === '') start++;
   while (end > start && collected[end - 1].trim() === '') end--;
 
