@@ -150,18 +150,20 @@ function renderCalStrip(meetings) {
     btn.addEventListener('click', () => {
       const subject = btn.dataset.subject;
       const todayKey = dk(new Date());
+      const categories = getCategories();
+      const planTasks = getPlanTasks();
       // Meetings always default to the "meeting" category. Try the default id first,
       // then any category whose label matches; fall back to selectedTag if absent.
       const meetingCat =
-        getCategories().find((c) => c.id === 'meeting') ||
-        getCategories().find((c) => (c.label || '').toLowerCase() === 'meeting') ||
+        categories.find((c) => c.id === 'meeting') ||
+        categories.find((c) => (c.label || '').toLowerCase() === 'meeting') ||
         null;
       const meetingTag = meetingCat ? meetingCat.id : getSelectedTag();
-      const exists = getPlanTasks().find(
+      const exists = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (!exists) {
-        getPlanTasks().push({
+        planTasks.push({
           id: Date.now() + '',
           text: subject,
           status: 'todo',
@@ -179,7 +181,7 @@ function renderCalStrip(meetings) {
         date: todayKey,
       };
       getEntries().push(entry);
-      const task = getPlanTasks().find(
+      const task = planTasks.find(
         (t) => t.date === todayKey && t.text.toLowerCase() === subject.toLowerCase()
       );
       if (task && task.status === 'todo') {

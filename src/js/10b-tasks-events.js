@@ -109,7 +109,8 @@ function bindPlanEvents(lists) {
   // Status change — handles pending/blocked entry creation and in-flight comment carry-over
   qa('.plan-status').forEach((sel) => {
     sel.addEventListener('change', () => {
-      const task = getPlanTasks().find((task) => task.id === sel.dataset.pid);
+      const planTasks = getPlanTasks();
+      const task = planTasks.find((planTask) => planTask.id === sel.dataset.pid);
       if (!task) return;
       const prevStatus = task.status;
       const newStatus = sel.value;
@@ -128,14 +129,14 @@ function bindPlanEvents(lists) {
 
       // If child goes inprogress, promote parent too (unless already done)
       if (newStatus === 'inprogress' && task.parentId) {
-        const parent = getPlanTasks().find((planTask) => planTask.id === task.parentId);
+        const parent = planTasks.find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status === 'todo') {
           parent.status = 'inprogress';
         }
       }
       // When marking done, retire older versions of the same task
       if (newStatus === 'done') {
-        getPlanTasks()
+        planTasks
           .filter(
             (planTask) =>
               planTask.id !== task.id &&
@@ -149,9 +150,9 @@ function bindPlanEvents(lists) {
       }
       // Auto-complete parent when all its children are done
       if (newStatus === 'done' && task.parentId) {
-        const parent = getPlanTasks().find((planTask) => planTask.id === task.parentId);
+        const parent = planTasks.find((planTask) => planTask.id === task.parentId);
         if (parent && parent.status !== 'done') {
-          const siblings = getPlanTasks().filter(
+          const siblings = planTasks.filter(
             (child) => child.parentId === parent.id && child.date === task.date
           );
           if (
