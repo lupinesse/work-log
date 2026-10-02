@@ -2,25 +2,8 @@
 // safeCssColor() and escHtml() are defined in 00-pure-fns.js.
 // EpicCategory is declared in pure-fns-epics.js (concatenated earlier).
 
-/**
- * Returns the category object for `id`, falling back to 'other' if not found.
- * The returned colour is always sanitised through safeCssColor.
- * @param {string} id - Category ID.
- * @returns {{ id: string, label: string, color: string }}
- */
-function getCat(id) {
-  const cat =
-    getCategories().find((category) => category.id === id) ||
-    getCategories().find((category) => category.id === 'other');
-  if (!cat) return { id: 'other', label: 'other', color: '#888780' };
-  return { ...cat, color: safeCssColor(cat.color) };
-}
-function getCatColor(id) {
-  return getCat(id).color;
-}
-function getCatLabel(id) {
-  return getCat(id).label;
-}
+// getCat(), getCatColor(), and getCatLabel() have been extracted to
+// src/js/cat-utils.js (leaf ES module, issue #336, extraction #16).
 
 let editingCatId = null;
 let addingNewCat = false;

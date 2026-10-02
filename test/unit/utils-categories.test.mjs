@@ -8,7 +8,12 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, loadPureFnsScriptSource, withStateAccessors } from './_helpers.mjs';
+import {
+  __dirname,
+  loadCatUtilsScriptSource,
+  loadPureFnsScriptSource,
+  withStateAccessors,
+} from './_helpers.mjs';
 
 /**
  * Loads 02-utils.js into a VM sandbox with a minimal fake DOM. Every
@@ -70,6 +75,7 @@ function loadTagRowSandbox(overrides = {}) {
   };
   vm.createContext(withStateAccessors(sandbox));
   vm.runInContext(pureSrc, sandbox);
+  vm.runInContext(loadCatUtilsScriptSource(), sandbox);
   vm.runInContext(utilsSrc, sandbox);
   sandbox._elements = elements;
   return sandbox;
