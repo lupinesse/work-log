@@ -56,13 +56,14 @@ function renderDistractionCount() {
 }
 
 document.getElementById('timerDistract').addEventListener('click', () => {
+  const timer = getActiveTimer();
   // Pause the timer if running
-  if (getActiveTimer() && !getActiveTimer().paused) pauseTimer();
+  if (timer && !timer.paused) pauseTimer();
   // Optional note — short prompt, easily dismissable
   const note = prompt('What pulled you away? (optional — press Enter to skip)');
   if (note === null) {
-    // Cancelled — resume timer without logging
-    if (getActiveTimer() && getActiveTimer().paused) pauseTimer();
+    // Cancelled — resume timer without logging (timer.paused reflects current state after pauseTimer())
+    if (timer && timer.paused) pauseTimer();
     return;
   }
   saveDistraction(note.trim() || null);
