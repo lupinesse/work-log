@@ -17428,7 +17428,7 @@ never be cleared without also being forgotten.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line87">line 87</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line88">line 88</a>
     </li></ul></dd>
     
 
@@ -18599,7 +18599,7 @@ copied text can never drift from what's on screen. Shows a brief
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line100">line 100</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line101">line 101</a>
     </li></ul></dd>
     
 
@@ -32071,7 +32071,7 @@ sequence in 07-lifecycle.js. Safe to call when any button is missing.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line158">line 158</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line125">line 125</a>
     </li></ul></dd>
     
 
@@ -39121,7 +39121,7 @@ it's opened, so it always reflects the latest data.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line47">line 47</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line48">line 48</a>
     </li></ul></dd>
     
 
@@ -49162,7 +49162,7 @@ epic, bringing it back into the pickers.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line76">line 76</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line77">line 77</a>
     </li></ul></dd>
     
 
@@ -59484,10 +59484,7 @@ Walks backwards day-by-day (up to 60 days) and stops at the first non-hit day.</
     <p>Keeps keyboard focus inside <code>overlayEl</code> while it is open (WCAG 2.1.2).
 Wraps forward from the last focusable element back to the first (Tab) and
 backward from the first to the last (Shift-Tab). Call from the overlay's
-<code>keydown</code> handler whenever <code>e.key === 'Tab'</code>. Used by concatenated modules
-(12c-gapreport.js); 12d-weeklyreport.js keeps a private copy because it is
-a leaf ES module and cannot import from this concatenated file — consolidate
-both into a shared leaf module when 12c-gapreport.js is extracted (#336).</p>
+<code>keydown</code> handler whenever <code>e.key === 'Tab'</code>.</p>
 </div>
 
 
@@ -59603,190 +59600,7 @@ both into a shared leaf module when 12c-gapreport.js is extracted (#336).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line558">line 558</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5>Returns:</h5>
-
-        
-
-
-<dl>
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">void</span>
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-
-
-        
-            
-
-    
-
-    
-    <h4 class="name" id="trapFocusInOverlay"><span class="type-signature"></span>trapFocusInOverlay<span class="signature">(overlayEl, e)</span><span class="type-signature"> &rarr; {void}</span></h4>
-    
-
-    
-
-
-
-<div class="description">
-    <p>Keeps keyboard focus inside <code>overlayEl</code> while it is open (WCAG 2.1.2).
-Wraps forward from the last focusable element back to the first (Tab) and
-backward from the first to the last (Shift-Tab). Private to this module
-because 12d-weeklyreport.js is a leaf ES module and cannot import from the
-concatenated 02-utils.js where the shared copy lives; consolidate into a
-proper shared leaf module when 12c-gapreport.js is also extracted (#336).</p>
-</div>
-
-
-
-
-
-
-
-
-
-    <h5>Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>overlayEl</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">HTMLElement</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>The open overlay container.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>e</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">KeyboardEvent</span>
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>The Tab keydown event.</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line130">line 130</a>
+        <a href="focus-utils.js.html">focus-utils.js</a>, <a href="focus-utils.js.html#line21">line 21</a>
     </li></ul></dd>
     
 
@@ -63314,7 +63128,7 @@ staying at the bottom based on when they were typed in.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line34">line 34</a>
+        <a href="12d-weeklyreport.js.html">12d-weeklyreport.js</a>, <a href="12d-weeklyreport.js.html#line35">line 35</a>
     </li></ul></dd>
     
 

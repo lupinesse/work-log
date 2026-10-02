@@ -125,7 +125,7 @@ shared calendar that reports as an ordinary folder — name it in <code>$Calenda
 <li><strong>Gofore timesheet draft</strong> — the End of Day modal shows a draft of the day's timesheet entry: total hours plus an <code>activity (ticket, ticket)</code> description built from your log. Edit it and press &quot;copy description&quot; to paste into timesheet.gofore.com. One-click submit (Claude in Chrome first, Playwright as fallback) is built but switched off: set <code>GOFORE_SUBMIT_ENABLED = true</code> in <code>src/js/00-config.local.js</code> to show the submit button, and <code>$GoforeSubmitEnabled = $true</code> in <code>config.local.ps1</code> to let the server accept it. It needs <code>start-server.ps1</code>, the Claude Code CLI with the Claude in Chrome extension, and/or a one-time <code>npm run timesheet:login</code> (Microsoft SSO) for the Playwright fallback, whose page selectors are unverified defaults — override them in <code>scripts/gofore-timesheet.selectors.json</code>.</li>
 <li><strong>Auto-backup</strong> — JSON backup saved automatically on end-of-day to a local <code>JSON backups/</code> folder</li>
 <li><strong>Weekly report</strong> — copy-to-clipboard draft summarising the calendar week's tracked time grouped by Jira ticket, for writing status updates without reconstructing &quot;what did I touch&quot; by hand</li>
-<li><strong>Gap report</strong> — flags this week's finished, billable entries that are missing a note or proof link, with a one-click jump to fix each one</li>
+<li><strong>Gap report</strong> — flags this week's finished, billable entries that are missing both a note and a proof link, with a one-click jump to fix each one</li>
 </ul>
 <h3>Bullet Journal (BuJo) features</h3>
 <ul>
@@ -1778,6 +1778,105 @@ whole; see ARCHITECTURE.md's 02-utils.js entry for why.</p></div>
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
         <a href="date-labels.js.html">date-labels.js</a>, <a href="date-labels.js.html#line1">line 1</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+        
+    
+    </div>
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>focus-utils.js</h2>
+        
+    
+</header>
+
+<article>
+    <div class="container-overview">
+    
+        
+            <div class="description"><p>focus-utils.js — Keyboard focus trap utility (LEAF MODULE).</p>
+<p>Provides <code>trapFocusInOverlay()</code> for WCAG 2.1.2 keyboard accessibility:
+keeps Tab-key navigation inside an open overlay dialog. Extracted from
+<code>02-utils.js</code> (issue #336, extraction #17); <code>12d-weeklyreport.js</code>
+previously kept a private copy because it is a leaf ES module and
+could not import from the concatenated <code>02-utils.js</code> — that duplication
+is now resolved.</p></div>
+        
+
+        
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="focus-utils.js.html">focus-utils.js</a>, <a href="focus-utils.js.html#line1">line 1</a>
     </li></ul></dd>
     
 
