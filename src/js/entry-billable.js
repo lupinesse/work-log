@@ -13,7 +13,7 @@ import { roundToNearest30 } from './pure-fns.js';
 /**
  * Determines whether a log entry is billable, using a three-tier lookup:
  * 1. The entry's own `billable` flag (if explicitly set).
- * 2. The matching plan task's `billable` flag.
+ * 2. The matching plan task's `billable` flag (matched case-insensitively by trimmed text).
  * 3. The category default.
  *
  * Assumption: entries and tasks where `billable` is `undefined` are treated as
