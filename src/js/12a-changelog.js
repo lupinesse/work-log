@@ -78,7 +78,7 @@ function openEodModal() {
   );
   let handoffNotes = {};
   try {
-    handoffNotes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+    handoffNotes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
   } catch (err) {
     // Silently fall back to empty object — existing notes are unavailable but EOD modal still works
     wlLog.warn('openEodModal: failed to parse wl_handoff', err);
@@ -122,7 +122,7 @@ function openEodModal() {
         (change) =>
           `<div class="eod-change">
           <span class="eod-change-desc">${escHtml(change.desc)}</span>
-          <span class="eod-change-areas">${change.areas.length ? 'Test ' + change.areas.join(', ') : '—'}</span>
+          <span class="eod-change-areas">${change.areas.length ? 'Test ' + escHtml(change.areas.join(', ')) : '—'}</span>
         </div>`
       )
       .join('');
@@ -141,7 +141,7 @@ function openEodModal() {
         // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         const areaName = TEST_AREA_NAMES[area] || 'Unknown';
         return `<div class="eod-test-area">
-          <span class="eod-test-num">#${area}</span>
+          <span class="eod-test-num">#${escHtml(String(area))}</span>
           <span>${escHtml(areaName)}</span>
         </div>`;
       })
@@ -185,18 +185,34 @@ document.getElementById('eodBtn').addEventListener('click', () => {
   if (ready) openEodModal();
 });
 /**
+ * Parses the stored `wl_handoff` value into a prototype-less map of task key to
+ * note. A prototype-less object keeps keys such as `__proto__` and
+ * `constructor` as ordinary own properties, so task names cannot reach
+ * Object.prototype.
+ * @param {string|null} raw - Raw localStorage value (may be null or malformed JSON).
+ * @returns {Object<string, string>} Map of task key to note; empty if the value is
+ *   missing or is not a plain JSON object (e.g. an array, string or null).
+ * @throws {SyntaxError} If `raw` is non-empty and not valid JSON.
+ */
+function parseHandoffNotes(raw) {
+  const parsed = JSON.parse(raw || '{}');
+  const isPlainObject = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+  return Object.assign(Object.create(null), isPlainObject ? parsed : {});
+}
+
+/**
  * Reads all handoff-note inputs in the EOD modal and persists their values to
  * the `wl_handoff` localStorage key. Empty values are removed from the map.
  */
 function saveEodHandoffNotes() {
   try {
-    const notes = JSON.parse(localStorage.getItem('wl_handoff') || '{}');
+    const notes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
     document.querySelectorAll('.eod-task-note-input').forEach((inp) => {
       const key = inp.dataset.task;
       const val = inp.value.trim();
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- key comes from a DOM data attribute (task text), but notes has no prototype, so any key is an own property
       if (val) notes[key] = val;
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
+      // eslint-disable-next-line security/detect-object-injection -- same as above: prototype-less map, `delete` only removes an own key
       else delete notes[key];
     });
     localStorage.setItem('wl_handoff', JSON.stringify(notes));
