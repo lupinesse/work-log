@@ -643,7 +643,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **18-dailylog.js** (87 lines) — Daily-log feed builder + note input
+#### **18-dailylog.js** (93 lines) — Daily-log feed builder + note input
 **Responsibility**: Pure data helper for the unified Today's Flow Log view. Builds chronological feed items by merging time entries, log notes, and task status comments for the given day; persists user-typed notes.
 
 **Key functions**: `buildDailyLogItems(dateKey)`, `addLogNote()`
