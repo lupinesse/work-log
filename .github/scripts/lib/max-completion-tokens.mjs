@@ -22,9 +22,11 @@
  */
 export function readMaxCompletionTokens(env, defaultValue, warn = console.warn) {
   let name = 'MAX_COMPLETION_TOKENS';
+  // eslint-disable-next-line security/detect-object-injection -- name is one of two literal variable names assigned just above
   let raw = env[name];
   if (raw === undefined || raw === '') {
     name = 'MAX_TOKENS';
+    // eslint-disable-next-line security/detect-object-injection -- name is one of two literal variable names assigned just above
     raw = env[name];
     if (raw !== undefined && raw !== '') {
       warn('MAX_TOKENS is deprecated for the OpenAI scripts; use MAX_COMPLETION_TOKENS instead.');
