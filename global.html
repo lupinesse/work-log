@@ -3525,7 +3525,7 @@ multiple listeners on the same element.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line560">line 560</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line547">line 547</a>
     </li></ul></dd>
     
 
@@ -8730,7 +8730,7 @@ mutated.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line127">line 127</a>
+        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line101">line 101</a>
     </li></ul></dd>
     
 
@@ -33542,7 +33542,7 @@ sequence in 07-lifecycle.js. Safe to call when any button is missing.</p>
     <p>Determines whether a log entry is billable, using a three-tier lookup:</p>
 <ol>
 <li>The entry's own <code>billable</code> flag (if explicitly set).</li>
-<li>The matching plan task's <code>billable</code> flag.</li>
+<li>The matching plan task's <code>billable</code> flag (matched case-insensitively by trimmed text).</li>
 <li>The category default.</li>
 </ol>
 <p>Assumption: entries and tasks where <code>billable</code> is <code>undefined</code> are treated as
@@ -33643,7 +33643,7 @@ localStorage data is required (see DATA.md § wl_entries).</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="05-entries.js.html">05-entries.js</a>, <a href="05-entries.js.html#line106">line 106</a>
+        <a href="entry-billable.js.html">entry-billable.js</a>, <a href="entry-billable.js.html#line33">line 33</a>
     </li></ul></dd>
     
 
@@ -33692,6 +33692,13 @@ localStorage data is required (see DATA.md § wl_entries).</p>
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>isEntryBillable({ text: 'Write report', tag: 'work' })                   // → true (category default)
+isEntryBillable({ text: 'Write report', tag: 'work', billable: false })  // → false (explicit flag)
+isEntryBillable({ text: 'Write report', signifier: 'cancelled' })        // → false (cancelled)</code></pre>
 
 
 
@@ -36721,7 +36728,7 @@ listener is added only once per input.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line572">line 572</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line559">line 559</a>
     </li></ul></dd>
     
 
@@ -51843,7 +51850,7 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
             <td class="type">
             
                 
-<span class="param-type">object</span>
+<span class="param-type">Object</span>
 |
 
 <span class="param-type">null</span>
@@ -51856,7 +51863,7 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
 
             
 
-            <td class="description last"><p>Work-log entry; if null, always rounds.</p></td>
+            <td class="description last"><p>Work-log entry; if null or undefined, always rounds.</p></td>
         </tr>
 
     
@@ -51897,7 +51904,7 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line518">line 518</a>
+        <a href="entry-billable.js.html">entry-billable.js</a>, <a href="entry-billable.js.html#line56">line 56</a>
     </li></ul></dd>
     
 
@@ -51946,6 +51953,13 @@ Non-billable entries keep their exact timestamps for accurate reporting.</p>
     
 
 
+
+
+    <h5>Example</h5>
+    
+    <pre class="prettyprint"><code>roundToNearest30IfBillable(1000 * 60 * 47, null)                      // → rounded (null always rounds)
+roundToNearest30IfBillable(1000 * 60 * 47, { billable: false })       // → exact ts (non-billable)
+roundToNearest30IfBillable(1000 * 60 * 47, { billable: true })        // → rounded (billable)</code></pre>
 
 
 
@@ -52176,7 +52190,7 @@ Prevents new entries from appearing to start before a prior entry's end time.</p
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line531">line 531</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line518">line 518</a>
     </li></ul></dd>
     
 
@@ -64510,7 +64524,7 @@ staying at the bottom based on when they were typed in.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line548">line 548</a>
+        <a href="02-utils.js.html">02-utils.js</a>, <a href="02-utils.js.html#line535">line 535</a>
     </li></ul></dd>
     
 
