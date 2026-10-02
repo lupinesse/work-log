@@ -106,6 +106,20 @@ export function withStateAccessors(sandbox) {
 }
 
 /**
+ * Reads `cat-utils.js` as classic-script source for VM sandboxes.
+ * Strips the ESM import lines and `export` declaration prefixes so the file
+ * can be evaluated with `vm.runInContext`. Requires `safeCssColor` (from
+ * `loadPureFnsScriptSource`) and `getCategories` (from `withStateAccessors`)
+ * to already be in the sandbox context before calling the resulting functions.
+ * @returns {string} cat-utils.js source, safe for vm.runInContext.
+ */
+export function loadCatUtilsScriptSource() {
+  return readFileSync(join(__dirname, '../../src/js/cat-utils.js'), 'utf8')
+    .replace(/^import\s[^;]*;\s*$/gm, '')
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+}
+
+/**
  * Returns the full text of a top-level function declaration from a source
  * string, found by matching braces from its opening line. Lets a test run one
  * function from a concatenated-bundle file without evaluating the file's

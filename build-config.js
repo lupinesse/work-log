@@ -85,6 +85,11 @@ export const DEST_FILE = '.portable-dest';
  * `10b-signifiers.js` depends on `01c-save.js`, `state.js`, `logger.js`,
  * `pure-fns.js` (for `escHtml`), and `signifiers.js`, so it is listed after
  * all of them.
+ * `cat-utils.js` depends on `state.js` and `pure-fns.js` (for `safeCssColor`),
+ * so it is listed after both. It is a sister to `date-labels.js` — both were
+ * extracted from `02-utils.js` (issue #336).
+ * `26-gofore-timesheet.js` now imports `getCatLabel` from `cat-utils.js`, so
+ * `cat-utils.js` must precede it in the list.
  * Change the list here — build.js, vite.config.js, and build-portable.js all
  * import from this single source of truth.
  */
@@ -110,6 +115,7 @@ export const LEAF_MODULES = [
   '24-location.js',
   '12d-weeklyreport.js',
   'date-labels.js',
+  'cat-utils.js',
   '04b-render-stats.js',
   '12b-changelog-data.js',
   'signifiers.js',

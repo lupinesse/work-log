@@ -9,27 +9,15 @@
 
 import { buildTimesheetDayPayload, findTimesheetEntryProblem } from './pure-fns-timesheet.js';
 import { GOFORE_SUBMIT_ENABLED } from './00-config.js';
-import { getEntries, getCategories } from './state.js';
+import { getEntries } from './state.js';
 import { wlLog } from './logger.js';
+import { getCatLabel } from './cat-utils.js';
 
 /** Status-line suffix per submission route the server reports. */
 const TIMESHEET_ROUTE_NOTE = {
   chrome: ' (via Claude in Chrome)',
   playwright: ' (via Playwright fallback)',
 };
-
-/**
- * Returns the label for a category id, falling back to 'other'.
- * Inlined here to avoid depending on the non-leaf getCatLabel in 02-utils.js.
- * @param {string} id - Category id.
- * @returns {string} The category's display label.
- */
-function getCatLabel(id) {
-  const cats = getCategories();
-  const cat =
-    cats.find((category) => category.id === id) || cats.find((category) => category.id === 'other');
-  return cat ? cat.label : 'other';
-}
 
 /**
  * Returns the given day's entries that have a positive tracked duration and
