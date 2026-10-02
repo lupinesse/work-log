@@ -11,7 +11,7 @@ import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as appConstants from '../../src/js/app-constants.js';
-import { __dirname, withStateAccessors } from './_helpers.mjs';
+import { __dirname, withStateAccessors, stripEsmSyntax } from './_helpers.mjs';
 
 /**
  * Creates a VM sandbox with 01c-save.js loaded, stripping ESM import/export
@@ -21,11 +21,7 @@ import { __dirname, withStateAccessors } from './_helpers.mjs';
  */
 function loadSaveSandbox(overrides = {}) {
   const raw = readFileSync(join(__dirname, '../../src/js/01c-save.js'), 'utf8');
-  // Strip single-line ESM imports and `export` declaration prefixes
-  const src = raw
-    .replace(/^import\s[^;]*;\s*$/gm, '')
-    // eslint-disable-next-line security/detect-unsafe-regex -- strips export keywords from our own leaf module; trusted input
-    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+  const src = stripEsmSyntax(raw);
 
   const sandbox = {
     console,
