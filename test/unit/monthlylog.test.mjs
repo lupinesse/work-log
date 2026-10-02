@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const monthlySrc = readFileSync(join(__dirname, '../../src/js/19-monthlylog.js'), 'utf8');
 
@@ -252,6 +252,7 @@ describe('buildMonthlyCalendarHtml — day cells are keyboard-operable buttons',
     cell.click();
     assert.ok(capturedDate !== null, 'setViewDate called on cell click');
     assert.match(capturedDate.toISOString(), /^2026-05-10/, 'navigates to May 10');
+    assertNoUncaughtErrors(dom);
 
     dom.window.close();
   });

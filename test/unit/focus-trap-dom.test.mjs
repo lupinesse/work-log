@@ -8,12 +8,12 @@
  * bundle) and `12d-weeklyreport.js` (ES module, imports it directly).
  */
 
-import { describe, it, beforeEach, after } from 'node:test';
+import { describe, it, beforeEach, afterEach, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom, stubOffsetParent } from './_helpers.mjs';
+import { __dirname, createDom, stubOffsetParent, assertNoUncaughtErrors } from './_helpers.mjs';
 
 // 12d-weeklyreport.js reads `document` / `localStorage` as globals; restore them
 // afterwards so this file leaves the process as it found it.
@@ -77,6 +77,7 @@ const IMPLEMENTATIONS = [
 
 for (const impl of IMPLEMENTATIONS) {
   describe(`focus trap: ${impl.name}`, () => {
+    let dom;
     let window;
     let overlay;
 
@@ -96,9 +97,13 @@ for (const impl of IMPLEMENTATIONS) {
     };
 
     beforeEach(async () => {
-      const dom = await impl.mount(FOCUSABLES);
+      dom = await impl.mount(FOCUSABLES);
       window = dom.window;
       overlay = byId(impl.overlayId);
+    });
+
+    afterEach(() => {
+      assertNoUncaughtErrors(dom);
     });
 
     it('sees focusable elements at all (guards against a vacuous pass)', () => {

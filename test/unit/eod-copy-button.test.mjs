@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, createDom } from './_helpers.mjs';
+import { __dirname, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
 
 const changelogSrc = readFileSync(join(__dirname, '../../src/js/12a-changelog.js'), 'utf8');
 
@@ -51,7 +51,13 @@ describe('flashCopiedLabel (jsdom)', () => {
     button = dom.window.document.getElementById('eodCopyBtn');
   });
 
-  afterEach(() => dom.window.close());
+  afterEach(() => {
+    try {
+      assertNoUncaughtErrors(dom);
+    } finally {
+      dom.window.close();
+    }
+  });
 
   it('shows "Copied!" and then restores the original markup', () => {
     flash();
