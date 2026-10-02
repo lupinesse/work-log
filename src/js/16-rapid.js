@@ -76,7 +76,8 @@ function _qcLogOnly() {
     return;
   }
 
-  const parsed = parseRapidTokens(raw, getCategories());
+  const categories = getCategories();
+  const parsed = parseRapidTokens(raw, categories);
   if (!parsed.text) {
     // Tokens present but no description — ask the user to add one
     if (inp) inp.focus();
@@ -87,7 +88,7 @@ function _qcLogOnly() {
     parsed.tag ||
     _qcFilterCat ||
     getSelectedTag() ||
-    (getCategories()[0] && getCategories()[0].id) ||
+    (categories[0] && categories[0].id) ||
     'other';
   const entryDate = parsed.date || dk(new Date());
 
