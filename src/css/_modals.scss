@@ -241,7 +241,7 @@
   line-height: 1.7;
 }
 
-.expiry-textarea:focus {
+.expiry-textarea:focus-visible {
   border-color: var(--info-text);
 }
 
@@ -330,7 +330,7 @@
   outline: none;
 }
 
-.eod-task-note-input:focus {
+.eod-task-note-input:focus-visible {
   border-color: var(--info-text);
 }
 

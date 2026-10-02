@@ -45,3 +45,38 @@ describe('inline text inputs keep a visible focus indicator (regression, #513)',
     });
   }
 });
+
+describe('controls using border-color focus indicators have :focus-visible rules (#598 Group C)', () => {
+  // These classes suppress outline: none at the selector level and use a
+  // border-color / box-shadow change as the custom indicator. The indicator
+  // rule must use :focus-visible (not :focus) so keyboard focus is always
+  // visible while mouse-click focus relies on the browser default.
+  const BORDER_INDICATOR_CLASSES = [
+    'plan-split-input',
+    'tl-adhoc-input',
+    'capture-input',
+    'qc-search-input',
+    'plan-input',
+    'plan-comment-input',
+    'expiry-textarea',
+    'eod-task-note-input',
+    'cat-select',
+  ];
+
+  for (const className of BORDER_INDICATOR_CLASSES) {
+    it(`.${className} has :focus-visible with a visible indicator`, () => {
+      assert.match(
+        ruleBody(`.${className}`) ?? '',
+        /outline:\s*none/,
+        `${className} must suppress default outline`
+      );
+      const focusBody = ruleBody(`.${className}:focus-visible`);
+      assert.ok(focusBody, `no :focus-visible rule for .${className}`);
+      assert.match(
+        focusBody,
+        /border-color|box-shadow/,
+        `${className}:focus-visible must supply border-color or box-shadow`
+      );
+    });
+  }
+});

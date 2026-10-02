@@ -79,7 +79,7 @@ describe('section headers with role="button" respond to the keyboard', () => {
       const header = dom.window.document.getElementById('analyticsHeader');
       let clicks = 0;
       header.addEventListener('click', () => (clicks += 1));
-      const helperSource = miscSource.match(/function a11yHeaderKeydown[\s\S]*?\n}\n/)[0];
+      const helperSource = miscSource.match(/function a11yHeaderKeydown[\s\S]*?\r?\n}\r?\n/)[0];
       dom.window.eval(
         `${helperSource}; a11yHeaderKeydown(document.getElementById('analyticsHeader'));`
       );
