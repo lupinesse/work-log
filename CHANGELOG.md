@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **`isEntryBillable()` and `roundToNearest30IfBillable()` extracted to leaf ES module `entry-billable.js` (#593)** — both functions moved from the concatenated `05-entries.js` / `02-utils.js` into a new `src/js/entry-billable.js` leaf module (issue #336, extraction #19). `isEntryBillable` is now importable by unit tests and downstream leaf modules; `roundToNearest30IfBillable` follows since it is the only caller. No behaviour change. 16 unit tests in `test/unit/entry-billable.test.mjs`.
+
 ### Fixed
 - **Focus-ring rules for `.cp-add-input`, `.plan-status`, and `.emoji-picker-input` now use the shared `focus-ring` mixin** — PR #582 added three hand-written `:focus-visible` rings after the `focus-ring` mixin from #577 was not yet on main. Now that #577 is merged, the three rules are replaced with `@include mixins.focus-ring;` in `_checkpoints.scss`, `_tasks.scss`, and `_picker.scss`. No visual change.
 - **`markInputInvalid()` no longer stacks listeners on repeated rejection** — calling `markInputInvalid()` on the same input twice before the user edits added a second `{ once: true }` listener, which would fire on the next edit and attempt a spurious DOM update. A module-level `WeakSet` now tracks inputs with a pending listener; a new call skips `addEventListener` if one is already registered and re-registers once the user edits. 2 new tests in `test/unit/utils-categories.test.mjs`.
