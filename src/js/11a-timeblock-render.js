@@ -198,6 +198,11 @@ function renderTimeblock() {
     el.className = 'tb-block plan' + (isDone ? ' task-done' : '') + (isMeetingBlock ? ' live' : '');
     el.dataset.bid = block.id;
     el.draggable = true;
+    el.tabIndex = 0;
+    el.setAttribute(
+      'aria-label',
+      `${block.text} — planned ${slotToTime(block.slot)}–${slotToTime(block.slot + block.duration)}, press arrow keys to move`
+    );
     el.style.top = block.slot * TB_SLOT_H + 1 + 'px';
     el.style.height = block.duration * TB_SLOT_H - 3 + 'px';
     el.style.background = cat.color + '18';
@@ -225,6 +230,28 @@ function renderTimeblock() {
     el.addEventListener('dragend', () => {
       tbDragSource = null;
       tbDragId = null;
+    });
+    el.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      const delta = event.key === 'ArrowUp' ? -1 : 1;
+      const currentBlock = getBlocks().find((candidate) => candidate.id === block.id);
+      if (!currentBlock) return;
+      const newSlot = Math.max(
+        0,
+        Math.min(TB_SLOTS - currentBlock.duration, currentBlock.slot + delta)
+      );
+      if (newSlot === currentBlock.slot) return;
+      const newStart = TB_START * 60 + newSlot * 30;
+      const newEnd = newStart + currentBlock.duration * 30;
+      const hits = tbOverlaps(newStart, newEnd, dateKey, currentBlock.id);
+      if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) return;
+      currentBlock.slot = newSlot;
+      saveBlocks();
+      renderTimeblock();
+      const newGrid = document.getElementById('tbGrid');
+      const refocused = newGrid && newGrid.querySelector(`[data-bid="${block.id}"]`);
+      if (refocused) refocused.focus();
     });
     el.querySelector('.tb-block-del').addEventListener('click', (event) => {
       event.stopPropagation();

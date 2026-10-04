@@ -195,7 +195,7 @@
   color: var(--text3);
 }
 
-.qc-search-input:focus {
+.qc-search-input:focus-visible {
   border-color: var(--info-text);
   background: var(--bg);
 }

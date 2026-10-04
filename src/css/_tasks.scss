@@ -210,7 +210,7 @@
   outline: none;
 }
 
-.plan-input:focus {
+.plan-input:focus-visible {
   border-color: var(--info-text);
 }
 
@@ -386,7 +386,7 @@
   min-width: 80px;
 }
 
-.plan-comment-input:focus {
+.plan-comment-input:focus-visible {
   border-color: var(--info-text);
 }
 
@@ -1441,7 +1441,7 @@
   resize: vertical;
   font-family: inherit;
 
-  &:focus {
+  &:focus-visible {
     outline: none;
     border-color: var(--accent, #7b61ff);
   }
