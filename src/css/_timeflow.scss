@@ -364,7 +364,7 @@
     resize: vertical;
     font-family: inherit;
 
-    &:focus {
+    &:focus-visible {
       outline: none;
       border-color: var(--accent, #7b61ff);
     }
