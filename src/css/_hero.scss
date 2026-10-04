@@ -229,7 +229,7 @@
     color: var(--ink-faint);
   }
 
-  &:focus {
+  &:focus-visible {
     border-color: var(--live);
     box-shadow: 0 0 0 2px var(--live-soft);
   }
@@ -432,7 +432,7 @@
     color: var(--ink-faint);
   }
 
-  &:focus {
+  &:focus-visible {
     border-color: var(--live);
     box-shadow: 0 0 0 2px var(--live-soft);
   }
