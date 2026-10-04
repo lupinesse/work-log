@@ -35,6 +35,21 @@ function buildBlockActionButtonsHtml(block) {
 }
 
 /**
+ * Whether a planned meeting block is the one the running timer is tracking.
+ * Meeting entries are logged with a leading "📅 ", so the entry's text is
+ * compared both with and without that prefix.
+ * @param {{ type: (string|undefined), text: string }} block - The planned block.
+ * @param {{ text: string }|null|undefined} liveEntry - The log entry the timer runs on, if any.
+ * @returns {boolean} True when `block` is a meeting that matches `liveEntry`.
+ */
+function isLiveMeetingBlock(block, liveEntry) {
+  if (!liveEntry || block.type !== 'meeting') return false;
+  const blockText = block.text.toLowerCase();
+  const entryText = liveEntry.text.toLowerCase();
+  return blockText === entryText || blockText === entryText.replace(/^📅\s*/, '');
+}
+
+/**
  * Renders the full time-block grid for the currently viewed date: time labels,
  * grid rows, planned blocks (with drag-to-move), live timer block, a "now" line,
  * and the plan-task drag targets. Also handles drag-and-drop wiring for
@@ -179,12 +194,7 @@ function renderTimeblock() {
         task.text.toLowerCase() === block.text.toLowerCase() &&
         task.status === 'done'
     );
-    const cleanLiveText = tbLiveEntry ? tbLiveEntry.text.replace(/^📅\s*/, '').toLowerCase() : '';
-    const isMeetingBlock =
-      tbLiveEntry &&
-      b.type === 'meeting' &&
-      (b.text.toLowerCase() === cleanLiveText ||
-        b.text.toLowerCase() === tbLiveEntry.text.toLowerCase());
+    const isMeetingBlock = isLiveMeetingBlock(block, tbLiveEntry);
     el.className = 'tb-block plan' + (isDone ? ' task-done' : '') + (isMeetingBlock ? ' live' : '');
     el.dataset.bid = block.id;
     el.draggable = true;

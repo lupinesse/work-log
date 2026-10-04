@@ -3963,6 +3963,62 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 50. Planned blocks still render while a timer is running (#598 follow-up) ─
+  // Built without freshPage(): with the bug present the page script threw during
+  // startup, so window.__wl never appeared and freshPage() would time out and
+  // crash the whole runner instead of reporting a failed assertion.
+  console.log('\n50. Planned time blocks render with a running timer');
+  {
+    const today = dk(new Date());
+    const startedAt = Date.now() - 10 * 60 * 1000;
+    const seed = {
+      wl_blocks_v1: [
+        { id: 'live1', date: today, slot: 4, duration: 2, text: 'Planned thing', tag: 'work' },
+        {
+          id: 'live2',
+          date: today,
+          slot: 8,
+          duration: 2,
+          text: 'Standup',
+          tag: 'work',
+          type: 'meeting',
+        },
+      ],
+      wl_tb_migrated_7: '1',
+      wl_entries_v1: [
+        { id: 'liveE', text: 'Running now', tag: 'work', ts: startedAt, date: today },
+      ],
+      wl_timer_v1: { entryId: 'liveE', startTs: startedAt, accumulatedMs: 0, paused: false },
+      wl_cats_v1: CATS,
+    };
+    const page = await ctx.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    await page.addInitScript((storage) => {
+      localStorage.clear();
+      for (const [key, value] of Object.entries(storage)) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    }, seed);
+    await page.goto(FILE);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(800);
+    const rendered = await page.evaluate(() =>
+      [...document.querySelectorAll('.tb-block.plan')].map((el) => el.dataset.bid)
+    );
+    assert(
+      'The page raises no script errors (regression: "b is not defined")',
+      pageErrors.length === 0,
+      JSON.stringify(pageErrors)
+    );
+    assert(
+      'Both planned blocks render while a timer runs',
+      rendered.includes('live1') && rendered.includes('live2'),
+      JSON.stringify(rendered)
+    );
+    await page.close();
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();
