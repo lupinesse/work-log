@@ -17,10 +17,13 @@ function makeEl() {
 
 function makeDocMock(ids = []) {
   const els = {};
+  // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
   for (const id of ids) els[id] = makeEl();
   return {
     getElementById: (id) => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       if (!els[id]) els[id] = makeEl();
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       return els[id];
     },
     _els: els,

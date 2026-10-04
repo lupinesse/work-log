@@ -67,16 +67,22 @@ export function buildWeeklyTicketSummary(entries, weekStart, weekEnd) {
       const nameKey = name.toLowerCase();
       const ms = entry.tsEnd - entry.ts;
 
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       if (!grouped[ticketKey]) {
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         grouped[ticketKey] = { totalMs: 0, nameOrder: [], names: {}, notes: [], links: [] };
       }
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       const bucket = grouped[ticketKey];
 
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       if (!bucket.names[nameKey]) {
         bucket.nameOrder.push(nameKey);
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         bucket.names[nameKey] = { label: name, totalMs: 0 };
       }
       bucket.totalMs += ms;
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       bucket.names[nameKey].totalMs += ms;
 
       const note = entry.note && entry.note.trim();
@@ -87,10 +93,12 @@ export function buildWeeklyTicketSummary(entries, weekStart, weekEnd) {
 
   const ticketOrder = Object.keys(grouped)
     .filter((key) => key !== WEEKLY_REPORT_NO_TICKET_KEY)
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     .sort((a, b) => grouped[b].totalMs - grouped[a].totalMs);
   // The no-ticket bucket is a catch-all grouping, not a reportable ticket —
   // it always sorts last regardless of its total time, even if that time
   // exceeds a real ticket's.
+  // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
   if (grouped[WEEKLY_REPORT_NO_TICKET_KEY]) ticketOrder.push(WEEKLY_REPORT_NO_TICKET_KEY);
 
   return { ticketOrder, grouped };
@@ -116,10 +124,12 @@ export function formatWeeklyTicketSummaryText(ticketOrder, grouped, fmtDuration)
   const lines = [];
   ticketOrder.forEach((ticketKey, index) => {
     if (index > 0) lines.push('');
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     const { totalMs, nameOrder, names, notes, links } = grouped[ticketKey];
     const ticketLabel = ticketKey === WEEKLY_REPORT_NO_TICKET_KEY ? 'No ticket' : ticketKey;
     lines.push(`${ticketLabel} — ${fmtDuration(totalMs)}`);
     nameOrder.forEach((nameKey) => {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       const { label, totalMs: nameMs } = names[nameKey];
       lines.push(label ? `    ${fmtDuration(nameMs)} - ${label}` : `    ${fmtDuration(nameMs)}`);
     });

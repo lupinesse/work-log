@@ -12,6 +12,7 @@ import {
 
 const HOUR = 3600000;
 const label = (id) =>
+  // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
   ({ review: 'ticket review', meeting: 'meetings', work: 'test execution' })[id] ?? id;
 const entry = (text, tag, startHour, endHour) => ({
   text,

@@ -69,6 +69,7 @@ function makeDocumentMock() {
   const elements = {};
   return {
     getElementById(id) {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       return elements[id] ?? null;
     },
     createElement(tag) {
@@ -86,6 +87,7 @@ function makeDocumentMock() {
       removeChild() {},
     },
     _addElement(id, el) {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       elements[id] = el;
     },
   };
