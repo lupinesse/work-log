@@ -59,7 +59,7 @@ function pomoSparkColours() {
  * number of completed pomodoro sessions on that day.
  * No-op when the canvas element is absent or the 2D context is unavailable.
  */
-export function renderPomoSparkline() {
+function renderPomoSparkline() {
   const canvas = document.getElementById('pomoSparkline');
   if (!canvas || !canvas.getContext) return;
 
@@ -115,7 +115,7 @@ export function renderPomoSparkline() {
  *
  * Each element is individually guarded — no-op when absent from the DOM.
  */
-export function renderPomoRibbon() {
+function renderPomoRibbon() {
   const log = pomoGetLog();
   const dotsEl = document.getElementById('pomoRibbonDots');
   const pillEl = document.getElementById('pomoRibbonPill');
