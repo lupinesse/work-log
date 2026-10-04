@@ -55,21 +55,27 @@ function renderDistractionCount() {
       ${rows}`;
 }
 
-document.getElementById('timerDistract').addEventListener('click', () => {
+/**
+ * Handles the "distracted" button: pauses a running timer, asks for an
+ * optional note, and logs the distraction. Cancelling the prompt logs nothing
+ * and resumes the timer — but only if this click paused it, so a timer the
+ * user had already paused stays paused (#607).
+ */
+function handleDistractClick() {
   const timer = getActiveTimer();
-  // Pause the timer if running
-  if (timer && !timer.paused) pauseTimer();
-  // Optional note — short prompt, easily dismissable
+  const pausedByThisClick = Boolean(timer && !timer.paused);
+  if (pausedByThisClick) pauseTimer();
   const note = prompt('What pulled you away? (optional — press Enter to skip)');
   if (note === null) {
-    // Cancelled — resume timer without logging (timer.paused reflects current state after pauseTimer())
-    if (timer && timer.paused) pauseTimer();
+    if (pausedByThisClick) resumeTimer();
     return;
   }
   saveDistraction(note.trim() || null);
-  // Timer stays paused — user resumes manually
+  // Timer stays paused after a logged distraction — user resumes manually
   renderDistractionCount();
-});
+}
+
+document.getElementById('timerDistract').addEventListener('click', handleDistractClick);
 
 /* ── Parked thoughts ── */
 const STORE_PARKED = 'wl_parked_v1';

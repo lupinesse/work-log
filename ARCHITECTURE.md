@@ -399,12 +399,12 @@ parkedThoughts     → List of captured thoughts
 | Ledger | 220 px | Recent-session log |
 
 **Key Functions**:
-- `renderPomoSparkline()` — Draws the 28-day `<canvas>` bar chart; reads `--pomo-spark-fill`/`--pomo-spark-empty` CSS variables so it responds to dark-mode automatically.
-- `renderPomoRibbon()` — Updates the ribbon footer: last-5-session dot sequence (`#pomoRibbonDots`), Peak Focus / session-count pill (`#pomoRibbonPill`), and "View all sessions" scroll link.
+- `renderPomoSparkline()` — Internal (not exported). Draws the 28-day `<canvas>` bar chart; reads `--pomo-spark-fill`/`--pomo-spark-empty` CSS variables so it responds to dark-mode automatically.
+- `renderPomoRibbon()` — Internal (not exported). Updates the ribbon footer: last-5-session dot sequence (`#pomoRibbonDots`), Peak Focus / session-count pill (`#pomoRibbonPill`), and "View all sessions" scroll link.
 - `updatePomoTaskLabel()` — Shows the currently running timer task name in the composer column.
 - `refreshPomoDashboard()` — Orchestrator; called on load and after every session completion.
 
-**Exports**: `renderPomoSparkline`, `renderPomoRibbon`, `updatePomoTaskLabel`, `refreshPomoDashboard`
+**Exports**: `updatePomoTaskLabel`, `refreshPomoDashboard`
 
 **Dependencies**: `pure-fns.js` (for `dk`, `escHtml`), `state.js` (for `getActiveTimer`, `getEntries`), `pomo-storage.js` (for `pomoGetLog`).
 
@@ -550,7 +550,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (448 lines) — Miscellaneous Features
+#### **12-misc.js** (453 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
