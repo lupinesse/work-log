@@ -104,17 +104,18 @@ function renderParked() {
   section.style.display = '';
   if (badge) badge.textContent = open.length;
   list.innerHTML = open
-    .map(
-      (thought) => `
-      <div class="parked-item" data-id="${thought.id}">
+    .map((thought) => {
+      const safeId = escHtml(thought.id);
+      return `
+      <div class="parked-item" data-id="${safeId}">
         <div class="parked-item-text">
           ${escHtml(thought.text)}
           ${thought.fromTask ? `<span class="parked-from">while working on: ${escHtml(thought.fromTask)}</span>` : ''}
         </div>
-        <button class="parked-promote" data-id="${thought.id}">→ task</button>
-        <button class="parked-dismiss" data-id="${thought.id}" title="dismiss">✓</button>
-      </div>`
-    )
+        <button class="parked-promote" data-id="${safeId}">→ task</button>
+        <button class="parked-dismiss" data-id="${safeId}" title="dismiss">✓</button>
+      </div>`;
+    })
     .join('');
   list.querySelectorAll('.parked-promote').forEach((btn) => {
     btn.addEventListener('click', (event) => {
