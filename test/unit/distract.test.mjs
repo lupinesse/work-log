@@ -86,6 +86,14 @@ describe('handleDistractClick (#607)', () => {
       expectedPaused: true,
       expectedNotes: [null],
     },
+    {
+      name: 'submitting a whitespace-only note logs a null note',
+      activeTimer: { paused: false },
+      promptAnswer: '   ',
+      expectedCalls: ['pause'],
+      expectedPaused: true,
+      expectedNotes: [null],
+    },
   ];
 
   for (const testCase of cases) {
