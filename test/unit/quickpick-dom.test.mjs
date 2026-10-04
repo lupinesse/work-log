@@ -62,6 +62,15 @@ describe('renderQuickPick BEM element names (jsdom)', () => {
     assert.equal(quickPick.querySelectorAll('.qp-item-text, .qp-remove, .qp-restore').length, 0);
   });
 
+  it('emits the BEM label and list elements inside qp-wrap (regression, #590)', () => {
+    assert.ok(quickPick.querySelector('.qp-wrap__label'), 'qp-wrap__label rendered');
+    assert.ok(quickPick.querySelector('.qp-wrap__list'), 'qp-wrap__list rendered');
+  });
+
+  it('no longer emits the non-BEM qp-label or qp-list class names (regression, #590)', () => {
+    assert.equal(quickPick.querySelectorAll('.qp-label, .qp-list').length, 0);
+  });
+
   it('fills the capture input and selects the tag when a pill is clicked', () => {
     quickPick.querySelector('.qp-item').click();
     assert.equal(dom.window.document.getElementById('captureInput').value, 'Fix bug');

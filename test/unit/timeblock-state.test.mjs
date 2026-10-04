@@ -45,8 +45,10 @@ describe('loadBlocks() writes the shared blocks array', () => {
     const sandbox = {
       blocks: seedBlocks,
       localStorage: {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         getItem: (key) => store[key] ?? null,
         setItem: (key, value) => {
+          // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
           store[key] = String(value);
         },
       },

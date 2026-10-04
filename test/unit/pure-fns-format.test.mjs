@@ -273,4 +273,10 @@ describe('jiraKeyLinkHtml', () => {
     assert.ok(html.includes('target="_blank" rel="noopener"')));
   it('escapes the key shown as link text', () =>
     assert.ok(jiraKeyLinkHtml('https://x', '<b>').includes('&lt;b&gt;<span')));
+  it('escapes the key in the href attribute (regression, #590)', () =>
+    assert.ok(
+      jiraKeyLinkHtml('https://x', '"evil"').includes('href="https://x/&quot;evil&quot;"')
+    ));
+  it('escapes baseUrl in the href attribute (regression, #590)', () =>
+    assert.ok(jiraKeyLinkHtml('https://x"y', 'AB-1').includes('href="https://x&quot;y/AB-1"')));
 });

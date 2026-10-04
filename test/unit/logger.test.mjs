@@ -11,11 +11,14 @@ describe('wlLog', () => {
   /** Temporarily replace a console method, run fn, restore, return recorded calls. */
   function spy(method, fn) {
     const recorded = [];
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     const orig = console[method];
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     console[method] = (...args) => recorded.push(args);
     try {
       fn();
     } finally {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       console[method] = orig;
     }
     return recorded;
@@ -85,6 +88,7 @@ describe('wlLog', () => {
      */
     function withConsoleStubs(stubs, fn) {
       const originals = {};
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       for (const method of Object.keys(stubs)) originals[method] = console[method];
       Object.assign(console, stubs);
       try {

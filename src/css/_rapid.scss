@@ -195,7 +195,7 @@
   color: var(--text3);
 }
 
-.qc-search-input:focus {
+.qc-search-input:focus-visible {
   border-color: var(--info-text);
   background: var(--bg);
 }
@@ -338,7 +338,7 @@
 
 .qc-task-row--active .qc-task-action-btn {
   opacity: 1;
-  color: #1d9e75;
+  color: var(--sig-event);
   border-color: rgba(29, 158, 117, 0.35);
 }
 

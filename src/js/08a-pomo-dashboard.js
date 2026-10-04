@@ -125,6 +125,7 @@ function renderPomoRibbon() {
     const slice = log.slice(0, POMO_RIBBON_DOT_COUNT);
     dotsEl.innerHTML = Array.from({ length: POMO_RIBBON_DOT_COUNT }, (_, i) => {
       if (i < slice.length) {
+        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
         const session = slice[i];
         const taskPart = session.task ? ` — ${escHtml(session.task)}` : '';
         const label = `${session.mins} min session${taskPart}`;
@@ -141,9 +142,11 @@ function renderPomoRibbon() {
     const perDay = {};
     log.forEach((e) => {
       const d = dk(new Date(e.ts));
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       perDay[d] = (perDay[d] || 0) + 1;
     });
 
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     const todayCount = perDay[today] || 0;
     const peakCount = Object.values(perDay).reduce((a, b) => Math.max(a, b), 0);
 

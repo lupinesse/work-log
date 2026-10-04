@@ -136,6 +136,35 @@ export function loadCatUtilsScriptSource() {
 }
 
 /**
+ * Reads `entry-billable.js` as classic-script source for VM sandboxes.
+ * Strips the ESM import lines and `export` declaration prefixes so the file
+ * can be evaluated with `vm.runInContext`. Requires `getPlanTasks` (from
+ * `withStateAccessors`) and `getCat` (from the sandbox) to already be in the
+ * sandbox context before calling the resulting functions.
+ * @returns {string} entry-billable.js source, safe for vm.runInContext.
+ */
+export function loadEntryBillableScriptSource() {
+  return readFileSync(join(__dirname, '../../src/js/entry-billable.js'), 'utf8')
+    .replace(/^import\s[^;]*;\s*$/gm, '')
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+}
+
+/**
+ * Reads `entry-utils.js` as classic-script source for VM sandboxes.
+ * Strips the ESM import lines and `export` declaration prefixes so the file
+ * can be evaluated with `vm.runInContext`. Requires `dk`, `roundToNearest30`
+ * (from `loadPureFnsScriptSource`) and `getEntries`, `getViewDate`
+ * (from `withStateAccessors`) to already be in the sandbox before calling the
+ * resulting functions.
+ * @returns {string} entry-utils.js source, safe for vm.runInContext.
+ */
+export function loadEntryUtilsScriptSource() {
+  return readFileSync(join(__dirname, '../../src/js/entry-utils.js'), 'utf8')
+    .replace(/^import\s[^;]*;\s*$/gm, '')
+    .replace(/^export ((?:async\s+)?(?:const|function|let|class))\b/gm, '$1');
+}
+
+/**
  * Returns the full text of a top-level function declaration from a source
  * string, found by matching braces from its opening line. Lets a test run one
  * function from a concatenated-bundle file without evaluating the file's
@@ -149,7 +178,9 @@ export function extractFunctionSource(source, name) {
   if (start === -1) throw new Error(`function ${name} not found`);
   let depth = 0;
   for (let index = source.indexOf('{', start); index < source.length; index += 1) {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     if (source[index] === '{') depth += 1;
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     if (source[index] === '}') depth -= 1;
     if (depth === 0) return source.slice(start, index + 1);
   }

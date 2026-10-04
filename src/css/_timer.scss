@@ -27,7 +27,7 @@
   transition: border-color 0.15s;
 }
 
-.tl-adhoc-input:focus {
+.tl-adhoc-input:focus-visible {
   border-color: var(--info-text);
   box-shadow: 0 0 0 2px var(--info-bg);
 }
@@ -110,7 +110,7 @@
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
-  color: #1d9e75;
+  color: var(--sig-event);
   white-space: nowrap;
   font-family: var(--font);
 }
@@ -130,7 +130,7 @@
 
 /* Running entry indicator */
 .entry.is-timing .etime-start {
-  color: #1d9e75;
+  color: var(--sig-event);
 }
 
 .entry.is-timing .edot {
@@ -157,7 +157,7 @@
   transition: border-color 0.15s;
 }
 
-.capture-input:focus {
+.capture-input:focus-visible {
   border-color: var(--info-text);
   box-shadow: 0 0 0 2px var(--info-bg);
 }
@@ -189,7 +189,7 @@
 // Green "confirm and save" variant, for the primary action in a modal where
 // the neutral .add-btn would read as just another option.
 .add-btn--save {
-  color: #1d9e75;
+  color: var(--success-ink);
   border-color: rgba(29, 158, 117, 0.4);
 }
 
@@ -288,18 +288,10 @@
   padding: 6px 12px;
   margin-top: 6px;
   border-radius: var(--radius);
-  background: #fef3c7;
-  border: var(--border-hairline) solid #fde68a;
+  background: var(--amber-bg);
+  border: var(--border-hairline) solid var(--amber-border);
   font-size: 12px;
-  color: #92400e;
-}
-
-@media (prefers-color-scheme: dark) {
-  .hero-longrun-warn {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.3);
-    color: #fbbf24;
-  }
+  color: var(--amber-ink);
 }
 
 .hero-longrun-warn__msg {
@@ -308,29 +300,18 @@
 
 .hero-longrun-warn__stop {
   background: none;
-  border: var(--border-hairline) solid #b45309;
+  border: var(--border-hairline) solid var(--amber-accent);
   border-radius: var(--radius);
   padding: 2px 9px;
   font-size: 11px;
-  color: #92400e;
+  color: var(--amber-ink);
   cursor: pointer;
   font-family: var(--font);
   flex-shrink: 0;
 }
 
 .hero-longrun-warn__stop:hover {
-  background: rgba(180, 83, 9, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-  .hero-longrun-warn__stop {
-    border-color: #fbbf24;
-    color: #fbbf24;
-  }
-
-  .hero-longrun-warn__stop:hover {
-    background: rgba(251, 191, 36, 0.12);
-  }
+  background: var(--amber-hover-bg);
 }
 
 .hero-longrun-warn__dismiss {
@@ -339,13 +320,7 @@
   cursor: pointer;
   font-size: 15px;
   line-height: 1;
-  color: #b45309;
+  color: var(--amber-accent);
   padding: 0 2px;
   flex-shrink: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  .hero-longrun-warn__dismiss {
-    color: #fbbf24;
-  }
 }

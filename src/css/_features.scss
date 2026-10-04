@@ -229,7 +229,7 @@
   }
 
   50% {
-    color: #1d9e75;
+    color: var(--success-ink);
   }
 }
 
@@ -596,12 +596,12 @@
 }
 
 .plan-item.done .plan-child-badge {
-  background: #1d9e75;
+  background: var(--success-ink);
   color: #fff;
 }
 
 .plan-item.pending .plan-child-badge {
-  background: #9b7dff;
+  background: var(--note-pending-ink);
   color: #fff;
 }
 
@@ -621,7 +621,7 @@
 .plan-split-input {
   flex: 1;
   background: rgba(255, 255, 255, 0.05);
-  border: var(--border-hairline) solid #1d9e7588;
+  border: var(--border-hairline) solid var(--sig-event-subtle);
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font);
@@ -630,8 +630,8 @@
   outline: none;
 }
 
-.plan-split-input:focus {
-  border-color: #1d9e75;
+.plan-split-input:focus-visible {
+  border-color: var(--sig-event);
 }
 
 .plan-split-input::placeholder {

@@ -179,16 +179,19 @@ export function formatGroupedLines(
 ) {
   const lines = [];
   catOrder.forEach((catKey) => {
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     const { totalMs, tasks, taskOrder } = catGrouped[catKey];
     const catTimeStr = totalMs > 0 ? fmtDuration(totalMs) : '--';
     lines.push(`${catTimeStr} - ${getCatLabel(catKey)}`);
     taskOrder.forEach((taskKey) => {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       const { label, totalMs: taskMs, hasTime, sessions } = tasks[taskKey];
       const taskTimeStr = hasTime ? fmtDuration(taskMs) : '--';
       lines.push(`    ${taskTimeStr} - ${label}`);
       if (fmtSessionRange && sessions && sessions.length) {
         sessions.forEach((session) => lines.push(`        ${fmtSessionRange(session)}`));
       }
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       const note = taskNotes[taskKey];
       if (note) {
         note
@@ -197,6 +200,7 @@ export function formatGroupedLines(
           .filter(Boolean)
           .forEach((noteLine) => lines.push(`        note: ${noteLine}`));
       }
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       const link = taskLinks[taskKey];
       if (link) lines.push(`        link: ${link}`);
     });

@@ -62,8 +62,8 @@ export default [
   // 12b-changelog-data.js, signifiers.js, 00-config.js, and the pure-fns
   // barrel plus its pure-fns-*.js sub-modules use 'export' syntax and are
   // imported directly by unit tests. They run in the browser context.
-  // detect-object-injection: bracket-notation keys are internal constants,
-  // never from untrusted external input.
+  // detect-object-injection: warn (not off) so new bracket-notation sites with
+  // untrusted keys are caught; existing sites carry per-line disable comments.
   {
     files: [
       'src/js/00-config.js',
@@ -87,6 +87,8 @@ export default [
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
       'src/js/cat-utils.js',
+      'src/js/entry-utils.js',
+      'src/js/entry-billable.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -99,7 +101,7 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
       'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
@@ -114,11 +116,11 @@ export default [
   // still reported. caughtErrors:'none' allows `catch (err)` fallbacks that do not
   // inspect the error (paired with the allowEmptyCatch policy below). Cross-file dead
   // top-level symbols are found with the dead-code skill, not this rule.
-  // detect-object-injection stays 'off' for src/js (#484 follow-up): ~120 existing
-  // bracket lookups, concentrated in pure-fns-export.js and pure-fns-weeklyreport.js,
-  // would need triage one by one, and as plain warnings they would bury new ones in
-  // the existing lint output. Enabling it here needs a ratchet like the
-  // arrow-param one, not a blanket 'warn'.
+  // detect-object-injection: warn (not off) so new bracket-notation sites with
+  // untrusted keys are caught; existing sites carry per-line disable comments.
+  // The ignores below are the ES-module files configured in the block above
+  // (sourceType 'module'); this block is for the concatenated classic-script files.
+  // Keep the two lists in sync so a file is linted by exactly one block.
   {
     files: ['src/js/*.js'],
     ignores: [
@@ -143,6 +145,8 @@ export default [
       'src/js/01c-save.js',
       'src/js/10b-signifiers.js',
       'src/js/cat-utils.js',
+      'src/js/entry-utils.js',
+      'src/js/entry-billable.js',
       'src/js/pure-fns*.js',
     ],
     languageOptions: {
@@ -159,7 +163,7 @@ export default [
       'no-var': 'error',
       'prefer-const': 'warn',
       'no-empty': ['error', { allowEmptyCatch: true }],
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
       'no-restricted-syntax': ['warn', NO_SINGLE_LETTER_ARROW_PARAM],
     },
   },
@@ -230,9 +234,8 @@ export default [
 
   // ESM unit tests — run with Node's built-in test runner.
   // Includes browser globals because tests use vm.runInContext with browser-side code.
-  // detect-object-injection stays 'off': tests index fixtures and sandboxes by keys
-  // they wrote themselves, and enabling it would add ~100 warnings with no
-  // untrusted input to find.
+  // detect-object-injection: warn (not off); test fixtures carry per-line
+  // disable comments.
   {
     files: ['test/**/*.mjs'],
     languageOptions: {
@@ -244,7 +247,7 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
       'security/detect-non-literal-fs-filename': 'off',
-      'security/detect-object-injection': 'off',
+      'security/detect-object-injection': 'warn',
     },
   },
 

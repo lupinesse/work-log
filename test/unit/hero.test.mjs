@@ -26,6 +26,7 @@ function loadHeroSandbox(overrides = {}) {
 
   const sandbox = {
     document: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getElementById: (id) => elements[id] || null,
       addEventListener: () => {},
     },
@@ -137,6 +138,7 @@ describe('_heroFillStopped elapsed display (#488)', () => {
     const elements = { heroStoppedElapsed: elapsedEl };
     const sandbox = loadHeroSandbox({
       document: {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         getElementById: (id) => elements[id] || null,
         addEventListener: () => {},
       },
