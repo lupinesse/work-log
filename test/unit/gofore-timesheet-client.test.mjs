@@ -41,6 +41,7 @@ function loadSandbox(options) {
     classList: { toggle() {} },
     listeners: {},
     addEventListener(type, handler) {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       this.listeners[type] = handler;
     },
   });
@@ -50,6 +51,7 @@ function loadSandbox(options) {
     'eodTimesheetSubmit',
     'eodTimesheetCopy',
     'eodTimesheetStatus',
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
   ].forEach((id) => (elements[id] = makeEl()));
   const sandbox = {
     entries,
@@ -63,6 +65,7 @@ function loadSandbox(options) {
     GOFORE_SUBMIT_ENABLED: submitEnabled,
     navigator: { clipboard },
     wlLog: { info() {}, warn() {} },
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     document: { getElementById: (id) => elements[id] },
     console,
     Number,

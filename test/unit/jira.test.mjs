@@ -159,3 +159,21 @@ describe('Jira import — archived epics', () => {
     assert.equal(sandbox.unarchiveImportedCats([{ id: 'work' }, { id: 'gone' }]), 0);
   });
 });
+
+describe('Jira import — untrusted CSV keys', () => {
+  it('parseCSV keeps a "__proto__" header as an own key without touching the prototype', () => {
+    const { sandbox } = loadJiraSandbox();
+    const [row] = sandbox.parseCSV('Issue key,__proto__,constructor\nAB-1,polluted,also\n');
+    assert.equal(Object.getPrototypeOf(row), null);
+    assert.equal(Object.keys(row).join('|'), 'Issue key|__proto__|constructor');
+    assert.equal(row['__proto__'], 'polluted');
+    assert.equal({}.polluted, undefined);
+  });
+
+  it('jiraMapStatus maps a status named after an Object.prototype member to todo (regression)', () => {
+    const { sandbox } = loadJiraSandbox();
+    assert.equal(sandbox.jiraMapStatus('constructor'), 'todo');
+    assert.equal(sandbox.jiraMapStatus('toString'), 'todo');
+    assert.equal(sandbox.jiraMapStatus('Closed'), 'done');
+  });
+});

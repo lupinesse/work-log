@@ -75,6 +75,7 @@ describe('buildWeeklyTicketSummary', () => {
     const untracked = { ...base, id: '2', text: 'Team sync prep' };
     const { ticketOrder, grouped } = buildWeeklyTicketSummary([untracked], WEEK_START, WEEK_END);
     assert.deepEqual(ticketOrder, [WEEKLY_REPORT_NO_TICKET_KEY]);
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     assert.deepEqual(grouped[WEEKLY_REPORT_NO_TICKET_KEY].nameOrder, ['team sync prep']);
   });
 

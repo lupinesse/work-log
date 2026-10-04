@@ -108,13 +108,13 @@ wl_snapshot        → backup (auto-restore on failure)
 
 **Sub-modules**:
 - `pure-fns-format.js` (248 lines) — String, colour, and duration formatters: `escHtml`, `safeCssColor`, `dk`, `fmtTime`, `fmtElapsed`, `fmtDur`, `fmtDurLong`, `fmtAgo`, `roundToNearest30`
-- `pure-fns-export.js` (309 lines) — Billable-export grouping and merging: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `computeDayBounds`, `isWorkdayLikelyOver`, `buildTaskNoteMap`, `buildEntryNoteMap`, `buildEntryLinkMap`, `mergeNoteMaps`
-- `pure-fns-gapreport.js` (194 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
-- `pure-fns-weeklyreport.js` (120 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
-- `pure-fns-rollingsummary.js` (66 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
-- `pure-fns-backup.js` (114 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
-- `pure-fns-tasks.js` (269 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
-- `pure-fns-validate.js` (331 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
+- `pure-fns-export.js` (326 lines) — Billable-export grouping and merging: `parseJiraLabel`, `groupEntriesByCategory`, `buildTimesheetSummaryLine`, `computeDayBounds`, `isWorkdayLikelyOver`, `buildTaskNoteMap`, `buildEntryNoteMap`, `buildEntryLinkMap`, `mergeNoteMaps`
+- `pure-fns-gapreport.js` (198 lines) — Gap report and export-warning helpers, split out of `pure-fns-export.js` (QA 2026-09-07, largest-module finding — was 745 lines): `GAP_REPORT_UTILITY_TEXTS`, `findGapReportEntries`, `findExportWarnings`, `formatGroupedLines`
+- `pure-fns-weeklyreport.js` (130 lines) — Weekly report draft: groups a week's entries by Jira ticket and renders that grouping to text: `WEEKLY_REPORT_NO_TICKET_KEY`, `buildWeeklyTicketSummary`, `formatWeeklyTicketSummaryText`
+- `pure-fns-rollingsummary.js` (67 lines) — Rolling per-day summary aggregation for the Rolling Summary tab: `buildRollingSummary`
+- `pure-fns-backup.js` (115 lines) — Backup retention window and JSON-backup payload construction: `applyBackupRetention`, `buildBackupPayload`
+- `pure-fns-tasks.js` (271 lines) — Rapid-log token parser, task carry status, and work-location helpers: `parseRapidTokens`, `resolveCarryStatus`, `locationFor`, `nextLocation`, `WORK_LOCATIONS`
+- `pure-fns-validate.js` (332 lines) — Per-record validators and backup integrity: `validEntry`, `validCategory`, `validPlanTask`, `validBlock`, `validTimer`, `validPomoEntry`, `validateBackupFile`, `filterNewBackupEntries`, `validWeatherResponse`, `validCalendarMeeting`, `validJiraCsvRow`
 - `pure-fns-epics.js` (158 lines) — Epic (category) lifecycle helpers: stale-epic detection, archive/restore, and picker filtering: `EPIC_STALE_DAYS`, `PROTECTED_CAT_IDS`, `epicCutoffDate`, `collectRecentlyUsedCatIds`, `findStaleCategories`, `pickableCategories`, `applyEpicArchive`, `restoreArchivedCategory`
 
 ---
@@ -183,14 +183,14 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **04b-render-stats.js** (154 lines) — Header Stat Tiles (LEAF MODULE)
+#### **04b-render-stats.js** (158 lines) — Header Stat Tiles (LEAF MODULE)
 **Responsibility**: Renders the three header stat tiles (distinct tasks today / distinct epics this week / current streak) and the three sub-stat tiles beneath them (top task today / top task this week / best streak day). Reads entries via `getEntries()` from `state.js`; pure rendering with no side-effects beyond DOM writes. Extracted from the render-family concat (issue #336) — the thirteenth ES-module extraction. The only former blocker was `calcStreak()`, which was itself extracted to `pure-fns-format.js` as a pure function in the same PR.
 
 **Exports**: `renderHeaderStatTiles`, `renderSubStatTiles`
 
 ---
 
-#### **03-timer.js** (551 lines) — Timer Logic
+#### **03-timer.js** (554 lines) — Timer Logic
 **Responsibility**: Track active work session timing
 
 **Exports**:
@@ -225,7 +225,7 @@ render() → {
 
 **Sibling files** (alphabetical, same order the build concatenates them in):
 - `04a-render-entry-meta.js` (192 lines) — per-entry proof-link/note editor (`buildEntryMetaHtml`, `bindEntryMetaEvents`) and the category picker HTML builder (`buildEntryCatPickerHtml`)
-- `04b-render-stats.js` (154 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
+- `04b-render-stats.js` (158 lines) — header stat tiles and sub-stat tiles (`renderHeaderStatTiles`, `renderSubStatTiles`, `buildStatSubHtml`) — **LEAF MODULE** (issue #336)
 - `04c-render-timeline.js` (434 lines) — the timeline entry list: build + bind (`renderTimelineSection`, `bindTimelineEntryEvents`, `bindAdHocRow`) and its small helpers (`closeAllEditors`, `toTimeInput`, `applyTime`, `durLabel`)
 - `04d-render-quickpick.js` (82 lines) — the recent-tasks quick-pick bar (`renderQuickPick`)
 
@@ -344,7 +344,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **07-lifecycle.js** (396 lines) — App Initialization & Cleanup
+#### **07-lifecycle.js** (401 lines) — App Initialization & Cleanup
 **Responsibility**: Startup, shutdown, and day-boundary handling
 
 **On Load**:
@@ -387,7 +387,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **08a-pomo-dashboard.js** (167 lines) — Pomodoro 4-Column Dashboard *(leaf ES module)*
+#### **08a-pomo-dashboard.js** (170 lines) — Pomodoro 4-Column Dashboard *(leaf ES module)*
 **Responsibility**: Draws the sparkline and ribbon footer below the `.pomo-grid` 4-column card layout. Extracted as a leaf ES module (issue #336, extraction #14).
 
 **Layout columns** (CSS grid in `_pomo.scss`):
@@ -416,7 +416,7 @@ parkedThoughts     → List of captured thoughts
 
 ---
 
-#### **09-clock-weather.js** (545 lines) — Live Info Widgets
+#### **09-clock-weather.js** (552 lines) — Live Info Widgets
 **Responsibility**: Display current time, weather, moon phase, nameday
 
 **Data Sources**:
@@ -468,14 +468,14 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10a-tasks-render.js** (269 lines) — Task Rendering
+#### **10a-tasks-render.js** (271 lines) — Task Rendering
 **Responsibility**: HTML generation for the plan board — column headers, card shells, and the public `renderPlan()` orchestrator.
 
 **Key Functions**: `renderPlan()`, `renderBoardDoneHistory()`, `checkpointBadgeHtml()`
 
 ---
 
-#### **10a-tasks-row.js** (309 lines) — Per-Row Card HTML
+#### **10a-tasks-row.js** (310 lines) — Per-Row Card HTML
 **Responsibility**: Per-task card HTML builders for the kanban board. Module-level state variables (`editingPlanId`, `_noteOpenIds`, `_cpOpenIds`) live in `10-tasks.js`; callers live in `10a-tasks-render.js`.
 
 **Key Functions**: `statusOpts()`, `prioBtnHtml()`, `notionBtnHtml()`, `noteBtnHtml()`, `noteAreaHtml()`, `billBtnHtml()`, `renderRow()`
@@ -507,14 +507,14 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **10c-tasks-board.js** (223 lines) — Kanban Board Drag-and-Drop
+#### **10c-tasks-board.js** (224 lines) — Kanban Board Drag-and-Drop
 **Responsibility**: Board-level drag-and-drop between columns, column tab switching, and the live "N in progress" WIP badge. Extracted from `10b-tasks-events.js` so column logic stays separate from card-level event binding.
 
 **Key Functions**: `moveTaskToColumn()`, `bindBoardColumnDnD()`, `initBoardColumnDnD()`, `initBoardTabs()`, `updateBoardLive()`
 
 ---
 
-#### **10d-tasks-editors.js** (359 lines) — Per-Card Inline Editors
+#### **10d-tasks-editors.js** (363 lines) — Per-Card Inline Editors
 **Responsibility**: Binds the inline comment, note, and checkpoint editors for individual task cards. One function per editor type; called from `10b-tasks-events.js`.
 
 **Key Functions**: `bindPlanCommentEvents(qa)`, `bindPlanNoteEvents(qa)`, `bindPlanCheckpointEvents(qa)`
@@ -533,7 +533,7 @@ upcoming    → Scheduled for future date
 
 **Sub-modules**:
 - `11a-timeblock-render.js` (394 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
-- `11b-timeblock-carry.js` (368 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
+- `11b-timeblock-carry.js` (370 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
 - Drag logged entries to create/move blocks
@@ -567,7 +567,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (275 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (294 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:
@@ -580,7 +580,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **13-calendar.js** (374 lines) — Outlook Calendar Integration
+#### **13-calendar.js** (381 lines) — Outlook Calendar Integration
 **Responsibility**: Fetch and display today's calendar meetings
 
 **Data Source**:
@@ -627,7 +627,7 @@ Tries 3 lookup strategies:
 
 ---
 
-#### **14-jira.js** (498 lines) — Jira Import
+#### **14-jira.js** (511 lines) — Jira Import
 **Responsibility**: Bulk-import Jira tickets as tasks
 
 **Flow**:
@@ -665,7 +665,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **11-timeflow.js** (541 lines) — Today's Flow Unified Section
+#### **11-timeflow.js** (547 lines) — Today's Flow Unified Section
 **Responsibility**: The `#todayFlowSection` widget that replaces the separate Timeblock and Daily Log sections with a segmented control offering three views: Flow (chronological cards with duration-scaled accent strips), Log (timeline rail with circle markers), Blocks (the existing timeblock grid). Also renders the day-overview strip (hour ticks + entry footprints + live cursor) and a gap-reminder banner when the largest untracked gap today is ≥ 15 min.
 
 **Key functions**: `renderTodayFlow()` (orchestrator), `renderFlowHeader()`, `renderDayStrip()`, `renderGapReminder()`, `renderFlowView()`, `renderLogView()`, `findLargestGap(dateKey)`, `activeTimerDurationMs(entry)`, `getFlowView()` / `setFlowView()`, `initTodayFlow()` (binds delegated listeners + ARIA tablist keyboard nav).
@@ -692,7 +692,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **20-migration.js** (190 lines) — End-of-Month Migration
+#### **20-migration.js** (197 lines) — End-of-Month Migration
 **Responsibility**: Modal flow that surfaces every unresolved task for the viewed month and requires an explicit decision: carry forward, schedule (date picker), or drop. Auto-prompts on the last day of the month.
 
 **Key functions**: `openMigration()`, `renderMigrationStep()`, `carryTask(task)`, `scheduleTask(task, dateStr)`, `dropTask(task)`, `initMigration()`
@@ -721,7 +721,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **24-location.js** (92 lines) — Work Location Tracker
+#### **24-location.js** (93 lines) — Work Location Tracker
 **Responsibility**: Tracks whether the user is working remotely or in the office on each day. Location is stored per-day and shown in the date-nav header in place of the ISO week number.
 
 **Key Functions**: `renderLocation()`, `bindLocationToggle()`
