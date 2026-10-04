@@ -79,3 +79,31 @@ describe('renderCalStrip collapse and header binding (jsdom)', () => {
     assert.equal('_calBound' in dom.window.document.getElementById('calHeader'), false);
   });
 });
+
+describe('calAccountLabel prototype-safety (jsdom)', () => {
+  let dom;
+
+  beforeEach(() => {
+    dom = createDom(MARKUP);
+    vm.runInContext(STUBS, dom.getInternalVMContext());
+    vm.runInContext(calendarSrc, dom.getInternalVMContext());
+    vm.runInContext('CAL_ACCOUNT_LABELS = { acme: "Acme Corp" };', dom.getInternalVMContext());
+  });
+
+  afterEach(() => {
+    assertNoUncaughtErrors(dom);
+    dom.window.close();
+  });
+
+  const labelFor = (account) =>
+    vm.runInContext('calAccountLabel', dom.getInternalVMContext())(account);
+
+  it('resolves a configured email domain to its label', () => {
+    assert.equal(labelFor('me@acme.com'), 'Acme Corp');
+  });
+
+  it('does not resolve an email domain named after an Object.prototype member (regression)', () => {
+    assert.equal(labelFor('me@constructor.com'), null);
+    assert.equal(labelFor('me@toString.com'), null);
+  });
+});

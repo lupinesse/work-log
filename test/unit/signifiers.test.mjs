@@ -15,6 +15,7 @@ const SIGNIFIERS = ['event', 'flagged', 'migrated', 'cancelled', 'overtime'];
 describe('sigSymbol', () => {
   for (const signifier of SIGNIFIERS) {
     it(`returns the mapped symbol for '${signifier}'`, () => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       assert.equal(sigSymbol({ signifier }), SIG_SYMBOL[signifier]);
     });
   }
@@ -35,6 +36,7 @@ describe('sigSymbol', () => {
 describe('sigTitle', () => {
   for (const signifier of SIGNIFIERS) {
     it(`returns the mapped title for '${signifier}'`, () => {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       assert.equal(sigTitle({ signifier }), SIG_TITLE[signifier]);
     });
   }

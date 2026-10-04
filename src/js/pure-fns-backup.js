@@ -98,6 +98,7 @@ export function buildBackupPayload(state, retentionDays, nowMs) {
   const dropped = {};
   const trim = (arr, label) => {
     const { retainedEntries, dropped: n } = applyBackupRetention(arr || [], retentionDays, nowMs);
+    // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (n > 0) dropped[label] = n;
     return retainedEntries;
   };

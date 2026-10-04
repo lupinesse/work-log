@@ -49,8 +49,10 @@ function loadSandbox({ trackers = [], entries = [], categories = [], storage = {
     getCategories: () => categories,
     wlLog: { info() {}, warn() {} },
     localStorage: {
+      // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
       getItem: (k) => (Object.prototype.hasOwnProperty.call(_storage, k) ? _storage[k] : null),
       setItem: (k, v) => {
+        // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
         _storage[k] = String(v);
       },
     },
@@ -208,6 +210,7 @@ describe('22-trackers — loadTrackers / saveTrackers', () => {
     const initial = [WORK_TRACKER];
     const { sandbox, getStorage } = loadSandbox({ trackers: initial });
     sandbox.saveTrackers();
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     assert.deepEqual(JSON.parse(getStorage()[STORE_TRACKERS]), initial);
   });
 
@@ -215,6 +218,7 @@ describe('22-trackers — loadTrackers / saveTrackers', () => {
     const { sandbox, getStorage } = loadSandbox({ trackers: [] });
     sandbox.setTrackers([WORK_TRACKER]);
     sandbox.saveTrackers();
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     assert.deepEqual(JSON.parse(getStorage()[STORE_TRACKERS]), [WORK_TRACKER]);
   });
 });

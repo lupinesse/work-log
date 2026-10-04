@@ -26,7 +26,9 @@ import {
 const originalGlobals = { document: globalThis.document, localStorage: globalThis.localStorage };
 after(() => {
   for (const [name, value] of Object.entries(originalGlobals)) {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     if (value === undefined) delete globalThis[name];
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     else globalThis[name] = value;
   }
 });

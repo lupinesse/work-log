@@ -118,6 +118,7 @@ export function parseRapidTokens(raw, cats, now) {
   text = text.replace(/!(\w+)/g, function (match, tok) {
     const key = tok.toLowerCase();
     if (Object.prototype.hasOwnProperty.call(RAPID_SIG_SHORTCUTS, key)) {
+      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
       signifier = RAPID_SIG_SHORTCUTS[key];
       return '';
     }
@@ -271,6 +272,7 @@ const DEFAULT_WORK_LOCATION = 'remote';
  * locationFor({ '2026-06-03': 'bogus' }, '2026-06-03')  // → 'remote'
  */
 export function locationFor(map, dateKey) {
+  // eslint-disable-next-line security/detect-object-injection -- dateKey is a YYYY-MM-DD string built by dk(), and the result is re-validated against WORK_LOCATIONS' own keys below
   const stored = map && map[dateKey];
   return Object.prototype.hasOwnProperty.call(WORK_LOCATIONS, stored)
     ? stored

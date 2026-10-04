@@ -22,6 +22,7 @@ function loadEntriesSandbox(overrides = {}) {
   const elements = { captureInput };
 
   const sandbox = {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     document: { getElementById: (id) => elements[id] || null },
     console,
     wlLog: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },

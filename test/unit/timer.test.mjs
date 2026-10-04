@@ -95,6 +95,7 @@ function loadTimer({ activeTimer = null, entries = [], storedEntries = null } = 
   // above at load. Their behaviour is out of scope; re-stub them so only the
   // interval bookkeeping is under test.
   for (const name of ['tickTimer', 'updateTimerBar', 'updateTabAndFavicon', 'updateTimerBtn']) {
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     sandbox[name] = noop;
   }
   return { sandbox, intervalsStarted, intervalsCleared, saves };

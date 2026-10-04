@@ -23,6 +23,7 @@ const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
  */
 function declaredDependencies() {
   return ['dependencies', 'devDependencies', 'optionalDependencies'].flatMap((section) =>
+    // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
     Object.entries(packageJson[section] ?? {}).map(([name, spec]) => ({ section, name, spec }))
   );
 }
