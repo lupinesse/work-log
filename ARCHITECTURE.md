@@ -532,7 +532,7 @@ upcoming    → Scheduled for future date
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (358 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11a-timeblock-render.js` (367 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
 - `11b-timeblock-carry.js` (368 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:
