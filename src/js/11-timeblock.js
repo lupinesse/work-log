@@ -224,11 +224,11 @@ function openBlockEmojiPicker(bid, anchor) {
     if (prevBid === bid) return; // same block: toggled closed
   }
 
-  _emojiPickerPid = bid;
-  anchor.setAttribute('aria-expanded', 'true');
-
   const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
+
+  _emojiPickerPid = bid;
+  anchor.setAttribute('aria-expanded', 'true');
 
   const picker = document.createElement('div');
   picker.id = '__emojiPicker';

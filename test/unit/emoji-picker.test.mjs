@@ -239,6 +239,15 @@ describe('focusBlockEmojiButton() returns focus to the re-rendered trigger', () 
   });
 });
 
+describe('openBlockEmojiPicker() with an invalid bid', () => {
+  it('does not crash and does not create the picker when bid is not in blocks', () => {
+    const { dom, ctx, triggerEl } = loadPicker();
+    assert.doesNotThrow(() => ctx.openBlockEmojiPicker('nonexistent', triggerEl));
+    assert.equal(dom.window.document.getElementById('__emojiPicker'), null);
+    assert.equal(ctx._emojiPickerPid, null);
+  });
+});
+
 describe('setBlockEmoji() returns focus to the trigger after re-rendering', () => {
   it('focuses the emoji trigger button after saving an emoji', () => {
     const { dom, ctx, triggerEl } = loadPicker();
