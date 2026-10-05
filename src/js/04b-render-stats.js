@@ -79,7 +79,8 @@ export function renderSubStatTiles() {
 
   // Today: task with most tracked time
   const todayTimed = entries.filter(
-    (entry) => entry.date === todayKey && entry.tsEnd && entry.tsEnd > entry.ts
+    (entry) =>
+      entry.date === todayKey && entry.text != null && entry.tsEnd && entry.tsEnd > entry.ts
   );
   const todayByTask = {};
   todayTimed.forEach((entry) => {
@@ -103,7 +104,11 @@ export function renderSubStatTiles() {
   thisWeekStart.setDate(thisWeekStart.getDate() - ((thisWeekStart.getDay() + 6) % 7));
   thisWeekStart.setHours(0, 0, 0, 0);
   const weekTimed = entries.filter(
-    (entry) => new Date(entry.ts) >= thisWeekStart && entry.tsEnd && entry.tsEnd > entry.ts
+    (entry) =>
+      new Date(entry.ts) >= thisWeekStart &&
+      entry.text != null &&
+      entry.tsEnd &&
+      entry.tsEnd > entry.ts
   );
   const weekByTask = {};
   weekTimed.forEach((entry) => {
