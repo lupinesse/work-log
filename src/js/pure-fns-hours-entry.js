@@ -1,7 +1,7 @@
 /**
- * @file pure-fns-timesheet.js
- * Builds the single daily entry that "End day" submits to the Gofore timesheet
- * (timesheet.gofore.com). Pure functions with no side-effects and no global
+ * @file pure-fns-hours-entry.js
+ * Builds the single daily entry that "End day" submits to the external hours
+ * system. Pure functions with no side-effects and no global
  * state — a leaf ES module with no dependencies of its own.
  */
 
@@ -71,7 +71,7 @@ export function buildTimesheetDayPayload(dateKey, timedEntries, categoryLabel) {
 
 /**
  * Checks a timesheet entry before it is sent anywhere. Shared by the browser
- * form and scripts/lib/gofore-timesheet.mjs so both reject the same inputs.
+ * form and scripts/lib/eod-automation.mjs so both reject the same inputs.
  *
  * @param {Object} entry - Candidate entry with `date` (`YYYY-MM-DD`), `hours`
  *   (number, > 0 and ≤ 24) and `description` (non-blank string).

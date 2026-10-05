@@ -1,11 +1,11 @@
 #Requires -Modules Pester
 <#
 .SYNOPSIS
-    Regression tests for the POST /api/gofore-timesheet guard (#476).
+    Regression tests for the POST /api/eod-submit guard (#476).
 
 .DESCRIPTION
     Covers the two protections the route handler in start-server.ps1 delegates to
-    Get-GoforeRequestDecision: the server-side feature gate, and rejection of
+    Get-EodRequestDecision: the server-side feature gate, and rejection of
     cross-origin / non-local requests. The decision is pure (headers in, verdict
     out), so no listener or browser is started.
 #>
@@ -16,22 +16,22 @@ $repoRoot = Split-Path -Parent $here
 
 function Get-Decision {
     param($Enabled = $true, $Origin = 'http://localhost:8080', $HostHeader = 'localhost:8080')
-    Get-GoforeRequestDecision -Enabled $Enabled -Origin $Origin -HostHeader $HostHeader -Port 8080
+    Get-EodRequestDecision -Enabled $Enabled -Origin $Origin -HostHeader $HostHeader -Port 8080
 }
 
-Describe 'Test-GoforeSubmitEnabled' {
+Describe 'Test-EodSubmitEnabled' {
     It 'is true only for a real boolean $true' {
-        Test-GoforeSubmitEnabled $true | Should Be $true
+        Test-EodSubmitEnabled $true | Should Be $true
     }
 
     foreach ($value in @($false, $null, 'true', 'false', 1, '')) {
         It "is false for $(if ($null -eq $value) { '$null' } else { "'$value' ($($value.GetType().Name))" })" {
-            Test-GoforeSubmitEnabled $value | Should Be $false
+            Test-EodSubmitEnabled $value | Should Be $false
         }
     }
 }
 
-Describe 'Get-GoforeRequestDecision: feature gate' {
+Describe 'Get-EodRequestDecision: feature gate' {
     It 'refuses with 403 when submission is disabled (the default)' {
         $decision = Get-Decision -Enabled $false
         $decision.Allowed | Should Be $false
@@ -54,7 +54,7 @@ Describe 'Get-GoforeRequestDecision: feature gate' {
     }
 }
 
-Describe 'Get-GoforeRequestDecision: cross-origin protection' {
+Describe 'Get-EodRequestDecision: cross-origin protection' {
     $rejectedOrigins = @(
         'https://evil.example',
         'http://evil.example:8080',
@@ -112,15 +112,15 @@ Describe 'start-server.ps1 wiring' {
         $source | Should Not Match 'Access-Control-Allow-Origin'
     }
 
-    It 'consults Get-GoforeRequestDecision before running the timesheet script' {
-        $routeStart = $source.IndexOf("'/api/gofore-timesheet'")
-        $guard      = $source.IndexOf('Get-GoforeRequestDecision', $routeStart)
-        $invoke     = $source.IndexOf('Invoke-GoforeTimesheet -Json', $routeStart)
+    It 'consults Get-EodRequestDecision before running the submit script' {
+        $routeStart = $source.IndexOf("'/api/eod-submit'")
+        $guard      = $source.IndexOf('Get-EodRequestDecision', $routeStart)
+        $invoke     = $source.IndexOf('Invoke-EodSubmit -Json', $routeStart)
         ($guard -gt $routeStart) | Should Be $true
         ($guard -lt $invoke)     | Should Be $true
     }
 
-    It 'defaults $GoforeSubmitEnabled to $false before config.local.ps1 loads' {
-        $source | Should Match '\$GoforeSubmitEnabled = \$false'
+    It 'defaults $EodSubmitEnabled to $false before config.local.ps1 loads' {
+        $source | Should Match '\$EodSubmitEnabled = \$false'
     }
 }

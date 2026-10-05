@@ -1,15 +1,15 @@
 /**
- * @file gofore-timesheet.mjs
- * Entry point: adds one day's entry to timesheet.gofore.com using a persistent
+ * @file eod-submit.mjs
+ * Entry point: submits one day's entry to the configured external system using a persistent
  * Playwright browser profile, so the Microsoft SSO sign-in (with MFA) is done
  * once by hand and reused.
  *
- *   npm run timesheet:login                 # headed; sign in once, then close
- *   echo '{"date":"…","hours":7.5,"description":"…"}' | node scripts/gofore-timesheet.mjs
+ *   npm run eod:login                 # headed; sign in once, then close
+ *   echo '{"date":"…","hours":7.5,"description":"…"}' | node scripts/eod-submit.mjs
  *
  * Submit order: Claude in Chrome (`claude --chrome -p`, your real signed-in
- * browser) first, Playwright as fallback. Env: GOFORE_TIMESHEET_URL (default
- * https://timesheet.gofore.com); GOFORE_TIMESHEET_CHROME=0 skips the Chrome try.
+ * browser) first, Playwright as fallback. Env: EOD_SUBMIT_URL (required — set in config.local.ps1);
+ * EOD_SUBMIT_CHROME=0 skips the Chrome try.
  * Exit codes: 0 saved, 2 session expired, 1 any other failure.
  */
 import { readFileSync, existsSync } from 'node:fs';
@@ -21,18 +21,19 @@ import {
   resolveSelectors,
   submitDayEntry,
   SessionExpiredError,
-} from './lib/gofore-timesheet.mjs';
+} from './lib/eod-automation.mjs';
 import {
   buildChromePrompt,
   parseChromeResult,
   runClaudeInChrome,
   submitWithFallback,
-} from './lib/gofore-chrome.mjs';
+} from './lib/eod-chrome.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const profileDir = join(scriptDir, '..', '.timesheet-profile');
-const selectorsPath = join(scriptDir, 'gofore-timesheet.selectors.json');
-const baseUrl = process.env.GOFORE_TIMESHEET_URL || 'https://timesheet.gofore.com';
+const selectorsPath = join(scriptDir, 'eod-submit.selectors.json');
+const baseUrl = process.env.EOD_SUBMIT_URL;
+if (!baseUrl) throw new Error('EOD_SUBMIT_URL is not set. Configure it in config.local.ps1.');
 
 /**
  * Reads the selector overrides file.
@@ -77,8 +78,8 @@ async function submitViaPlaywright(payload) {
  * @returns {Promise<{status: string, detail: string}>} Parsed session outcome.
  */
 async function submitViaChrome(payload) {
-  if (process.env.GOFORE_TIMESHEET_CHROME === '0') {
-    return { status: 'failed', detail: 'disabled by GOFORE_TIMESHEET_CHROME=0' };
+  if (process.env.EOD_SUBMIT_CHROME === '0') {
+    return { status: 'failed', detail: 'disabled by EOD_SUBMIT_CHROME=0' };
   }
   console.log('[timesheet] trying Claude in Chrome first');
   return parseChromeResult(await runClaudeInChrome(buildChromePrompt(payload, baseUrl)));

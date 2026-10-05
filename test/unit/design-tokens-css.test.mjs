@@ -140,7 +140,7 @@ describe('modal and toast semantic tokens (#537)', () => {
   it('uses the success and soft-danger tokens for toasts and the timesheet error', () => {
     assert.match(ruleBody('.wl-toast-ok') ?? '', /var\(--success-bg\)/);
     assert.match(ruleBody('.wl-toast-err') ?? '', /var\(--danger-soft-bg\)/);
-    assert.match(ruleBody('.eod-timesheet__status--error') ?? '', /var\(--danger-soft-ink\)/);
+    assert.match(ruleBody('.eod-entry__status--error') ?? '', /var\(--danger-soft-ink\)/);
   });
 });
 

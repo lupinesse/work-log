@@ -13,8 +13,7 @@ abstract: >
   such as automated break reminders, focus mode, distraction capture,
   three-state checkpoints, and an "I don't know what to do" random task picker.
 authors:
-  - name: "Jenni Järvinen"
-    email: jenni.jaervinen@iki.fi
+  - name: "the maintainer"
 
 # This project was developed using AI pair programming.
 # Claude (Anthropic) acted as an AI collaborator throughout development:

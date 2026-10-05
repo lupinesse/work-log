@@ -44,5 +44,5 @@ assistant/
 !.claude/skills/
 !.claude/token-optimization.md
 
-# Playwright profile holding the Gofore timesheet SSO session (cookies) — never commit
+# Playwright profile holding the SSO session cookies for end-of-day submission — never commit
 .timesheet-profile/

@@ -1,5 +1,5 @@
 /**
- * @file gofore-chrome.test.mjs
+ * @file eod-chrome.test.mjs
  * Tests for the Claude-in-Chrome-first, Playwright-fallback submission logic.
  * No real CLI or browser is launched; the child process is faked.
  */
@@ -13,7 +13,7 @@ import {
   runClaudeInChrome,
   submitWithFallback,
   RESULT_PREFIX,
-} from '../../scripts/lib/gofore-chrome.mjs';
+} from '../../scripts/lib/eod-chrome.mjs';
 
 const payload = { date: '2026-09-30', hours: 7.5, description: 'work (X-1)' };
 
@@ -48,7 +48,7 @@ function fakeSpawn(script) {
 
 describe('buildChromePrompt', () => {
   it('embeds the entry as JSON and marks page content as untrusted', () => {
-    const prompt = buildChromePrompt(payload, 'https://timesheet.gofore.com');
+    const prompt = buildChromePrompt(payload, 'https://eod-test.local');
     assert.ok(prompt.includes(JSON.stringify(payload)));
     assert.match(prompt, /untrusted/);
     assert.ok(prompt.includes(`${RESULT_PREFIX} SAVED`));

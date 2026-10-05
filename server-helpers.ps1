@@ -968,16 +968,16 @@ function Set-ComProperty {
     )
 }
 
-# ── Gofore timesheet endpoint guard ───────────────────────────────────────────
-# POST /api/gofore-timesheet drives the user's signed-in browser session, so it
+# ── End-of-day submit endpoint guard ──────────────────────────────────────────
+# POST /api/eod-submit drives the user's signed-in browser session, so it
 # is the one route where a stray request has real-world side effects. The
 # decision is kept pure (headers in, verdict out) so both protections are
 # unit-tested without an HttpListener or a browser.
 
-function Test-GoforeSubmitEnabled {
+function Test-EodSubmitEnabled {
     <#
     .SYNOPSIS
-        Tests whether server-side Gofore timesheet submission is switched on.
+        Tests whether server-side end-of-day submission is switched on.
 
     .DESCRIPTION
         Only a real boolean $true enables submission. A truthy string such as
@@ -985,16 +985,16 @@ function Test-GoforeSubmitEnabled {
         otherwise count as enabled, and an unset setting must stay disabled.
 
     .PARAMETER Enabled
-        The value of $GoforeSubmitEnabled from config.local.ps1.
+        The value of $EodSubmitEnabled from config.local.ps1.
 
     .OUTPUTS
         System.Boolean
 
     .EXAMPLE
-        Test-GoforeSubmitEnabled $true      # -> $true
+        Test-EodSubmitEnabled $true      # -> $true
 
     .EXAMPLE
-        Test-GoforeSubmitEnabled 'false'    # -> $false
+        Test-EodSubmitEnabled 'false'    # -> $false
     #>
     [OutputType([bool])]
     param(
@@ -1004,10 +1004,10 @@ function Test-GoforeSubmitEnabled {
     return ($Enabled -is [bool] -and $Enabled)
 }
 
-function Get-GoforeRequestDecision {
+function Get-EodRequestDecision {
     <#
     .SYNOPSIS
-        Decides whether a POST /api/gofore-timesheet request may run.
+        Decides whether a POST /api/eod-submit request may run.
 
     .DESCRIPTION
         Two independent protections, checked in this order:
@@ -1020,13 +1020,13 @@ function Get-GoforeRequestDecision {
            request with no Origin at all comes from a non-browser client such as
            curl, which can already run the script directly, so it is allowed.
         2. Feature gate. Submission must be enabled in config.local.ps1; the
-           browser-side GOFORE_SUBMIT_ENABLED flag only hides a button.
+           browser-side EOD_SUBMIT_ENABLED flag only hides a button.
 
         Both rejections are 403 with a message the client can show. The Reason
         is for the server log and names which path was taken.
 
     .PARAMETER Enabled
-        The value of $GoforeSubmitEnabled from config.local.ps1.
+        The value of $EodSubmitEnabled from config.local.ps1.
 
     .PARAMETER Origin
         The request's Origin header, or $null/empty when absent.
@@ -1042,11 +1042,11 @@ function Get-GoforeRequestDecision {
         Error (string) and Reason (string).
 
     .EXAMPLE
-        Get-GoforeRequestDecision -Enabled $true -Origin 'http://localhost:8080' -HostHeader 'localhost:8080' -Port 8080
+        Get-EodRequestDecision -Enabled $true -Origin 'http://localhost:8080' -HostHeader 'localhost:8080' -Port 8080
         # -> Allowed = $true
 
     .EXAMPLE
-        Get-GoforeRequestDecision -Enabled $true -Origin 'https://evil.example' -HostHeader 'localhost:8080' -Port 8080
+        Get-EodRequestDecision -Enabled $true -Origin 'https://evil.example' -HostHeader 'localhost:8080' -Port 8080
         # -> Allowed = $false, Status = 403
     #>
     [OutputType([hashtable])]
@@ -1072,8 +1072,8 @@ function Get-GoforeRequestDecision {
     if ($allowedHosts -notcontains ([string]$HostHeader).ToLowerInvariant()) {
         return & $deny 'Timesheet endpoint only answers requests addressed to localhost.' "rejected host '$HostHeader'"
     }
-    if (-not (Test-GoforeSubmitEnabled $Enabled)) {
-        return & $deny 'Timesheet submission is disabled. Set $GoforeSubmitEnabled = $true in config.local.ps1.' 'submission disabled in config.local.ps1'
+    if (-not (Test-EodSubmitEnabled $Enabled)) {
+        return & $deny 'End-of-day submission is disabled. Set $EodSubmitEnabled = $true in config.local.ps1.' 'submission disabled in config.local.ps1'
     }
     return @{ Allowed = $true; Status = 200; Error = ''; Reason = 'allowed' }
 }

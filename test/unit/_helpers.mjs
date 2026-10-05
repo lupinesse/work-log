@@ -199,7 +199,7 @@ export function loadPureFnsScriptSource() {
     'pure-fns-format.js',
     'pure-fns-validate.js',
     'pure-fns-tasks.js',
-    'pure-fns-timesheet.js',
+    'pure-fns-hours-entry.js',
     'pure-fns-export.js',
     'pure-fns-gapreport.js',
     'pure-fns-weeklyreport.js',
