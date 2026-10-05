@@ -26,8 +26,7 @@ Only the latest minor release on the `main` branch receives active security upda
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do not** open a public GitHub issue, discussion, or pull request that discloses the vulnerability.
-2. Report the issue privately using one of these channels:
-   - GitHub's **"Report a vulnerability"** button under the repository's Security tab (Private Vulnerability Reporting is enabled on this repo)
+2. Report the issue privately via GitHub's **"Report a vulnerability"** button under the repository's Security tab (Private Vulnerability Reporting is enabled on this repo).
 
 3. Include the following details where possible:
    - A clear description of the vulnerability and its potential impact

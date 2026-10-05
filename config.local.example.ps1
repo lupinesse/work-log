@@ -36,7 +36,7 @@ $CalendarLookBackYears = 3
 # ones read by default (shared/delegate mailboxes and public folders are
 # excluded automatically); use this for anything else that still shows up
 # uninvited. Leave empty to exclude nothing further.
-# e.g. @('Annina Antinranta', 'Team Room 3')
+# e.g. @('Jane Example', 'Team Room 3')
 $CalendarExcludeNames = @()
 
 # End-of-day submission URL. Sign in once with
