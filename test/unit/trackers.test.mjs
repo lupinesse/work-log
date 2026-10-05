@@ -269,4 +269,33 @@ describe('22-trackers — renderTrackers', () => {
     // Should not throw
     assert.doesNotThrow(() => sandbox.renderTrackers());
   });
+
+  it('sanitises tracker.color through safeCssColor in hit/partial cells (#624)', () => {
+    // A malicious color value that is not a valid hex or hsl string; safeCssColor
+    // must replace it with the '#888780' fallback before it reaches innerHTML.
+    const malicious = { ...WORK_TRACKER, color: '"><script>alert(1)</script><x "' };
+    const { sandbox, listEl } = loadSandbox({ trackers: [malicious] });
+    sandbox.renderTrackers();
+    assert.doesNotMatch(listEl.innerHTML, /<script>/i);
+    assert.doesNotMatch(listEl.innerHTML, /alert\(1\)/);
+    // The fallback colour must appear somewhere in the cell backgrounds
+    assert.match(listEl.innerHTML, /#888780/);
+  });
+
+  it('sanitises partial-hit cell (tracker.color + "55") — #624 regression', () => {
+    // A color value that would produce an XSS payload in the `+ '55'` concat path.
+    // Provide a partial entry (45 min of 60 min target) on a date within the
+    // 28-day window to force a 'partial' day cell in the render output.
+    const malicious = { ...WORK_TRACKER, color: '"><img src=x onerror=alert(1)>' };
+    // dateKey is fixed above; it falls within the 28-day window from today.
+    const partialEntry = workEntry(dateKey, 0, 45 * 60000); // 45 min = 75%, partial
+    const { sandbox, listEl } = loadSandbox({
+      trackers: [malicious],
+      entries: [partialEntry],
+    });
+    sandbox.renderTrackers();
+    assert.doesNotMatch(listEl.innerHTML, /onerror/i);
+    // The fallback + '55' must appear somewhere for the partial-hit cell
+    assert.match(listEl.innerHTML, /#88878055/);
+  });
 });
