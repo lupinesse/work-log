@@ -42,7 +42,11 @@ if ($effectiveLookBack -ne $CalendarLookBackYears) {
 }
 $excludeSummary = if ($CalendarExcludeNames -and $CalendarExcludeNames.Count) { $CalendarExcludeNames -join ', ' } else { 'none' }
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack calendarExcludeNames=$excludeSummary"
-Write-Host "[cfg] eod submit url: $EodSubmitUrl; submit endpoint: $(if (Test-EodSubmitEnabled $EodSubmitEnabled) { 'ENABLED' } else { 'disabled' })"
+$eodEnabledLabel = if (Test-EodSubmitEnabled $EodSubmitEnabled) { 'ENABLED' } else { 'disabled' }
+Write-Host "[cfg] eod submit url: $(if ($EodSubmitUrl) { $EodSubmitUrl } else { '(not set)' }); submit endpoint: $eodEnabledLabel"
+if ((Test-EodSubmitEnabled $EodSubmitEnabled) -and -not $EodSubmitUrl) {
+    Write-Host "[cfg] WARNING: EodSubmitEnabled is true but EodSubmitUrl is empty — POST /api/eod-submit will fail. Set `$EodSubmitUrl in config.local.ps1." -ForegroundColor Yellow
+}
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
 $listener = New-Object Net.HttpListener
