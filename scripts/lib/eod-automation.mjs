@@ -1,12 +1,12 @@
 /**
- * @file gofore-timesheet.mjs
- * Browser-automation helpers for submitting one day's entry to the Gofore
- * timesheet. Kept free of Playwright imports (the page is injected) so the
- * logic is unit-testable with a fake page; scripts/gofore-timesheet.mjs owns
+ * @file eod-automation.mjs
+ * Browser-automation helpers for submitting one day's entry to the configured
+ * external hours system. Kept free of Playwright imports (the page is injected) so the
+ * logic is unit-testable with a fake page; scripts/eod-submit.mjs owns
  * the real browser.
  */
 
-import { findTimesheetEntryProblem } from '../../src/js/pure-fns-timesheet.js';
+import { findTimesheetEntryProblem } from '../../src/js/pure-fns-hours-entry.js';
 
 /** Hosts the Microsoft SSO redirect lands on when the saved session has expired. */
 const LOGIN_HOSTS = ['login.microsoftonline.com', 'login.live.com'];
@@ -19,7 +19,7 @@ const LOGIN_HOSTS = ['login.microsoftonline.com', 'login.live.com'];
 export class SessionExpiredError extends Error {
   /** @param {string} url - The login URL the timesheet redirected to. */
   constructor(url) {
-    super(`Timesheet session expired (redirected to ${url}). Run: npm run timesheet:login`);
+    super(`Session expired (redirected to ${url}). Run: npm run eod:login`);
     this.name = 'SessionExpiredError';
   }
 }
@@ -27,7 +27,7 @@ export class SessionExpiredError extends Error {
 /**
  * Default page selectors. These are UNVERIFIED guesses — the site could not be
  * inspected when this was written. Override any of them in
- * scripts/gofore-timesheet.selectors.json without touching code.
+ * scripts/eod-submit.selectors.json without touching code.
  */
 export const DEFAULT_SELECTORS = {
   addEntryButton: 'button:has-text("Add")',

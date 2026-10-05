@@ -63,7 +63,7 @@ function visibleMeetings(meetings) {
  * address, a display name, or free-form company text. Tries three strategies
  * in order: exact match, email domain extraction, and substring match.
  * @param {string|null} account - Raw Outlook account identifier.
- * @returns {string|null} Display label (e.g. "LähiTapiola"), or null if unknown.
+ * @returns {string|null} Display label (e.g. "Example Corp"), or null if unknown.
  */
 function calAccountLabel(account) {
   if (!account) return null;
@@ -75,7 +75,7 @@ function calAccountLabel(account) {
     // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (key.toLowerCase() === lower) return CAL_ACCOUNT_LABELS[key];
   }
-  // 2. Email-style: extract second-level domain (e.g. "x@gofore.com" → "gofore")
+  // 2. Email-style: extract second-level domain (e.g. "x@example.com" → "example")
   const emailMatch = lower.match(/@([^.@\s]+)\./);
   const emailDomain = emailMatch ? emailMatch[1] : null;
   // Own-property check: a domain such as "constructor" must not resolve to an inherited member.
@@ -83,7 +83,7 @@ function calAccountLabel(account) {
     // eslint-disable-next-line security/detect-object-injection -- emailDomain comes from calendar account text, but Object.hasOwn guarantees it is an own key of CAL_ACCOUNT_LABELS
     return CAL_ACCOUNT_LABELS[emailDomain];
   }
-  // 3. Substring match (e.g. "Gofore Mailbox" contains "gofore")
+  // 3. Substring match (e.g. "Example Corp Mailbox" contains "example corp")
   for (const key of Object.keys(CAL_ACCOUNT_LABELS)) {
     // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     if (lower.includes(key.toLowerCase())) return CAL_ACCOUNT_LABELS[key];

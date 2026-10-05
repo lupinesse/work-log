@@ -71,7 +71,7 @@ export const DEST_FILE = '.portable-dest';
  * `25-rollingsummary.js` depends on `pure-fns-format.js`, `pure-fns-tasks.js`,
  * `pure-fns-rollingsummary.js`, `24-location.js`, `state.js`, and `logger.js`,
  * so it is listed after all of them.
- * `26-gofore-timesheet.js` depends on `pure-fns-timesheet.js`, `00-config.js`,
+ * `26-eod-entry.js` depends on `pure-fns-hours-entry.js`, `00-config.js`,
  * `state.js`, and `logger.js`, so it is listed after all of them.
  * `04b-render-stats.js` depends on `pure-fns-format.js` (for `calcStreak`, `dk`,
  * `fmtDur`, `escHtml`), `pure-fns-export.js`, `state.js`, `00-config.js`, and
@@ -88,7 +88,7 @@ export const DEST_FILE = '.portable-dest';
  * `cat-utils.js` depends on `state.js` and `pure-fns.js` (for `safeCssColor`),
  * so it is listed after both. It is a sister to `date-labels.js` — both were
  * extracted from `02-utils.js` (issue #336).
- * `26-gofore-timesheet.js` now imports `getCatLabel` from `cat-utils.js`, so
+ * `26-eod-entry.js` now imports `getCatLabel` from `cat-utils.js`, so
  * `cat-utils.js` must precede it in the list.
  * `entry-utils.js` depends on `state.js` and `pure-fns.js` (for `dk` and
  * `roundToNearest30`), so it is listed after both (issue #336, extraction #18).
@@ -111,7 +111,7 @@ export const LEAF_MODULES = [
   'pure-fns-gapreport.js',
   'pure-fns-rollingsummary.js',
   'pure-fns-tasks.js',
-  'pure-fns-timesheet.js',
+  'pure-fns-hours-entry.js',
   'pure-fns-validate.js',
   'pure-fns-weeklyreport.js',
   'pure-fns.js',
@@ -128,7 +128,7 @@ export const LEAF_MODULES = [
   'signifiers.js',
   '10b-signifiers.js',
   '25-rollingsummary.js',
-  '26-gofore-timesheet.js',
+  '26-eod-entry.js',
   '22-trackers.js',
   'pomo-storage.js',
   '08a-pomo-dashboard.js',

@@ -2,7 +2,7 @@
 
 ## AI pair programming
 
-This project is developed using **AI pair programming**: the human author (Jenni Järvinen)
+This project is developed using **AI pair programming**: the human author
 directs the work, reviews every change, and makes all design decisions.
 Claude (Anthropic) acts as an AI collaborator — drafting code, writing tests, catching bugs,
 and improving documentation — with every output reviewed and approved before merging.
@@ -181,7 +181,7 @@ Do not use `--no-verify` to bypass the hook unless the user has explicitly appro
 - **Commit often** — each logical change is its own commit; avoid "big-bang" commits that mix unrelated changes.
 - **Never commit secrets**: `config.local.ps1` is gitignored; API tokens must never be committed.
 - **`.gitignore`** covers: `node_modules/`, `dist/`, `portable/`, `config.local.ps1`, `src/js/00-config.local.js`, `.timesheet-profile/`, `.env`, crash logs — update it before adding any new generated or sensitive file.
-- **Gofore timesheet automation** (`scripts/gofore-timesheet.mjs`, `scripts/lib/gofore-chrome.mjs`) is opt-in and local-only: keep `GOFORE_SUBMIT_ENABLED` `false` in committed code and enable it only in `src/js/00-config.local.js`. Never put credentials, cookies, or personal paths in the scripts or in `scripts/gofore-timesheet.selectors.json` (selector overrides only). Verify with `git check-ignore -v config.local.ps1 src/js/00-config.local.js .timesheet-profile/x`. See the README's "Gofore timesheet automation — security model".
+- **End-of-day submission** (`scripts/eod-submit.mjs`, `scripts/lib/eod-chrome.mjs`) is opt-in and local-only: keep `EOD_SUBMIT_ENABLED` `false` in committed code and enable it only in `src/js/00-config.local.js`. Never put credentials, cookies, or personal paths in the scripts or in `scripts/eod-submit.selectors.json` (selector overrides only). Verify with `git check-ignore -v config.local.ps1 src/js/00-config.local.js .timesheet-profile/x`. See the README's "Hours submission — security model".
 
 ### Commit hygiene — one discrete unit of work
 

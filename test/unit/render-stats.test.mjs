@@ -80,6 +80,23 @@ describe('renderHeaderStatTiles', () => {
     assert.equal(String(globalThis.document.getElementById('statToday').textContent), '2');
   });
 
+  it('skips tag-only entries (no text) when counting statToday — regression for Monday flake', async () => {
+    // Entries with only a `tag` and no `text` (e.g. timer blocks) must not
+    // crash statToday's .toLowerCase() call. Before the fix this threw every
+    // Monday when weekStart === todayKey, causing those entries to bleed into
+    // the statToday filter.
+    const { renderHeaderStatTiles, setEntries } = await loadMods();
+    const todayKey = dk(new Date());
+    setEntries([
+      { date: todayKey, ts: Date.now(), tag: 'epic-x' },
+      { date: todayKey, ts: Date.now(), text: 'Task A' },
+    ]);
+    renderHeaderStatTiles();
+    // Only the entry with text counts toward statToday; the tag-only entry is
+    // skipped without throwing.
+    assert.equal(String(globalThis.document.getElementById('statToday').textContent), '1');
+  });
+
   it('counts distinct epic tags for statWeek', async () => {
     const { renderHeaderStatTiles, setEntries } = await loadMods();
     const weekStart = new Date();

@@ -1,14 +1,14 @@
 /**
- * @file 26-gofore-timesheet.js — End-of-day Gofore timesheet form: rendering,
+ * @file 26-eod-entry.js — End-of-day hours entry form: rendering,
  * clipboard copy, and server submission.
  *
- * The browser cannot call timesheet.gofore.com directly (CORS + Microsoft SSO),
- * so submissions go to the local PowerShell server's /api/gofore-timesheet,
- * which drives a saved browser session via scripts/gofore-timesheet.mjs.
+ * The browser cannot submit directly (CORS + SSO),
+ * so submissions go to the local PowerShell server's /api/eod-submit,
+ * which drives a saved browser session via scripts/eod-submit.mjs.
  */
 
-import { buildTimesheetDayPayload, findTimesheetEntryProblem } from './pure-fns-timesheet.js';
-import { GOFORE_SUBMIT_ENABLED } from './00-config.js';
+import { buildTimesheetDayPayload, findTimesheetEntryProblem } from './pure-fns-hours-entry.js';
+import { EOD_SUBMIT_ENABLED } from './00-config.js';
 import { getEntries } from './state.js';
 import { wlLog } from './logger.js';
 import { getCatLabel } from './cat-utils.js';
@@ -43,9 +43,9 @@ function timedEntriesForDay(dateKey) {
  * @param {boolean} [isError] - Adds the error modifier class when true.
  */
 function setTimesheetStatus(message, isError = false) {
-  const statusEl = document.getElementById('eodTimesheetStatus');
+  const statusEl = document.getElementById('eodEntryStatus');
   statusEl.textContent = message;
-  statusEl.classList.toggle('eod-timesheet__status--error', isError);
+  statusEl.classList.toggle('eod-entry__status--error', isError);
 }
 
 /**
@@ -55,14 +55,14 @@ function setTimesheetStatus(message, isError = false) {
  */
 export function renderEodTimesheet(dateKey) {
   const payload = buildTimesheetDayPayload(dateKey, timedEntriesForDay(dateKey), getCatLabel);
-  const hoursEl = document.getElementById('eodTimesheetHours');
-  const descEl = document.getElementById('eodTimesheetDesc');
-  const submitBtn = document.getElementById('eodTimesheetSubmit');
-  const copyBtn = document.getElementById('eodTimesheetCopy');
+  const hoursEl = document.getElementById('eodEntryHours');
+  const descEl = document.getElementById('eodEntryDesc');
+  const submitBtn = document.getElementById('eodEntrySubmit');
+  const copyBtn = document.getElementById('eodEntryCopy');
   hoursEl.value = payload ? String(payload.hours) : '';
   descEl.value = payload ? payload.description : '';
   hoursEl.dataset.date = dateKey;
-  submitBtn.hidden = !GOFORE_SUBMIT_ENABLED;
+  submitBtn.hidden = !EOD_SUBMIT_ENABLED;
   [hoursEl, descEl, submitBtn, copyBtn].forEach((el) => (el.disabled = !payload));
   setTimesheetStatus(payload ? '' : 'Nothing tracked today — no timesheet entry to draft.');
   wlLog.info(
@@ -77,7 +77,7 @@ export function renderEodTimesheet(dateKey) {
  */
 async function copyEodTimesheetDescription() {
   try {
-    await navigator.clipboard.writeText(document.getElementById('eodTimesheetDesc').value);
+    await navigator.clipboard.writeText(document.getElementById('eodEntryDesc').value);
     setTimesheetStatus('Description copied');
   } catch (err) {
     wlLog.warn('copyEodTimesheetDescription: clipboard write failed', err);
@@ -91,12 +91,12 @@ async function copyEodTimesheetDescription() {
  * @returns {Promise<void>} Resolves once the status message is set.
  */
 async function submitEodTimesheet() {
-  const hoursEl = document.getElementById('eodTimesheetHours');
-  const submitBtn = document.getElementById('eodTimesheetSubmit');
+  const hoursEl = document.getElementById('eodEntryHours');
+  const submitBtn = document.getElementById('eodEntrySubmit');
   const body = {
     date: hoursEl.dataset.date,
     hours: Number(hoursEl.value),
-    description: document.getElementById('eodTimesheetDesc').value.trim(),
+    description: document.getElementById('eodEntryDesc').value.trim(),
   };
   const problem = findTimesheetEntryProblem(body);
   if (problem) {
@@ -106,7 +106,7 @@ async function submitEodTimesheet() {
   submitBtn.disabled = true;
   setTimesheetStatus('Submitting…');
   try {
-    const res = await fetch('/api/gofore-timesheet', {
+    const res = await fetch('/api/eod-submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -127,5 +127,5 @@ async function submitEodTimesheet() {
   }
 }
 
-document.getElementById('eodTimesheetSubmit').addEventListener('click', submitEodTimesheet);
-document.getElementById('eodTimesheetCopy').addEventListener('click', copyEodTimesheetDescription);
+document.getElementById('eodEntrySubmit').addEventListener('click', submitEodTimesheet);
+document.getElementById('eodEntryCopy').addEventListener('click', copyEodTimesheetDescription);

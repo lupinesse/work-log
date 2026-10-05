@@ -15,10 +15,10 @@ $NamedayApiToken  = ''
 $AnthropicApiKey  = ''
 $NotionToken      = ''
 $NotionDatabaseId = ''
-$GoforeTimesheetUrl = 'https://timesheet.gofore.com'
-# Server-side gate for POST /api/gofore-timesheet. Off unless config.local.ps1
-# sets it to $true; the browser-side GOFORE_SUBMIT_ENABLED only hides the button.
-$GoforeSubmitEnabled = $false
+$EodSubmitUrl = ''  # Set in config.local.ps1: $EodSubmitUrl = 'https://...'
+# Server-side gate for POST /api/eod-submit. Off unless config.local.ps1
+# sets it to $true; the browser-side EOD_SUBMIT_ENABLED only hides the button.
+$EodSubmitEnabled = $false
 $WeatherLat       = 60.1887   # default: Helsinki
 $WeatherLon       = 24.927
 $WeatherName      = 'Helsinki'
@@ -42,7 +42,7 @@ if ($effectiveLookBack -ne $CalendarLookBackYears) {
 }
 $excludeSummary = if ($CalendarExcludeNames -and $CalendarExcludeNames.Count) { $CalendarExcludeNames -join ', ' } else { 'none' }
 Write-Host "[cfg] port=$port weather=$WeatherName ($WeatherLat, $WeatherLon) calendarLookBackYears=$effectiveLookBack calendarExcludeNames=$excludeSummary"
-Write-Host "[cfg] gofore timesheet url: $GoforeTimesheetUrl; submit endpoint: $(if (Test-GoforeSubmitEnabled $GoforeSubmitEnabled) { 'ENABLED' } else { 'disabled' })"
+Write-Host "[cfg] eod submit url: $EodSubmitUrl; submit endpoint: $(if (Test-EodSubmitEnabled $EodSubmitEnabled) { 'ENABLED' } else { 'disabled' })"
 Write-Host "[cfg] nameday token: $(if ($NamedayApiToken) { 'configured' } else { 'not configured' }); Anthropic key: $(if ($AnthropicApiKey) { 'configured' } else { 'not configured' }); Notion: $(if ($NotionToken -and $NotionDatabaseId) { 'configured' } else { 'not configured' })"
 
 $listener = New-Object Net.HttpListener
@@ -61,27 +61,27 @@ function Send-Json($res, $body, $status = 200) {
     try { $res.OutputStream.Write($bytes, 0, $bytes.Length) } catch {}
 }
 
-function Invoke-GoforeTimesheet {
+function Invoke-EodSubmit {
     <#
     .SYNOPSIS
-        Runs scripts/gofore-timesheet.mjs with a JSON entry on stdin.
+        Runs scripts/eod-submit.mjs with a JSON entry on stdin.
     .PARAMETER Json
         The entry as JSON: { date, hours, description }.
     .OUTPUTS
         PSCustomObject with ExitCode, StdOut and StdErr.
     .EXAMPLE
-        Invoke-GoforeTimesheet -Json '{"date":"2026-09-30","hours":7.5,"description":"work (X-1)"}'
+        Invoke-EodSubmit -Json '{"date":"2026-09-30","hours":7.5,"description":"work (X-1)"}'
     #>
     param([Parameter(Mandatory)][string]$Json)
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = 'node'
-    $startInfo.Arguments = '"' + (Join-Path (Join-Path $root 'scripts') 'gofore-timesheet.mjs') + '"'
+    $startInfo.Arguments = '"' + (Join-Path (Join-Path $root 'scripts') 'eod-submit.mjs') + '"'
     $startInfo.WorkingDirectory = $root
     $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.UseShellExecute = $false
-    $startInfo.EnvironmentVariables['GOFORE_TIMESHEET_URL'] = $GoforeTimesheetUrl
+    $startInfo.EnvironmentVariables['EOD_SUBMIT_URL'] = $EodSubmitUrl
     $process = [System.Diagnostics.Process]::Start($startInfo)
     $process.StandardInput.Write($Json)
     $process.StandardInput.Close()
@@ -129,7 +129,7 @@ function Get-TodayMeetings {
         System.Collections.Hashtable
 
     .EXAMPLE
-        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Annina Antinranta')).meetings
+        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Alex Example')).meetings
     #>
     param(
         [int]$LookBackYears = 3,
@@ -476,7 +476,7 @@ while ($listener.IsListening) {
     $req = $ctx.Request
     $res = $ctx.Response
     # No CORS headers: the app is served from this same origin, so nothing
-    # cross-origin needs to read these responses (see Get-GoforeRequestDecision).
+    # cross-origin needs to read these responses (see Get-EodRequestDecision).
 
     try {
         # Config endpoint — exposes non-secret runtime config to the browser app
@@ -708,24 +708,30 @@ while ($listener.IsListening) {
             continue
         }
 
-        # Gofore timesheet -- adds one day's entry through a saved browser (SSO) session
-        if ($req.Url.LocalPath -eq '/api/gofore-timesheet' -and $req.HttpMethod -eq 'POST') {
-            $decision = Get-GoforeRequestDecision -Enabled $GoforeSubmitEnabled -Origin $req.Headers['Origin'] -HostHeader $req.Headers['Host'] -Port $port
+        # End of day submit -- adds one day's entry through a saved browser (SSO) session
+        if ($req.Url.LocalPath -eq '/api/eod-submit' -and $req.HttpMethod -eq 'POST') {
+            $decision = Get-EodRequestDecision -Enabled $EodSubmitEnabled -Origin $req.Headers['Origin'] -HostHeader $req.Headers['Host'] -Port $port
             if (-not $decision.Allowed) {
                 Write-Host "[timesheet] refused: $($decision.Reason)" -ForegroundColor Yellow
                 Send-Json $res (@{ ok = $false; error = $decision.Error } | ConvertTo-Json -Compress) $decision.Status
                 try { $res.Close() } catch {}
                 continue
             }
+            if (-not $EodSubmitUrl) {
+                Write-Host '[timesheet] refused: EOD_SUBMIT_URL is not configured in config.local.ps1' -ForegroundColor Yellow
+                Send-Json $res (@{ ok = $false; error = 'EOD_SUBMIT_URL is not set in config.local.ps1.' } | ConvertTo-Json -Compress) 503
+                try { $res.Close() } catch {}
+                continue
+            }
             try {
                 $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
-                $result = Invoke-GoforeTimesheet -Json $reader.ReadToEnd()
+                $result = Invoke-EodSubmit -Json $reader.ReadToEnd()
                 Write-Host "[timesheet] exit $($result.ExitCode): $($result.StdOut.Trim()) $($result.StdErr.Trim())"
                 if ($result.ExitCode -eq 0) {
                     $method = if ($result.StdOut -match 'method=(\w+)') { $Matches[1] } else { 'unknown' }
                     Send-Json $res (@{ ok = $true; method = $method } | ConvertTo-Json -Compress)
                 } else {
-                    $message = if ($result.ExitCode -eq 2) { 'Timesheet sign-in expired. Run: npm run timesheet:login' } else { $result.StdErr.Trim() }
+                    $message = if ($result.ExitCode -eq 2) { 'Sign-in expired. Run: npm run eod:login' } else { $result.StdErr.Trim() }
                     Send-Json $res (@{ ok = $false; error = $message } | ConvertTo-Json -Compress) 502
                 }
             } catch {

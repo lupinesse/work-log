@@ -137,10 +137,10 @@ describe('modal and toast semantic tokens (#537)', () => {
     assert.deepEqual(reminderRulesWithRawAmber, [], 'dark values live in the tokens only');
   });
 
-  it('uses the success and soft-danger tokens for toasts and the timesheet error', () => {
+  it('uses the success and soft-danger tokens for toasts and the hours-entry error', () => {
     assert.match(ruleBody('.wl-toast-ok') ?? '', /var\(--success-bg\)/);
     assert.match(ruleBody('.wl-toast-err') ?? '', /var\(--danger-soft-bg\)/);
-    assert.match(ruleBody('.eod-timesheet__status--error') ?? '', /var\(--danger-soft-ink\)/);
+    assert.match(ruleBody('.eod-entry__status--error') ?? '', /var\(--danger-soft-ink\)/);
   });
 });
 
