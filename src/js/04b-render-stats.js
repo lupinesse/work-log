@@ -29,7 +29,7 @@ export function renderHeaderStatTiles() {
   const todayKey = dk(new Date());
   document.getElementById('statToday').textContent = new Set(
     getEntries()
-      .filter((entry) => entry.date === todayKey)
+      .filter((entry) => entry.date === todayKey && entry.text != null)
       .map((entry) => entry.text.toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
