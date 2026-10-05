@@ -2,10 +2,13 @@
 # Keeps the security-extended suite (previously set via the workflow's `queries`
 # input) and loads the repo-local model pack that models safeCssColor as an
 # html-injection barrier — see models/safe-css-color.model.yml for the rationale.
+#
+# The pack is referenced by local path (relative to repo root) so CodeQL does
+# not try to resolve it from the GitHub Container Registry.
 name: worklog CodeQL config
 
 queries:
   - uses: security-extended
 
 packs:
-  - worklog/js-sanitiser-models
+  - .github/codeql/models

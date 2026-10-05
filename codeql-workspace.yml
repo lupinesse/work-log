@@ -1,5 +1,0 @@
-# Declares the repo-local CodeQL packs so they resolve by name (rather than from
-# the package registry) when .github/codeql/codeql-config.yml lists them under
-# `packs:`. Without this, `worklog/js-sanitiser-models` is not discoverable.
-provide:
-  - '.github/codeql/models/qlpack.yml'
