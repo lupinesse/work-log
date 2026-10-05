@@ -18,7 +18,7 @@ This project is a welcoming space for everyone. Contributors are expected to act
 
 ## Reporting
 
-If you experience or witness behaviour that conflicts with this policy, please contact the maintainer at lupinesse@gmail.com. Reports will be handled with discretion.
+If you experience or witness behaviour that conflicts with this policy, please open a private issue via GitHub's Security tab or contact the maintainer through a private GitHub channel. Reports will be handled with discretion.
 
 ## Enforcement
 

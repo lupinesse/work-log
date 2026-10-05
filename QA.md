@@ -61,7 +61,7 @@ Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md` (historical — this fi
 
 | Field | Value |
 |---|---|
-| Accepted by | Jenni Järvinen (sole author and user) |
+| Accepted by | the maintainer (sole author and user) |
 | Date | 2026-05-26 |
 | Scope | v1.8.0 — all features listed in `CHANGELOG.md § v1.8.0` |
 | Method | Manual exploratory testing of all major features on Windows 11 / Chrome |
@@ -111,7 +111,7 @@ All items from the v1.8.4 checklist remain ✅ Pass. Changes and additions:
 
 | Field | Value |
 |---|---|
-| Accepted by | Jenni Järvinen (sole author and user) |
+| Accepted by | the maintainer (sole author and user) |
 | Date | 2026-05-28 |
 | Scope | v1.8.5–v1.8.9 — all features listed in `CHANGELOG.md §§ v1.8.5–v1.8.9` |
 | Method | Automated suite (679 tests: 397 unit + 282 smoke) + manual spot-check on Windows 11 / Chrome |
@@ -152,7 +152,7 @@ All items from the v1.8.0 checklist remain ✅ Pass. Additional items addressed:
 
 | Field | Value |
 |---|---|
-| Accepted by | Jenni Järvinen (sole author and user) |
+| Accepted by | the maintainer (sole author and user) |
 | Date | 2026-05-27 |
 | Scope | v1.8.1–v1.8.4 — all features listed in `CHANGELOG.md §§ v1.8.1–v1.8.4` |
 | Method | Automated smoke test suite (211 Playwright tests) + manual spot-check of BuJo features on Windows 11 / Chrome |

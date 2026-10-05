@@ -1,6 +1,6 @@
 /**
- * @file gofore-timesheet-client.test.mjs
- * Drives src/js/26-gofore-timesheet.js in a VM sandbox: the End of Day form is
+ * @file eod-submit-client.test.mjs
+ * Drives src/js/26-eod-entry.js in a VM sandbox: the End of Day form is
  * drafted from the day's entries, edited by the user, and posted to the local
  * server; server and network failures surface as readable status messages.
  */
@@ -19,7 +19,7 @@ import {
 } from './_helpers.mjs';
 
 const clientSrc = stripEsmSyntax(
-  readFileSync(join(__dirname, '../../src/js/26-gofore-timesheet.js'), 'utf8')
+  readFileSync(join(__dirname, '../../src/js/26-eod-entry.js'), 'utf8')
 );
 const HOUR = 3600000;
 
@@ -46,11 +46,11 @@ function loadSandbox(options) {
     },
   });
   [
-    'eodTimesheetHours',
-    'eodTimesheetDesc',
-    'eodTimesheetSubmit',
-    'eodTimesheetCopy',
-    'eodTimesheetStatus',
+    'eodEntryHours',
+    'eodEntryDesc',
+    'eodEntrySubmit',
+    'eodEntryCopy',
+    'eodEntryStatus',
     // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
   ].forEach((id) => (elements[id] = makeEl()));
   const sandbox = {
@@ -62,7 +62,7 @@ function loadSandbox(options) {
       { id: 'meeting', label: 'meeting', color: '#bbb' },
       { id: 'other', label: 'other', color: '#888780' },
     ],
-    GOFORE_SUBMIT_ENABLED: submitEnabled,
+    EOD_SUBMIT_ENABLED: submitEnabled,
     navigator: { clipboard },
     wlLog: { info() {}, warn() {} },
     // eslint-disable-next-line security/detect-object-injection -- test fixture — key is a known constant, not external input
@@ -93,15 +93,15 @@ describe('End of Day timesheet form', () => {
       submitEnabled: false,
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    assert.equal(elements.eodTimesheetSubmit.hidden, true);
-    assert.equal(elements.eodTimesheetCopy.disabled, false);
-    assert.equal(elements.eodTimesheetDesc.value, 'work (AITO-1: Flow), meeting (FUAT)');
+    assert.equal(elements.eodEntrySubmit.hidden, true);
+    assert.equal(elements.eodEntryCopy.disabled, false);
+    assert.equal(elements.eodEntryDesc.value, 'work (AITO-1: Flow), meeting (FUAT)');
   });
 
   it('shows the submit button when submit is enabled', () => {
     const { sandbox, elements } = loadSandbox({ entries: dayEntries, fetch: async () => ({}) });
     sandbox.renderEodTimesheet('2026-09-30');
-    assert.equal(elements.eodTimesheetSubmit.hidden, false);
+    assert.equal(elements.eodEntrySubmit.hidden, false);
   });
 
   it('copies the description as edited by the user', async () => {
@@ -112,10 +112,10 @@ describe('End of Day timesheet form', () => {
       clipboard: { writeText: async (text) => (copied = text) },
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    elements.eodTimesheetDesc.value = 'test execution (AITO-1: Flow)';
-    await elements.eodTimesheetCopy.listeners.click();
+    elements.eodEntryDesc.value = 'test execution (AITO-1: Flow)';
+    await elements.eodEntryCopy.listeners.click();
     assert.equal(copied, 'test execution (AITO-1: Flow)');
-    assert.match(elements.eodTimesheetStatus.textContent, /copied/);
+    assert.match(elements.eodEntryStatus.textContent, /copied/);
   });
 
   it('keeps emoji out of the aria-live status text (regression, #545)', async () => {
@@ -129,8 +129,8 @@ describe('End of Day timesheet form', () => {
       },
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    await elements.eodTimesheetCopy.listeners.click();
-    assert.doesNotMatch(elements.eodTimesheetStatus.textContent, /\p{Extended_Pictographic}/u);
+    await elements.eodEntryCopy.listeners.click();
+    assert.doesNotMatch(elements.eodEntryStatus.textContent, /\p{Extended_Pictographic}/u);
   });
 
   it('tells the user to copy manually when the clipboard API is missing', async () => {
@@ -141,8 +141,8 @@ describe('End of Day timesheet form', () => {
       clipboard: undefined,
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    await elements.eodTimesheetCopy.listeners.click();
-    assert.match(elements.eodTimesheetStatus.textContent, /copy it manually/);
+    await elements.eodEntryCopy.listeners.click();
+    assert.match(elements.eodEntryStatus.textContent, /copy it manually/);
   });
 
   it('tells the user to copy manually when the clipboard is refused', async () => {
@@ -156,24 +156,24 @@ describe('End of Day timesheet form', () => {
       },
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    await elements.eodTimesheetCopy.listeners.click();
-    assert.match(elements.eodTimesheetStatus.textContent, /copy it manually/);
+    await elements.eodEntryCopy.listeners.click();
+    assert.match(elements.eodEntryStatus.textContent, /copy it manually/);
   });
 
   it('drafts hours and description from today only', () => {
     const { sandbox, elements } = loadSandbox({ entries: dayEntries, fetch: async () => ({}) });
     sandbox.renderEodTimesheet('2026-09-30');
-    assert.equal(elements.eodTimesheetHours.value, '3');
-    assert.equal(elements.eodTimesheetDesc.value, 'work (AITO-1: Flow), meeting (FUAT)');
-    assert.equal(elements.eodTimesheetSubmit.disabled, false);
+    assert.equal(elements.eodEntryHours.value, '3');
+    assert.equal(elements.eodEntryDesc.value, 'work (AITO-1: Flow), meeting (FUAT)');
+    assert.equal(elements.eodEntrySubmit.disabled, false);
   });
 
   it('disables the form, including copy, when nothing was tracked', () => {
     const { sandbox, elements } = loadSandbox({ entries: [], fetch: async () => ({}) });
     sandbox.renderEodTimesheet('2026-09-30');
-    assert.equal(elements.eodTimesheetSubmit.disabled, true);
-    assert.equal(elements.eodTimesheetCopy.disabled, true);
-    assert.match(elements.eodTimesheetStatus.textContent, /Nothing tracked/);
+    assert.equal(elements.eodEntrySubmit.disabled, true);
+    assert.equal(elements.eodEntryCopy.disabled, true);
+    assert.match(elements.eodEntryStatus.textContent, /Nothing tracked/);
   });
 
   for (const [name, edit, expected] of [
@@ -190,11 +190,11 @@ describe('End of Day timesheet form', () => {
         },
       });
       sandbox.renderEodTimesheet('2026-09-30');
-      if ('hours' in edit) elements.eodTimesheetHours.value = edit.hours;
-      if ('desc' in edit) elements.eodTimesheetDesc.value = edit.desc;
-      await elements.eodTimesheetSubmit.listeners.click();
+      if ('hours' in edit) elements.eodEntryHours.value = edit.hours;
+      if ('desc' in edit) elements.eodEntryDesc.value = edit.desc;
+      await elements.eodEntrySubmit.listeners.click();
       assert.equal(fetched, false);
-      assert.match(elements.eodTimesheetStatus.textContent, expected);
+      assert.match(elements.eodEntryStatus.textContent, expected);
     });
   }
 
@@ -208,19 +208,19 @@ describe('End of Day timesheet form', () => {
       },
     });
     sandbox.renderEodTimesheet('2026-09-30');
-    elements.eodTimesheetDesc.value = 'test execution (AITO-1: Flow)';
-    await elements.eodTimesheetSubmit.listeners.click();
-    assert.equal(request.url, '/api/gofore-timesheet');
+    elements.eodEntryDesc.value = 'test execution (AITO-1: Flow)';
+    await elements.eodEntrySubmit.listeners.click();
+    assert.equal(request.url, '/api/eod-submit');
     assert.deepEqual(request.body, {
       date: '2026-09-30',
       hours: 3,
       description: 'test execution (AITO-1: Flow)',
     });
     assert.match(
-      elements.eodTimesheetStatus.textContent,
+      elements.eodEntryStatus.textContent,
       /saved for 2026-09-30 \(via Playwright fallback\)/
     );
-    assert.equal(elements.eodTimesheetSubmit.disabled, false);
+    assert.equal(elements.eodEntrySubmit.disabled, false);
   });
 
   for (const [name, fetchStub, expected] of [
@@ -240,9 +240,9 @@ describe('End of Day timesheet form', () => {
     it(`shows ${name}`, async () => {
       const { sandbox, elements } = loadSandbox({ entries: dayEntries, fetch: fetchStub });
       sandbox.renderEodTimesheet('2026-09-30');
-      await elements.eodTimesheetSubmit.listeners.click();
-      assert.match(elements.eodTimesheetStatus.textContent, expected);
-      assert.equal(elements.eodTimesheetSubmit.disabled, false);
+      await elements.eodEntrySubmit.listeners.click();
+      assert.match(elements.eodEntryStatus.textContent, expected);
+      assert.equal(elements.eodEntrySubmit.disabled, false);
     });
   }
 });

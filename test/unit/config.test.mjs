@@ -65,9 +65,9 @@ describe('00-config — exported defaults', () => {
     assert.equal(typeof AUTO_PAUSE_ON_TAB_SWITCH, 'boolean');
   });
 
-  it('GOFORE_SUBMIT_ENABLED is a boolean', async () => {
-    const { GOFORE_SUBMIT_ENABLED } = await loadMod();
-    assert.equal(typeof GOFORE_SUBMIT_ENABLED, 'boolean');
+  it('EOD_SUBMIT_ENABLED is a boolean', async () => {
+    const { EOD_SUBMIT_ENABLED } = await loadMod();
+    assert.equal(typeof EOD_SUBMIT_ENABLED, 'boolean');
   });
 });
 

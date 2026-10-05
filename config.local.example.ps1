@@ -36,18 +36,18 @@ $CalendarLookBackYears = 3
 # ones read by default (shared/delegate mailboxes and public folders are
 # excluded automatically); use this for anything else that still shows up
 # uninvited. Leave empty to exclude nothing further.
-# e.g. @('Annina Antinranta', 'Team Room 3')
+# e.g. @('Alex Example', 'Team Room 3')
 $CalendarExcludeNames = @()
 
-# Gofore timesheet start URL for "End day" submission. Sign in once with
-# `npm run timesheet:login` (Microsoft SSO); the session is kept in the
+# End-of-day submission URL. Sign in once with
+# `npm run eod:login` (Microsoft SSO); the session is kept in the
 # gitignored .timesheet-profile/ folder. No credentials are stored here.
-$GoforeTimesheetUrl = 'https://timesheet.gofore.com'
+$EodSubmitUrl = ''  # Required: set to your submission URL
 
-# Server-side switch for POST /api/gofore-timesheet. Off by default: while it is
+# Server-side switch for POST /api/eod-submit. Off by default: while it is
 # $false the server refuses every submit request with 403, whatever the browser
 # sends. Set it to $true (a real boolean, not the string 'true') only when you
-# also want the End of Day submit button (GOFORE_SUBMIT_ENABLED in
+# also want the End of Day submit button (EOD_SUBMIT_ENABLED in
 # src/js/00-config.local.js). Requests from any other origin or host are refused
 # either way.
-$GoforeSubmitEnabled = $false
+$EodSubmitEnabled = $false

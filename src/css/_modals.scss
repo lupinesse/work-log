@@ -810,33 +810,33 @@
   margin: 0;
 }
 
-/* End-of-day Gofore timesheet form */
-.eod-timesheet {
+/* End-of-day hours entry form */
+.eod-entry {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.eod-timesheet__label {
+.eod-entry__label {
   font-size: 12px;
   color: var(--text2);
 }
 
-.eod-timesheet__hours {
+.eod-entry__hours {
   width: 6em;
 }
 
-.eod-timesheet__desc {
+.eod-entry__desc {
   width: 100%;
   resize: vertical;
 }
 
-.eod-timesheet__status {
+.eod-entry__status {
   font-size: 12px;
   min-height: 1.2em;
 }
 
-.eod-timesheet__status--error {
+.eod-entry__status--error {
   /* Theme text colour keeps contrast in both themes; the tint matches .wl-toast-err. */
   color: var(--text);
   background: var(--danger-soft-bg);

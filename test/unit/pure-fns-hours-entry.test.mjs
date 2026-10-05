@@ -1,6 +1,6 @@
 /**
- * @file pure-fns-timesheet.test.mjs
- * Unit tests for the daily Gofore timesheet entry builder.
+ * @file pure-fns-hours-entry.test.mjs
+ * Unit tests for the daily hours entry builder.
  */
 
 import { describe, it } from 'node:test';
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   buildTimesheetDescription,
   buildTimesheetDayPayload,
-} from '../../src/js/pure-fns-timesheet.js';
+} from '../../src/js/pure-fns-hours-entry.js';
 
 const HOUR = 3600000;
 const label = (id) =>

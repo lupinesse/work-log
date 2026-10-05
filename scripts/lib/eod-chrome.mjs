@@ -1,6 +1,6 @@
 /**
- * @file gofore-chrome.mjs
- * Submits the day's timesheet entry through Claude in Chrome (the user's real,
+ * @file eod-chrome.mjs
+ * Submits the day's hours entry through Claude in Chrome (the user's real,
  * already-signed-in browser) by running the Claude Code CLI headless, and
  * orchestrates the fallback to Playwright when that route does not work.
  * The child-process launcher is injected so everything here is unit-testable.

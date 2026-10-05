@@ -61,7 +61,7 @@ export {
   buildTimesheetDescription,
   buildTimesheetDayPayload,
   findTimesheetEntryProblem,
-} from './pure-fns-timesheet.js';
+} from './pure-fns-hours-entry.js';
 
 export {
   parseJiraLabel,

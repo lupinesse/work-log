@@ -1,6 +1,6 @@
 /**
- * @file gofore-timesheet.test.mjs
- * Tests for the Gofore timesheet automation library, using a fake page so no
+ * @file eod-automation.test.mjs
+ * Tests for the end-of-day automation library, using a fake page so no
  * browser or network is needed.
  */
 
@@ -13,7 +13,7 @@ import {
   submitDayEntry,
   SessionExpiredError,
   DEFAULT_SELECTORS,
-} from '../../scripts/lib/gofore-timesheet.mjs';
+} from '../../scripts/lib/eod-automation.mjs';
 
 /**
  * Builds a fake Playwright page that records actions.
@@ -41,7 +41,7 @@ const validPayload = { date: '2026-09-30', hours: 7.5, description: 'work (X-1)'
 describe('isLoginUrl', () => {
   it('recognises Microsoft sign-in hosts only', () => {
     assert.equal(isLoginUrl('https://login.microsoftonline.com/tenant/oauth2'), true);
-    assert.equal(isLoginUrl('https://timesheet.gofore.com/'), false);
+    assert.equal(isLoginUrl('https://eod-test.local/'), false);
     assert.equal(isLoginUrl('not a url'), false);
   });
 });
@@ -81,10 +81,10 @@ describe('resolveSelectors', () => {
 
 describe('submitDayEntry', () => {
   it('fills the form and waits for the save confirmation', async () => {
-    const { page, actions } = fakePage('https://timesheet.gofore.com/');
-    await submitDayEntry(page, 'https://timesheet.gofore.com', validPayload, DEFAULT_SELECTORS);
+    const { page, actions } = fakePage('https://eod-test.local/');
+    await submitDayEntry(page, 'https://eod-test.local', validPayload, DEFAULT_SELECTORS);
     assert.deepEqual(actions, [
-      'goto https://timesheet.gofore.com',
+      'goto https://eod-test.local',
       `click ${DEFAULT_SELECTORS.addEntryButton}`,
       `fill ${DEFAULT_SELECTORS.dateInput}=2026-09-30`,
       `fill ${DEFAULT_SELECTORS.hoursInput}=7.5`,
@@ -97,7 +97,7 @@ describe('submitDayEntry', () => {
   it('throws SessionExpiredError, touching nothing, when redirected to sign-in', async () => {
     const { page, actions } = fakePage('https://login.microsoftonline.com/x');
     await assert.rejects(
-      submitDayEntry(page, 'https://timesheet.gofore.com', validPayload, DEFAULT_SELECTORS),
+      submitDayEntry(page, 'https://eod-test.local', validPayload, DEFAULT_SELECTORS),
       SessionExpiredError
     );
     assert.equal(actions.length, 1);
