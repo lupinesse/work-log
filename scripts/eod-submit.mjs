@@ -15,7 +15,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
 import {
   parseTimesheetPayload,
   resolveSelectors,
@@ -32,8 +31,11 @@ import {
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const profileDir = join(scriptDir, '..', '.timesheet-profile');
 const selectorsPath = join(scriptDir, 'eod-submit.selectors.json');
-const baseUrl = process.env.EOD_SUBMIT_URL;
-if (!baseUrl) throw new Error('EOD_SUBMIT_URL is not set. Configure it in config.local.ps1.');
+// EOD_SUBMIT_URL is required but validated lazily inside main() so that
+// importing this module (or running --login without the variable) produces a
+// clean error message via the existing try/catch rather than an uncaught
+// module-load exception.
+const baseUrl = process.env.EOD_SUBMIT_URL ?? '';
 
 /**
  * Reads the selector overrides file.
@@ -50,6 +52,9 @@ function readSelectorOverrides() {
  */
 async function runLogin() {
   console.log(`[timesheet] login mode — profile: ${profileDir}, url: ${baseUrl}`);
+  // playwright is imported lazily so a missing EOD_SUBMIT_URL is caught by
+  // main()'s try/catch before the browser is ever launched.
+  const { chromium } = await import('playwright');
   const context = await chromium.launchPersistentContext(profileDir, { headless: false });
   const page = context.pages()[0] ?? (await context.newPage());
   await page.goto(baseUrl);
@@ -63,6 +68,7 @@ async function runLogin() {
  */
 async function submitViaPlaywright(payload) {
   console.log(`[timesheet] Playwright: ${payload.date} ${payload.hours}h (profile: ${profileDir})`);
+  const { chromium } = await import('playwright');
   const context = await chromium.launchPersistentContext(profileDir, { headless: true });
   try {
     const page = context.pages()[0] ?? (await context.newPage());
@@ -107,6 +113,11 @@ async function runSubmit() {
  */
 async function main() {
   try {
+    if (!baseUrl) {
+      throw new Error(
+        "EOD_SUBMIT_URL is not set. Add $EodSubmitUrl = 'https://...' to config.local.ps1."
+      );
+    }
     await (process.argv.includes('--login') ? runLogin() : runSubmit());
   } catch (err) {
     console.error(`[timesheet] ${err.message}`);
