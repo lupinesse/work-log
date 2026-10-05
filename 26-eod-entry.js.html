@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>JSDoc: Source: 12a-changelog.js</title>
+    <title>JSDoc: Source: 26-eod-entry.js</title>
 
     <script src="scripts/prettify/prettify.js"> </script>
     <script src="scripts/prettify/lang-css.js"> </script>
@@ -17,7 +17,7 @@
 
 <div id="main">
 
-    <h1 class="page-title">Source: 12a-changelog.js</h1>
+    <h1 class="page-title">Source: 26-eod-entry.js</h1>
 
     
 
@@ -26,319 +26,137 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* ── Dev changelog ── */
+            <pre class="prettyprint source linenums"><code>/**
+ * @file 26-eod-entry.js — End-of-day hours entry form: rendering,
+ * clipboard copy, and server submission.
+ *
+ * The browser cannot submit directly (CORS + SSO),
+ * so submissions go to the local PowerShell server's /api/eod-submit,
+ * which drives a saved browser session via scripts/eod-submit.mjs.
+ */
+
+import { buildTimesheetDayPayload, findTimesheetEntryProblem } from './pure-fns-hours-entry.js';
+import { EOD_SUBMIT_ENABLED } from './00-config.js';
+import { getEntries } from './state.js';
+import { wlLog } from './logger.js';
+import { getCatLabel } from './cat-utils.js';
+
+/** Status-line suffix per submission route the server reports. */
+const TIMESHEET_ROUTE_NOTE = {
+  chrome: ' (via Claude in Chrome)',
+  playwright: ' (via Playwright fallback)',
+};
 
 /**
- * Merges the hardcoded {@link DEV_CHANGES} array into the persisted dev log in
- * localStorage, adding only entries whose `id` is not already stored.
- * Maintains chronological sort order by `id`.
+ * Returns the given day's entries that have a positive tracked duration and
+ * are not cancelled — the same filter the plaintext export uses.
+ * @param {string} dateKey - Day to read, `YYYY-MM-DD`.
+ * @returns {Array&lt;Object>} Timed entries for that day.
  */
-function mergeDevLog() {
+function timedEntriesForDay(dateKey) {
+  return getEntries().filter(
+    (entry) =>
+      entry.date === dateKey &amp;&amp;
+      entry.tsEnd &amp;&amp;
+      entry.tsEnd > entry.ts &amp;&amp;
+      entry.signifier !== 'cancelled'
+  );
+}
+
+/**
+ * Shows a status message under the timesheet form. Plain text only: the
+ * element is an aria-live region, so emoji would be read aloud to screen-reader
+ * users; the error modifier class carries the visual distinction instead.
+ * @param {string} message - Text to display.
+ * @param {boolean} [isError] - Adds the error modifier class when true.
+ */
+function setTimesheetStatus(message, isError = false) {
+  const statusEl = document.getElementById('eodEntryStatus');
+  statusEl.textContent = message;
+  statusEl.classList.toggle('eod-entry__status--error', isError);
+}
+
+/**
+ * Fills the End of Day timesheet form with today's draft entry. With nothing
+ * tracked the form is disabled rather than submitting an empty day.
+ * @param {string} dateKey - Day being ended, `YYYY-MM-DD`.
+ */
+export function renderEodTimesheet(dateKey) {
+  const payload = buildTimesheetDayPayload(dateKey, timedEntriesForDay(dateKey), getCatLabel);
+  const hoursEl = document.getElementById('eodEntryHours');
+  const descEl = document.getElementById('eodEntryDesc');
+  const submitBtn = document.getElementById('eodEntrySubmit');
+  const copyBtn = document.getElementById('eodEntryCopy');
+  hoursEl.value = payload ? String(payload.hours) : '';
+  descEl.value = payload ? payload.description : '';
+  hoursEl.dataset.date = dateKey;
+  submitBtn.hidden = !EOD_SUBMIT_ENABLED;
+  [hoursEl, descEl, submitBtn, copyBtn].forEach((el) => (el.disabled = !payload));
+  setTimesheetStatus(payload ? '' : 'Nothing tracked today — no timesheet entry to draft.');
+  wlLog.info(
+    `renderEodTimesheet: ${payload ? `draft ${payload.hours}h for ${dateKey}` : 'no tracked time, form disabled'}`
+  );
+}
+
+/**
+ * Copies the description as currently edited in the form to the clipboard, so
+ * it can be pasted into the timesheet by hand.
+ * @returns {Promise&lt;void>} Resolves once the status message is set.
+ */
+async function copyEodTimesheetDescription() {
   try {
-    const stored = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-    const storedIds = new Set(stored.map((change) => change.id));
-    const newEntries = DEV_CHANGES.filter((change) => !storedIds.has(change.id));
-    if (newEntries.length) {
-      const merged = [...stored, ...newEntries].sort((a, b) => a.id.localeCompare(b.id));
-      localStorage.setItem(STORE_DEV_LOG, JSON.stringify(merged));
-    }
+    await navigator.clipboard.writeText(document.getElementById('eodEntryDesc').value);
+    setTimesheetStatus('Description copied');
   } catch (err) {
-    wlLog.warn('mergeDevChanges: failed to merge dev changelog entries', err);
+    wlLog.warn('copyEodTimesheetDescription: clipboard write failed', err);
+    setTimesheetStatus('Could not copy — select the text and copy it manually', true);
   }
 }
 
-/** Label markup each copy button had before its first "Copied!" flash. */
-const copyButtonOriginalLabels = new WeakMap();
-
 /**
- * Briefly replaces a copy button's label with "Copied!", then restores the
- * original markup (emoji span included). The original is remembered on first
- * use, not read at each click: a second click inside the flash would otherwise
- * capture "Copied!" as the label to restore, leaving the button stuck.
- * @param {HTMLElement} button - The copy button to flash.
- * @param {number} [durationMs] - How long "Copied!" stays visible.
- * @returns {void}
+ * Posts the (possibly edited) entry to the local server and reports the
+ * outcome. An expired SSO session gets its own message with the fix.
+ * @returns {Promise&lt;void>} Resolves once the status message is set.
  */
-function flashCopiedLabel(button, durationMs = 2000) {
-  if (!copyButtonOriginalLabels.has(button)) copyButtonOriginalLabels.set(button, button.innerHTML);
-  button.textContent = 'Copied!';
-  setTimeout(() => (button.innerHTML = copyButtonOriginalLabels.get(button)), durationMs);
-}
-
-/**
- * Opens the end-of-day modal: auto-exports the time log and JSON backup, saves
- * the EOD timestamp, populates handoff notes for unfinished tasks, renders today's
- * dev changelog entries, and lists the test areas to review.
- */
-function openEodModal() {
-  const todayKey = dk(new Date());
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
-
-  // Auto-export
-  exportTxt();
-  exportBackup();
-  localStorage.setItem('wl_last_export', todayKey);
-  // Save EOD timestamp against today — ending the day is always a "now" action,
-  // independent of which day is currently in view.
-  const today = new Date();
-  if (!getEodTs(today)) localStorage.setItem(eodKey(today), String(Date.now()));
-  renderEodBtn();
-  renderEodReminder();
-  // Note: portable deploy is triggered by the "Done — close" button, NOT here,
-  // so the JSON + .txt have time to flush to disk before the build script reads them.
-  document.getElementById('eodExportStatus').innerHTML =
-    `&lt;div class="eod-exported">✅ Time log (.txt) and backup (.json) exported automatically&lt;/div>`;
-
-  document.getElementById('eodSubtitle').textContent = dateStr;
-
-  // Notes for tomorrow — only tasks that were actually worked on today
-  const workedToday = new Set(
-    getEntries()
-      .filter((entry) => entry.date === todayKey)
-      .map((entry) => entry.text.toLowerCase().trim())
-  );
-  const unfinishedTasks = getPlanTasks().filter(
-    (task) =>
-      task.date === todayKey &amp;&amp;
-      task.status !== 'done' &amp;&amp;
-      workedToday.has(task.text.toLowerCase().trim())
-  );
-  let handoffNotes = {};
-  try {
-    handoffNotes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
-  } catch (err) {
-    // Silently fall back to empty object — existing notes are unavailable but EOD modal still works
-    wlLog.warn('openEodModal: failed to parse wl_handoff', err);
-  }
-  const taskNotesEl = document.getElementById('eodTaskNotes');
-  if (unfinishedTasks.length) {
-    const statusLabel = {
-      todo: 'to do',
-      inprogress: 'in progress',
-      pending: 'pending',
-      blocked: 'blocked',
-    };
-    taskNotesEl.innerHTML = unfinishedTasks
-      .map(
-        (task) =>
-          `&lt;div class="eod-task-note-row">
-          &lt;span class="eod-task-note-label" title="${escHtml(task.text)}">${task.emoji ? escHtml(task.emoji) + ' ' : ''}${escHtml(task.text)}&lt;/span>
-          &lt;span class="eod-task-note-status ${task.status || 'todo'}">${statusLabel[task.status || 'todo'] || task.status}&lt;/span>
-          &lt;input class="eod-task-note-input" data-task="${escHtml(task.text.toLowerCase().trim())}"
-            value="${escHtml(handoffNotes[task.text.toLowerCase().trim()] || '')}"
-            placeholder="where to continue…" />
-        &lt;/div>`
-      )
-      .join('');
-  } else {
-    taskNotesEl.innerHTML = `&lt;div class="eod-empty">no tasks worked on today — or all done 🎉&lt;/div>`;
-  }
-
-  // Today's dev changes
-  let allLog = [];
-  try {
-    allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
-  } catch (err) {
-    wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
-  }
-  const todayChanges = allLog.filter((change) => change.date === todayKey);
-  const changesEl = document.getElementById('eodChanges');
-  if (todayChanges.length) {
-    changesEl.innerHTML = todayChanges
-      .map(
-        (change) =>
-          `&lt;div class="eod-change">
-          &lt;span class="eod-change-desc">${escHtml(change.desc)}&lt;/span>
-          &lt;span class="eod-change-areas">${change.areas.length ? 'Test ' + escHtml(change.areas.join(', ')) : '—'}&lt;/span>
-        &lt;/div>`
-      )
-      .join('');
-  } else {
-    changesEl.innerHTML = `&lt;div class="eod-empty">No code changes logged today&lt;/div>`;
-  }
-
-  // Affected test areas (deduplicated)
-  const affectedAreas = [...new Set(todayChanges.flatMap((change) => change.areas))].sort(
-    (a, b) => a - b
-  );
-  const areasEl = document.getElementById('eodTestAreas');
-  if (affectedAreas.length) {
-    areasEl.innerHTML = affectedAreas
-      .map((area) => {
-        // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
-        const areaName = TEST_AREA_NAMES[area] || 'Unknown';
-        return `&lt;div class="eod-test-area">
-          &lt;span class="eod-test-num">#${escHtml(String(area))}&lt;/span>
-          &lt;span>${escHtml(areaName)}&lt;/span>
-        &lt;/div>`;
-      })
-      .join('');
-  } else {
-    areasEl.innerHTML = `&lt;div class="eod-empty">No test areas flagged for review&lt;/div>`;
-  }
-
-  // Copy to clipboard
-  document.getElementById('eodCopyBtn').onclick = () => {
-    const lines = [
-      `End of day: ${dateStr}`,
-      '',
-      'Changes implemented:',
-      ...todayChanges.map(
-        (change) =>
-          `  - ${change.desc}${change.areas.length ? ' (Test ' + change.areas.join(', ') + ')' : ''}`
-      ),
-      '',
-      'Test areas to review:',
-      // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
-      ...affectedAreas.map((area) => `  - Test ${area}: ${TEST_AREA_NAMES[area]}`),
-    ];
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      flashCopiedLabel(document.getElementById('eodCopyBtn'));
-    });
+async function submitEodTimesheet() {
+  const hoursEl = document.getElementById('eodEntryHours');
+  const submitBtn = document.getElementById('eodEntrySubmit');
+  const body = {
+    date: hoursEl.dataset.date,
+    hours: Number(hoursEl.value),
+    description: document.getElementById('eodEntryDesc').value.trim(),
   };
-
-  renderEodTimesheet(todayKey);
-
-  document.getElementById('eodOverlay').classList.add('show');
-}
-
-document.getElementById('eodBtn').addEventListener('click', () => {
-  const ready = confirm(
-    '📎 Before closing the day:\n\n' +
-      "Have you shared work-log.html with Claude to log today's changes?\n\n" +
-      'OK — yes, changes are logged, continue\n' +
-      'Cancel — not yet, go back'
-  );
-  if (ready) openEodModal();
-});
-/**
- * Parses the stored `wl_handoff` value into a prototype-less map of task key to
- * note. A prototype-less object keeps keys such as `__proto__` and
- * `constructor` as ordinary own properties, so task names cannot reach
- * Object.prototype.
- * @param {string|null} raw - Raw localStorage value (may be null or malformed JSON).
- * @returns {Object&lt;string, string>} Map of task key to note; empty if the value is
- *   missing or is not a plain JSON object (e.g. an array, string or null).
- * @throws {SyntaxError} If `raw` is non-empty and not valid JSON.
- */
-function parseHandoffNotes(raw) {
-  const parsed = JSON.parse(raw || '{}');
-  const isPlainObject = parsed !== null &amp;&amp; typeof parsed === 'object' &amp;&amp; !Array.isArray(parsed);
-  return Object.assign(Object.create(null), isPlainObject ? parsed : {});
-}
-
-/**
- * Reads all handoff-note inputs in the EOD modal and persists their values to
- * the `wl_handoff` localStorage key. Empty values are removed from the map.
- */
-function saveEodHandoffNotes() {
+  const problem = findTimesheetEntryProblem(body);
+  if (problem) {
+    setTimesheetStatus(problem, true);
+    return;
+  }
+  submitBtn.disabled = true;
+  setTimesheetStatus('Submitting…');
   try {
-    const notes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
-    document.querySelectorAll('.eod-task-note-input').forEach((inp) => {
-      const key = inp.dataset.task;
-      const val = inp.value.trim();
-      // eslint-disable-next-line security/detect-object-injection -- key comes from a DOM data attribute (task text), but notes has no prototype, so any key is an own property
-      if (val) notes[key] = val;
-      // eslint-disable-next-line security/detect-object-injection -- same as above: prototype-less map, `delete` only removes an own key
-      else delete notes[key];
+    const res = await fetch('/api/eod-submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
-    localStorage.setItem('wl_handoff', JSON.stringify(notes));
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const route = TIMESHEET_ROUTE_NOTE[data.method] || '';
+      setTimesheetStatus(`Timesheet entry saved for ${body.date}${route}`);
+      return;
+    }
+    wlLog.warn('submitEodTimesheet: server rejected the entry', res.status, data);
+    setTimesheetStatus(data.error || `Server returned ${res.status}`, true);
   } catch (err) {
-    wlLog.warn('saveEodHandoffNotes: failed to persist handoff notes to localStorage', err);
+    wlLog.warn('submitEodTimesheet: request failed', err);
+    setTimesheetStatus('Could not reach the local server — is start-server.ps1 running?', true);
+  } finally {
+    submitBtn.disabled = false;
   }
 }
-document.getElementById('expiryBtn').addEventListener('click', openExpiryModal);
-document.getElementById('expirySave').addEventListener('click', saveExpiryDates);
-document.getElementById('expiryCancel').addEventListener('click', () => {
-  document.getElementById('expiryOverlay').classList.remove('show');
-});
-document.getElementById('expiryOverlay').addEventListener('click', (event) => {
-  if (event.target === document.getElementById('expiryOverlay'))
-    document.getElementById('expiryOverlay').classList.remove('show');
-});
-document.getElementById('expiryTextarea').addEventListener('keydown', (event) => {
-  if (event.key === 'Enter') {
-    event.stopPropagation();
-  } // allow newlines
-  if (event.key === 'Escape') document.getElementById('expiryOverlay').classList.remove('show');
-});
 
-document.getElementById('eodClose').addEventListener('click', () => {
-  saveEodHandoffNotes();
-  // Trigger portable deploy now — the export ran when the modal opened, so the
-  // file system has had a few seconds to flush JSON + .txt to OneDrive before
-  // the build script reads them.
-  triggerPortableDeploy();
-  document.getElementById('eodOverlay').classList.remove('show');
-  renderPlan();
-});
-
-/**
- * Fire-and-forget portable deploy: calls `POST /api/portable-deploy` to trigger
- * the PowerShell build script, then displays a transient top-right toast with the
- * result (success, failure, or server unreachable). Never throws.
- */
-function triggerPortableDeploy() {
-  const toast = document.createElement('div');
-  toast.className = 'wl-toast wl-toast-info';
-  toast.textContent = '⏳ Deploying portable build…';
-  document.body.appendChild(toast);
-
-  const setToast = (cls, text, lifetimeMs = 5000) => {
-    toast.className = 'wl-toast ' + cls;
-    toast.textContent = text;
-    setTimeout(() => toast.remove(), lifetimeMs);
-  };
-
-  (async () => {
-    let res;
-    try {
-      res = await fetch('/api/portable-deploy', { method: 'POST' });
-    } catch (err) {
-      setToast('wl-toast-err', '⚠ Portable deploy skipped: PS server unreachable');
-      return;
-    }
-    const bodyText = await res.text().catch(() => '');
-    let data = null;
-    if (bodyText) {
-      try {
-        data = JSON.parse(bodyText);
-      } catch {}
-    }
-
-    if (res.status === 404) {
-      setToast(
-        'wl-toast-err',
-        '⚠ Portable deploy unavailable: restart PS server (.\\launch.bat) to pick up updated start-server.ps1'
-      );
-      return;
-    }
-    if (res.status === 503) {
-      setToast('wl-toast-err', '⚠ Portable deploy skipped: PS server not running');
-      return;
-    }
-    if (res.ok &amp;&amp; data &amp;&amp; data.ok) {
-      const s = (data.durationMs / 1000).toFixed(1);
-      setToast('wl-toast-ok', `📦 Portable deployed in ${s}s`, 4000);
-      return;
-    }
-    const msg =
-      data &amp;&amp; (data.error || data.output)
-        ? String(data.error || data.output).slice(0, 200)
-        : bodyText
-          ? bodyText.slice(0, 200)
-          : `HTTP ${res.status} empty body`;
-    setToast('wl-toast-err', `⚠ Portable deploy failed: ${msg}`, 8000);
-  })();
-}
-document.getElementById('eodOverlay').addEventListener('click', (event) => {
-  if (event.target === document.getElementById('eodOverlay')) {
-    saveEodHandoffNotes();
-    document.getElementById('eodOverlay').classList.remove('show');
-    renderPlan();
-  }
-});
+document.getElementById('eodEntrySubmit').addEventListener('click', submitEodTimesheet);
+document.getElementById('eodEntryCopy').addEventListener('click', copyEodTimesheetDescription);
 </code></pre>
         </article>
     </section>
