@@ -30,7 +30,7 @@ export function renderHeaderStatTiles() {
   document.getElementById('statToday').textContent = new Set(
     getEntries()
       .filter((entry) => entry.date === todayKey)
-      .map((entry) => entry.text.toLowerCase())
+      .map((entry) => (entry.text ?? '').toLowerCase())
   ).size;
   document.getElementById('statWeek').textContent = (() => {
     const weekStart = mondayOfWeek();
