@@ -425,19 +425,19 @@ Describe 'Name-based calendar exclusion (Test-CalendarNameExcluded)' {
     # shared it, which Test-PersonalCalendarStore alone cannot catch.
 
     It 'matches an exact configured name' {
-        Test-CalendarNameExcluded -Name 'Annina Antinranta' -ExcludeNames @('Annina Antinranta') | Should Be $true
+        Test-CalendarNameExcluded -Name 'Jane Example' -ExcludeNames @('Jane Example') | Should Be $true
     }
 
     It 'matches case-insensitively' {
-        Test-CalendarNameExcluded -Name 'ANNINA ANTINRANTA' -ExcludeNames @('annina antinranta') | Should Be $true
+        Test-CalendarNameExcluded -Name 'JANE EXAMPLE' -ExcludeNames @('jane example') | Should Be $true
     }
 
     It 'matches a configured substring' {
-        Test-CalendarNameExcluded -Name 'Calendar - Annina Antinranta (shared)' -ExcludeNames @('annina') | Should Be $true
+        Test-CalendarNameExcluded -Name 'Calendar - Jane Example (shared)' -ExcludeNames @('jane') | Should Be $true
     }
 
     It 'does not match an unrelated name' {
-        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('annina') | Should Be $false
+        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('jane') | Should Be $false
     }
 
     It 'excludes nothing when the list is empty' {
@@ -445,7 +445,7 @@ Describe 'Name-based calendar exclusion (Test-CalendarNameExcluded)' {
     }
 
     It 'treats a null name as not excluded' {
-        Test-CalendarNameExcluded -Name $null -ExcludeNames @('annina') | Should Be $false
+        Test-CalendarNameExcluded -Name $null -ExcludeNames @('jane') | Should Be $false
     }
 
     It 'ignores a blank entry in the exclude list' {
@@ -453,7 +453,7 @@ Describe 'Name-based calendar exclusion (Test-CalendarNameExcluded)' {
     }
 
     It 'checks every entry, not just the first' {
-        Test-CalendarNameExcluded -Name 'Team Room 3' -ExcludeNames @('annina', 'team room') | Should Be $true
+        Test-CalendarNameExcluded -Name 'Team Room 3' -ExcludeNames @('jane', 'team room') | Should Be $true
     }
 }
 

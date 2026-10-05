@@ -129,7 +129,7 @@ function Get-TodayMeetings {
         System.Collections.Hashtable
 
     .EXAMPLE
-        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Annina Antinranta')).meetings
+        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Jane Example')).meetings
     #>
     param(
         [int]$LookBackYears = 3,
