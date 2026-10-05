@@ -528,7 +528,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (422 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (428 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:

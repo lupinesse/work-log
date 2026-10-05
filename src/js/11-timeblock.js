@@ -246,6 +246,8 @@ function openBlockEmojiPicker(bid, anchor) {
 
   const grid = document.createElement('div');
   grid.className = 'emoji-picker-grid';
+  grid.setAttribute('role', 'group');
+  grid.setAttribute('aria-label', 'Quick-select emoji');
   EMOJI_COMMON.forEach((em) => {
     grid.appendChild(createEmojiOptionButton(em, () => setBlockEmoji(bid, em)));
   });
@@ -294,6 +296,10 @@ function openBlockEmojiPicker(bid, anchor) {
         _emojiPickerPid = null;
         anchor.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', close);
+        // Focus is intentionally not returned here: the user clicked somewhere
+        // specific with the pointer, so moving focus back to the trigger would
+        // be disruptive. aria-modal confines virtual-cursor keyboard navigation
+        // inside the dialog, so this path is not keyboard-reachable in practice.
       }
     });
   }, 50);
