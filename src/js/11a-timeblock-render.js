@@ -50,6 +50,69 @@ function isLiveMeetingBlock(block, liveEntry) {
 }
 
 /**
+ * Accessible name for a planned block. A bare focusable `div` is dropped from
+ * the accessibility tree unless it has a role, so the block is also given
+ * `role="group"`; the name carries the time range and says how to move it,
+ * which screen-reader users cannot otherwise discover.
+ * @param {{ text: string, slot: number, duration: number }} block - The planned block.
+ * @returns {string} Text such as "Write report — planned 11:00–12:00, press arrow keys to move".
+ */
+function blockAriaLabel(block) {
+  const start = slotToTime(block.slot);
+  const end = slotToTime(block.slot + block.duration);
+  return `${block.text} — planned ${start}–${end}, press arrow keys to move`;
+}
+
+/**
+ * Slot change a key press asks for.
+ * @param {string} key - A `KeyboardEvent.key` value.
+ * @returns {number} -1 for ArrowUp (earlier), 1 for ArrowDown (later), 0 for any other key.
+ */
+function blockMoveDelta(key) {
+  if (key === 'ArrowUp') return -1;
+  if (key === 'ArrowDown') return 1;
+  return 0;
+}
+
+/**
+ * Moves keyboard focus to a planned block's element, found by ID after the
+ * grid has been redrawn. Compares IDs in code instead of building a selector,
+ * because block IDs come from stored data.
+ * @param {string} blockId - ID of the block to focus.
+ * @returns {void}
+ */
+function focusPlannedBlock(blockId) {
+  const blockEl = [...document.querySelectorAll('#tbGrid .tb-block.plan')].find(
+    (candidate) => candidate.dataset.bid === blockId
+  );
+  if (blockEl) blockEl.focus();
+}
+
+/**
+ * Keydown handler for a planned block: ArrowUp / ArrowDown move it one
+ * half-hour slot through moveBlockToSlot(), the same path drag-and-drop uses,
+ * and focus follows the block across the redraw. Keys pressed on the block's
+ * own buttons and any Ctrl/Alt/Meta/Shift combination are left alone so those
+ * controls and assistive-technology shortcuts keep working.
+ * @param {KeyboardEvent} event - The keydown event, listened for on the block element.
+ * @param {{ id: string }} block - The block the listener belongs to.
+ * @param {string} dateKey - YYYY-MM-DD of the day in view.
+ * @returns {void}
+ */
+function handleBlockKeydown(event, block, dateKey) {
+  if (event.target !== event.currentTarget) return;
+  if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return;
+  const delta = blockMoveDelta(event.key);
+  if (!delta) return;
+  event.preventDefault();
+  const current = getBlocks().find((candidate) => candidate.id === block.id);
+  if (!current) return;
+  if (moveBlockToSlot(block.id, current.slot + delta, dateKey) === 'moved') {
+    focusPlannedBlock(block.id);
+  }
+}
+
+/**
  * Renders the full time-block grid for the currently viewed date: time labels,
  * grid rows, planned blocks (with drag-to-move), live timer block, a "now" line,
  * and the plan-task drag targets. Also handles drag-and-drop wiring for
@@ -199,10 +262,8 @@ function renderTimeblock() {
     el.dataset.bid = block.id;
     el.draggable = true;
     el.tabIndex = 0;
-    el.setAttribute(
-      'aria-label',
-      `${block.text} — planned ${slotToTime(block.slot)}–${slotToTime(block.slot + block.duration)}, press arrow keys to move`
-    );
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', blockAriaLabel(block));
     el.style.top = block.slot * TB_SLOT_H + 1 + 'px';
     el.style.height = block.duration * TB_SLOT_H - 3 + 'px';
     el.style.background = cat.color + '18';
@@ -231,28 +292,7 @@ function renderTimeblock() {
       tbDragSource = null;
       tbDragId = null;
     });
-    el.addEventListener('keydown', (event) => {
-      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-      event.preventDefault();
-      const delta = event.key === 'ArrowUp' ? -1 : 1;
-      const currentBlock = getBlocks().find((candidate) => candidate.id === block.id);
-      if (!currentBlock) return;
-      const newSlot = Math.max(
-        0,
-        Math.min(TB_SLOTS - currentBlock.duration, currentBlock.slot + delta)
-      );
-      if (newSlot === currentBlock.slot) return;
-      const newStart = TB_START * 60 + newSlot * 30;
-      const newEnd = newStart + currentBlock.duration * 30;
-      const hits = tbOverlaps(newStart, newEnd, dateKey, currentBlock.id);
-      if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) return;
-      currentBlock.slot = newSlot;
-      saveBlocks();
-      renderTimeblock();
-      const newGrid = document.getElementById('tbGrid');
-      const refocused = newGrid && newGrid.querySelector(`[data-bid="${block.id}"]`);
-      if (refocused) refocused.focus();
-    });
+    el.addEventListener('keydown', (event) => handleBlockKeydown(event, block, dateKey));
     el.querySelector('.tb-block-del').addEventListener('click', (event) => {
       event.stopPropagation();
       removeBlockById(block.id);
@@ -374,23 +414,7 @@ function renderTimeblock() {
       .forEach((slotEl) => slotEl.classList.remove('drag-over'));
     const target = grid._dragSlot;
 
-    if (tbDragSource === 'grid' && tbDragId) {
-      const draggedBlock = getBlocks().find((block) => block.id === tbDragId);
-      if (draggedBlock) {
-        const newSlot = Math.min(target, TB_SLOTS - draggedBlock.duration);
-        const newStart = TB_START * 60 + newSlot * 30;
-        const newEnd = newStart + draggedBlock.duration * 30;
-        const hits = tbOverlaps(newStart, newEnd, dateKey, draggedBlock.id);
-        if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) {
-          tbDragSource = null;
-          tbDragId = null;
-          return;
-        }
-        draggedBlock.slot = newSlot;
-        saveBlocks();
-        renderTimeblock();
-      }
-    }
+    if (tbDragSource === 'grid' && tbDragId) moveBlockToSlot(tbDragId, target, dateKey);
     tbDragSource = null;
     tbDragId = null;
   });

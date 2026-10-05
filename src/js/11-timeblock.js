@@ -61,6 +61,46 @@ function removeBlockById(blockId) {
 }
 
 /**
+ * Keeps a block inside the day grid: one of `duration` slots can start no
+ * earlier than slot 0 and no later than `TB_SLOTS - duration`.
+ * @param {number} slot - Requested start slot.
+ * @param {number} duration - Block length in half-hour slots.
+ * @returns {number} The nearest valid start slot.
+ */
+function clampBlockSlot(slot, duration) {
+  return Math.max(0, Math.min(TB_SLOTS - duration, slot));
+}
+
+/**
+ * Moves a planned block to another start slot. This is the one place that
+ * changes a block's time, so drag-and-drop and the keyboard handler clamp,
+ * warn about overlaps, save and redraw identically.
+ * @param {string} blockId - ID of the block to move.
+ * @param {number} requestedSlot - Wanted start slot; clamped into the grid.
+ * @param {string} dateKey - YYYY-MM-DD of the day in view, for the overlap check.
+ * @returns {('moved'|'unchanged'|'declined'|'missing')} `moved` after saving and
+ *   redrawing; `unchanged` when the clamped slot is the current one (nothing is
+ *   saved or redrawn); `declined` when the user refused the overlap prompt;
+ *   `missing` when no block has that ID.
+ */
+function moveBlockToSlot(blockId, requestedSlot, dateKey) {
+  const block = getBlocks().find((candidate) => candidate.id === blockId);
+  if (!block) return 'missing';
+  const newSlot = clampBlockSlot(requestedSlot, block.duration);
+  if (newSlot === block.slot) return 'unchanged';
+  const newStart = TB_START * 60 + newSlot * 30;
+  const newEnd = newStart + block.duration * 30;
+  const hits = tbOverlaps(newStart, newEnd, dateKey, block.id);
+  if (hits.length && !confirm(`This overlaps with ${hits}.\n\nMove here anyway?`)) {
+    return 'declined';
+  }
+  block.slot = newSlot;
+  saveBlocks();
+  renderTimeblock();
+  return 'moved';
+}
+
+/**
  * Converts a 0-based half-hour slot index to an "HH:MM" label.
  * Slot 0 = `TB_START:00`, slot 2 = `TB_START+1:00`, etc.
  * @param {number} slot - 0-based slot index.

@@ -4019,6 +4019,101 @@ async function runTests() {
     await page.close();
   }
 
+  // ── 51. Planned blocks move by keyboard and by drag, through the same code (#598 B) ─
+  console.log('\n51. Time-block keyboard and drag moves');
+  {
+    const today = dk(new Date());
+    const seedBlocks = () => [
+      { id: 'mv1', date: today, slot: 6, duration: 2, text: 'Write report', tag: 'work' },
+    ];
+    const openBlocksTab = async (page) => {
+      // Tall enough that block and target slot are both on screen: a real mouse
+      // cannot drag to a slot below the fold.
+      await page.setViewportSize({ width: 1280, height: 1800 });
+      await page.click('#tfTab-blocks');
+      await page.waitForSelector('.tb-block.plan', { state: 'visible', timeout: 3000 });
+    };
+    const blockSlot = (page) =>
+      page.evaluate(() => window.__wl.getState().blocks.find((block) => block.id === 'mv1').slot);
+    const storedSlot = (page) =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem('wl_blocks_v1')).find((block) => block.id === 'mv1').slot
+      );
+    const focusedBlockId = (page) =>
+      page.evaluate(() =>
+        document.activeElement && document.activeElement.classList.contains('tb-block')
+          ? document.activeElement.dataset.bid
+          : null
+      );
+    const freshBlocksPage = async () => {
+      const page = await freshPage(ctx, {
+        wl_blocks_v1: seedBlocks(),
+        wl_tb_migrated_7: '1',
+        wl_cats_v1: CATS,
+      });
+      await openBlocksTab(page);
+      return page;
+    };
+
+    // Keyboard: arrow keys on the block itself.
+    {
+      const page = await freshBlocksPage();
+      await page.focus('.tb-block.plan');
+      await page.keyboard.press('ArrowDown');
+      assert('ArrowDown moves the block one slot later', (await blockSlot(page)) === 7);
+      assert('The move is saved to storage', (await storedSlot(page)) === 7);
+      assert(
+        'Focus stays on the moved block after the grid re-renders',
+        (await focusedBlockId(page)) === 'mv1'
+      );
+      await page.keyboard.press('ArrowUp');
+      await page.keyboard.press('ArrowUp');
+      assert('ArrowUp moves it earlier', (await blockSlot(page)) === 5);
+      await page.close();
+    }
+
+    // Keyboard: keys pressed on the block's own buttons must not move it.
+    {
+      const page = await freshBlocksPage();
+      await page.focus('.tb-block.plan .tb-block-emoji');
+      await page.keyboard.press('ArrowDown');
+      assert(
+        'Arrow keys on a button inside the block do not move the block',
+        (await blockSlot(page)) === 6,
+        String(await blockSlot(page))
+      );
+      await page.close();
+    }
+
+    // Accessibility tree: the block is exposed with a name that says it can be moved.
+    {
+      const page = await freshBlocksPage();
+      const tree = await page.locator('.tb-block.plan').first().ariaSnapshot();
+      assert(
+        'The block is exposed to assistive technology as a named group',
+        /group "Write report/.test(tree) && /arrow keys/.test(tree),
+        tree
+      );
+      await page.close();
+    }
+
+    // Drag and drop: still lands on the slot that was dropped on.
+    {
+      const page = await freshBlocksPage();
+      await page.dragAndDrop('.tb-block.plan', '.tb-slot[data-slot="12"]', {
+        sourcePosition: { x: 30, y: 12 },
+      });
+      assert(
+        'Dragging a block onto a slot moves it there',
+        (await blockSlot(page)) === 12,
+        String(await blockSlot(page))
+      );
+      assert('The dragged move is saved to storage', (await storedSlot(page)) === 12);
+      await page.close();
+    }
+  }
+
   // ── Summary ────────────────────────────────────────────────────────────────
   await browser.close();
   await stopServer();

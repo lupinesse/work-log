@@ -528,11 +528,11 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **11-timeblock.js** (339 lines) — Visual Time Grid Orchestrator
+#### **11-timeblock.js** (377 lines) — Visual Time Grid Orchestrator
 **Responsibility**: 8:00–18:00 grid view for planning. Orchestrates the three sub-modules below; owns block add/edit form, overlap detection (`tbOverlaps`), and the slot/time converters (`slotToTime`, `timeToSlot`).
 
 **Sub-modules**:
-- `11a-timeblock-render.js` (394 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
+- `11a-timeblock-render.js` (414 lines) — Full grid render loop: time labels, auto-blocks from log entries, manual planned blocks, untracked-time labels, now-line; all grid drag/drop wiring.
 - `11b-timeblock-carry.js` (370 lines) — Plan-task day-boundary lifecycle: `autoCarryTasks`, `patchCarriedTasks`, iteration expiry dates (seed/load/edit/save), completed-task history renderer.
 
 **Features**:

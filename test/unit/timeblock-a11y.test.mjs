@@ -12,9 +12,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import vm from 'node:vm';
-import { __dirname, withStateAccessors, createDom, assertNoUncaughtErrors } from './_helpers.mjs';
+import {
+  __dirname,
+  withStateAccessors,
+  createDom,
+  assertNoUncaughtErrors,
+  extractFunctionSource,
+} from './_helpers.mjs';
 
 const renderSrc = readFileSync(join(__dirname, '../../src/js/11a-timeblock-render.js'), 'utf8');
+const timeblockSrc = readFileSync(join(__dirname, '../../src/js/11-timeblock.js'), 'utf8');
+
+// The move logic lives in 11-timeblock.js; load the real functions so these tests
+// cover the render handlers and the shared move path together.
+const sharedMoveSrc = ['clampBlockSlot', 'moveBlockToSlot']
+  .map((name) => extractFunctionSource(timeblockSrc, name))
+  .join('\n');
 
 // ── Group B — DOM rendering + keyboard interaction ────────────────────────────
 
@@ -86,6 +99,7 @@ describe('planned timeblocks are keyboard-moveable (#598 Group B)', () => {
     // Load the source — this defines renderTimeblock() in the context,
     // overwriting the stub set by seedContext.
     vm.runInContext(renderSrc, ctx);
+    vm.runInContext(sharedMoveSrc, ctx);
 
     // Initial render: paints the block into #tbGrid.
     ctx.renderTimeblock();
@@ -181,6 +195,70 @@ describe('planned timeblocks are keyboard-moveable (#598 Group B)', () => {
     );
 
     assert.equal(ctx.blocks[0].slot, initialSlot, 'Enter must not change the slot');
+  });
+
+  it('exposes the block as a named group so assistive technology announces it (WCAG 4.1.2)', () => {
+    const blockEl = doc.querySelector('.tb-block.plan[data-bid="b1"]');
+    assert.equal(blockEl.getAttribute('role'), 'group');
+    assert.equal(
+      blockEl.getAttribute('aria-label'),
+      'Test block — planned 09:30–10:30, press arrow keys to move'
+    );
+  });
+
+  it('ignores arrow keys pressed on a button inside the block', () => {
+    const ctx = dom.getInternalVMContext();
+    const initialSlot = ctx.blocks[0].slot;
+    ctx.renderTimeblock = () => {};
+
+    const emojiBtn = doc.querySelector('.tb-block-emoji[data-bid="b1"]');
+    const event = new window.KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    emojiBtn.dispatchEvent(event);
+
+    assert.equal(ctx.blocks[0].slot, initialSlot, 'the block must not move');
+    assert.equal(event.defaultPrevented, false, 'the button keeps its default key handling');
+  });
+
+  it('leaves the block where it is when the user declines the overlap prompt', () => {
+    const ctx = dom.getInternalVMContext();
+    const initialSlot = ctx.blocks[0].slot;
+    let saved = false;
+    ctx.tbOverlaps = () => 'Standup';
+    ctx.confirm = () => false;
+    ctx.saveBlocks = () => {
+      saved = true;
+    };
+    ctx.renderTimeblock = () => {};
+
+    doc
+      .querySelector('[data-bid="b1"]')
+      .dispatchEvent(
+        new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+      );
+
+    assert.equal(ctx.blocks[0].slot, initialSlot);
+    assert.equal(saved, false, 'a refused move must not be saved');
+  });
+
+  it('keeps keyboard focus on the moved block after the grid is redrawn', () => {
+    const ctx = dom.getInternalVMContext();
+    const blockEl = doc.querySelector('.tb-block.plan[data-bid="b1"]');
+    blockEl.focus();
+
+    // The real renderTimeblock() runs here, replacing the focused element.
+    blockEl.dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+    );
+
+    const focused = doc.activeElement;
+    assert.notEqual(focused, blockEl, 'the grid was redrawn, so the old element is gone');
+    assert.equal(focused.dataset.bid, 'b1');
+    assert.ok(focused.classList.contains('tb-block'));
+    assert.equal(ctx.blocks[0].slot, 6);
   });
 
   it('calls saveBlocks() when the slot changes', () => {
