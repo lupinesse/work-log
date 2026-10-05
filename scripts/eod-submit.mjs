@@ -32,8 +32,19 @@ import {
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const profileDir = join(scriptDir, '..', '.timesheet-profile');
 const selectorsPath = join(scriptDir, 'eod-submit.selectors.json');
-const baseUrl = process.env.EOD_SUBMIT_URL;
-if (!baseUrl) throw new Error('EOD_SUBMIT_URL is not set. Configure it in config.local.ps1.');
+
+/**
+ * Returns EOD_SUBMIT_URL, throwing an informative error when it is absent.
+ * Called only when the URL is actually needed (login or submit), not at
+ * module level, so `node scripts/eod-submit.mjs --login` with no env set
+ * still shows a useful message rather than crashing on import.
+ * @returns {string} The submission base URL.
+ */
+function requireBaseUrl() {
+  const url = process.env.EOD_SUBMIT_URL;
+  if (!url) throw new Error('EOD_SUBMIT_URL is not set. Configure it in config.local.ps1.');
+  return url;
+}
 
 /**
  * Reads the selector overrides file.
@@ -49,6 +60,7 @@ function readSelectorOverrides() {
  * @returns {Promise<void>} Resolves when the user closes the window.
  */
 async function runLogin() {
+  const baseUrl = requireBaseUrl();
   console.log(`[timesheet] login mode — profile: ${profileDir}, url: ${baseUrl}`);
   const context = await chromium.launchPersistentContext(profileDir, { headless: false });
   const page = context.pages()[0] ?? (await context.newPage());
@@ -62,6 +74,7 @@ async function runLogin() {
  * @returns {Promise<void>} Resolves when the entry is saved.
  */
 async function submitViaPlaywright(payload) {
+  const baseUrl = requireBaseUrl();
   console.log(`[timesheet] Playwright: ${payload.date} ${payload.hours}h (profile: ${profileDir})`);
   const context = await chromium.launchPersistentContext(profileDir, { headless: true });
   try {
@@ -82,7 +95,7 @@ async function submitViaChrome(payload) {
     return { status: 'failed', detail: 'disabled by EOD_SUBMIT_CHROME=0' };
   }
   console.log('[timesheet] trying Claude in Chrome first');
-  return parseChromeResult(await runClaudeInChrome(buildChromePrompt(payload, baseUrl)));
+  return parseChromeResult(await runClaudeInChrome(buildChromePrompt(payload, requireBaseUrl())));
 }
 
 /**
@@ -91,6 +104,7 @@ async function submitViaChrome(payload) {
  * @returns {Promise<void>} Resolves when the entry is saved.
  */
 async function runSubmit() {
+  const baseUrl = requireBaseUrl();
   const payload = parseTimesheetPayload(readFileSync(0, 'utf8'));
   console.log(`[timesheet] submitting ${payload.date} ${payload.hours}h to ${baseUrl}`);
   const method = await submitWithFallback({

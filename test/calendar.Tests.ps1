@@ -425,19 +425,19 @@ Describe 'Name-based calendar exclusion (Test-CalendarNameExcluded)' {
     # shared it, which Test-PersonalCalendarStore alone cannot catch.
 
     It 'matches an exact configured name' {
-        Test-CalendarNameExcluded -Name 'Annina Antinranta' -ExcludeNames @('Annina Antinranta') | Should Be $true
+        Test-CalendarNameExcluded -Name 'Alex Example' -ExcludeNames @('Alex Example') | Should Be $true
     }
 
     It 'matches case-insensitively' {
-        Test-CalendarNameExcluded -Name 'ANNINA ANTINRANTA' -ExcludeNames @('annina antinranta') | Should Be $true
+        Test-CalendarNameExcluded -Name 'ALEX EXAMPLE' -ExcludeNames @('alex example') | Should Be $true
     }
 
     It 'matches a configured substring' {
-        Test-CalendarNameExcluded -Name 'Calendar - Annina Antinranta (shared)' -ExcludeNames @('annina') | Should Be $true
+        Test-CalendarNameExcluded -Name 'Calendar - Alex Example (shared)' -ExcludeNames @('alex') | Should Be $true
     }
 
     It 'does not match an unrelated name' {
-        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('annina') | Should Be $false
+        Test-CalendarNameExcluded -Name 'Calendar' -ExcludeNames @('alex') | Should Be $false
     }
 
     It 'excludes nothing when the list is empty' {

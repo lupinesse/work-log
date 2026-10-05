@@ -219,7 +219,7 @@ function Test-CalendarNameExcluded {
         A shared calendar is not always a distinct store type — "Open Shared
         Calendar" and similar can surface it as an ordinary-looking subfolder
         (or even a same-type store) named after the person who shared it, e.g.
-        "Annina Antinranta". Test-PersonalCalendarStore cannot tell that apart
+        "Alex Example". Test-PersonalCalendarStore cannot tell that apart
         from a personal calendar by type alone, so $CalendarExcludeNames
         (config.local.ps1) lets the user name it directly. Matching is
         case-insensitive substring, tested by the caller against both the
@@ -238,7 +238,7 @@ function Test-CalendarNameExcluded {
         System.Boolean
 
     .EXAMPLE
-        Test-CalendarNameExcluded -Name 'Annina Antinranta' -ExcludeNames @('annina')
+        Test-CalendarNameExcluded -Name 'Alex Example' -ExcludeNames @('alex')
         # -> $true
 
     .EXAMPLE

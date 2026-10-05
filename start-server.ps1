@@ -129,7 +129,7 @@ function Get-TodayMeetings {
         System.Collections.Hashtable
 
     .EXAMPLE
-        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Annina Antinranta')).meetings
+        (Get-TodayMeetings -LookBackYears 3 -ExcludeNames @('Alex Example')).meetings
     #>
     param(
         [int]$LookBackYears = 3,
@@ -717,6 +717,12 @@ while ($listener.IsListening) {
                 try { $res.Close() } catch {}
                 continue
             }
+            if (-not $EodSubmitUrl) {
+                Write-Host '[timesheet] refused: EOD_SUBMIT_URL is not configured in config.local.ps1' -ForegroundColor Yellow
+                Send-Json $res (@{ ok = $false; error = 'EOD_SUBMIT_URL is not set in config.local.ps1.' } | ConvertTo-Json -Compress) 503
+                try { $res.Close() } catch {}
+                continue
+            }
             try {
                 $reader = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
                 $result = Invoke-EodSubmit -Json $reader.ReadToEnd()
@@ -725,7 +731,7 @@ while ($listener.IsListening) {
                     $method = if ($result.StdOut -match 'method=(\w+)') { $Matches[1] } else { 'unknown' }
                     Send-Json $res (@{ ok = $true; method = $method } | ConvertTo-Json -Compress)
                 } else {
-                    $message = if ($result.ExitCode -eq 2) { 'Timesheet sign-in expired. Run: npm run timesheet:login' } else { $result.StdErr.Trim() }
+                    $message = if ($result.ExitCode -eq 2) { 'Sign-in expired. Run: npm run eod:login' } else { $result.StdErr.Trim() }
                     Send-Json $res (@{ ok = $false; error = $message } | ConvertTo-Json -Compress) 502
                 }
             } catch {
