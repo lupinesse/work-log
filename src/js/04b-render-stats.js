@@ -90,7 +90,7 @@ export function renderSubStatTiles() {
     // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     todayByTask[taskKey].ms += entry.tsEnd - entry.ts;
   });
-  const topTask = Object.values(todayByTask).sort((a, b) => b.ms - a.ms)[0];
+  const topTask = Object.values(todayByTask).sort((taskA, taskB) => taskB.ms - taskA.ms)[0];
   const todaySub = document.getElementById('statTodaySub');
   if (topTask) {
     todaySub.innerHTML = buildStatSubHtml(topTask.label, topTask.ms);
@@ -118,7 +118,7 @@ export function renderSubStatTiles() {
     // eslint-disable-next-line security/detect-object-injection -- key is an internal app-state value (app data), not from untrusted external input
     weekByTask[taskKey].ms += entry.tsEnd - entry.ts;
   });
-  const topWeekTask = Object.values(weekByTask).sort((a, b) => b.ms - a.ms)[0];
+  const topWeekTask = Object.values(weekByTask).sort((taskA, taskB) => taskB.ms - taskA.ms)[0];
   const weekSub = document.getElementById('statWeekSub');
   if (topWeekTask) {
     weekSub.innerHTML = buildStatSubHtml(topWeekTask.label, topWeekTask.ms);
