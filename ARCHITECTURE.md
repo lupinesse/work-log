@@ -550,7 +550,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12-misc.js** (456 lines) — Miscellaneous Features
+#### **12-misc.js** (454 lines) — Miscellaneous Features
 **Responsibility**: Distraction logging, daily stats, quick pick
 
 **Features**:
@@ -701,7 +701,7 @@ PRJ-123,Build login form,User,To Do,2026-05-30
 
 ---
 
-#### **22-trackers.js** (256 lines) — Custom Time-Goal Trackers _(leaf ES module)_
+#### **22-trackers.js** (252 lines) — Custom Time-Goal Trackers _(leaf ES module)_
 **Responsibility**: User-created trackers with a name, daily time target, and associated category tags. A 28-cell grid fills automatically from logged entries; streak counter updates daily.
 
 **Key functions**: `loadTrackers()`, `saveTrackers()`, `renderTrackers()`, `trackerDayStatus(tracker, dateKey)`, `initTrackers()`
