@@ -179,27 +179,63 @@ function createEmojiOptionButton(emoji, onSelect) {
 }
 
 /**
+ * Focuses the emoji trigger button for a planned block after the grid is
+ * re-rendered by `renderTimeblock()`. Searches by `data-bid` rather than
+ * building a CSS selector from untrusted data (avoids injection risk).
+ * @param {string} bid - Block ID.
+ * @returns {void}
+ */
+function focusBlockEmojiButton(bid) {
+  const grid = document.getElementById('tbGrid');
+  if (!grid) return;
+  const blockEl = Array.from(grid.querySelectorAll('.tb-block.plan')).find(
+    (el) => el.dataset.bid === bid
+  );
+  if (blockEl) blockEl.querySelector('.tb-block-emoji')?.focus();
+}
+
+/**
  * Opens a floating emoji picker anchored below `anchor` for a time block.
- * Calling again for the same block ID closes the picker.
+ * The picker is exposed as an ARIA dialog (WCAG 4.1.2 / 2.1.2): it carries
+ * `role="dialog"`, `aria-modal`, and `aria-label`; Tab navigation wraps
+ * inside via `trapFocusInOverlay()`; Escape closes the picker and returns
+ * focus to the trigger.  Calling again for the same block ID closes the
+ * picker (toggle).
  * @param {string}      bid    - Block ID.
  * @param {HTMLElement} anchor - Element to position the picker below.
+ * @returns {void}
  */
 function openBlockEmojiPicker(bid, anchor) {
   const existing = document.getElementById('__emojiPicker');
   if (existing) {
     existing.remove();
-    if (_emojiPickerPid === bid) {
-      _emojiPickerPid = null;
-      return;
+    // Reset aria-expanded on whichever block's picker was open
+    const prevBid = _emojiPickerPid;
+    _emojiPickerPid = null;
+    if (prevBid) {
+      const tbGrid = document.getElementById('tbGrid');
+      const prevEl =
+        tbGrid &&
+        Array.from(tbGrid.querySelectorAll('.tb-block.plan')).find(
+          (el) => el.dataset.bid === prevBid
+        );
+      prevEl?.querySelector('.tb-block-emoji')?.setAttribute('aria-expanded', 'false');
     }
+    if (prevBid === bid) return; // same block: toggled closed
   }
-  _emojiPickerPid = bid;
+
   const block = getBlocks().find((timeBlock) => timeBlock.id === bid);
   if (!block) return;
+
+  _emojiPickerPid = bid;
+  anchor.setAttribute('aria-expanded', 'true');
 
   const picker = document.createElement('div');
   picker.id = '__emojiPicker';
   picker.className = 'emoji-picker';
+  picker.setAttribute('role', 'dialog');
+  picker.setAttribute('aria-label', 'Choose emoji');
+  picker.setAttribute('aria-modal', 'true');
 
   const input = document.createElement('input');
   input.className = 'emoji-picker-input';
@@ -210,12 +246,15 @@ function openBlockEmojiPicker(bid, anchor) {
 
   const grid = document.createElement('div');
   grid.className = 'emoji-picker-grid';
+  grid.setAttribute('role', 'group');
+  grid.setAttribute('aria-label', 'Quick-select emoji');
   EMOJI_COMMON.forEach((em) => {
     grid.appendChild(createEmojiOptionButton(em, () => setBlockEmoji(bid, em)));
   });
   picker.appendChild(grid);
 
   const clear = document.createElement('button');
+  clear.type = 'button';
   clear.className = 'emoji-picker-clear';
   clear.textContent = '✕ remove emoji';
   clear.setAttribute('aria-label', 'Remove emoji');
@@ -230,22 +269,37 @@ function openBlockEmojiPicker(bid, anchor) {
 
   input.focus();
   input.select();
+
+  // Tab trap: keeps keyboard focus inside the dialog (WCAG 2.1.2)
+  picker.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') trapFocusInOverlay(picker, event);
+    if (event.key === 'Escape') {
+      picker.remove();
+      _emojiPickerPid = null;
+      anchor.setAttribute('aria-expanded', 'false');
+      anchor.focus();
+    }
+  });
+
   input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       const v = input.value.trim();
       setBlockEmoji(bid, v || null);
     }
-    if (event.key === 'Escape') {
-      picker.remove();
-      _emojiPickerPid = null;
-    }
+    // Escape is handled by the picker-level keydown above
   });
+
   setTimeout(() => {
     document.addEventListener('click', function close(ev) {
       if (!picker.contains(ev.target)) {
         picker.remove();
         _emojiPickerPid = null;
+        anchor.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', close);
+        // Focus is intentionally not returned here: the user clicked somewhere
+        // specific with the pointer, so moving focus back to the trigger would
+        // be disruptive. aria-modal confines virtual-cursor keyboard navigation
+        // inside the dialog, so this path is not keyboard-reachable in practice.
       }
     });
   }, 50);
@@ -269,6 +323,9 @@ function setBlockEmoji(bid, emoji) {
   }
   saveBlocks();
   renderTimeblock();
+  // Return focus to the trigger that opened the picker. The grid was just
+  // re-rendered by renderTimeblock(), so we must find the new DOM element.
+  focusBlockEmojiButton(bid);
 }
 
 /**

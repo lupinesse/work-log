@@ -486,7 +486,10 @@ describe('regression: emoji picker and rename inputs have accessible labels (#42
     };
     vm.createContext(withStateAccessors(sb));
     vm.runInContext(timeblockSrc, sb);
-    vm.runInContext("openBlockEmojiPicker('b1', { getBoundingClientRect: () => ({}) });", sb);
+    vm.runInContext(
+      "openBlockEmojiPicker('b1', { getBoundingClientRect: () => ({}), setAttribute: () => {} });",
+      sb
+    );
 
     const input = created.find((el) => el.className === 'emoji-picker-input');
     assert.ok(input, 'expected openBlockEmojiPicker to create the emoji input');

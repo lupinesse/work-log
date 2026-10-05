@@ -100,6 +100,16 @@ describe('buildBlockActionButtonsHtml() names every block button after its block
       assert.equal(button.getAttribute('draggable'), 'false');
     }
   });
+
+  it('emoji button has aria-haspopup="dialog" (announces it opens a dialog)', () => {
+    const button = buttonsFor({ id: 'b1', text: 'Task' }).querySelector('.tb-block-emoji');
+    assert.equal(button.getAttribute('aria-haspopup'), 'dialog');
+  });
+
+  it('emoji button starts with aria-expanded="false" (picker is closed)', () => {
+    const button = buttonsFor({ id: 'b1', text: 'Task' }).querySelector('.tb-block-emoji');
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
+  });
 });
 
 describe('buildMeetingButtonsHtml() names both meeting buttons after the meeting', () => {

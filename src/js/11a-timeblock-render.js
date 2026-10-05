@@ -29,7 +29,7 @@ function buildBlockActionButtonsHtml(block) {
       ? `<button class="tb-block-start" data-bid="${block.id}" aria-label="Start tracking: ${subject}" draggable="false">▶ start</button>`
       : '';
   const emojiVerb = block.emoji ? 'Change' : 'Add';
-  const emojiButton = `<button class="tb-block-emoji${block.emoji ? ' has-emoji' : ''}" data-bid="${block.id}" aria-label="${emojiVerb} emoji: ${subject}" title="${emojiVerb.toLowerCase()} emoji" draggable="false">${block.emoji ? escHtml(block.emoji) : '✦'}</button>`;
+  const emojiButton = `<button class="tb-block-emoji${block.emoji ? ' has-emoji' : ''}" data-bid="${block.id}" aria-label="${emojiVerb} emoji: ${subject}" aria-haspopup="dialog" aria-expanded="false" title="${emojiVerb.toLowerCase()} emoji" draggable="false">${block.emoji ? escHtml(block.emoji) : '✦'}</button>`;
   const deleteButton = `<button class="tb-block-del" data-bid="${block.id}" aria-label="Delete block: ${subject}" draggable="false">&times;</button>`;
   return startButton + emojiButton + deleteButton;
 }
