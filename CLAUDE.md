@@ -329,3 +329,56 @@ were consolidated into a **lean 3-column board** (To Do / In Progress / Done) in
 
 Files: `work-log.html`, `src/js/10-tasks.js`, `src/js/10a-tasks-render.js`,
 `src/js/10b-tasks-events.js`, `src/css/_tasks.scss`.
+
+---
+
+## Agent operational notes
+
+### ARCHITECTURE.md line-count convention
+CI uses `grep -c .` (counts non-empty lines), **not** `wc -l`. The test
+script checks this: `grep -c . src/js/<file>`. Always run
+`grep -c . <file>` to get the count before updating ARCHITECTURE.md.
+Two entries need updating for each tracked file:
+- `#### **filename** (N lines)` heading
+- `- \`filename\` (N lines)` in the module list
+
+### Commit message type requirement
+Commitlint enforces conventional commit types. Valid prefixes: `build`,
+`chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`,
+`style`, `test`. Using `merge:` will fail the hook — use `chore:` for
+merge-conflict resolutions.
+
+### Draft PRs block merging
+GitHub returns HTTP 405 when merging a draft PR. Before calling
+`merge_pull_request`, always call `update_pull_request` with
+`draft: false` first.
+
+### CodeQL suppression syntax (v2)
+- **Use:** `// codeql[rule-id]`
+- **Do NOT use:** `// lgtm[rule-id]` — legacy syntax, no longer recognised
+- The suppression comment must be on the line **immediately before** the
+  flagged line (not on the same line, not two lines above).
+- For `js/file-access-to-http` in fetch calls: the alert fires on the
+  `body:` property line, not on the `fetch()` call line.
+
+### Single-letter arrow-function parameters
+The CI annotation check flags `(a, b)` style params in arrow functions.
+Use descriptive names: `(taskA, taskB)`, `(entryA, entryB)` etc.
+This applies to `.sort()` comparators and anywhere else single-letter
+params appear outside tight `.map`/`.filter` chains.
+
+### `js/file-access-to-http` in CI scripts
+All four alerts in `.github/scripts/` are false positives — `diff`
+content flows into `body:`, not the URL. Files with correct suppressions:
+- `claude-convergence-summary.mjs` (line 164)
+- `claude-chatgpt-dialogue.mjs` (line 225)
+- `chatgpt-claude-dialogue.mjs` (line ~296)
+- `chatgpt-review.mjs` (line ~145)
+
+### Merging with conflicts
+When `origin/main` has advanced and the PR has a conflict:
+1. `git fetch origin main`
+2. `git merge origin/main` on the PR branch
+3. Resolve conflicts, then `git add <file> && git commit`
+4. `git push -u origin <branch>`
+5. Un-draft the PR, then merge
