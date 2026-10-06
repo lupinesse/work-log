@@ -38,23 +38,33 @@ function flashCopiedLabel(button, durationMs = 2000) {
 }
 
 /**
- * Opens the end-of-day modal: auto-exports the time log and JSON backup, saves
- * the EOD timestamp, populates handoff notes for unfinished tasks, renders today's
- * dev changelog entries, and lists the test areas to review.
+ * Opens the end-of-day modal for the day in view: auto-exports the time log and
+ * JSON backup, saves that day's EOD timestamp, populates handoff notes for its
+ * unfinished tasks, renders its dev changelog entries, and lists the test areas
+ * to review. Viewing an earlier day ends that day, not the current one.
  */
 function openEodModal() {
-  const todayKey = dk(new Date());
-  const d = new Date();
+  const viewDay = getViewDate();
+  const todayKey = dk(viewDay);
+  const isViewingToday = todayKey === dk(new Date());
+  const d = viewDay;
   const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // Auto-export
   exportTxt();
   exportBackup();
-  localStorage.setItem('wl_last_export', todayKey);
-  // Save EOD timestamp against today — ending the day is always a "now" action,
-  // independent of which day is currently in view.
-  const today = new Date();
-  if (!getEodTs(today)) localStorage.setItem(eodKey(today), String(Date.now()));
+  localStorage.setItem('wl_last_export', dk(new Date()));
+  // Save EOD timestamp against the day in view. An earlier day is stamped with
+  // its last entry's end so it does not claim to have ended today.
+  if (!getEodTs(viewDay)) {
+    const eodTs = resolveEodTimestamp(
+      isViewingToday,
+      getEntries().filter((entry) => entry.date === todayKey && entry.tsEnd > entry.ts),
+      Date.now()
+    );
+    localStorage.setItem(eodKey(viewDay), String(eodTs));
+  }
+  wlLog.info(`openEodModal: ending ${isViewingToday ? 'today' : 'earlier day'} ${todayKey}`);
   renderEodBtn();
   renderEodReminder();
   // Note: portable deploy is triggered by the "Done — close" button, NOT here,

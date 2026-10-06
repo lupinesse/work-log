@@ -61,6 +61,7 @@ export {
   buildTimesheetDescription,
   buildTimesheetDayPayload,
   findTimesheetEntryProblem,
+  resolveEodTimestamp,
 } from './pure-fns-hours-entry.js';
 
 export {

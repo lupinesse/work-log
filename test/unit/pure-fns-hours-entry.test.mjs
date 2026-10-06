@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   buildTimesheetDescription,
   buildTimesheetDayPayload,
+  resolveEodTimestamp,
 } from '../../src/js/pure-fns-hours-entry.js';
 
 const HOUR = 3600000;
@@ -71,5 +72,28 @@ describe('buildTimesheetDayPayload', () => {
 
   it('returns null when nothing was tracked, so nothing is submitted', () => {
     assert.equal(buildTimesheetDayPayload('2026-09-30', [], label), null);
+  });
+});
+
+describe('resolveEodTimestamp', () => {
+  const now = 100 * HOUR;
+  const cases = [
+    ['today stamps now', true, [entry('A', 'work', 1, 5)], now],
+    [
+      'an earlier day stamps its last entry end',
+      false,
+      [entry('A', 'work', 1, 5), entry('B', 'work', 5, 7)],
+      7 * HOUR,
+    ],
+    [
+      'an earlier day ignores entry order',
+      false,
+      [entry('B', 'work', 5, 7), entry('A', 'work', 1, 5)],
+      7 * HOUR,
+    ],
+    ['an earlier day with no entries falls back to now', false, [], now],
+  ];
+  cases.forEach(([name, isToday, entries, expected]) => {
+    it(name, () => assert.equal(resolveEodTimestamp(isToday, entries, now), expected));
   });
 });

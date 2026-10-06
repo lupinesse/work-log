@@ -89,3 +89,18 @@ export function findTimesheetEntryProblem(entry) {
   }
   return null;
 }
+
+/**
+ * Picks the timestamp recorded when a day is ended. Ending today stamps "now";
+ * ending an earlier day stamps the end of its last timed entry, because "now"
+ * would fall on a different calendar day and misreport when that day finished.
+ *
+ * @param {boolean} isToday - Whether the day being ended is the current day.
+ * @param {Array<Object>} timedEntries - The ended day's entries, each with `tsEnd`.
+ * @param {number} now - Current time as a Unix timestamp (ms).
+ * @returns {number} Unix timestamp (ms) to store as the day's end.
+ */
+export function resolveEodTimestamp(isToday, timedEntries, now) {
+  if (isToday || timedEntries.length === 0) return now;
+  return Math.max(...timedEntries.map((entry) => entry.tsEnd));
+}
