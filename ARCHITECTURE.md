@@ -103,7 +103,7 @@ wl_snapshot        → backup (auto-restore on failure)
 
 ---
 
-#### **pure-fns.js** (94 lines) — Pure Utility Library (LEAF MODULE — barrel)
+#### **pure-fns.js** (97 lines) — Pure Utility Library (LEAF MODULE — barrel)
 **Responsibility**: Re-exports all stateless, side-effect-free helpers from nine themed sub-modules. Imported as an ES module; exports are auto-discovered by the build system.
 
 **Sub-modules**:
@@ -567,7 +567,7 @@ upcoming    → Scheduled for future date
 
 ---
 
-#### **12a-changelog.js** (294 lines) — Changelog Modal & EOD Orchestration
+#### **12a-changelog.js** (299 lines) — Changelog Modal & EOD Orchestration
 **Responsibility**: EOD modal (handoff notes, dev-log entry, Notion deploy trigger) and app startup orchestration.
 
 **Sub-modules**:

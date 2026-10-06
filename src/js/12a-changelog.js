@@ -47,19 +47,24 @@ function openEodModal() {
   const viewDay = getViewDate();
   const dayKey = dk(viewDay);
   const isViewingToday = dayKey === dk(new Date());
-  const d = viewDay;
-  const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateStr = viewDay.toLocaleDateString('en', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   // Auto-export
   exportTxt();
   exportBackup();
   localStorage.setItem('wl_last_export', dk(new Date()));
   // Save EOD timestamp against the day in view. An earlier day is stamped with
-  // its last entry's end so it does not claim to have ended today.
+  // its last entry's end (or the end of that day) so it does not claim to have
+  // ended today.
+  const allEntries = getEntries();
   if (!getEodTs(viewDay)) {
     const eodTs = resolveEodTimestamp(
-      isViewingToday,
-      getEntries().filter((entry) => entry.date === dayKey && entry.tsEnd > entry.ts),
+      viewDay,
+      allEntries.filter((entry) => entry.date === dayKey && entry.tsEnd > entry.ts),
       Date.now()
     );
     localStorage.setItem(eodKey(viewDay), String(eodTs));
@@ -74,18 +79,8 @@ function openEodModal() {
 
   document.getElementById('eodSubtitle').textContent = dateStr;
 
-  // Notes for tomorrow — only tasks that were actually worked on today
-  const workedToday = new Set(
-    getEntries()
-      .filter((entry) => entry.date === dayKey)
-      .map((entry) => entry.text.toLowerCase().trim())
-  );
-  const unfinishedTasks = getPlanTasks().filter(
-    (task) =>
-      task.date === dayKey &&
-      task.status !== 'done' &&
-      workedToday.has(task.text.toLowerCase().trim())
-  );
+  // Notes for the next day — only tasks that were actually worked on the viewed day
+  const unfinishedTasks = selectUnfinishedWorkedTasks(dayKey, allEntries, getPlanTasks());
   let handoffNotes = {};
   try {
     handoffNotes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
@@ -114,20 +109,20 @@ function openEodModal() {
       )
       .join('');
   } else {
-    taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on today — or all done 🎉</div>`;
+    taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on this day — or all done 🎉</div>`;
   }
 
-  // Today's dev changes
+  // The viewed day's dev changes
   let allLog = [];
   try {
     allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
   } catch (err) {
     wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
   }
-  const todayChanges = allLog.filter((change) => change.date === dayKey);
+  const viewedDayChanges = selectDevChangesForDay(allLog, dayKey);
   const changesEl = document.getElementById('eodChanges');
-  if (todayChanges.length) {
-    changesEl.innerHTML = todayChanges
+  if (viewedDayChanges.length) {
+    changesEl.innerHTML = viewedDayChanges
       .map(
         (change) =>
           `<div class="eod-change">
@@ -137,11 +132,11 @@ function openEodModal() {
       )
       .join('');
   } else {
-    changesEl.innerHTML = `<div class="eod-empty">No code changes logged today</div>`;
+    changesEl.innerHTML = `<div class="eod-empty">No code changes logged this day</div>`;
   }
 
   // Affected test areas (deduplicated)
-  const affectedAreas = [...new Set(todayChanges.flatMap((change) => change.areas))].sort(
+  const affectedAreas = [...new Set(viewedDayChanges.flatMap((change) => change.areas))].sort(
     (a, b) => a - b
   );
   const areasEl = document.getElementById('eodTestAreas');
@@ -166,7 +161,7 @@ function openEodModal() {
       `End of day: ${dateStr}`,
       '',
       'Changes implemented:',
-      ...todayChanges.map(
+      ...viewedDayChanges.map(
         (change) =>
           `  - ${change.desc}${change.areas.length ? ' (Test ' + change.areas.join(', ') + ')' : ''}`
       ),

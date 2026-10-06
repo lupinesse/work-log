@@ -62,6 +62,8 @@ export {
   buildTimesheetDayPayload,
   findTimesheetEntryProblem,
   resolveEodTimestamp,
+  selectUnfinishedWorkedTasks,
+  selectDevChangesForDay,
 } from './pure-fns-hours-entry.js';
 
 export {
