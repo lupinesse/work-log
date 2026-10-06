@@ -45,8 +45,8 @@ function flashCopiedLabel(button, durationMs = 2000) {
  */
 function openEodModal() {
   const viewDay = getViewDate();
-  const todayKey = dk(viewDay);
-  const isViewingToday = todayKey === dk(new Date());
+  const dayKey = dk(viewDay);
+  const isViewingToday = dayKey === dk(new Date());
   const d = viewDay;
   const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -59,12 +59,12 @@ function openEodModal() {
   if (!getEodTs(viewDay)) {
     const eodTs = resolveEodTimestamp(
       isViewingToday,
-      getEntries().filter((entry) => entry.date === todayKey && entry.tsEnd > entry.ts),
+      getEntries().filter((entry) => entry.date === dayKey && entry.tsEnd > entry.ts),
       Date.now()
     );
     localStorage.setItem(eodKey(viewDay), String(eodTs));
   }
-  wlLog.info(`openEodModal: ending ${isViewingToday ? 'today' : 'earlier day'} ${todayKey}`);
+  wlLog.info(`openEodModal: ending ${isViewingToday ? 'today' : 'earlier day'} ${dayKey}`);
   renderEodBtn();
   renderEodReminder();
   // Note: portable deploy is triggered by the "Done — close" button, NOT here,
@@ -77,12 +77,12 @@ function openEodModal() {
   // Notes for tomorrow — only tasks that were actually worked on today
   const workedToday = new Set(
     getEntries()
-      .filter((entry) => entry.date === todayKey)
+      .filter((entry) => entry.date === dayKey)
       .map((entry) => entry.text.toLowerCase().trim())
   );
   const unfinishedTasks = getPlanTasks().filter(
     (task) =>
-      task.date === todayKey &&
+      task.date === dayKey &&
       task.status !== 'done' &&
       workedToday.has(task.text.toLowerCase().trim())
   );
@@ -124,7 +124,7 @@ function openEodModal() {
   } catch (err) {
     wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
   }
-  const todayChanges = allLog.filter((change) => change.date === todayKey);
+  const todayChanges = allLog.filter((change) => change.date === dayKey);
   const changesEl = document.getElementById('eodChanges');
   if (todayChanges.length) {
     changesEl.innerHTML = todayChanges
@@ -180,7 +180,7 @@ function openEodModal() {
     });
   };
 
-  renderEodTimesheet(todayKey);
+  renderEodTimesheet(dayKey);
 
   document.getElementById('eodOverlay').classList.add('show');
 }
