@@ -103,12 +103,9 @@ export function renderTrackers() {
       const cells = days
         .map((dateKey) => {
           const status = trackerDayStatus(tracker, dateKey);
+          const safeColor = safeCssColor(tracker.color);
           const bg =
-            status === 'hit'
-              ? tracker.color
-              : status === 'partial'
-                ? tracker.color + '55'
-                : 'var(--bg3)';
+            status === 'hit' ? safeColor : status === 'partial' ? safeColor + '55' : 'var(--bg3)';
           return `<div class="tr-cell" style="background:${bg}" title="${dateKey}: ${status}" aria-hidden="true"></div>`;
         })
         .join('');
