@@ -288,13 +288,13 @@ Output a single raw JSON object — no markdown wrapper:
 
   const user = `${claudeContext_}\n\nPR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
+    // codeql[js/file-access-to-http] — diff is trusted CI workspace output, not user input; it flows into the request body, not the URL
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.2,

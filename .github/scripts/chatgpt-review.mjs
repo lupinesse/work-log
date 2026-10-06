@@ -137,13 +137,13 @@ async function reviewWithOpenAI(diff, existingThreads) {
     `Existing review threads on this PR (reply to one of these if your finding overlaps; otherwise post new):\n\n${threadBlock}\n\n` +
     `PR diff:\n\`\`\`diff\n${diff}\n\`\`\``;
 
-  // lgtm[js/file-access-to-http] — diff is trusted CI output, not user input
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
+    // codeql[js/file-access-to-http] — diff is trusted CI workspace output, not user input; it flows into the request body, not the URL
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.2,
