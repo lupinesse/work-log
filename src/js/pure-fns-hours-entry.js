@@ -89,3 +89,55 @@ export function findTimesheetEntryProblem(entry) {
   }
   return null;
 }
+
+/**
+ * Picks the timestamp recorded when a day is ended. Ending today stamps "now".
+ * Ending an earlier day stamps the end of its last timed entry, or the end of
+ * that calendar day when it has none — "now" would fall on a different day and
+ * misreport when the viewed day finished.
+ *
+ * @param {Date} viewDay - The day being ended.
+ * @param {Array<Object>} timedEntries - The ended day's entries, each with `tsEnd`.
+ * @param {number} now - Current time as a Unix timestamp (ms).
+ * @returns {number} Unix timestamp (ms) to store as the day's end.
+ */
+export function resolveEodTimestamp(viewDay, timedEntries, now) {
+  if (viewDay.toDateString() === new Date(now).toDateString()) return now;
+  if (timedEntries.length > 0) return Math.max(...timedEntries.map((entry) => entry.tsEnd));
+  const endOfViewDay = new Date(viewDay);
+  endOfViewDay.setHours(23, 59, 59, 999);
+  return endOfViewDay.getTime();
+}
+
+/**
+ * Selects the plan tasks to hand over at the end of a day: those dated that day,
+ * not done, and actually worked on (a log entry for the same text exists that day).
+ *
+ * @param {string} dayKey - The ended day, `YYYY-MM-DD`.
+ * @param {Array<Object>} entries - All log entries (`date`, `text`).
+ * @param {Array<Object>} planTasks - All plan tasks (`date`, `status`, `text`).
+ * @returns {Array<Object>} The unfinished tasks worked on that day.
+ */
+export function selectUnfinishedWorkedTasks(dayKey, entries, planTasks) {
+  const normalise = (text) => text.toLowerCase().trim();
+  const workedOnDay = new Set(
+    entries
+      .filter((entry) => entry.date === dayKey && entry.text)
+      .map((entry) => normalise(entry.text))
+  );
+  return planTasks.filter(
+    (task) =>
+      task.date === dayKey && task.status !== 'done' && workedOnDay.has(normalise(task.text))
+  );
+}
+
+/**
+ * Selects the dev-changelog entries recorded on a given day.
+ *
+ * @param {Array<Object>} devLog - All dev-changelog entries (`date`).
+ * @param {string} dayKey - The ended day, `YYYY-MM-DD`.
+ * @returns {Array<Object>} Entries dated that day.
+ */
+export function selectDevChangesForDay(devLog, dayKey) {
+  return devLog.filter((change) => change.date === dayKey);
+}

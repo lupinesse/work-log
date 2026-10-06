@@ -38,23 +38,38 @@ function flashCopiedLabel(button, durationMs = 2000) {
 }
 
 /**
- * Opens the end-of-day modal: auto-exports the time log and JSON backup, saves
- * the EOD timestamp, populates handoff notes for unfinished tasks, renders today's
- * dev changelog entries, and lists the test areas to review.
+ * Opens the end-of-day modal for the day in view: auto-exports the time log and
+ * JSON backup, saves that day's EOD timestamp, populates handoff notes for its
+ * unfinished tasks, renders its dev changelog entries, and lists the test areas
+ * to review. Viewing an earlier day ends that day, not the current one.
  */
 function openEodModal() {
-  const todayKey = dk(new Date());
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+  const viewDay = getViewDate();
+  const dayKey = dk(viewDay);
+  const isViewingToday = dayKey === dk(new Date());
+  const dateStr = viewDay.toLocaleDateString('en', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   // Auto-export
   exportTxt();
   exportBackup();
-  localStorage.setItem('wl_last_export', todayKey);
-  // Save EOD timestamp against today — ending the day is always a "now" action,
-  // independent of which day is currently in view.
-  const today = new Date();
-  if (!getEodTs(today)) localStorage.setItem(eodKey(today), String(Date.now()));
+  localStorage.setItem('wl_last_export', dk(new Date()));
+  // Save EOD timestamp against the day in view. An earlier day is stamped with
+  // its last entry's end (or the end of that day) so it does not claim to have
+  // ended today.
+  const allEntries = getEntries();
+  if (!getEodTs(viewDay)) {
+    const eodTs = resolveEodTimestamp(
+      viewDay,
+      allEntries.filter((entry) => entry.date === dayKey && entry.tsEnd > entry.ts),
+      Date.now()
+    );
+    localStorage.setItem(eodKey(viewDay), String(eodTs));
+  }
+  wlLog.info(`openEodModal: ending ${isViewingToday ? 'today' : 'earlier day'} ${dayKey}`);
   renderEodBtn();
   renderEodReminder();
   // Note: portable deploy is triggered by the "Done — close" button, NOT here,
@@ -64,18 +79,8 @@ function openEodModal() {
 
   document.getElementById('eodSubtitle').textContent = dateStr;
 
-  // Notes for tomorrow — only tasks that were actually worked on today
-  const workedToday = new Set(
-    getEntries()
-      .filter((entry) => entry.date === todayKey)
-      .map((entry) => entry.text.toLowerCase().trim())
-  );
-  const unfinishedTasks = getPlanTasks().filter(
-    (task) =>
-      task.date === todayKey &&
-      task.status !== 'done' &&
-      workedToday.has(task.text.toLowerCase().trim())
-  );
+  // Notes for the next day — only tasks that were actually worked on the viewed day
+  const unfinishedTasks = selectUnfinishedWorkedTasks(dayKey, allEntries, getPlanTasks());
   let handoffNotes = {};
   try {
     handoffNotes = parseHandoffNotes(localStorage.getItem('wl_handoff'));
@@ -104,20 +109,20 @@ function openEodModal() {
       )
       .join('');
   } else {
-    taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on today — or all done 🎉</div>`;
+    taskNotesEl.innerHTML = `<div class="eod-empty">no tasks worked on this day — or all done 🎉</div>`;
   }
 
-  // Today's dev changes
+  // The viewed day's dev changes
   let allLog = [];
   try {
     allLog = JSON.parse(localStorage.getItem(STORE_DEV_LOG) || '[]');
   } catch (err) {
     wlLog.warn('openEodModal: failed to parse dev changelog from localStorage', err);
   }
-  const todayChanges = allLog.filter((change) => change.date === todayKey);
+  const viewedDayChanges = selectDevChangesForDay(allLog, dayKey);
   const changesEl = document.getElementById('eodChanges');
-  if (todayChanges.length) {
-    changesEl.innerHTML = todayChanges
+  if (viewedDayChanges.length) {
+    changesEl.innerHTML = viewedDayChanges
       .map(
         (change) =>
           `<div class="eod-change">
@@ -127,11 +132,11 @@ function openEodModal() {
       )
       .join('');
   } else {
-    changesEl.innerHTML = `<div class="eod-empty">No code changes logged today</div>`;
+    changesEl.innerHTML = `<div class="eod-empty">No code changes logged this day</div>`;
   }
 
   // Affected test areas (deduplicated)
-  const affectedAreas = [...new Set(todayChanges.flatMap((change) => change.areas))].sort(
+  const affectedAreas = [...new Set(viewedDayChanges.flatMap((change) => change.areas))].sort(
     (a, b) => a - b
   );
   const areasEl = document.getElementById('eodTestAreas');
@@ -156,7 +161,7 @@ function openEodModal() {
       `End of day: ${dateStr}`,
       '',
       'Changes implemented:',
-      ...todayChanges.map(
+      ...viewedDayChanges.map(
         (change) =>
           `  - ${change.desc}${change.areas.length ? ' (Test ' + change.areas.join(', ') + ')' : ''}`
       ),
@@ -170,7 +175,7 @@ function openEodModal() {
     });
   };
 
-  renderEodTimesheet(todayKey);
+  renderEodTimesheet(dayKey);
 
   document.getElementById('eodOverlay').classList.add('show');
 }
