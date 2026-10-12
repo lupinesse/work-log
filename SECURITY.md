@@ -61,6 +61,29 @@ Contributors are expected to follow these practices:
 - Pin dependency versions where reproducibility matters
 - Review new dependencies for license, maintenance status, and known CVEs before adoption
 
+#### Known accepted risk: `braces` stack-exhaustion advisory (as of 2026-10-12)
+
+`npm audit` reports 10 high-severity findings, all transitively rooted in
+[`braces` GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+(stack exhaustion via deeply nested glob patterns), pulled in by
+`micromatch` → `fast-glob`/`braces` → `globby`/`micromatch` → `stylelint`
+and its `-scss` config packages. `braces` has not published a fixed
+release (checked against the npm registry: latest is still `3.0.3`), so
+`npm audit fix` cannot resolve this chain.
+
+This is accepted for now because:
+- All affected packages are `devDependencies` — the `stylelint` toolchain
+  used for linting SCSS during development and CI. None of them ship in
+  `dist/` or `work-log.html`.
+- The glob patterns they process come from this repository's own
+  `stylelint` config and CLI invocation (`src/css/**/*.scss`), not from
+  untrusted input — there is no reachable path for an attacker to supply
+  the nested pattern the advisory describes.
+
+Re-run `npm audit` on each dependency bump; once `braces` ships a fix,
+bump it (and the config packages that pin older ranges) and remove this
+note.
+
 ### Authentication and Access
 - Use strong, unique passwords and enable two-factor authentication on GitHub accounts
 - Rotate personal access tokens and deploy keys regularly
