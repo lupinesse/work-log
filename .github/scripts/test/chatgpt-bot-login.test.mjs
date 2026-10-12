@@ -153,6 +153,24 @@ describe('chatgpt-pr-review.yml — bot identity (#514)', () => {
         /CHATGPT_REVIEW_BOT_LOGIN is not set/
       );
     });
+
+    // Regression: the step's dynamic import of pr-size-gate.mjs used to build its
+    // file:// URL from `process.env.GITHUB_WORKSPACE` with no fallback. That env var
+    // is only ever set inside a real GitHub Actions run, so every test in this
+    // describe block failed outside CI (ERR_INVALID_FILE_URL_HOST / ERR_MODULE_NOT_FOUND)
+    // even though the step itself worked fine in production.
+    test('runs with GITHUB_WORKSPACE unset, as it is outside GitHub Actions', async () => {
+      const originalWorkspace = process.env.GITHUB_WORKSPACE;
+      delete process.env.GITHUB_WORKSPACE;
+      try {
+        const { outputs, state } = await run({ commentLogins: [BOT_REST_LOGIN], reviewLogins: [] });
+        assert.equal(outputs.should_run, 'false');
+        assert.equal(state.sizeCheckReached, false);
+      } finally {
+        if (originalWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
+        else process.env.GITHUB_WORKSPACE = originalWorkspace;
+      }
+    });
   });
 
   describe('merge-gate unresolved-thread check', () => {

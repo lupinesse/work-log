@@ -46,8 +46,12 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const { classifyPR, LINES_THRESHOLD, FILES_THRESHOLD } =
-              await import(`file://${process.env.GITHUB_WORKSPACE}/.github/scripts/lib/pr-size-gate.mjs`);
+            const { join } = await import('node:path');
+            const { pathToFileURL } = await import('node:url');
+            const workspaceRoot = process.env.GITHUB_WORKSPACE || process.cwd();
+            const { classifyPR, LINES_THRESHOLD, FILES_THRESHOLD } = await import(
+              pathToFileURL(join(workspaceRoot, '.github/scripts/lib/pr-size-gate.mjs')).href
+            );
 
             const files = await github.paginate(
               github.rest.pulls.listFiles,
