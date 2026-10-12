@@ -2,11 +2,11 @@
 /**
  * CLI wrapper around selectSupersededPrs() for use from workflow bash.
  *
- * Reads `gh pr list --json number,headRefName` from stdin, takes the current
- * report branch as argv[2], and prints one superseded PR number per line.
+ * Reads `gh pr list --json number,title` from stdin, takes the current
+ * report PR's title as argv[2], and prints one superseded PR number per line.
  *
- *   gh pr list --state open --limit 100 --json number,headRefName \
- *     | node .github/scripts/list-superseded-qa-prs.mjs "$BRANCH" \
+ *   gh pr list --state open --limit 100 --json number,title \
+ *     | node .github/scripts/list-superseded-qa-prs.mjs "Weekly QA report $DATE" \
  *     | while read -r pr_number; do gh pr close "$pr_number" ...; done
  *
  * Decision logic is unit-tested in test/superseded-qa-prs.test.mjs; this file
@@ -15,7 +15,7 @@
 
 import { selectSupersededPrs } from './lib/superseded-qa-prs.mjs';
 
-const currentBranch = process.argv[2] ?? '';
+const currentTitle = process.argv[2] ?? '';
 let data = '';
 process.stdin.setEncoding('utf8');
 process.stdin.on('data', (chunk) => {
@@ -23,7 +23,7 @@ process.stdin.on('data', (chunk) => {
 });
 process.stdin.on('end', () => {
   try {
-    for (const prNumber of selectSupersededPrs(data, currentBranch)) {
+    for (const prNumber of selectSupersededPrs(data, currentTitle)) {
       console.log(prNumber);
     }
   } catch (error) {
