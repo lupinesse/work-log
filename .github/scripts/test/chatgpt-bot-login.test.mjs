@@ -12,13 +12,11 @@ import path from 'node:path';
 import test, { describe } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const workflowPath = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'workflows',
-  'chatgpt-pr-review.yml'
-);
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const workflowPath = path.join(testDirectory, '..', '..', 'workflows', 'chatgpt-pr-review.yml');
+// The workflow's gate step imports its size-gate module relative to the runner's
+// workspace; GITHUB_WORKSPACE is unset outside Actions, so point it at the repo root.
+const repositoryRoot = path.resolve(testDirectory, '..', '..', '..');
 const source = readFileSync(workflowPath, 'utf8').replace(/\r\n/g, '\n');
 
 const BOT_REST_LOGIN = 'chatgpt-reviewer-work-log[bot]';
@@ -63,6 +61,8 @@ async function runScript(body, { github, context, env }) {
     setFailed: (message) => failures.push(message),
   };
   const originalEnv = process.env.CHATGPT_REVIEW_BOT_LOGIN;
+  const originalWorkspace = process.env.GITHUB_WORKSPACE;
+  process.env.GITHUB_WORKSPACE = repositoryRoot;
   if (env === undefined) delete process.env.CHATGPT_REVIEW_BOT_LOGIN;
   else process.env.CHATGPT_REVIEW_BOT_LOGIN = env;
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
@@ -71,6 +71,8 @@ async function runScript(body, { github, context, env }) {
   } finally {
     if (originalEnv === undefined) delete process.env.CHATGPT_REVIEW_BOT_LOGIN;
     else process.env.CHATGPT_REVIEW_BOT_LOGIN = originalEnv;
+    if (originalWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
+    else process.env.GITHUB_WORKSPACE = originalWorkspace;
   }
   return { outputs, failures };
 }
