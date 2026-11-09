@@ -94,7 +94,24 @@ const WORK_TRACKER = {
   color: '#4A90E2',
 };
 
-const dateKey = '2026-09-30';
+/**
+ * Local calendar date of yesterday as YYYY-MM-DD.
+ *
+ * Yesterday (not a hard-coded date) keeps the fixture inside the tracker's
+ * rolling 28-day grid on whatever day the suite runs; a fixed date aged out
+ * of the window and made the #624 partial-cell test fail from 2026-10-28.
+ *
+ * @returns {string} Yesterday's date key.
+ */
+function yesterdayDateKey() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const day = String(yesterday.getDate()).padStart(2, '0');
+  return `${yesterday.getFullYear()}-${month}-${day}`;
+}
+
+const dateKey = yesterdayDateKey();
 
 function workEntry(date, startMs, endMs) {
   return { date, tag: 'work', ts: startMs, tsEnd: endMs };
@@ -287,7 +304,7 @@ describe('22-trackers — renderTrackers', () => {
     // Provide a partial entry (45 min of 60 min target) on a date within the
     // 28-day window to force a 'partial' day cell in the render output.
     const malicious = { ...WORK_TRACKER, color: '"><img src=x onerror=alert(1)>' };
-    // dateKey is fixed above; it falls within the 28-day window from today.
+    // dateKey is yesterday, so it always falls within the 28-day window from today.
     const partialEntry = workEntry(dateKey, 0, 45 * 60000); // 45 min = 75%, partial
     const { sandbox, listEl } = loadSandbox({
       trackers: [malicious],
