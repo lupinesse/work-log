@@ -21,6 +21,13 @@ describe('selectSupersededPrs', () => {
       prList([7, 'Weekly QA report 2026-09-14'], [8, 'Weekly QA report 2026-09-21'], [9, CURRENT]),
       [7, 8],
     ],
+    ['a valid QA title with no matching PR', prList([99, 'Weekly QA report 2026-11-01']), []],
+    [
+      'a newer report is never closed by an older one',
+      prList([7, 'Weekly QA report 2026-09-21'], [8, 'Weekly QA report 2026-10-12']),
+      [7],
+    ],
+    ['a same-date duplicate is left alone', prList([8, CURRENT], [9, CURRENT]), []],
     [
       'unrelated PRs are never selected',
       prList(

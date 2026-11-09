@@ -17,10 +17,24 @@
  */
 
 /** Exact title pattern that identifies a weekly QA report PR. */
-export const QA_REPORT_TITLE_PATTERN = /^Weekly QA report \d{4}-\d{2}-\d{2}$/;
+export const QA_REPORT_TITLE_PATTERN = /^Weekly QA report (\d{4}-\d{2}-\d{2})$/;
 
 /**
- * Pick the open QA report PRs that are not the current report's PR.
+ * Extract the report date from a QA report title.
+ *
+ * @param {string} title - A title already known to match the pattern, or not.
+ * @returns {string | null} The YYYY-MM-DD date, or null for a non-report title.
+ */
+function reportDateOf(title) {
+  return QA_REPORT_TITLE_PATTERN.exec(title)?.[1] ?? null;
+}
+
+/**
+ * Pick the open QA report PRs that are older than the current report's PR.
+ *
+ * Only a strictly older report date is closed: a newer report (e.g. a re-run
+ * of an earlier week) and a same-date duplicate are left alone, because the
+ * title carries no way to tell which same-day PR is the newer one.
  *
  * @param {string} rawJson - Raw stdout from `gh pr list --json number,title`.
  * @param {string} currentTitle - Title of the report PR just created, e.g.
@@ -39,7 +53,8 @@ export function selectSupersededPrs(rawJson, currentTitle) {
   if (!Array.isArray(parsed)) {
     throw new Error(`Expected an array from "gh pr list --json number,title", got: ${rawJson}`);
   }
-  if (!QA_REPORT_TITLE_PATTERN.test(currentTitle)) {
+  const currentDate = reportDateOf(currentTitle);
+  if (currentDate === null) {
     throw new Error(
       `Current PR title "${currentTitle}" is not a QA report title (expected "Weekly QA report YYYY-MM-DD")`
     );
@@ -49,7 +64,8 @@ export function selectSupersededPrs(rawJson, currentTitle) {
       if (typeof pr?.number !== 'number' || typeof pr?.title !== 'string') {
         throw new Error(`Unexpected PR entry from gh: ${JSON.stringify(pr)}`);
       }
-      return QA_REPORT_TITLE_PATTERN.test(pr.title) && pr.title !== currentTitle;
+      const prDate = reportDateOf(pr.title);
+      return prDate !== null && prDate < currentDate;
     })
     .map((pr) => pr.number);
 }
