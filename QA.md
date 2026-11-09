@@ -57,6 +57,14 @@ Full scored assessment: see `CODE_QUALITY_ASSESSMENT.md` (historical — this fi
 | Docker / VM builds available | ✅ Pass | Dev container image: `mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm` |
 | Configuration recorded when code runs | ✅ Pass | `wlLog.config()` logs version, counts, and feature state at startup |
 
+### Test-count refresh (as of 2026-11-09)
+
+| Checklist item | Status | Evidence |
+|---|---|---|
+| Core functionality unit tested | ✅ Pass | `npm run test:unit` — **1,492 tests across 281 suites**, 0 failures |
+| Integration / CI-script tests | ✅ Pass | `npm run test:scripts` — **639 tests across 117 suites**, 0 failures |
+| End-to-end smoke tests | ➖ Not re-run | `smoke-tests.cjs` was not re-run for this refresh; last verified count is 310 (2026-09-28 QA review) |
+
 ### Stakeholder acceptance
 
 | Field | Value |
