@@ -51,6 +51,7 @@ jobs:
           # rejected (GH013), so land the report via a branch + PR instead.
           DATE=$(date +%Y-%m-%d)
           BRANCH="claude/qa-review-$DATE"
+          TITLE="Weekly QA report $DATE"
           git checkout -B "$BRANCH"
           git add docs/qa-reports/
           git commit -m "docs: weekly QA report $DATE"
@@ -61,16 +62,20 @@ jobs:
             echo "PR already open for $BRANCH — nothing further to do."
           else
             gh pr create \
-              --title "Weekly QA report $DATE" \
+              --title "$TITLE" \
               --body "Automated weekly QA review. See \`docs/qa-reports/qa-review-$DATE.md\`." \
               --base main --head "$BRANCH" --draft
           fi
 
           # A newer report supersedes older report PRs (see the "QA report
           # lifecycle" section of .claude/skills/qa-review/SKILL.md). Selection
-          # is by branch prefix in a tested script, never by title search.
-          gh pr list --state open --limit 100 --json number,headRefName \
-            | node .github/scripts/list-superseded-qa-prs.mjs "$BRANCH" \
+          # is by the exact PR title this workflow and `gh pr create` both use
+          # ("Weekly QA report YYYY-MM-DD") — never by head-branch name. The
+          # branch that lands a given week's report has not stayed consistent
+          # (`claude/qa-review-...`, `claude/weekly-qa-...`, session-generated
+          # names), so matching on it silently stopped closing anything.
+          gh pr list --state open --limit 100 --json number,title \
+            | node .github/scripts/list-superseded-qa-prs.mjs "$TITLE" \
             | while read -r PR_NUMBER; do
                 echo "Closing PR $PR_NUMBER as superseded by $BRANCH"
                 gh pr close "$PR_NUMBER" \
