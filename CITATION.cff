@@ -1,8 +1,8 @@
 cff-version: 1.2.0
 message: "If you use or adapt this software, please cite it using the metadata below."
 title: "Work Log — ADHD-friendly time tracker"
-version: 1.8.0
-date-released: "2026-05-25"
+version: 1.9.2
+date-released: "2026-08-14"
 url: "https://github.com/lupinesse/worklog"
 repository-code: "https://github.com/lupinesse/worklog"
 license: MIT
