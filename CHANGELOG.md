@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **`CONTRIBUTING.md` and `ARCHITECTURE.md` both understated the JS source-file count, by two different wrong numbers (#629)** — flagged by the 2026-10-04 weekly QA review. `CONTRIBUTING.md`'s Project Structure tree said "54 files"; `ARCHITECTURE.md`'s intro said "67 source files across 30+ numbered modules". Actual (`ls src/js/*.js | wc -l`): **72**. `CONTRIBUTING.md`'s "Build the project" step also only described the legacy `build.js` concatenation, not the `vite build` step `npm run build` has run since Vite was added — its dev-server step already mentioned Vite, so this was a half-applied doc update. Both docs now state 72 files, `ARCHITECTURE.md`'s ES-module count is corrected to the current `LEAF_MODULES` length (34, read from `build-config.js` rather than restated by hand), the ambiguous "30+ numbered modules" phrase (an unverifiable third count) is dropped rather than corrected to an unverified number, and `CONTRIBUTING.md`'s Project Structure tree gains `dist/`, `vite.config.js`, and `build-config.js`. Docs-only; no behaviour change.
+
 ### Changed
 - **Breaking: identifying references replaced with generic names** — `gofore-timesheet` renamed to `eod-entry`/`eod-submit` throughout. Config variables renamed: `$GoforeTimesheetUrl` → `$EodSubmitUrl`, `$GoforeSubmitEnabled` → `$EodSubmitEnabled`; env vars renamed: `GOFORE_TIMESHEET_URL` → `EOD_SUBMIT_URL`, `GOFORE_TIMESHEET_CHROME` → `EOD_SUBMIT_CHROME`; `GOFORE_SUBMIT_ENABLED` → `EOD_SUBMIT_ENABLED` in JS config. Server API route `/api/gofore-timesheet` → `/api/eod-submit`. npm script `timesheet:login` → `eod:login`. **Upgrade note:** update any local `config.local.ps1` and `src/js/00-config.local.js` to use the new names. `$EodSubmitUrl` now has no default — set it to your submission URL to keep submit working.
 
