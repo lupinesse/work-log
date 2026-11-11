@@ -332,6 +332,30 @@ Files: `work-log.html`, `src/js/10-tasks.js`, `src/js/10a-tasks-render.js`,
 
 ---
 
+## Model and effort selection
+
+When choosing (or recommending) a Claude model and effort level for a task,
+use this guide, based on Anthropic's recommendations. Work down the list and
+take the first match.
+
+| # | Task | Model | Effort |
+|---|------|-------|--------|
+| 1 | Major refactor, migration, architecture planning, leading many subagents, deep research, scientific / quantitative analysis | Fable 5.2 | medium, then high (API default: high) |
+| 2 | Computer use or vision-heavy workflow | Opus 5.5 | medium |
+| 3 | Everyday engineering, debugging, multi-PR feature work | Opus 5.5 | medium, then high |
+| 4 | Not sure yet | Opus 5.5 (recommended starting point) | medium |
+| 5 | Classification, routing, tagging, high-volume extraction | Haiku 5.5 | medium |
+| 6 | Subagent task such as file search, log reading, summarisation | Haiku 5.5 or Sonnet 5.5 | model default |
+| 7 | Chat or interactive session | Sonnet 5.5 (Haiku 5.5 also works for simple high-volume chat) | low or medium |
+| 8 | Well-scoped coding, feature iteration, spec-driven work, everyday documents / slides / spreadsheets, repeated agent tasks | Sonnet 5.5 | scoped coding: medium, then high; docs / slides / spreadsheets: high; repeated agent tasks: medium |
+| 9 | Anything else | Opus 5.5 (good default when in doubt) | medium |
+
+Quick notes:
+- **Haiku 5.5**: lowest cost and latency.
+- **Sonnet 5.5**: strong for scoped work, chat, and everyday documents.
+- **Opus 5.5**: strong default for everyday engineering and vision-heavy loops.
+- **Fable 5.2**: best fit for the hardest technical work.
+
 ## Agent operational notes
 
 ### ARCHITECTURE.md line-count convention
