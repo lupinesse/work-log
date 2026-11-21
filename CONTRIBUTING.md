@@ -36,9 +36,13 @@ This matches the "pair programming used (together with another AI)" practice fro
    ```bash
    npm run build
    ```
-   This runs `build.js` to concatenate source files and compile SCSS:
-   - `src/js/*.js` → `script.js`
-   - `src/css/styles.scss` → `styles.css`
+   This runs `build.js`, then `vite build`. Both regenerate `script.js`/
+   `styles.css` from `src/js/*.js`/`src/css/styles.scss` (following
+   `LEAF_MODULES` in `build-config.js`) — `vite build`'s own `buildStart` hook
+   does this again redundantly, so it is never stale even run alone. Vite
+   then bundles `work-log.html` (which references `script.js`/`styles.css`)
+   into a hashed, minified copy under `dist/`.
+   Both `script.js`/`styles.css` and `dist/` are generated, gitignored output.
 
 4. **Start the development server**
    ```bash
@@ -51,7 +55,7 @@ This matches the "pair programming used (together with another AI)" practice fro
 ```
 worklog/
 ├── src/
-│   ├── js/           # Source JavaScript modules (54 files)
+│   ├── js/           # Source JavaScript modules (72 files)
 │   │   ├── 01-state.js
 │   │   ├── 02-utils.js
 │   │   ├── 03-timer.js
@@ -63,8 +67,11 @@ worklog/
 ├── work-log.html     # Single-file HTML entry point
 ├── script.js         # Built JavaScript (generated, gitignored; run npm run build)
 ├── styles.css        # Built CSS (generated, gitignored; run npm run build)
+├── dist/             # Vite production bundle (generated, gitignored; run npm run build)
 ├── smoke-tests.cjs   # Test suite
-├── build.js          # Build script
+├── build.js          # Concatenation/SCSS build script, run before vite build
+├── build-config.js   # LEAF_MODULES list shared by build.js and vite.config.js
+├── vite.config.js    # Dev server + production bundling
 └── package.json      # Dependencies
 ```
 
