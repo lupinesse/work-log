@@ -12,14 +12,18 @@ import path from 'node:path';
 import test, { describe } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const workflowPath = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'workflows',
-  'chatgpt-pr-review.yml'
-);
+const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
+const workflowPath = path.join(scriptsDir, '..', '..', 'workflows', 'chatgpt-pr-review.yml');
 const source = readFileSync(workflowPath, 'utf8').replace(/\r\n/g, '\n');
+
+// The "Decide whether to run" script dynamically imports pr-size-gate.mjs via
+// `file://${GITHUB_WORKSPACE}/...`. On a real Actions runner GITHUB_WORKSPACE
+// is always set, so the script works there; locally (or in any non-Actions
+// Node process) it is unset, and the resulting `file://undefined/...`
+// specifier fails module resolution with ERR_INVALID_FILE_URL_HOST on Linux.
+// Point it at the actual repo root so the test exercises the real import
+// instead of depending on an ambient Actions-only environment variable.
+const REPO_ROOT = path.join(scriptsDir, '..', '..', '..');
 
 const BOT_REST_LOGIN = 'chatgpt-reviewer-work-log[bot]';
 // GraphQL reports bot authors without the "[bot]" suffix that REST includes; the
@@ -65,12 +69,16 @@ async function runScript(body, { github, context, env }) {
   const originalEnv = process.env.CHATGPT_REVIEW_BOT_LOGIN;
   if (env === undefined) delete process.env.CHATGPT_REVIEW_BOT_LOGIN;
   else process.env.CHATGPT_REVIEW_BOT_LOGIN = env;
+  const originalWorkspace = process.env.GITHUB_WORKSPACE;
+  process.env.GITHUB_WORKSPACE = REPO_ROOT;
   const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
   try {
     await new AsyncFunction('github', 'context', 'core', body)(github, context, core);
   } finally {
     if (originalEnv === undefined) delete process.env.CHATGPT_REVIEW_BOT_LOGIN;
     else process.env.CHATGPT_REVIEW_BOT_LOGIN = originalEnv;
+    if (originalWorkspace === undefined) delete process.env.GITHUB_WORKSPACE;
+    else process.env.GITHUB_WORKSPACE = originalWorkspace;
   }
   return { outputs, failures };
 }
